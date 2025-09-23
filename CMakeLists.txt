@@ -8,4 +8,8 @@ add_executable(cosmos-soft
         src/persistence/FlightLogManager.cpp
         src/comms/SocketComms.cpp
         src/telemetry/TelemetryParser.cpp
-        src/flight/FlightCalculator.cpp)
+        src/flight/FlightCalculator.cpp
+        resources/persistence/FileManager.cpp
+        include/persistence/FileManager.h
+        src/gui/FlightDataModel.cpp
+        include/gui/FlightDataModel.h)
