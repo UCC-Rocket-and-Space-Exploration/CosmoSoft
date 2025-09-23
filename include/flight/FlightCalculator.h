@@ -1,0 +1,13 @@
+//
+// Created by mark on 23.09.25.
+//
+
+#ifndef COSMO_SOFT_FLIGHTCALCULATOR_H
+#define COSMO_SOFT_FLIGHTCALCULATOR_H
+
+
+class FlightCalculator {
+};
+
+
+#endif //COSMO_SOFT_FLIGHTCALCULATOR_H
