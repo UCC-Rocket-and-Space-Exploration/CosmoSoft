@@ -1,0 +1,9 @@
+#ifndef COSMO_SOFT_COMMSFACTORY_H
+#define COSMO_SOFT_COMMSFACTORY_H
+
+
+class CommsFactory {
+};
+
+
+#endif //COSMO_SOFT_COMMSFACTORY_H

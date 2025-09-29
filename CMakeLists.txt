@@ -6,10 +6,15 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(cosmos-soft
         src/main.cpp
         src/persistence/FlightLogManager.cpp
-        src/comms/SocketComms.cpp
+        src/comms/SerialCommsPosix.cpp
         src/telemetry/TelemetryParser.cpp
         src/flight/FlightCalculator.cpp
         resources/persistence/FileManager.cpp
-        include/persistence/FileManager.h
         src/gui/FlightDataModel.cpp
-        include/gui/FlightDataModel.h)
+        src/persistence/FileManager.cpp
+        src/persistence/FileManager.cpp
+        include/comms/SerialPortScanner.cpp
+        src/comms/SerialCommsWindows.cpp
+        src/comms/SerialPortScannerWindows.cpp
+        src/comms/CommsFactory.cpp
+    )

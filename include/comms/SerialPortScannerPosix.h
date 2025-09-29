@@ -1,0 +1,10 @@
+#ifndef COSMO_SOFT_SERIALPORTSCANNER_H
+#define COSMO_SOFT_SERIALPORTSCANNER_H
+
+
+class SerialPortScannerPosix {
+
+};
+
+
+#endif //COSMO_SOFT_SERIALPORTSCANNER_H
