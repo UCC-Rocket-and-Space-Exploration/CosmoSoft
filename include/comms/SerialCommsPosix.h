@@ -20,6 +20,8 @@ public:
     void flush() override;
 
     std::string deviceName() const override;
+    std::string devicePort() const override;
+
 
 private:
     std::string m_device;
