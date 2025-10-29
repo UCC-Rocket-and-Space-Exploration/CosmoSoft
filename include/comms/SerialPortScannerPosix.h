@@ -21,5 +21,5 @@ class SerialPortScannerPosix : ISerialPortScanner {
 };
 
 
-#endif //LINUX
+#endif //Posix Check
 #endif //COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
