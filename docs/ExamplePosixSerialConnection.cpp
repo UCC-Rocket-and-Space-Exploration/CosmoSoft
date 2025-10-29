@@ -1,7 +1,3 @@
-//
-// Created by mark on 30.09.25.
-//
-
 #include <glob.h>
 #include <vector>
 #include <string>
@@ -138,7 +134,6 @@ int main() {
         std::cerr << "Could not open any candidate device. Check permissions or run socat.\n";
         return 1;
     }
-
 
     read_loop(fd);
     close(fd);

@@ -24,13 +24,9 @@ public:
     // size_t maxSize: how many bytes past the pointer to write to, i.e. the size of the buffer
     virtual ssize_t read(uint8_t* buffer, size_t maxSize) = 0;
 
-    //flush the buffer
-    virtual void flush() = 0;
-
     // Device info & metadata, add more later depending on applicability
-    virtual std::string deviceName() const = 0;
-    virtual std::string devicePort() const = 0;
+    [[nodiscard]] virtual std::string getDeviceName() const = 0;
+    [[nodiscard]] virtual std::string getDevicePort() const = 0;
 };
-
 
 #endif //COSMO_SOFT_ICOMMS_H

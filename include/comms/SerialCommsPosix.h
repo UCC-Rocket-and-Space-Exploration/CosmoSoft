@@ -11,20 +11,19 @@ public:
     ~SerialCommsPosix() override; //destructor
 
     bool open() override;
+    //bool open(std::string* flags);
     void close() override;
-    bool isOpen() const override;
+    [[nodiscard]] bool isOpen() const override;
 
     ssize_t write(const uint8_t* data, size_t size) override;
     ssize_t read(uint8_t* buffer, size_t maxSize) override;
 
-    void flush() override;
-
-    std::string deviceName() const override;
-    std::string devicePort() const override;
-
+    [[nodiscard]] std::string getDeviceName() const override;
+    [[nodiscard]] std::string getDevicePort() const override;
 
 private:
     std::string m_device;
+    std::string m_port;
     int m_baud;
     int m_fd = -1;
 };
