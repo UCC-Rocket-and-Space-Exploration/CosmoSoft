@@ -1,4 +1,5 @@
 #ifndef COSMO_SOFT_SERIALCOMMSPOSIX_H
+#if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
 #define COSMO_SOFT_SERIALCOMMSPOSIX_H
 #include <string>
 
@@ -28,4 +29,5 @@ private:
     int m_fd = -1;
 };
 
+#endif //POSIX CHECK
 #endif //COSMO_SOFT_SERIALCOMMSPOSIX_H
