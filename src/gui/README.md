@@ -16,6 +16,7 @@
    ```
 
 ## Plans for UI
--(] Add an app icon
+- Add an app icon
 - Implement Graphs(Mark)
-- Add sounds?
+- Add sounds?c bnm,]\
+ 
