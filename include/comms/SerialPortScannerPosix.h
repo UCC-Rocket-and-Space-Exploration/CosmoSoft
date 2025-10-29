@@ -1,6 +1,6 @@
 #ifndef COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
 #define COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
-#include <vector>
+#if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
 #include "ISerialPortScanner.h"
 
 //TODO
@@ -13,5 +13,5 @@ public:
 };
 
 
-#endif //Posix Check
+#endif //LINUX
 #endif //COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
