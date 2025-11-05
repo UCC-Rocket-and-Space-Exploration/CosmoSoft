@@ -1,4 +1,5 @@
 # CosmoSoft
+<<<<<<< HEAD
 
 CosmoSoft is an open-source desktop ground-station application for working with a flight computer and telemetry data.
 
@@ -90,3 +91,9 @@ Our TODO list is tracked in Jira:
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE).
+=======
+
+Open Source software for connection with flight computer
+
+Our TODO list is on <a href="https://rock-team-oln4apuq.atlassian.net/jira/software/projects/KAN/list">Jira Board<a>
+>>>>>>> 4f89ac6 (Jira lins added)
