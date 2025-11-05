@@ -257,6 +257,7 @@ cosmo-backend_autogen/mocs_compilation.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/cosmo-backend_autogen/mocs_compilation.cpp.s
 .PHONY : cosmo-backend_autogen/mocs_compilation.cpp.s
 
+<<<<<<< HEAD
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.o: cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o
 .PHONY : cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.o
 
@@ -281,6 +282,8 @@ cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.s
 .PHONY : cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.s
 
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 cosmo-gui_autogen/mocs_compilation.o: cosmo-gui_autogen/mocs_compilation.cpp.o
 .PHONY : cosmo-gui_autogen/mocs_compilation.o
 
@@ -569,6 +572,7 @@ src/gui/MainWindow.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.s
 .PHONY : src/gui/MainWindow.cpp.s
 
+<<<<<<< HEAD
 src/gui/pages/ChartPage.o: src/gui/pages/ChartPage.cpp.o
 .PHONY : src/gui/pages/ChartPage.o
 
@@ -665,6 +669,8 @@ src/gui/pages/SettingsPage.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.s
 .PHONY : src/gui/pages/SettingsPage.cpp.s
 
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -781,9 +787,12 @@ help:
 	@echo "... cosmo-backend_autogen/mocs_compilation.o"
 	@echo "... cosmo-backend_autogen/mocs_compilation.i"
 	@echo "... cosmo-backend_autogen/mocs_compilation.s"
+<<<<<<< HEAD
 	@echo "... cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.o"
 	@echo "... cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.i"
 	@echo "... cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.s"
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 	@echo "... cosmo-gui_autogen/mocs_compilation.o"
 	@echo "... cosmo-gui_autogen/mocs_compilation.i"
 	@echo "... cosmo-gui_autogen/mocs_compilation.s"
@@ -820,6 +829,7 @@ help:
 	@echo "... src/gui/MainWindow.o"
 	@echo "... src/gui/MainWindow.i"
 	@echo "... src/gui/MainWindow.s"
+<<<<<<< HEAD
 	@echo "... src/gui/pages/ChartPage.o"
 	@echo "... src/gui/pages/ChartPage.i"
 	@echo "... src/gui/pages/ChartPage.s"
@@ -832,6 +842,8 @@ help:
 	@echo "... src/gui/pages/SettingsPage.o"
 	@echo "... src/gui/pages/SettingsPage.i"
 	@echo "... src/gui/pages/SettingsPage.s"
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

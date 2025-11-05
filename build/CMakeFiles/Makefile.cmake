@@ -8,7 +8,10 @@ set(CMAKE_DEPENDS_GENERATOR "Unix Makefiles")
 set(CMAKE_MAKEFILE_DEPENDS
   "CMakeCache.txt"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/CMakeLists.txt"
+<<<<<<< HEAD
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc"
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
   "CMakeFiles/4.1.2/CMakeCXXCompiler.cmake"
   "CMakeFiles/4.1.2/CMakeSystem.cmake"
   "/opt/homebrew/lib/cmake/Qt6/FindWrapAtomic.cmake"
@@ -360,7 +363,10 @@ set(CMAKE_MAKEFILE_OUTPUTS
 set(CMAKE_MAKEFILE_PRODUCTS
   "CMakeFiles/cosmo-backend_autogen.dir/AutogenInfo.json"
   "CMakeFiles/cosmo-gui_autogen.dir/AutogenInfo.json"
+<<<<<<< HEAD
   "CMakeFiles/cosmo-gui_autogen.dir/AutoRcc_resources_GBFAFXFCVO_Info.json"
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
   "CMakeFiles/cosmo-soft_autogen.dir/AutogenInfo.json"
   ".qt/QtDeploySupport.cmake"
   ".qt/QtDeployTargets.cmake"

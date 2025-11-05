@@ -449,8 +449,12 @@
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateTargets.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateAdditionalTargetInfo.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateVersionlessAliasTargets.cmake",
+<<<<<<< HEAD
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsVersionlessAliasTargets.cmake",
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc"
+=======
+		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsVersionlessAliasTargets.cmake"
+>>>>>>> 1c03da1 (UI Skeleton)
 	],
 	"CMAKE_SOURCE_DIR" : "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft",
 	"CROSS_CONFIG" : false,
@@ -504,7 +508,11 @@
 	"MOC_RELAXED_MODE" : false,
 	"MOC_SKIP" : [],
 	"MULTI_CONFIG" : false,
+<<<<<<< HEAD
 	"PARALLEL" : 8,
+=======
+	"PARALLEL" : 1,
+>>>>>>> 1c03da1 (UI Skeleton)
 	"PARSE_CACHE_FILE" : "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-backend_autogen.dir/ParseCache.txt",
 	"QT_MOC_EXECUTABLE" : "/opt/homebrew/opt/qt/share/qt/libexec/moc",
 	"QT_UIC_EXECUTABLE" : "/opt/homebrew/opt/qt/share/qt/libexec/uic",

@@ -941,11 +941,15 @@ cosmo-gui_autogen/timestamp: \
 	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/ptrcheck.h \
 	/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdarg.h \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/CMakeLists.txt \
+<<<<<<< HEAD
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc \
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/4.1.2/CMakeCXXCompiler.cmake \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/4.1.2/CMakeSystem.cmake \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/moc_predefs.h \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
+<<<<<<< HEAD
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
@@ -957,6 +961,10 @@ cosmo-gui_autogen/timestamp: \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp \
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/QString \
+=======
+	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/FlightDataModel.cpp \
+	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/MainWindow.cpp \
+>>>>>>> 1c03da1 (UI Skeleton)
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q17memory.h \
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q20functional.h \
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q20iterator.h \
@@ -1108,7 +1116,10 @@ cosmo-gui_autogen/timestamp: \
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtGui.framework/Versions/A/Headers/qtransform.h \
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtGui.framework/Versions/A/Headers/qwindowdefs.h \
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QMainWindow \
+<<<<<<< HEAD
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget \
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/qmainwindow.h \
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/qsizepolicy.h \
 	/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/qtabwidget.h \

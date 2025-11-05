@@ -3,6 +3,9 @@
 4207e898f903af44bbb8e9d69f6f4191 CMakeFiles/cosmo-gui_autogen
 4207e898f903af44bbb8e9d69f6f4191 CMakeFiles/cosmo-soft_autogen
 c2b315e83258f5a55750a8e5f3706e15 cosmo-backend_autogen/timestamp
+<<<<<<< HEAD
 536ca972567d425032da7e540d969c10 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 073491c1c6e3e070c440f3a7df9cb563 cosmo-gui_autogen/timestamp
 6e7bfa5d8f92e9b961cb4b0174466a11 cosmo-soft_autogen/timestamp

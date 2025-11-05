@@ -6,7 +6,11 @@ CXX_DEFINES =
 
 CXX_INCLUDES = -I/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-backend_autogen/include -I/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/comms -I/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/flight -I/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/persistence -I/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/telemetry
 
+<<<<<<< HEAD
 CXX_FLAGSarm64 = -std=c++20 -arch arm64
 
 CXX_FLAGS = -std=c++20 -arch arm64
+=======
+CXX_FLAGS = -std=c++20
+>>>>>>> 1c03da1 (UI Skeleton)
 

@@ -1180,6 +1180,7 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qhash.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qvarlengtharray.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
@@ -1189,6 +1190,8 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDebug \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QResource \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qresource.h \
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
@@ -1198,9 +1201,18 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qicon.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpalette.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qbrush.h \
+<<<<<<< HEAD
+=======
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
+>>>>>>> 1c03da1 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontmetrics.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontinfo.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontvariableaxis.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qsizepolicy.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString
+=======
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h
+>>>>>>> 1c03da1 (UI Skeleton)

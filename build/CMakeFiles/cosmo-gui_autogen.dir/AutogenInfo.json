@@ -449,8 +449,12 @@
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateTargets.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateAdditionalTargetInfo.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateVersionlessAliasTargets.cmake",
+<<<<<<< HEAD
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsVersionlessAliasTargets.cmake",
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc"
+=======
+		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsVersionlessAliasTargets.cmake"
+>>>>>>> 1c03da1 (UI Skeleton)
 	],
 	"CMAKE_SOURCE_DIR" : "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft",
 	"CROSS_CONFIG" : false,
@@ -463,6 +467,7 @@
 			"MU",
 			"BMPI5EA7AM/moc_MainWindow.cpp",
 			null
+<<<<<<< HEAD
 		],
 		[
 			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h",
@@ -487,6 +492,8 @@
 			"MU",
 			"2E3XLRTW7Z/moc_SettingsPage.cpp",
 			null
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 		]
 	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
@@ -559,7 +566,11 @@
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-backend_autogen/mocs_compilation.cpp"
 	],
 	"MULTI_CONFIG" : false,
+<<<<<<< HEAD
 	"PARALLEL" : 8,
+=======
+	"PARALLEL" : 1,
+>>>>>>> 1c03da1 (UI Skeleton)
 	"PARSE_CACHE_FILE" : "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-gui_autogen.dir/ParseCache.txt",
 	"QT_MOC_EXECUTABLE" : "/opt/homebrew/opt/qt/share/qt/libexec/moc",
 	"QT_UIC_EXECUTABLE" : "/opt/homebrew/opt/qt/share/qt/libexec/uic",
@@ -577,6 +588,7 @@
 			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/MainWindow.cpp",
 			"MU",
 			null
+<<<<<<< HEAD
 		],
 		[
 			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp",
@@ -597,6 +609,8 @@
 			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp",
 			"MU",
 			null
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 		]
 	],
 	"UIC_OPTIONS" : [],

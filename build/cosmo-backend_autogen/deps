@@ -1,6 +1,9 @@
 cosmo-backend_autogen/timestamp: \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/CMakeLists.txt \
+<<<<<<< HEAD
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc \
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/4.1.2/CMakeCXXCompiler.cmake \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/4.1.2/CMakeSystem.cmake \
 	/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/comms/CommsFactory.cpp \

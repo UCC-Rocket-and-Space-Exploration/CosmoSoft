@@ -15,6 +15,7 @@ add_library(headers INTERFACE)
 target_include_directories(headers INTERFACE ${CMAKE_SOURCE_DIR}/include)
 
 add_subdirectory(src)
+find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts)
 
 set(BACKEND_SOURCES
         src/flight/FlightCalculator.cpp
@@ -46,6 +47,7 @@ target_compile_features(cosmo-backend PUBLIC cxx_std_20)
 
 set(GUI_SOURCES
         include/gui/MainWindow.h
+<<<<<<< HEAD
         include/gui/pages/MonitoringPage.h
         include/gui/pages/FlightDataPage.h
         include/gui/pages/SettingsPage.h
@@ -57,6 +59,10 @@ set(GUI_SOURCES
         src/gui/pages/SettingsPage.cpp
         src/gui/pages/ChartPage.cpp
         assets/resources.qrc
+=======
+        src/gui/FlightDataModel.cpp
+        src/gui/MainWindow.cpp
+>>>>>>> 1c03da1 (UI Skeleton)
 )
 
 add_library(cosmo-gui STATIC ${GUI_SOURCES})

@@ -1027,10 +1027,13 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stddef.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDebug \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QResource \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QStringList \
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q17memory.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20functional.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20iterator.h \
@@ -1114,7 +1117,10 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qprocessordetection.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qrect.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qrefcount.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qresource.h \
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qscopedpointer.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qscopeguard.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qset.h \
@@ -1167,15 +1173,21 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qversiontagging.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qxptype_traits.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qyieldcpu.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFontDatabase \
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qaction.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qbitmap.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qbrush.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qcolor.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qcursor.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontdatabase.h \
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontinfo.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontmetrics.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontvariableaxis.h \
@@ -1242,8 +1254,11 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontmetrics.h:
 
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontdatabase.h:
 
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h:
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qcursor.h:
@@ -1254,10 +1269,13 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qaction.h:
 
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFontDatabase:
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont:
 
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qyieldcpu.h:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qvarlengtharray.h:
@@ -1318,8 +1336,11 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qscopeguard.h:
 
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qresource.h:
 
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qrect.h:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qprocessordetection.h:
@@ -1420,10 +1441,13 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20functional.h:
 
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QStringList:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString:
 
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h:
@@ -1822,8 +1846,11 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/void_t.h:
 
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDebug:
 
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/underlying_type.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/utility:
@@ -2676,8 +2703,11 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/remove_copy.h:
 
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QResource:
 
+=======
+>>>>>>> 1c03da1 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/_types/_int8_t.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_types/_uint32_t.h:

@@ -1182,6 +1182,7 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qcursor.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qbitmap.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtmochelpers.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtmocconstants.h \
@@ -1196,3 +1197,9 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/../../../include/gui/pages/MonitoringPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/../../../include/gui/pages/SettingsPage.h
+=======
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtmochelpers.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtmocconstants.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20algorithm.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q23type_traits.h
+>>>>>>> 1c03da1 (UI Skeleton)

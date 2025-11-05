@@ -8,6 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
+<<<<<<< HEAD
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/mocs_compilation.cpp" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/FlightDataModel.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o.d"
@@ -16,6 +17,11 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o.d"
+=======
+  "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/mocs_compilation.cpp" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o.d"
+  "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/FlightDataModel.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o.d"
+  "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/MainWindow.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o.d"
+>>>>>>> 1c03da1 (UI Skeleton)
   )
 
 # Targets to which this target links which contain Fortran sources.
