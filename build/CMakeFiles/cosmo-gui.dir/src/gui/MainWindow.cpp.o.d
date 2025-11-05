@@ -1217,11 +1217,17 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgridlayout.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QIcon \
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QAction \
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QAction \
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QLabel \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlabel.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h \
@@ -1231,6 +1237,9 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qurl.h \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QSize \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QSizePolicy \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStackedWidget \
@@ -1327,6 +1336,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPainter \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStackedWidget \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstackedwidget.h
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QSizePolicy \
@@ -1345,3 +1355,6 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QVBoxLayout \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QVariant
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)

@@ -1198,4 +1198,8 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtmocconstants.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20algorithm.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q23type_traits.h
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)

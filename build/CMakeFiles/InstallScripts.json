@@ -1,6 +1,7 @@
 {
 	"InstallScripts" : 
 	[
+<<<<<<< HEAD
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cmake_install.cmake",
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/cmake_install.cmake",
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/gateway/cmake_install.cmake",
@@ -9,6 +10,9 @@
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/services/persistence/cmake_install.cmake",
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/services/telemetry/cmake_install.cmake",
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/gui/cmake_install.cmake"
+=======
+		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cmake_install.cmake"
+>>>>>>> 0e07fec (UI Skeleton)
 	],
 	"Parallel" : false
 }

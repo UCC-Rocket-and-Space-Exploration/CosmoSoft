@@ -6,7 +6,11 @@ file(REMOVE_RECURSE
   "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o"
   "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o.d"
 =======
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o"
   "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o.d"
   "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o"
@@ -15,19 +19,26 @@ file(REMOVE_RECURSE
   "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o.d"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o.d"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o.d"
 =======
 >>>>>>> 495a53e (remove some pages)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o.d"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o.d"
   "cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp"
 =======
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   "libcosmo-gui.a"
   "libcosmo-gui.pdb"
 )

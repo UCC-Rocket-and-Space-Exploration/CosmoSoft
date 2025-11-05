@@ -12,5 +12,9 @@ CXX_FLAGSarm64 = -std=c++20 -arch arm64
 CXX_FLAGS = -std=c++20 -arch arm64
 =======
 CXX_FLAGS = -std=c++20
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 

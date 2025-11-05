@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/edit_cache.dir
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/rebuild_cache.dir
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/CMakeFiles/cosmo-backend.dir
@@ -38,3 +39,16 @@
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/gui/CMakeFiles/rebuild_cache.dir
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/gui/CMakeFiles/gui_autogen_timestamp_deps.dir
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/gui/CMakeFiles/gui_autogen.dir
+=======
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-backend.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-gui.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-soft.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/edit_cache.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/rebuild_cache.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-backend_autogen.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-gui_autogen_timestamp_deps.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-gui_autogen.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-soft_autogen_timestamp_deps.dir
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-soft_autogen.dir
+>>>>>>> 0e07fec (UI Skeleton)

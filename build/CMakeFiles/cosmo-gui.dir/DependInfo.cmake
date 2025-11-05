@@ -19,7 +19,11 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/mocs_compilation.cpp" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/FlightDataModel.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/MainWindow.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o.d"
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   )
 
 # Targets to which this target links which contain Fortran sources.

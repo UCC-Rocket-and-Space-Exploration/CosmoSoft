@@ -51,11 +51,17 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
 #ifdef POLLRDHUP
     pfd.events |= POLLRDHUP;
 #endif
+<<<<<<< HEAD:src/gateway/comms/Posix/SerialCommsPosix.cpp
     while (isOpen()) {
         int data = poll(&pfd, 1, 200); // block until data
         if (data == 0) { //timeout, no data received
             return 0;
         }
+=======
+
+    while (true) {
+        int data = poll(&pfd, 1, -1); // block until data
+>>>>>>> 0e07fec (UI Skeleton):src/comms/SerialCommsPosix.cpp
         if (data > 0) {
             if (pfd.revents & POLLIN) { //when there is data to be read
                 const ssize_t n = ::read(m_fd, buffer, maxSize); //read from fd into the buffer all possible bytes
@@ -89,11 +95,14 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
                 break;
             }
 #endif
+<<<<<<< HEAD:src/gateway/comms/Posix/SerialCommsPosix.cpp
         }
         if (data < 0) { //error during poll
             if (errno == EAGAIN) { // can be thrown in non-blocking mode
 
             }
+=======
+>>>>>>> 0e07fec (UI Skeleton):src/comms/SerialCommsPosix.cpp
         }
     }
     return -1;
@@ -102,3 +111,10 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
 std::string SerialCommsPosix::getDeviceName() const {
     return m_device;
 }
+<<<<<<< HEAD:src/gateway/comms/Posix/SerialCommsPosix.cpp
+=======
+
+std::string SerialCommsPosix::getDevicePort() const {
+    return m_port;
+}
+>>>>>>> 0e07fec (UI Skeleton):src/comms/SerialCommsPosix.cpp

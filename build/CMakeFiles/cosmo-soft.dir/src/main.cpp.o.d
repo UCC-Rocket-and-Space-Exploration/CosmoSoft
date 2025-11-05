@@ -1182,8 +1182,11 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
@@ -1194,10 +1197,15 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QResource \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qresource.h \
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
@@ -1209,12 +1217,19 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qbrush.h \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontmetrics.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontinfo.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontvariableaxis.h \
@@ -1224,4 +1239,8 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString
 =======
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)

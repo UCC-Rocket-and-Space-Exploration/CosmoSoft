@@ -126,6 +126,7 @@ cosmo-backend: cmake_check_build_system
 
 # fast build rule for target.
 cosmo-backend/fast:
+<<<<<<< HEAD
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-backend.dir/build.make src/CMakeFiles/cosmo-backend.dir/build
 .PHONY : cosmo-backend/fast
 
@@ -141,6 +142,36 @@ cosmo-soft-bin: cmake_check_build_system
 cosmo-soft-bin/fast:
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-soft-bin.dir/build.make src/CMakeFiles/cosmo-soft-bin.dir/build
 .PHONY : cosmo-soft-bin/fast
+=======
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/build
+.PHONY : cosmo-backend/fast
+
+#=============================================================================
+# Target rules for targets named cosmo-gui
+
+# Build rule for target.
+cosmo-gui: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-gui
+.PHONY : cosmo-gui
+
+# fast build rule for target.
+cosmo-gui/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/build
+.PHONY : cosmo-gui/fast
+
+#=============================================================================
+# Target rules for targets named cosmo-soft
+
+# Build rule for target.
+cosmo-soft: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-soft
+.PHONY : cosmo-soft
+
+# fast build rule for target.
+cosmo-soft/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft.dir/build.make CMakeFiles/cosmo-soft.dir/build
+.PHONY : cosmo-soft/fast
+>>>>>>> 0e07fec (UI Skeleton)
 
 #=============================================================================
 # Target rules for targets named cosmo-backend_autogen_timestamp_deps
@@ -152,7 +183,11 @@ cosmo-backend_autogen_timestamp_deps: cmake_check_build_system
 
 # fast build rule for target.
 cosmo-backend_autogen_timestamp_deps/fast:
+<<<<<<< HEAD
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/build.make src/CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/build
+=======
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/build.make CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/build
+>>>>>>> 0e07fec (UI Skeleton)
 .PHONY : cosmo-backend_autogen_timestamp_deps/fast
 
 #=============================================================================
@@ -165,6 +200,7 @@ cosmo-backend_autogen: cmake_check_build_system
 
 # fast build rule for target.
 cosmo-backend_autogen/fast:
+<<<<<<< HEAD
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-backend_autogen.dir/build.make src/CMakeFiles/cosmo-backend_autogen.dir/build
 .PHONY : cosmo-backend_autogen/fast
 
@@ -969,7 +1005,474 @@ gui_autogen: cmake_check_build_system
 gui_autogen/fast:
 	$(MAKE) $(MAKESILENT) -f src/gui/CMakeFiles/gui_autogen.dir/build.make src/gui/CMakeFiles/gui_autogen.dir/build
 .PHONY : gui_autogen/fast
+<<<<<<< HEAD
 >>>>>>> f9eac6a (fix: headers, incudes and cmakefile)
+=======
+=======
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend_autogen.dir/build.make CMakeFiles/cosmo-backend_autogen.dir/build
+.PHONY : cosmo-backend_autogen/fast
+
+#=============================================================================
+# Target rules for targets named cosmo-gui_autogen_timestamp_deps
+
+# Build rule for target.
+cosmo-gui_autogen_timestamp_deps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-gui_autogen_timestamp_deps
+.PHONY : cosmo-gui_autogen_timestamp_deps
+
+# fast build rule for target.
+cosmo-gui_autogen_timestamp_deps/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui_autogen_timestamp_deps.dir/build.make CMakeFiles/cosmo-gui_autogen_timestamp_deps.dir/build
+.PHONY : cosmo-gui_autogen_timestamp_deps/fast
+
+#=============================================================================
+# Target rules for targets named cosmo-gui_autogen
+
+# Build rule for target.
+cosmo-gui_autogen: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-gui_autogen
+.PHONY : cosmo-gui_autogen
+
+# fast build rule for target.
+cosmo-gui_autogen/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui_autogen.dir/build.make CMakeFiles/cosmo-gui_autogen.dir/build
+.PHONY : cosmo-gui_autogen/fast
+
+#=============================================================================
+# Target rules for targets named cosmo-soft_autogen_timestamp_deps
+
+# Build rule for target.
+cosmo-soft_autogen_timestamp_deps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-soft_autogen_timestamp_deps
+.PHONY : cosmo-soft_autogen_timestamp_deps
+
+# fast build rule for target.
+cosmo-soft_autogen_timestamp_deps/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft_autogen_timestamp_deps.dir/build.make CMakeFiles/cosmo-soft_autogen_timestamp_deps.dir/build
+.PHONY : cosmo-soft_autogen_timestamp_deps/fast
+
+#=============================================================================
+# Target rules for targets named cosmo-soft_autogen
+
+# Build rule for target.
+cosmo-soft_autogen: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-soft_autogen
+.PHONY : cosmo-soft_autogen
+
+# fast build rule for target.
+cosmo-soft_autogen/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft_autogen.dir/build.make CMakeFiles/cosmo-soft_autogen.dir/build
+.PHONY : cosmo-soft_autogen/fast
+
+cosmo-backend_autogen/mocs_compilation.o: cosmo-backend_autogen/mocs_compilation.cpp.o
+.PHONY : cosmo-backend_autogen/mocs_compilation.o
+
+# target to build an object file
+cosmo-backend_autogen/mocs_compilation.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/cosmo-backend_autogen/mocs_compilation.cpp.o
+.PHONY : cosmo-backend_autogen/mocs_compilation.cpp.o
+
+cosmo-backend_autogen/mocs_compilation.i: cosmo-backend_autogen/mocs_compilation.cpp.i
+.PHONY : cosmo-backend_autogen/mocs_compilation.i
+
+# target to preprocess a source file
+cosmo-backend_autogen/mocs_compilation.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/cosmo-backend_autogen/mocs_compilation.cpp.i
+.PHONY : cosmo-backend_autogen/mocs_compilation.cpp.i
+
+cosmo-backend_autogen/mocs_compilation.s: cosmo-backend_autogen/mocs_compilation.cpp.s
+.PHONY : cosmo-backend_autogen/mocs_compilation.s
+
+# target to generate assembly for a file
+cosmo-backend_autogen/mocs_compilation.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/cosmo-backend_autogen/mocs_compilation.cpp.s
+.PHONY : cosmo-backend_autogen/mocs_compilation.cpp.s
+
+cosmo-gui_autogen/mocs_compilation.o: cosmo-gui_autogen/mocs_compilation.cpp.o
+.PHONY : cosmo-gui_autogen/mocs_compilation.o
+
+# target to build an object file
+cosmo-gui_autogen/mocs_compilation.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o
+.PHONY : cosmo-gui_autogen/mocs_compilation.cpp.o
+
+cosmo-gui_autogen/mocs_compilation.i: cosmo-gui_autogen/mocs_compilation.cpp.i
+.PHONY : cosmo-gui_autogen/mocs_compilation.i
+
+# target to preprocess a source file
+cosmo-gui_autogen/mocs_compilation.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.i
+.PHONY : cosmo-gui_autogen/mocs_compilation.cpp.i
+
+cosmo-gui_autogen/mocs_compilation.s: cosmo-gui_autogen/mocs_compilation.cpp.s
+.PHONY : cosmo-gui_autogen/mocs_compilation.s
+
+# target to generate assembly for a file
+cosmo-gui_autogen/mocs_compilation.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.s
+.PHONY : cosmo-gui_autogen/mocs_compilation.cpp.s
+
+cosmo-soft_autogen/mocs_compilation.o: cosmo-soft_autogen/mocs_compilation.cpp.o
+.PHONY : cosmo-soft_autogen/mocs_compilation.o
+
+# target to build an object file
+cosmo-soft_autogen/mocs_compilation.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft.dir/build.make CMakeFiles/cosmo-soft.dir/cosmo-soft_autogen/mocs_compilation.cpp.o
+.PHONY : cosmo-soft_autogen/mocs_compilation.cpp.o
+
+cosmo-soft_autogen/mocs_compilation.i: cosmo-soft_autogen/mocs_compilation.cpp.i
+.PHONY : cosmo-soft_autogen/mocs_compilation.i
+
+# target to preprocess a source file
+cosmo-soft_autogen/mocs_compilation.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft.dir/build.make CMakeFiles/cosmo-soft.dir/cosmo-soft_autogen/mocs_compilation.cpp.i
+.PHONY : cosmo-soft_autogen/mocs_compilation.cpp.i
+
+cosmo-soft_autogen/mocs_compilation.s: cosmo-soft_autogen/mocs_compilation.cpp.s
+.PHONY : cosmo-soft_autogen/mocs_compilation.s
+
+# target to generate assembly for a file
+cosmo-soft_autogen/mocs_compilation.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft.dir/build.make CMakeFiles/cosmo-soft.dir/cosmo-soft_autogen/mocs_compilation.cpp.s
+.PHONY : cosmo-soft_autogen/mocs_compilation.cpp.s
+
+src/comms/CommsFactory.o: src/comms/CommsFactory.cpp.o
+.PHONY : src/comms/CommsFactory.o
+
+# target to build an object file
+src/comms/CommsFactory.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/CommsFactory.cpp.o
+.PHONY : src/comms/CommsFactory.cpp.o
+
+src/comms/CommsFactory.i: src/comms/CommsFactory.cpp.i
+.PHONY : src/comms/CommsFactory.i
+
+# target to preprocess a source file
+src/comms/CommsFactory.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/CommsFactory.cpp.i
+.PHONY : src/comms/CommsFactory.cpp.i
+
+src/comms/CommsFactory.s: src/comms/CommsFactory.cpp.s
+.PHONY : src/comms/CommsFactory.s
+
+# target to generate assembly for a file
+src/comms/CommsFactory.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/CommsFactory.cpp.s
+.PHONY : src/comms/CommsFactory.cpp.s
+
+src/comms/SerialCommsPosix.o: src/comms/SerialCommsPosix.cpp.o
+.PHONY : src/comms/SerialCommsPosix.o
+
+# target to build an object file
+src/comms/SerialCommsPosix.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialCommsPosix.cpp.o
+.PHONY : src/comms/SerialCommsPosix.cpp.o
+
+src/comms/SerialCommsPosix.i: src/comms/SerialCommsPosix.cpp.i
+.PHONY : src/comms/SerialCommsPosix.i
+
+# target to preprocess a source file
+src/comms/SerialCommsPosix.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialCommsPosix.cpp.i
+.PHONY : src/comms/SerialCommsPosix.cpp.i
+
+src/comms/SerialCommsPosix.s: src/comms/SerialCommsPosix.cpp.s
+.PHONY : src/comms/SerialCommsPosix.s
+
+# target to generate assembly for a file
+src/comms/SerialCommsPosix.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialCommsPosix.cpp.s
+.PHONY : src/comms/SerialCommsPosix.cpp.s
+
+src/comms/SerialCommsWindows.o: src/comms/SerialCommsWindows.cpp.o
+.PHONY : src/comms/SerialCommsWindows.o
+
+# target to build an object file
+src/comms/SerialCommsWindows.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialCommsWindows.cpp.o
+.PHONY : src/comms/SerialCommsWindows.cpp.o
+
+src/comms/SerialCommsWindows.i: src/comms/SerialCommsWindows.cpp.i
+.PHONY : src/comms/SerialCommsWindows.i
+
+# target to preprocess a source file
+src/comms/SerialCommsWindows.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialCommsWindows.cpp.i
+.PHONY : src/comms/SerialCommsWindows.cpp.i
+
+src/comms/SerialCommsWindows.s: src/comms/SerialCommsWindows.cpp.s
+.PHONY : src/comms/SerialCommsWindows.s
+
+# target to generate assembly for a file
+src/comms/SerialCommsWindows.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialCommsWindows.cpp.s
+.PHONY : src/comms/SerialCommsWindows.cpp.s
+
+src/comms/SerialPortScannerFactory.o: src/comms/SerialPortScannerFactory.cpp.o
+.PHONY : src/comms/SerialPortScannerFactory.o
+
+# target to build an object file
+src/comms/SerialPortScannerFactory.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialPortScannerFactory.cpp.o
+.PHONY : src/comms/SerialPortScannerFactory.cpp.o
+
+src/comms/SerialPortScannerFactory.i: src/comms/SerialPortScannerFactory.cpp.i
+.PHONY : src/comms/SerialPortScannerFactory.i
+
+# target to preprocess a source file
+src/comms/SerialPortScannerFactory.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialPortScannerFactory.cpp.i
+.PHONY : src/comms/SerialPortScannerFactory.cpp.i
+
+src/comms/SerialPortScannerFactory.s: src/comms/SerialPortScannerFactory.cpp.s
+.PHONY : src/comms/SerialPortScannerFactory.s
+
+# target to generate assembly for a file
+src/comms/SerialPortScannerFactory.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialPortScannerFactory.cpp.s
+.PHONY : src/comms/SerialPortScannerFactory.cpp.s
+
+src/comms/SerialPortScannerPosix.o: src/comms/SerialPortScannerPosix.cpp.o
+.PHONY : src/comms/SerialPortScannerPosix.o
+
+# target to build an object file
+src/comms/SerialPortScannerPosix.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialPortScannerPosix.cpp.o
+.PHONY : src/comms/SerialPortScannerPosix.cpp.o
+
+src/comms/SerialPortScannerPosix.i: src/comms/SerialPortScannerPosix.cpp.i
+.PHONY : src/comms/SerialPortScannerPosix.i
+
+# target to preprocess a source file
+src/comms/SerialPortScannerPosix.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialPortScannerPosix.cpp.i
+.PHONY : src/comms/SerialPortScannerPosix.cpp.i
+
+src/comms/SerialPortScannerPosix.s: src/comms/SerialPortScannerPosix.cpp.s
+.PHONY : src/comms/SerialPortScannerPosix.s
+
+# target to generate assembly for a file
+src/comms/SerialPortScannerPosix.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialPortScannerPosix.cpp.s
+.PHONY : src/comms/SerialPortScannerPosix.cpp.s
+
+src/comms/SerialPortScannerWindows.o: src/comms/SerialPortScannerWindows.cpp.o
+.PHONY : src/comms/SerialPortScannerWindows.o
+
+# target to build an object file
+src/comms/SerialPortScannerWindows.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialPortScannerWindows.cpp.o
+.PHONY : src/comms/SerialPortScannerWindows.cpp.o
+
+src/comms/SerialPortScannerWindows.i: src/comms/SerialPortScannerWindows.cpp.i
+.PHONY : src/comms/SerialPortScannerWindows.i
+
+# target to preprocess a source file
+src/comms/SerialPortScannerWindows.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialPortScannerWindows.cpp.i
+.PHONY : src/comms/SerialPortScannerWindows.cpp.i
+
+src/comms/SerialPortScannerWindows.s: src/comms/SerialPortScannerWindows.cpp.s
+.PHONY : src/comms/SerialPortScannerWindows.s
+
+# target to generate assembly for a file
+src/comms/SerialPortScannerWindows.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialPortScannerWindows.cpp.s
+.PHONY : src/comms/SerialPortScannerWindows.cpp.s
+
+src/comms/SerialWorker.o: src/comms/SerialWorker.cpp.o
+.PHONY : src/comms/SerialWorker.o
+
+# target to build an object file
+src/comms/SerialWorker.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialWorker.cpp.o
+.PHONY : src/comms/SerialWorker.cpp.o
+
+src/comms/SerialWorker.i: src/comms/SerialWorker.cpp.i
+.PHONY : src/comms/SerialWorker.i
+
+# target to preprocess a source file
+src/comms/SerialWorker.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialWorker.cpp.i
+.PHONY : src/comms/SerialWorker.cpp.i
+
+src/comms/SerialWorker.s: src/comms/SerialWorker.cpp.s
+.PHONY : src/comms/SerialWorker.s
+
+# target to generate assembly for a file
+src/comms/SerialWorker.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/comms/SerialWorker.cpp.s
+.PHONY : src/comms/SerialWorker.cpp.s
+
+src/flight/FlightCalculator.o: src/flight/FlightCalculator.cpp.o
+.PHONY : src/flight/FlightCalculator.o
+
+# target to build an object file
+src/flight/FlightCalculator.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/flight/FlightCalculator.cpp.o
+.PHONY : src/flight/FlightCalculator.cpp.o
+
+src/flight/FlightCalculator.i: src/flight/FlightCalculator.cpp.i
+.PHONY : src/flight/FlightCalculator.i
+
+# target to preprocess a source file
+src/flight/FlightCalculator.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/flight/FlightCalculator.cpp.i
+.PHONY : src/flight/FlightCalculator.cpp.i
+
+src/flight/FlightCalculator.s: src/flight/FlightCalculator.cpp.s
+.PHONY : src/flight/FlightCalculator.s
+
+# target to generate assembly for a file
+src/flight/FlightCalculator.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/flight/FlightCalculator.cpp.s
+.PHONY : src/flight/FlightCalculator.cpp.s
+
+src/gui/FlightDataModel.o: src/gui/FlightDataModel.cpp.o
+.PHONY : src/gui/FlightDataModel.o
+
+# target to build an object file
+src/gui/FlightDataModel.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o
+.PHONY : src/gui/FlightDataModel.cpp.o
+
+src/gui/FlightDataModel.i: src/gui/FlightDataModel.cpp.i
+.PHONY : src/gui/FlightDataModel.i
+
+# target to preprocess a source file
+src/gui/FlightDataModel.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.i
+.PHONY : src/gui/FlightDataModel.cpp.i
+
+src/gui/FlightDataModel.s: src/gui/FlightDataModel.cpp.s
+.PHONY : src/gui/FlightDataModel.s
+
+# target to generate assembly for a file
+src/gui/FlightDataModel.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.s
+.PHONY : src/gui/FlightDataModel.cpp.s
+
+src/gui/MainWindow.o: src/gui/MainWindow.cpp.o
+.PHONY : src/gui/MainWindow.o
+
+# target to build an object file
+src/gui/MainWindow.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o
+.PHONY : src/gui/MainWindow.cpp.o
+
+src/gui/MainWindow.i: src/gui/MainWindow.cpp.i
+.PHONY : src/gui/MainWindow.i
+
+# target to preprocess a source file
+src/gui/MainWindow.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.i
+.PHONY : src/gui/MainWindow.cpp.i
+
+src/gui/MainWindow.s: src/gui/MainWindow.cpp.s
+.PHONY : src/gui/MainWindow.s
+
+# target to generate assembly for a file
+src/gui/MainWindow.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.s
+.PHONY : src/gui/MainWindow.cpp.s
+
+src/main.o: src/main.cpp.o
+.PHONY : src/main.o
+
+# target to build an object file
+src/main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft.dir/build.make CMakeFiles/cosmo-soft.dir/src/main.cpp.o
+.PHONY : src/main.cpp.o
+
+src/main.i: src/main.cpp.i
+.PHONY : src/main.i
+
+# target to preprocess a source file
+src/main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft.dir/build.make CMakeFiles/cosmo-soft.dir/src/main.cpp.i
+.PHONY : src/main.cpp.i
+
+src/main.s: src/main.cpp.s
+.PHONY : src/main.s
+
+# target to generate assembly for a file
+src/main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft.dir/build.make CMakeFiles/cosmo-soft.dir/src/main.cpp.s
+.PHONY : src/main.cpp.s
+
+src/persistence/FileManager.o: src/persistence/FileManager.cpp.o
+.PHONY : src/persistence/FileManager.o
+
+# target to build an object file
+src/persistence/FileManager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/persistence/FileManager.cpp.o
+.PHONY : src/persistence/FileManager.cpp.o
+
+src/persistence/FileManager.i: src/persistence/FileManager.cpp.i
+.PHONY : src/persistence/FileManager.i
+
+# target to preprocess a source file
+src/persistence/FileManager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/persistence/FileManager.cpp.i
+.PHONY : src/persistence/FileManager.cpp.i
+
+src/persistence/FileManager.s: src/persistence/FileManager.cpp.s
+.PHONY : src/persistence/FileManager.s
+
+# target to generate assembly for a file
+src/persistence/FileManager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/persistence/FileManager.cpp.s
+.PHONY : src/persistence/FileManager.cpp.s
+
+src/persistence/FlightLogManager.o: src/persistence/FlightLogManager.cpp.o
+.PHONY : src/persistence/FlightLogManager.o
+
+# target to build an object file
+src/persistence/FlightLogManager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/persistence/FlightLogManager.cpp.o
+.PHONY : src/persistence/FlightLogManager.cpp.o
+
+src/persistence/FlightLogManager.i: src/persistence/FlightLogManager.cpp.i
+.PHONY : src/persistence/FlightLogManager.i
+
+# target to preprocess a source file
+src/persistence/FlightLogManager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/persistence/FlightLogManager.cpp.i
+.PHONY : src/persistence/FlightLogManager.cpp.i
+
+src/persistence/FlightLogManager.s: src/persistence/FlightLogManager.cpp.s
+.PHONY : src/persistence/FlightLogManager.s
+
+# target to generate assembly for a file
+src/persistence/FlightLogManager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/persistence/FlightLogManager.cpp.s
+.PHONY : src/persistence/FlightLogManager.cpp.s
+
+src/telemetry/TelemetryParser.o: src/telemetry/TelemetryParser.cpp.o
+.PHONY : src/telemetry/TelemetryParser.o
+
+# target to build an object file
+src/telemetry/TelemetryParser.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/telemetry/TelemetryParser.cpp.o
+.PHONY : src/telemetry/TelemetryParser.cpp.o
+
+src/telemetry/TelemetryParser.i: src/telemetry/TelemetryParser.cpp.i
+.PHONY : src/telemetry/TelemetryParser.i
+
+# target to preprocess a source file
+src/telemetry/TelemetryParser.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/telemetry/TelemetryParser.cpp.i
+.PHONY : src/telemetry/TelemetryParser.cpp.i
+
+src/telemetry/TelemetryParser.s: src/telemetry/TelemetryParser.cpp.s
+.PHONY : src/telemetry/TelemetryParser.s
+
+# target to generate assembly for a file
+src/telemetry/TelemetryParser.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/telemetry/TelemetryParser.cpp.s
+.PHONY : src/telemetry/TelemetryParser.cpp.s
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 
 # Help Target
 help:
@@ -979,6 +1482,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+<<<<<<< HEAD
 	@echo "... PosixComms_autogen"
 	@echo "... PosixComms_autogen_timestamp_deps"
 	@echo "... comms_autogen"
@@ -1082,7 +1586,72 @@ help:
 	@echo "... gui"
 	@echo "... persistence"
 	@echo "... telemetry"
+<<<<<<< HEAD
 >>>>>>> f9eac6a (fix: headers, incudes and cmakefile)
+=======
+=======
+	@echo "... cosmo-backend_autogen"
+	@echo "... cosmo-backend_autogen_timestamp_deps"
+	@echo "... cosmo-gui_autogen"
+	@echo "... cosmo-gui_autogen_timestamp_deps"
+	@echo "... cosmo-soft_autogen"
+	@echo "... cosmo-soft_autogen_timestamp_deps"
+	@echo "... cosmo-backend"
+	@echo "... cosmo-gui"
+	@echo "... cosmo-soft"
+	@echo "... cosmo-backend_autogen/mocs_compilation.o"
+	@echo "... cosmo-backend_autogen/mocs_compilation.i"
+	@echo "... cosmo-backend_autogen/mocs_compilation.s"
+	@echo "... cosmo-gui_autogen/mocs_compilation.o"
+	@echo "... cosmo-gui_autogen/mocs_compilation.i"
+	@echo "... cosmo-gui_autogen/mocs_compilation.s"
+	@echo "... cosmo-soft_autogen/mocs_compilation.o"
+	@echo "... cosmo-soft_autogen/mocs_compilation.i"
+	@echo "... cosmo-soft_autogen/mocs_compilation.s"
+	@echo "... src/comms/CommsFactory.o"
+	@echo "... src/comms/CommsFactory.i"
+	@echo "... src/comms/CommsFactory.s"
+	@echo "... src/comms/SerialCommsPosix.o"
+	@echo "... src/comms/SerialCommsPosix.i"
+	@echo "... src/comms/SerialCommsPosix.s"
+	@echo "... src/comms/SerialCommsWindows.o"
+	@echo "... src/comms/SerialCommsWindows.i"
+	@echo "... src/comms/SerialCommsWindows.s"
+	@echo "... src/comms/SerialPortScannerFactory.o"
+	@echo "... src/comms/SerialPortScannerFactory.i"
+	@echo "... src/comms/SerialPortScannerFactory.s"
+	@echo "... src/comms/SerialPortScannerPosix.o"
+	@echo "... src/comms/SerialPortScannerPosix.i"
+	@echo "... src/comms/SerialPortScannerPosix.s"
+	@echo "... src/comms/SerialPortScannerWindows.o"
+	@echo "... src/comms/SerialPortScannerWindows.i"
+	@echo "... src/comms/SerialPortScannerWindows.s"
+	@echo "... src/comms/SerialWorker.o"
+	@echo "... src/comms/SerialWorker.i"
+	@echo "... src/comms/SerialWorker.s"
+	@echo "... src/flight/FlightCalculator.o"
+	@echo "... src/flight/FlightCalculator.i"
+	@echo "... src/flight/FlightCalculator.s"
+	@echo "... src/gui/FlightDataModel.o"
+	@echo "... src/gui/FlightDataModel.i"
+	@echo "... src/gui/FlightDataModel.s"
+	@echo "... src/gui/MainWindow.o"
+	@echo "... src/gui/MainWindow.i"
+	@echo "... src/gui/MainWindow.s"
+	@echo "... src/main.o"
+	@echo "... src/main.i"
+	@echo "... src/main.s"
+	@echo "... src/persistence/FileManager.o"
+	@echo "... src/persistence/FileManager.i"
+	@echo "... src/persistence/FileManager.s"
+	@echo "... src/persistence/FlightLogManager.o"
+	@echo "... src/persistence/FlightLogManager.i"
+	@echo "... src/persistence/FlightLogManager.s"
+	@echo "... src/telemetry/TelemetryParser.o"
+	@echo "... src/telemetry/TelemetryParser.i"
+	@echo "... src/telemetry/TelemetryParser.s"
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 .PHONY : help
 
 

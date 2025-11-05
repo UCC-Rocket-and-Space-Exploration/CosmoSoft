@@ -3,16 +3,23 @@
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
 
 =======
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/mocs_compilation.cpp
  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h
@@ -1039,6 +1046,9 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o
  /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h
@@ -1053,6 +1063,7 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o
 =======
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/BMPI5EA7AM/moc_MainWindow.cpp
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h
@@ -1064,6 +1075,9 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/BMPI5EA7AM/moc_MainWindow.cpp
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q17memory.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20algorithm.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20functional.h
@@ -1221,12 +1235,18 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget
 >>>>>>> cb12191 (logistic files commit)
+=======
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qsizepolicy.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h
@@ -3217,6 +3237,9 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h
@@ -7107,8 +7130,12 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h
 =======
+<<<<<<< HEAD
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QAbstractAxis
  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QAbstractSeries
  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QChart
@@ -7138,7 +7165,11 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
 <<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString
 =======
+<<<<<<< HEAD
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QVariant
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtMath
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q17memory.h
@@ -7149,7 +7180,10 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20utility.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q23utility.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstracteventdispatcher.h
+<<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstractitemmodel.h
+=======
+>>>>>>> 0e07fec (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qalgorithms.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qanystringview.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qarraydata.h
@@ -7226,7 +7260,10 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qprocessordetection.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qrect.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qrefcount.h
+<<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qregularexpression.h
+=======
+>>>>>>> 0e07fec (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qscopedpointer.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qscopeguard.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qset.h
@@ -7280,13 +7317,22 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qversiontagging.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qxptype_traits.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qyieldcpu.h
+<<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QImage
 <<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPaintEvent
 =======
+<<<<<<< HEAD
 >>>>>>> cb12191 (logistic files commit)
+=======
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QAction
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QImage
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPainter
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPen
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QTransform
@@ -7329,6 +7375,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtguiexports.h
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtguiglobal.h
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtransform.h
+<<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvalidator.h
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvector2d.h
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvectornd.h
@@ -7353,6 +7400,21 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractspinbox.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qboxlayout.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qcombobox.h
+=======
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvector2d.h
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvectornd.h
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qwindowdefs.h
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsView
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsWidget
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QLabel
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStackedWidget
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStatusBar
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolBar
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QVBoxLayout
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractscrollarea.h
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qboxlayout.h
+>>>>>>> 0e07fec (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsitem.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicslayoutitem.h
@@ -7365,8 +7427,12 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayoutitem.h
 <<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+<<<<<<< HEAD
+>>>>>>> bc5cfb6 (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qrubberband.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h
@@ -8603,6 +8669,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o
 <<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qsizepolicy.h
 =======
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h
@@ -8614,6 +8681,15 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabbar.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h
 >>>>>>> cb12191 (logistic files commit)
+=======
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qsizepolicy.h
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstackedwidget.h
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstatusbar.h
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h
+ /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtoolbar.h
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgets-config.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsexports.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h

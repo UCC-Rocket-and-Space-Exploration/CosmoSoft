@@ -21,6 +21,10 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/services/flight/CMakeLists.txt"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/services/persistence/CMakeLists.txt"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/services/telemetry/CMakeLists.txt"
+=======
+  "CMakeFiles/4.1.2/CMakeCXXCompiler.cmake"
+  "CMakeFiles/4.1.2/CMakeSystem.cmake"
+>>>>>>> 0e07fec (UI Skeleton)
   "/opt/homebrew/lib/cmake/Qt6/FindWrapAtomic.cmake"
   "/opt/homebrew/lib/cmake/Qt6/FindWrapOpenGL.cmake"
   "/opt/homebrew/lib/cmake/Qt6/FindWrapVulkanHeaders.cmake"
@@ -369,6 +373,7 @@ set(CMAKE_MAKEFILE_OUTPUTS
 # Byproducts of CMake generate step:
 set(CMAKE_MAKEFILE_PRODUCTS
 <<<<<<< HEAD
+<<<<<<< HEAD
   "CMakeFiles/cosmo-backend_autogen.dir/AutogenInfo.json"
   "CMakeFiles/cosmo-gui_autogen.dir/AutogenInfo.json"
 <<<<<<< HEAD
@@ -378,6 +383,8 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "CMakeFiles/cosmo-soft_autogen.dir/AutogenInfo.json"
 =======
 >>>>>>> f9eac6a (fix: headers, incudes and cmakefile)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
   ".qt/QtDeploySupport.cmake"
   ".qt/QtDeployTargets.cmake"
   "CMakeFiles/CMakeDirectoryInformation.cmake"
@@ -397,10 +404,19 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "src/services/telemetry/CMakeFiles/CMakeDirectoryInformation.cmake"
   "src/gui/CMakeFiles/gui_autogen.dir/AutogenInfo.json"
   "src/gui/CMakeFiles/CMakeDirectoryInformation.cmake"
+=======
+  "CMakeFiles/cosmo-backend_autogen.dir/AutogenInfo.json"
+  "CMakeFiles/cosmo-gui_autogen.dir/AutogenInfo.json"
+  "CMakeFiles/cosmo-soft_autogen.dir/AutogenInfo.json"
+  ".qt/QtDeploySupport.cmake"
+  ".qt/QtDeployTargets.cmake"
+  "CMakeFiles/CMakeDirectoryInformation.cmake"
+>>>>>>> 0e07fec (UI Skeleton)
   )
 
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
+<<<<<<< HEAD
   "src/CMakeFiles/cosmo-backend.dir/DependInfo.cmake"
   "src/CMakeFiles/cosmo-soft-bin.dir/DependInfo.cmake"
   "src/CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/DependInfo.cmake"
@@ -425,4 +441,15 @@ set(CMAKE_DEPEND_INFO_FILES
   "src/gui/CMakeFiles/gui.dir/DependInfo.cmake"
   "src/gui/CMakeFiles/gui_autogen_timestamp_deps.dir/DependInfo.cmake"
   "src/gui/CMakeFiles/gui_autogen.dir/DependInfo.cmake"
+=======
+  "CMakeFiles/cosmo-backend.dir/DependInfo.cmake"
+  "CMakeFiles/cosmo-gui.dir/DependInfo.cmake"
+  "CMakeFiles/cosmo-soft.dir/DependInfo.cmake"
+  "CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/DependInfo.cmake"
+  "CMakeFiles/cosmo-backend_autogen.dir/DependInfo.cmake"
+  "CMakeFiles/cosmo-gui_autogen_timestamp_deps.dir/DependInfo.cmake"
+  "CMakeFiles/cosmo-gui_autogen.dir/DependInfo.cmake"
+  "CMakeFiles/cosmo-soft_autogen_timestamp_deps.dir/DependInfo.cmake"
+  "CMakeFiles/cosmo-soft_autogen.dir/DependInfo.cmake"
+>>>>>>> 0e07fec (UI Skeleton)
   )

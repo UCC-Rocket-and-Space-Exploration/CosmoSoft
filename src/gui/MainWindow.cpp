@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include "MainWindow.h"
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -16,6 +17,8 @@
 #include "pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
 >>>>>>> 495a53e (remove some pages)
 =======
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 #include "gui/MainWindow.h"
 #include "gui/pages/MonitoringPage.h"   // Live telemetry overview.
 #include "gui/pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
@@ -86,6 +89,10 @@ void MainWindow::setupActions() {
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() {
         openSettingsWindow();
 =======
+<<<<<<< HEAD
+=======
+#include "MainWindow.h"
+>>>>>>> bc5cfb6 (UI Skeleton)
 
 #include <QAction>
 #include <cmath>
@@ -100,6 +107,7 @@ void MainWindow::setupActions() {
 #include <QtCharts/QValueAxis>
 #include <QPainter>
 #include <QStackedWidget>
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 
@@ -109,6 +117,13 @@ using namespace Qt::StringLiterals;
 MainWindow::MainWindow(QWidget *parent)
         : QMainWindow(parent) {
 <<<<<<< HEAD
+=======
+
+using namespace Qt::StringLiterals;
+
+MainWindow::MainWindow(QWidget *parent)
+        : QMainWindow(parent) {
+>>>>>>> bc5cfb6 (UI Skeleton)
     setWindowTitle(u"CosmoSoft UI Skeleton"_s);              // Title bar text so the window is identifiable.
 
     setupActions();                                          // Prepare navigation commands first.
@@ -116,6 +131,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupPages();                                            // Fill the central widget with placeholder pages.
 
     statusBar()->showMessage(u"Ready – explore the scaffolded UI."_s); // Friendly status message on boot.
+<<<<<<< HEAD
 =======
     setWindowTitle(u"CosmoSoft<style/>"_s);                                        // Title bar text so the window is identifiable.
     setWindowIcon(QIcon(":/images/Logo_rounded.png"));                            // Use the rounded logo bundled in resources.qrc.
@@ -124,6 +140,8 @@ MainWindow::MainWindow(QWidget *parent)
     setupPages();                                            // Fill the central widget with placeholder pages.
     statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s); // Friendly status message on boot.
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 }
 
 void MainWindow::setupActions() {
@@ -143,15 +161,22 @@ void MainWindow::setupActions() {
     connect(m_showSettingsAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_settingsPage);
         statusBar()->showMessage(u"Settings page selected."_s, 2000);
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
     });
 }
 
 void MainWindow::setupToolbar() {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
     // QToolBar integrates directly with QMainWindow, so new users get docking,
     // layout management, and keyboard shortcuts “for free” without manual layout work.
     auto *toolbar = new QToolBar(u"Mission Toolbar"_s, this);
@@ -470,7 +495,10 @@ void MainWindow::updateMissionClock() {
 }
 
 void MainWindow::setupPages() {
+<<<<<<< HEAD
     // QStackedWidget is the Qt6 “page router”: we add each QWidget once and flip between them with setCurrentWidget().
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
     m_pages = new QStackedWidget(this);                 // Central stacked widget lives inside MainWindow.
     setCentralWidget(m_pages);
 
@@ -496,6 +524,9 @@ void MainWindow::setupPages() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 void MainWindow::setupChartPage() {
     // Build a line series with sample data (sine wave to mimic telemetry variation).
     auto *series = new QLineSeries(this);
@@ -535,6 +566,7 @@ void MainWindow::setupChartPage() {
     chartLayout->addWidget(new QLabel(u"Telemetry Chart"_s, m_chartPage));
     chartLayout->addWidget(chartView);
     chartLayout->addWidget(new QLabel(u"Replace this sample with live data when ready."_s, m_chartPage));
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 // Compute and inject the current local timestamp plus GMT offset into the mission meta label.
@@ -561,4 +593,7 @@ void MainWindow::updateMissionClock() {
             .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
     m_missionMetaLabel->setText(timestamp);
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 }

@@ -2,6 +2,7 @@
 #include "BMPI5EA7AM/moc_MainWindow.cpp"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include "2E3XLRTW7Z/moc_ChartPage.cpp"
 #include "2E3XLRTW7Z/moc_FlightDataPage.cpp"
 =======
@@ -10,3 +11,9 @@
 #include "2E3XLRTW7Z/moc_SettingsPage.cpp"
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+#include "2E3XLRTW7Z/moc_MonitoringPage.cpp"
+#include "2E3XLRTW7Z/moc_SettingsPage.cpp"
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)

@@ -1,4 +1,5 @@
 # Hashes of file build rules.
+<<<<<<< HEAD
 c2b315e83258f5a55750a8e5f3706e15 cosmo-backend_autogen/timestamp
 <<<<<<< HEAD
 536ca972567d425032da7e540d969c10 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
@@ -23,3 +24,11 @@ e4c99ce583d5506798d9e13d575a125f src/services/flight/CMakeFiles/flight_autogen
 7ce976d66e2f3ba20186e7b8cbee4a1b src/services/persistence/persistence_autogen/timestamp
 e6ec398ded2f1018d49fa8cb06ca4f79 src/services/telemetry/CMakeFiles/telemetry_autogen
 92462d9370ee7145406bdb5dc2cc3d9f src/services/telemetry/telemetry_autogen/timestamp
+=======
+4207e898f903af44bbb8e9d69f6f4191 CMakeFiles/cosmo-backend_autogen
+4207e898f903af44bbb8e9d69f6f4191 CMakeFiles/cosmo-gui_autogen
+4207e898f903af44bbb8e9d69f6f4191 CMakeFiles/cosmo-soft_autogen
+c2b315e83258f5a55750a8e5f3706e15 cosmo-backend_autogen/timestamp
+073491c1c6e3e070c440f3a7df9cb563 cosmo-gui_autogen/timestamp
+6e7bfa5d8f92e9b961cb4b0174466a11 cosmo-soft_autogen/timestamp
+>>>>>>> 0e07fec (UI Skeleton)

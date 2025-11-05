@@ -3,6 +3,7 @@
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o: cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
 
 =======
@@ -11,6 +12,12 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o: cosmo
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o: cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o: cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: cosmo-gui_autogen/mocs_compilation.cpp \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h \
@@ -1036,6 +1043,9 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: cosmo-gui_aut
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
@@ -1050,6 +1060,7 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: cosmo-gui_aut
 =======
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   cosmo-gui_autogen/BMPI5EA7AM/moc_MainWindow.cpp \
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h \
@@ -1061,6 +1072,9 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: cosmo-gui_aut
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   cosmo-gui_autogen/BMPI5EA7AM/moc_MainWindow.cpp \
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q17memory.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20algorithm.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20functional.h \
@@ -1218,12 +1232,18 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: cosmo-gui_aut
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget \
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget \
 >>>>>>> cb12191 (logistic files commit)
+=======
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget \
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qsizepolicy.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
@@ -3212,6 +3232,9 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: /Users/glebslyusar/Desktop/UC
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
@@ -7098,8 +7121,12 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
 =======
+<<<<<<< HEAD
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h \
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QAbstractAxis \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QAbstractSeries \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QChart \
@@ -7129,7 +7156,11 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/
 <<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
 =======
+<<<<<<< HEAD
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QVariant \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtMath \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q17memory.h \
@@ -7140,7 +7171,10 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20utility.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q23utility.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstracteventdispatcher.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstractitemmodel.h \
+=======
+>>>>>>> 0e07fec (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qalgorithms.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qanystringview.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qarraydata.h \
@@ -7217,7 +7251,10 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qprocessordetection.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qrect.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qrefcount.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qregularexpression.h \
+=======
+>>>>>>> 0e07fec (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qscopedpointer.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qscopeguard.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qset.h \
@@ -7271,13 +7308,22 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qversiontagging.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qxptype_traits.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qyieldcpu.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QImage \
 <<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPaintEvent \
 =======
+<<<<<<< HEAD
 >>>>>>> cb12191 (logistic files commit)
+=======
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QAction \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QImage \
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPainter \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPen \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QTransform \
@@ -7320,6 +7366,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtguiexports.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtguiglobal.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtransform.h \
+<<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvalidator.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvector2d.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvectornd.h \
@@ -7344,6 +7391,21 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractspinbox.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qboxlayout.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qcombobox.h \
+=======
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvector2d.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvectornd.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qwindowdefs.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsView \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsWidget \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QLabel \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStackedWidget \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStatusBar \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolBar \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QVBoxLayout \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractscrollarea.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qboxlayout.h \
+>>>>>>> 0e07fec (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsitem.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicslayoutitem.h \
@@ -7356,8 +7418,12 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayoutitem.h \
 <<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+<<<<<<< HEAD
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qrubberband.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h \
@@ -8593,6 +8659,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 <<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qsizepolicy.h \
 =======
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h \
@@ -8604,12 +8671,22 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabbar.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
 >>>>>>> cb12191 (logistic files commit)
+=======
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qsizepolicy.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstackedwidget.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstatusbar.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtoolbar.h \
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgets-config.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsexports.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qwidget.h
 
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -8667,11 +8744,24 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 >>>>>>> cb12191 (logistic files commit)
 =======
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstyle.h:
 
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h:
 
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qrubberband.h:
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstatusbar.h:
+
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h:
+
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlabel.h:
+
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgridlayout.h:
+
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsview.h:
+>>>>>>> 0e07fec (UI Skeleton)
 
 >>>>>>> 495a53e (remove some pages)
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicslayoutitem.h:
@@ -8681,9 +8771,12 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 =======
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QPushButton:
 
 >>>>>>> 495a53e (remove some pages)
@@ -8694,6 +8787,9 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qscreen.h:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 =======
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h:
 
@@ -8709,13 +8805,18 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpicture.h:
 
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpainterpath.h:
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qinputdevice.h:
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -8724,6 +8825,12 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+/opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication.h:
+
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qevent.h:
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QTransform:
@@ -8735,7 +8842,10 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPaintEvent:
 
 >>>>>>> 495a53e (remove some pages)
@@ -8746,6 +8856,14 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush:
 
+<<<<<<< HEAD
+=======
+=======
+/opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont:
+
+/opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush:
+
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qurl.h:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qnativeinterface.h:
@@ -8764,11 +8882,15 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qbasictimer.h:
 
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QRect:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QObject:
@@ -8802,10 +8924,13 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp:
 =======
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp:
 >>>>>>> 495a53e (remove some pages)
 
@@ -8866,10 +8991,15 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qbasictimer.h:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/FlightDataModel.cpp:
 
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsexports.h:
@@ -8932,6 +9062,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h:
 
 =======
@@ -8940,6 +9071,12 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtdeprecationdefinitions.h:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtcoreexports.h:
@@ -8956,12 +9093,19 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qstringmatcher.h:
 
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+/opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qstringmatcher.h:
+
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qstringliteral.h:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qstringlist.h:
@@ -9052,6 +9196,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QFrame:
 
 =======
@@ -9060,6 +9205,12 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QFrame:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QFrame:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qconstructormacros.h:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qconfig.h:
@@ -9094,18 +9245,28 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString:
 
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 cosmo-gui_autogen/BMPI5EA7AM/moc_MainWindow.cpp:
 
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 cosmo-gui_autogen/2E3XLRTW7Z/moc_FlightDataPage.cpp:
 
 cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
@@ -9127,10 +9288,15 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdbool.h:
@@ -9195,21 +9361,31 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QChartGlobal:
 
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayout.h:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 =======
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayout.h:
 
 /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QChartGlobal:
 
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/_types/_u_short.h:
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h:
@@ -9240,6 +9416,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDateTime:
 
 =======
@@ -9248,6 +9425,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDateTime:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDateTime:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/_types/_nlink_t.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/_types/_mode_t.h:
@@ -9324,6 +9507,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp:
 
 =======
@@ -9332,6 +9516,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStatusBar:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/stdlib.h:
@@ -9409,6 +9599,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qcombobox.h:
 
 =======
@@ -9417,6 +9608,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qcombobox.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qcombobox.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/string.h:
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QAction:
@@ -9445,12 +9642,19 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/numeric:
 
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/numeric:
+
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/new:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qobject.h:
@@ -9485,6 +9689,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QTimer:
 
 =======
@@ -9493,6 +9698,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QTimer:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QTimer:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/exception:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/errno.h:
@@ -9539,8 +9750,11 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qcolor.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/algorithm:
@@ -9548,10 +9762,15 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QHBoxLayout:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__vector/vector_bool.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__vector/vector.h:
@@ -9616,6 +9835,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtGlobal:
 
 =======
@@ -9624,6 +9844,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtGlobal:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtGlobal:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__utility/empty.h:
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontinfo.h:
@@ -9706,6 +9932,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget:
 
 =======
@@ -9714,6 +9941,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__memory/destruct_n.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_specialization.h:
@@ -9762,6 +9995,9 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 =======
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__fwd/sstream.h:
 
@@ -9769,9 +10005,13 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_empty.h:
 
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_compound.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_callable.h:
@@ -9802,6 +10042,7 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QApplication:
 
 =======
@@ -9810,6 +10051,12 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QApplication:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QApplication:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/datasizeof.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/copy_cvref.h:
@@ -9929,6 +10176,7 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QIcon:
 
 =======
@@ -9937,6 +10185,12 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QIcon:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QIcon:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__ranges/data.h:
 
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/__stddef_wchar_t.h:
@@ -10005,6 +10259,7 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolButton:
 
 =======
@@ -10013,6 +10268,12 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolButton:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolButton:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__format/format_string.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__node_handle:
@@ -10173,6 +10434,7 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QComboBox:
 
 =======
@@ -10181,6 +10443,12 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QComboBox:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QComboBox:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_constructible.h:
@@ -10191,6 +10459,7 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qslider.h:
 
 =======
@@ -10199,6 +10468,12 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qslider.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qslider.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__iterator/segmented_iterator.h:
@@ -10243,8 +10518,11 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_empty.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__fwd/sstream.h:
@@ -10252,10 +10530,15 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__iterator/iter_swap.h:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__iterator/iter_move.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_implicitly_default_constructible.h:
@@ -10412,12 +10695,19 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/__stddef_offsetof.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/detected_or.h:
@@ -10525,6 +10815,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractspinbox.h:
 
 =======
@@ -10533,6 +10824,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractspinbox.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractspinbox.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__cstddef/ptrdiff_t.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__memory/ranges_uninitialized_algorithms.h:
@@ -10541,6 +10838,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qregularexpression.h:
 
 =======
@@ -10549,6 +10847,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qregularexpression.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qregularexpression.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__bit/endian.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__system_error/errc.h:
@@ -10583,6 +10887,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QSizePolicy:
 
 =======
@@ -10591,6 +10896,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QSizePolicy:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QSizePolicy:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/stdexcept:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_fill_n.h:
@@ -10848,6 +11159,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstractitemmodel.h:
 
 =======
@@ -10856,6 +11168,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstractitemmodel.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstractitemmodel.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__atomic/to_gcc_order.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/_types/_rsize_t.h:
@@ -10962,17 +11280,25 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsDropShadowEffect:
 
 cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/copy_backward.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/transform.h:
@@ -11053,6 +11379,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabbar.h:
 
 =======
@@ -11061,6 +11388,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabbar.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabbar.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__concepts/derived_from.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__chrono/system_clock.h:
@@ -11124,9 +11457,14 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 >>>>>>> 495a53e (remove some pages)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_set_difference.h:
 
+<<<<<<< HEAD
 =======
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_set_difference.h:
 
+=======
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/generate_n.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_replace_if.h:
@@ -11135,11 +11473,15 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_search_n.h:
 
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_set_difference.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__functional/function.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_max_element.h:
@@ -11158,8 +11500,11 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_for_each_n.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_search_n.h:
@@ -11167,10 +11512,15 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_replace_if.h:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/copy_n.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__compare/strong_order.h:
@@ -11187,17 +11537,25 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstyleoption.h:
 
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractitemdelegate.h:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__format/extended_grapheme_cluster_table.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_min_element.h:
@@ -11268,6 +11626,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractslider.h:
 
 =======
@@ -11276,6 +11635,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractslider.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractslider.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qrefcount.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__charconv/from_chars_floating_point.h:
@@ -11304,6 +11669,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h:
 
 =======
@@ -11312,6 +11678,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/lexicographical_compare.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__math/trigonometric_functions.h:
@@ -11539,6 +11911,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/generate_n.h:
 
 =======
@@ -11547,6 +11920,12 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/generate_n.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/generate_n.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/aligned_storage.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__format/formatter_char.h:
@@ -11567,6 +11946,15 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_enum.h:
+
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/in_in_result.h:
+
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_sort.h:
 
 <<<<<<< HEAD
@@ -11634,14 +12022,21 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 =======
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qcolor.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/algorithm:
 
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_unsigned.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__fwd/fstream.h:
@@ -11650,17 +12045,25 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_enum.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/in_in_result.h:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/pop_heap.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/_types/_timeval.h:
@@ -11707,17 +12110,25 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/numeric:
 
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp:
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_equal_range.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/equal.h:

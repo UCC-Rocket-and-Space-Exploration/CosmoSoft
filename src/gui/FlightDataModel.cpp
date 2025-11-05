@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 #include "gui/FlightDataModel.h"
+=======
+#include "FlightDataModel.h"
+>>>>>>> 0e07fec (UI Skeleton)
 
 FlightDataModel::FlightDataModel() = default;
 FlightDataModel::~FlightDataModel() = default;

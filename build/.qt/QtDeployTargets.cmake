@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 set(__QT_DEPLOY_TARGET_PosixComms_FILE /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/gateway/Posix/libPosixComms.a)
 set(__QT_DEPLOY_TARGET_PosixComms_TYPE STATIC_LIBRARY)
 set(__QT_DEPLOY_TARGET_comms_FILE /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/gateway/libcomms.a)
@@ -14,3 +15,11 @@ set(__QT_DEPLOY_TARGET_cosmo-backend_FILE /Users/glebslyusar/Desktop/UCC/RES/Cos
 set(__QT_DEPLOY_TARGET_cosmo-backend_TYPE STATIC_LIBRARY)
 set(__QT_DEPLOY_TARGET_cosmo-soft-bin_FILE /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/cosmo-soft-bin)
 set(__QT_DEPLOY_TARGET_cosmo-soft-bin_TYPE EXECUTABLE)
+=======
+set(__QT_DEPLOY_TARGET_cosmo-backend_FILE /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/libcosmo-backend.a)
+set(__QT_DEPLOY_TARGET_cosmo-backend_TYPE STATIC_LIBRARY)
+set(__QT_DEPLOY_TARGET_cosmo-gui_FILE /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/libcosmo-gui.a)
+set(__QT_DEPLOY_TARGET_cosmo-gui_TYPE STATIC_LIBRARY)
+set(__QT_DEPLOY_TARGET_cosmo-soft_FILE /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-soft)
+set(__QT_DEPLOY_TARGET_cosmo-soft_TYPE EXECUTABLE)
+>>>>>>> 0e07fec (UI Skeleton)

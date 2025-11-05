@@ -945,18 +945,27 @@ cosmo-gui_autogen/timestamp: /Applications/Xcode.app/Contents/Developer/Platform
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/CMakeLists.txt \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc \
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc \
 >>>>>>> cb12191 (logistic files commit)
+=======
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc \
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   CMakeFiles/4.1.2/CMakeCXXCompiler.cmake \
   CMakeFiles/4.1.2/CMakeSystem.cmake \
   cosmo-gui_autogen/moc_predefs.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
@@ -976,11 +985,15 @@ cosmo-gui_autogen/timestamp: /Applications/Xcode.app/Contents/Developer/Platform
 =======
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/FlightDataModel.cpp \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/MainWindow.cpp \
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/DashboardPage.cpp \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp \
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q17memory.h \
   /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q20functional.h \
   /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q20iterator.h \
@@ -1134,12 +1147,18 @@ cosmo-gui_autogen/timestamp: /Applications/Xcode.app/Contents/Developer/Platform
   /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QMainWindow \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget \
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
   /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget \
 >>>>>>> cb12191 (logistic files commit)
+=======
+  /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget \
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
   /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/qmainwindow.h \
   /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/qsizepolicy.h \
   /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/qtabwidget.h \
@@ -2053,6 +2072,9 @@ cosmo-gui_autogen/timestamp: /Applications/Xcode.app/Contents/Developer/Platform
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp:
 
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp:
@@ -2060,6 +2082,7 @@ cosmo-gui_autogen/timestamp: /Applications/Xcode.app/Contents/Developer/Platform
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp:
 
 =======
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp:
@@ -2067,12 +2090,18 @@ cosmo-gui_autogen/timestamp: /Applications/Xcode.app/Contents/Developer/Platform
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/qtconfigmacros.h:
 
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/FlightDataModel.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h:
 
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h:
@@ -2080,6 +2109,7 @@ cosmo-gui_autogen/timestamp: /Applications/Xcode.app/Contents/Developer/Platform
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h:
 
 =======
+<<<<<<< HEAD
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h:
@@ -2087,6 +2117,9 @@ cosmo-gui_autogen/timestamp: /Applications/Xcode.app/Contents/Developer/Platform
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h:
 
 cosmo-gui_autogen/moc_predefs.h:
@@ -2097,6 +2130,7 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc:
 
 =======
@@ -2105,6 +2139,12 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/CMakeLists.txt:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6Widgets/Qt6WidgetsAdditionalTargetInfo.cmake:
@@ -2493,12 +2533,19 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/QString:
 
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/QString:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/underlying_type.h:
 
 /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q20memory.h:
@@ -2685,6 +2732,7 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget:
 
 =======
@@ -2693,6 +2741,12 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/qscopeguard.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/binary_search.h:
@@ -3297,12 +3351,19 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp:
 
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__fwd/memory.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/for_each_segment.h:
@@ -4080,6 +4141,7 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h:
 
 =======
@@ -4088,6 +4150,12 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h:
+
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+>>>>>>> bc5cfb6 (UI Skeleton)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/lexicographical_compare.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__exception/terminate.h:
