@@ -18,5 +18,5 @@
 ## Plans for UI
 - Add an app icon
 - Implement Graphs(Mark)
-- Add sounds?c bnm,]\
+- Add sounds
  
