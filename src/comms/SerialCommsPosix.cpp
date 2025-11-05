@@ -45,7 +45,10 @@ ssize_t SerialCommsPosix::write(const uint8_t *data, size_t size) {
 ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
     pollfd pfd{};
     pfd.fd = m_fd;
-    pfd.events = POLLIN | POLLERR | POLLHUP | POLLRDHUP;
+    pfd.events = POLLIN | POLLERR | POLLHUP;
+#ifdef POLLRDHUP
+    pfd.events |= POLLRDHUP;
+#endif
 
     while (true) {
         int data = poll(&pfd, 1, -1); // block until data
@@ -76,10 +79,12 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
                 close(); //if connection has not been reestablished, close the connection
                 break;
             }
+#ifdef POLLRDHUP
             if (pfd.revents & POLLRDHUP) { //fires if the peer closes the serial connection
                 //std::cerr << "Peer closed connection (RDHUP)\n";
                 break;
             }
+#endif
         }
     }
     return -1;

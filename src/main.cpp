@@ -1,11 +1,11 @@
 #include <QApplication>
-#include <QPushButton>
+#include "MainWindow.h"   // Our custom UI shell with toolbar, stacked pages, and a demo chart.
 
-//main UI thread
 int main(int argc, char *argv[]) {
-    QApplication a(argc, argv);
-    QPushButton button("Hello world!", nullptr);
-    button.resize(200, 100);
-    button.show();
-    return QApplication::exec();
+    QApplication app(argc, argv);    // QApplication owns the event loop and must be created first.
+
+    MainWindow window;               // Main window assembles the skeleton UI described in MainWindow.cpp.
+    window.show();                   // Display the window before handing control to the event loop.
+
+    return app.exec();               // Hand over control to Qt; finishes when the window closes.
 }
