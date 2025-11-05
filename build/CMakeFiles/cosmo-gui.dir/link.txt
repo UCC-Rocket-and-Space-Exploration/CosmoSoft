@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcosmo-gui.a "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o" "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o"
+/usr/bin/ranlib libcosmo-gui.a
