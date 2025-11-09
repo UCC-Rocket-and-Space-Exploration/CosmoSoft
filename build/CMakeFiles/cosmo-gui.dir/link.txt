@@ -1,2 +1,2 @@
-/usr/bin/ar qc libcosmo-gui.a "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o" "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o"
+/usr/bin/ar qc libcosmo-gui.a "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o" "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o" "CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o" "CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o" "CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o"
 /usr/bin/ranlib libcosmo-gui.a
