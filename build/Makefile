@@ -257,6 +257,30 @@ cosmo-backend_autogen/mocs_compilation.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/cosmo-backend_autogen/mocs_compilation.cpp.s
 .PHONY : cosmo-backend_autogen/mocs_compilation.cpp.s
 
+cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.o: cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o
+.PHONY : cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.o
+
+# target to build an object file
+cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o
+.PHONY : cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o
+
+cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.i: cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.i
+.PHONY : cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.i
+
+# target to preprocess a source file
+cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.i
+.PHONY : cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.i
+
+cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.s: cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.s
+.PHONY : cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.s
+
+# target to generate assembly for a file
+cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.s
+.PHONY : cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.s
+
 cosmo-gui_autogen/mocs_compilation.o: cosmo-gui_autogen/mocs_compilation.cpp.o
 .PHONY : cosmo-gui_autogen/mocs_compilation.o
 
@@ -545,6 +569,78 @@ src/gui/MainWindow.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.s
 .PHONY : src/gui/MainWindow.cpp.s
 
+src/gui/pages/ChartPage.o: src/gui/pages/ChartPage.cpp.o
+.PHONY : src/gui/pages/ChartPage.o
+
+# target to build an object file
+src/gui/pages/ChartPage.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o
+.PHONY : src/gui/pages/ChartPage.cpp.o
+
+src/gui/pages/ChartPage.i: src/gui/pages/ChartPage.cpp.i
+.PHONY : src/gui/pages/ChartPage.i
+
+# target to preprocess a source file
+src/gui/pages/ChartPage.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.i
+.PHONY : src/gui/pages/ChartPage.cpp.i
+
+src/gui/pages/ChartPage.s: src/gui/pages/ChartPage.cpp.s
+.PHONY : src/gui/pages/ChartPage.s
+
+# target to generate assembly for a file
+src/gui/pages/ChartPage.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.s
+.PHONY : src/gui/pages/ChartPage.cpp.s
+
+src/gui/pages/DashboardPage.o: src/gui/pages/DashboardPage.cpp.o
+.PHONY : src/gui/pages/DashboardPage.o
+
+# target to build an object file
+src/gui/pages/DashboardPage.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o
+.PHONY : src/gui/pages/DashboardPage.cpp.o
+
+src/gui/pages/DashboardPage.i: src/gui/pages/DashboardPage.cpp.i
+.PHONY : src/gui/pages/DashboardPage.i
+
+# target to preprocess a source file
+src/gui/pages/DashboardPage.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.i
+.PHONY : src/gui/pages/DashboardPage.cpp.i
+
+src/gui/pages/DashboardPage.s: src/gui/pages/DashboardPage.cpp.s
+.PHONY : src/gui/pages/DashboardPage.s
+
+# target to generate assembly for a file
+src/gui/pages/DashboardPage.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.s
+.PHONY : src/gui/pages/DashboardPage.cpp.s
+
+src/gui/pages/SettingsPage.o: src/gui/pages/SettingsPage.cpp.o
+.PHONY : src/gui/pages/SettingsPage.o
+
+# target to build an object file
+src/gui/pages/SettingsPage.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o
+.PHONY : src/gui/pages/SettingsPage.cpp.o
+
+src/gui/pages/SettingsPage.i: src/gui/pages/SettingsPage.cpp.i
+.PHONY : src/gui/pages/SettingsPage.i
+
+# target to preprocess a source file
+src/gui/pages/SettingsPage.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.i
+.PHONY : src/gui/pages/SettingsPage.cpp.i
+
+src/gui/pages/SettingsPage.s: src/gui/pages/SettingsPage.cpp.s
+.PHONY : src/gui/pages/SettingsPage.s
+
+# target to generate assembly for a file
+src/gui/pages/SettingsPage.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.s
+.PHONY : src/gui/pages/SettingsPage.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -661,6 +757,9 @@ help:
 	@echo "... cosmo-backend_autogen/mocs_compilation.o"
 	@echo "... cosmo-backend_autogen/mocs_compilation.i"
 	@echo "... cosmo-backend_autogen/mocs_compilation.s"
+	@echo "... cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.o"
+	@echo "... cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.i"
+	@echo "... cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.s"
 	@echo "... cosmo-gui_autogen/mocs_compilation.o"
 	@echo "... cosmo-gui_autogen/mocs_compilation.i"
 	@echo "... cosmo-gui_autogen/mocs_compilation.s"
@@ -697,6 +796,15 @@ help:
 	@echo "... src/gui/MainWindow.o"
 	@echo "... src/gui/MainWindow.i"
 	@echo "... src/gui/MainWindow.s"
+	@echo "... src/gui/pages/ChartPage.o"
+	@echo "... src/gui/pages/ChartPage.i"
+	@echo "... src/gui/pages/ChartPage.s"
+	@echo "... src/gui/pages/DashboardPage.o"
+	@echo "... src/gui/pages/DashboardPage.i"
+	@echo "... src/gui/pages/DashboardPage.s"
+	@echo "... src/gui/pages/SettingsPage.o"
+	@echo "... src/gui/pages/SettingsPage.i"
+	@echo "... src/gui/pages/SettingsPage.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
