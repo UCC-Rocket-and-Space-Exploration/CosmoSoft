@@ -374,6 +374,7 @@ set(CMAKE_MAKEFILE_OUTPUTS
 set(CMAKE_MAKEFILE_PRODUCTS
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   "CMakeFiles/cosmo-backend_autogen.dir/AutogenInfo.json"
   "CMakeFiles/cosmo-gui_autogen.dir/AutogenInfo.json"
 <<<<<<< HEAD
@@ -385,6 +386,8 @@ set(CMAKE_MAKEFILE_PRODUCTS
 >>>>>>> f9eac6a (fix: headers, incudes and cmakefile)
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+>>>>>>> 866748a (logistic files commit)
   ".qt/QtDeploySupport.cmake"
   ".qt/QtDeployTargets.cmake"
   "CMakeFiles/CMakeDirectoryInformation.cmake"
@@ -405,6 +408,8 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "src/gui/CMakeFiles/gui_autogen.dir/AutogenInfo.json"
   "src/gui/CMakeFiles/CMakeDirectoryInformation.cmake"
 =======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
   "CMakeFiles/cosmo-backend_autogen.dir/AutogenInfo.json"
   "CMakeFiles/cosmo-gui_autogen.dir/AutogenInfo.json"
   "CMakeFiles/cosmo-soft_autogen.dir/AutogenInfo.json"

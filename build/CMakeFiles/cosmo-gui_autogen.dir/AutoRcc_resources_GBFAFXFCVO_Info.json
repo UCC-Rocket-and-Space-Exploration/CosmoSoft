@@ -19,7 +19,11 @@
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/icons/settings_button.png"
 =======
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/fonts/RedHatMono-Regular.ttf"
+<<<<<<< HEAD
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 	],
 	"LOCK_FILE" : "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-gui_autogen.dir/AutoRcc_resources_GBFAFXFCVO_Lock.lock",
 	"MULTI_CONFIG" : false,

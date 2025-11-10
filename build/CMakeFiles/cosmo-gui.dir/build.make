@@ -81,7 +81,11 @@ cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /Users/glebslyusar/Desktop/UCC/R
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/icons/settings_button_black.png
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/icons/settings_button.png
 =======
+<<<<<<< HEAD
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /opt/homebrew/opt/qt/share/qt/libexec/rcc
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /opt/homebrew/opt/qt/share/qt/libexec/rcc
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic RCC for assets/resources.qrc"

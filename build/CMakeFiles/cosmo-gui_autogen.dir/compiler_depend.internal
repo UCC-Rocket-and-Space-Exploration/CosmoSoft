@@ -947,6 +947,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
@@ -958,6 +959,14 @@
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+ /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+ /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/4.1.2/CMakeCXXCompiler.cmake
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/4.1.2/CMakeSystem.cmake
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/moc_predefs.h
@@ -965,15 +974,22 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+>>>>>>> 866748a (logistic files commit)
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h
 =======
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h
+<<<<<<< HEAD
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/FlightDataModel.cpp
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/MainWindow.cpp
@@ -994,7 +1010,14 @@
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+ /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/DashboardPage.cpp
+ /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
  /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q17memory.h
  /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q20functional.h
  /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtCore.framework/Versions/A/Headers/q20iterator.h
@@ -1149,6 +1172,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
@@ -1160,6 +1184,14 @@
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+ /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+ /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/QWidget
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
  /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/qmainwindow.h
  /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/qsizepolicy.h
  /opt/homebrew/Cellar/qtbase/6.9.3/lib/QtWidgets.framework/Versions/A/Headers/qtabwidget.h

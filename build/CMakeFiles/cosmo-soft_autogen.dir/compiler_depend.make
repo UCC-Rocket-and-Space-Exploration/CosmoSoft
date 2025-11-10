@@ -5,6 +5,7 @@ cosmo-soft_autogen/timestamp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/CMake
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc \
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
@@ -16,6 +17,14 @@ cosmo-soft_autogen/timestamp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/CMake
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc \
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc \
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
   CMakeFiles/4.1.2/CMakeCXXCompiler.cmake \
   CMakeFiles/4.1.2/CMakeSystem.cmake \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/main.cpp \
@@ -546,8 +555,11 @@ cosmo-soft_autogen/timestamp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/CMake
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+>>>>>>> 866748a (logistic files commit)
 =======
 CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 
@@ -561,7 +573,12 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6Gui/Qt6QCocoaIntegrationPluginConfig.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6Gui/Qt6QPdfPluginTargets-release.cmake:
@@ -685,18 +702,26 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/lib/cmake/Qt6/QtPublicTargetHelpers.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6Core/Qt6QDarwinCameraPermissionPluginConfig.cmake:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+>>>>>>> 866748a (logistic files commit)
 =======
 /opt/homebrew/opt/qt/lib/cmake/Qt6Core/Qt6QDarwinCameraPermissionPluginConfig.cmake:
 
@@ -708,7 +733,12 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6Gui/Qt6QGifPluginTargets-release.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6DBusPrivate/Qt6DBusPrivateVersionlessAliasTargets.cmake:
@@ -742,8 +772,11 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+>>>>>>> 866748a (logistic files commit)
 =======
 /opt/homebrew/opt/qt/lib/cmake/Qt6DBusPrivate/Qt6DBusPrivateConfigVersion.cmake:
 
@@ -755,7 +788,12 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6CoreTools/Qt6CoreToolsConfigVersion.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6OpenGLWidgetsPrivate/Qt6OpenGLWidgetsPrivateTargets.cmake:
@@ -795,6 +833,7 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc:
 
 =======
@@ -804,11 +843,20 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 
 >>>>>>> cb12191 (logistic files commit)
 =======
+=======
+>>>>>>> 866748a (logistic files commit)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc:
 
 =======
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc:
+
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6Core/Qt6QDarwinMicrophonePermissionPluginAdditionalTargetInfo.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6Core/Qt6QDarwinLocationPermissionPluginTargets-release.cmake:
@@ -820,8 +868,11 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+>>>>>>> 866748a (logistic files commit)
 =======
 /opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateConfigVersion.cmake:
 
@@ -833,7 +884,12 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6Core/Qt6QDarwinContactsPermissionPluginTargets-release.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6Widgets/Qt6WidgetsDependencies.cmake:
@@ -851,6 +907,7 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 /opt/homebrew/opt/qt/lib/cmake/Qt6Core/Qt6QDarwinContactsPermissionPluginAdditionalTargetInfo.cmake:
 
@@ -859,10 +916,17 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 >>>>>>> cb12191 (logistic files commit)
 =======
 =======
+>>>>>>> 866748a (logistic files commit)
+=======
 /opt/homebrew/opt/qt/lib/cmake/Qt6Core/Qt6QDarwinContactsPermissionPluginAdditionalTargetInfo.cmake:
 
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6CorePrivate/Qt6CorePrivateDependencies.cmake:
 
 /opt/homebrew/lib/cmake/Qt6/QtPublicSbomFileHelpers.cmake:
@@ -970,14 +1034,20 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6Core/Qt6QDarwinLocationPermissionPluginConfig.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateConfigVersion.cmake:
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -988,6 +1058,12 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6DBus/Qt6DBusVersionlessAliasTargets.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsTargets-release.cmake:
@@ -1019,10 +1095,15 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6Gui/Qt6QPdfPluginTargets.cmake:
 
 CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
@@ -1031,6 +1112,7 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
@@ -1039,6 +1121,12 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6Widgets/Qt6WidgetsMacros.cmake:
 
 /opt/homebrew/lib/cmake/Qt6/QtPublicToolHelpers.cmake:
@@ -1046,6 +1134,7 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 /opt/homebrew/lib/cmake/Qt6/QtPublicGitHelpers.cmake:
 
@@ -1054,10 +1143,17 @@ CMakeFiles/4.1.2/CMakeCXXCompiler.cmake:
 >>>>>>> cb12191 (logistic files commit)
 =======
 =======
+>>>>>>> 866748a (logistic files commit)
+=======
 /opt/homebrew/lib/cmake/Qt6/QtPublicGitHelpers.cmake:
 
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/share/cmake/Modules/CheckLibraryExists.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6OpenGLWidgets/Qt6OpenGLWidgetsTargets-release.cmake:
@@ -1137,6 +1233,7 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 /opt/homebrew/lib/cmake/Qt6/QtPublicFinalizerHelpers.cmake:
 
@@ -1145,10 +1242,17 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 >>>>>>> cb12191 (logistic files commit)
 =======
 =======
+>>>>>>> 866748a (logistic files commit)
+=======
 /opt/homebrew/lib/cmake/Qt6/QtPublicFinalizerHelpers.cmake:
 
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/lib/cmake/Qt6/QtFeatureCommon.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6DBus/Qt6DBusDependencies.cmake:
@@ -1166,10 +1270,15 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6CoreTools/Qt6CoreToolsDependencies.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6DBusPrivate/Qt6DBusPrivateConfigVersion.cmake:
@@ -1180,6 +1289,7 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
@@ -1188,6 +1298,12 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/opt/qt/lib/cmake/Qt6Core/Qt6QDarwinMicrophonePermissionPluginTargets-release.cmake:
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsTargets.cmake:
@@ -1221,8 +1337,11 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+>>>>>>> 866748a (logistic files commit)
 /opt/homebrew/lib/cmake/Qt6/QtPublicFindPackageHelpers.cmake:
 
 /opt/homebrew/lib/cmake/Qt6/QtPublicAppleHelpers.cmake:
@@ -1243,7 +1362,15 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+/opt/homebrew/lib/cmake/Qt6/QtPublicFindPackageHelpers.cmake:
+
+/opt/homebrew/lib/cmake/Qt6/QtPublicAppleHelpers.cmake:
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 
 /opt/homebrew/opt/qt/lib/cmake/Qt6Gui/Qt6QJpegPluginTargets-release.cmake:
 
@@ -1251,10 +1378,15 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 
 /opt/homebrew/lib/cmake/Qt6/FindWrapVulkanHeaders.cmake:
 
@@ -1263,6 +1395,7 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 /opt/homebrew/opt/qt/lib/cmake/Qt6/QtPublicCMakeEarlyPolicyHelpers.cmake:
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
@@ -1271,3 +1404,9 @@ CMakeFiles/4.1.2/CMakeSystem.cmake:
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)

@@ -25,7 +25,9 @@ class QWidget;
 =======
 
 class QAction;
+class QLabel;
 class QStackedWidget;
+class QTimer;
 class QWidget;
 
 // MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked pages, and a chart demo).
@@ -72,16 +74,23 @@ private:
     void setupPages();       // Construct the stacked pages that behave like separate windows.
     void setupChartPage();   // Prepare the sample chart content page.
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     void updateMissionClock();  // Refresh the GMT label with the current UTC timestamp.
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+    void updateMissionClock();  // Refresh the GMT label with the current UTC timestamp.
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 
     QAction *m_showDashboardAction = nullptr;
     QAction *m_showSettingsAction = nullptr;
 
     QStackedWidget *m_pages = nullptr;
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     QWidget *m_dashboardPage = nullptr;
@@ -97,11 +106,24 @@ private:
     QTimer *m_missionClockTimer = nullptr;  // Ticks every second to update the UTC timestamp.
 >>>>>>> cb12191 (logistic files commit)
 =======
+=======
+>>>>>>> 866748a (logistic files commit)
     QWidget *m_dashboardPage = nullptr;
     QWidget *m_settingsPage = nullptr;
     QWidget *m_chartPage = nullptr;
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+    DashboardPage *m_dashboardPage = nullptr;
+    SettingsPage *m_settingsPage = nullptr;
+    ChartPage *m_chartPage = nullptr;
+
+    QLabel *m_missionMetaLabel = nullptr;   // Pointer to the GMT readout in the toolbar.
+    QTimer *m_missionClockTimer = nullptr;  // Ticks every second to update the UTC timestamp.
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

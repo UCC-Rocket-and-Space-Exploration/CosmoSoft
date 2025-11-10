@@ -1183,10 +1183,15 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
@@ -1198,6 +1203,7 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qresource.h \
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
@@ -1206,6 +1212,12 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
@@ -1218,6 +1230,7 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
@@ -1226,10 +1239,17 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
 >>>>>>> cb12191 (logistic files commit)
 =======
 =======
+>>>>>>> 866748a (logistic files commit)
+=======
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontmetrics.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontinfo.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontvariableaxis.h \

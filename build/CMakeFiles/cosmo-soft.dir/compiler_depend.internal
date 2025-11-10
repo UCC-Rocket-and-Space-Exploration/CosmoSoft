@@ -1032,8 +1032,11 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+>>>>>>> 866748a (logistic files commit)
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDebug
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QResource
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString
@@ -1048,7 +1051,15 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o
 >>>>>>> cb12191 (logistic files commit)
 =======
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+ /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDebug
+ /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QResource
+ /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QStringList
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q17memory.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20functional.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20iterator.h
@@ -1135,6 +1146,7 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qresource.h
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
@@ -1146,6 +1158,14 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+ /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qresource.h
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+ /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qresource.h
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qscopedpointer.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qscopeguard.h
  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qset.h
@@ -1201,6 +1221,7 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFontDatabase
 =======
@@ -1210,11 +1231,20 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFontDatabase
 >>>>>>> cb12191 (logistic files commit)
 =======
+=======
+>>>>>>> 866748a (logistic files commit)
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFontDatabase
 =======
 >>>>>>> 0e07fec (UI Skeleton)
+<<<<<<< HEAD
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+=======
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFontDatabase
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qaction.h
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qbitmap.h
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qbrush.h
@@ -1224,6 +1254,7 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontdatabase.h
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
@@ -1235,6 +1266,14 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o
 =======
 >>>>>>> 0e07fec (UI Skeleton)
 >>>>>>> bc5cfb6 (UI Skeleton)
+=======
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontdatabase.h
+=======
+>>>>>>> 0e07fec (UI Skeleton)
+=======
+ /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontdatabase.h
+>>>>>>> cbd2c7f (logistic files commit)
+>>>>>>> 866748a (logistic files commit)
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontinfo.h
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontmetrics.h
  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontvariableaxis.h
