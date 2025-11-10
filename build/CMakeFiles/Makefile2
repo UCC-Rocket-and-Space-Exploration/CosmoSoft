@@ -173,12 +173,17 @@ CMakeFiles/cosmo-gui.dir/clean:
 
 # All Build rule for target.
 <<<<<<< HEAD
+<<<<<<< HEAD
 CMakeFiles/cosmo-soft.dir/all: CMakeFiles/cosmo-backend.dir/all
 CMakeFiles/cosmo-soft.dir/all: CMakeFiles/cosmo-gui.dir/all
 =======
 CMakeFiles/cosmo-soft.dir/all: CMakeFiles/cosmo-gui.dir/all
 CMakeFiles/cosmo-soft.dir/all: CMakeFiles/cosmo-backend.dir/all
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+CMakeFiles/cosmo-soft.dir/all: CMakeFiles/cosmo-gui.dir/all
+CMakeFiles/cosmo-soft.dir/all: CMakeFiles/cosmo-backend.dir/all
+>>>>>>> cb12191 (logistic files commit)
 CMakeFiles/cosmo-soft.dir/all: CMakeFiles/cosmo-soft_autogen_timestamp_deps.dir/all
 CMakeFiles/cosmo-soft.dir/all: CMakeFiles/cosmo-soft_autogen.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft.dir/build.make CMakeFiles/cosmo-soft.dir/depend

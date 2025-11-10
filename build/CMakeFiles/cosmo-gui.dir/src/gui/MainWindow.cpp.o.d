@@ -1218,9 +1218,12 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayoutitem.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgridlayout.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QIcon \
+<<<<<<< HEAD
 =======
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QAction \
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> cb12191 (logistic files commit)
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QLabel \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlabel.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h \
@@ -1228,6 +1231,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qiodevice.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtextdocument.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qurl.h \
+<<<<<<< HEAD
 <<<<<<< HEAD
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QSize \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QSizePolicy \
@@ -1326,3 +1330,20 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStackedWidget \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstackedwidget.h
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QSizePolicy \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStackedWidget \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstackedwidget.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStatusBar \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstatusbar.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtGlobal \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QTimer \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtimer.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolBar \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtoolbar.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolButton \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtoolbutton.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractbutton.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QVBoxLayout \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QVariant
+>>>>>>> cb12191 (logistic files commit)

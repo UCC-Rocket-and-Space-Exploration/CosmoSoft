@@ -1,9 +1,15 @@
 #include "MainWindow.h"
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include "pages/MonitoringPage.h"   // Live telemetry overview.
 #include "pages/FlightDataPage.h"    // Placeholder for ground-station settings.
 #include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
 #include "pages/SettingsPage.h"       // Imaginary chart viewer until data is wired up.
+=======
+#include "pages/DashboardPage.h"   // Live telemetry overview.
+#include "pages/SettingsPage.h"    // Placeholder for ground-station settings.
+#include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
+>>>>>>> cb12191 (logistic files commit)
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -13,7 +19,10 @@
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
+<<<<<<< HEAD
 #include <QSize>
+=======
+>>>>>>> cb12191 (logistic files commit)
 #include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -24,6 +33,7 @@
 #include <QVBoxLayout>
 #include <QVariant>
 #include <QWidget>
+<<<<<<< HEAD
 
 using namespace Qt::StringLiterals;
 
@@ -96,11 +106,15 @@ void MainWindow::setupActions() {
 #include <QtCharts/QValueAxis>
 #include <QPainter>
 #include <QStackedWidget>
+=======
+>>>>>>> cb12191 (logistic files commit)
 
 using namespace Qt::StringLiterals;
 
+// Entry point for the GUI shell; constructs the basic chrome and loads placeholder pages.
 MainWindow::MainWindow(QWidget *parent)
         : QMainWindow(parent) {
+<<<<<<< HEAD
     setWindowTitle(u"CosmoSoft UI Skeleton"_s);              // Title bar text so the window is identifiable.
 
     setupActions();                                          // Prepare navigation commands first.
@@ -108,6 +122,14 @@ MainWindow::MainWindow(QWidget *parent)
     setupPages();                                            // Fill the central widget with placeholder pages.
 
     statusBar()->showMessage(u"Ready – explore the scaffolded UI."_s); // Friendly status message on boot.
+=======
+    setWindowTitle(u"CosmoSoft<style/>"_s);                                        // Title bar text so the window is identifiable.
+    setWindowIcon(QIcon(":/images/Logo_rounded.png"));                            // Use the rounded logo bundled in resources.qrc.
+    setupActions();                                                               // Prepare navigation commands first.
+    setupToolbar();                                          // Install the toolbar directly under the title bar.
+    setupPages();                                            // Fill the central widget with placeholder pages.
+    statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s); // Friendly status message on boot.
+>>>>>>> cb12191 (logistic files commit)
 }
 
 void MainWindow::setupActions() {
@@ -133,6 +155,9 @@ void MainWindow::setupActions() {
 
 void MainWindow::setupToolbar() {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> cb12191 (logistic files commit)
     // QToolBar integrates directly with QMainWindow, so new users get docking,
     // layout management, and keyboard shortcuts “for free” without manual layout work.
     auto *toolbar = new QToolBar(u"Mission Toolbar"_s, this);
@@ -192,6 +217,7 @@ void MainWindow::setupToolbar() {
             color: rgba(255, 255, 255, 120);
             border-color: rgba(255, 255, 255, 70);
             background-color: rgba(255, 255, 255, 0);
+<<<<<<< HEAD
         }
 
         QToolButton[kind="iconButton"] {
@@ -207,11 +233,17 @@ void MainWindow::setupToolbar() {
 
         QToolButton[kind="iconButton"]:checked {
             background-color: rgba(255, 255, 255, 0.15);
+=======
+>>>>>>> cb12191 (logistic files commit)
         }
     )"_s);
     addToolBar(Qt::TopToolBarArea, toolbar);
 
+<<<<<<< HEAD
     // TEXT SHADOWS.
+=======
+    // Add a subtle drop shadow to the toolbar for depth.
+>>>>>>> cb12191 (logistic files commit)
     QGraphicsDropShadowEffect* text_shadow = new QGraphicsDropShadowEffect(this);
     text_shadow->setBlurRadius(5);
     text_shadow->setColor(QColor(0, 0, 0, 160));
@@ -223,6 +255,11 @@ void MainWindow::setupToolbar() {
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(24);
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> cb12191 (logistic files commit)
     // Group the logo/mission labels inside their own QWidget so the stylesheet can target them easily.
     auto *brandBlock = new QWidget(content);
     brandBlock->setObjectName(u"brandBlock"_s);
@@ -271,11 +308,15 @@ void MainWindow::setupToolbar() {
     m_showMonitoringAction->setChecked(true);
 
     // Helper to wrap each QAction inside a QToolButton; QMainWindow handles shortcuts/enable state automatically.
+<<<<<<< HEAD
     auto makeNavButton = [](QAction *action,
             QWidget *parent,
             Qt::ToolButtonStyle style = Qt::ToolButtonTextOnly,
             QString kind = u"navButton"_s,
             QSize iconSize = QSize()) {
+=======
+    auto makeNavButton = [](QAction *action, QWidget *parent) {
+>>>>>>> cb12191 (logistic files commit)
         auto *button = new QToolButton(parent);
         button->setProperty("kind", kind);
         button->setAutoRaise(false);
@@ -445,6 +486,7 @@ void MainWindow::updateMissionClock() {
 }
 
 void MainWindow::setupPages() {
+    // QStackedWidget is the Qt6 “page router”: we add each QWidget once and flip between them with setCurrentWidget().
     m_pages = new QStackedWidget(this);                 // Central stacked widget lives inside MainWindow.
     setCentralWidget(m_pages);
 
@@ -469,6 +511,7 @@ void MainWindow::setupPages() {
     m_pages->setCurrentWidget(m_dashboardPage);          // Default landing page.
 }
 
+<<<<<<< HEAD
 void MainWindow::setupChartPage() {
     // Build a line series with sample data (sine wave to mimic telemetry variation).
     auto *series = new QLineSeries(this);
@@ -509,4 +552,29 @@ void MainWindow::setupChartPage() {
     chartLayout->addWidget(chartView);
     chartLayout->addWidget(new QLabel(u"Replace this sample with live data when ready."_s, m_chartPage));
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+// Compute and inject the current local timestamp plus GMT offset into the mission meta label.
+void MainWindow::updateMissionClock() {
+    if (!m_missionMetaLabel) {
+        return;  // Toolbar was not built yet; nothing to update.
+    }
+
+    const QDateTime localNow = QDateTime::currentDateTime();
+    const int offsetSeconds = localNow.offsetFromUtc();
+    const int absOffsetSeconds = qAbs(offsetSeconds);
+    const int offsetHours = absOffsetSeconds / 3600;
+    const int offsetMinutes = (absOffsetSeconds % 3600) / 60;
+
+    // Format GMT±HH[:MM] so even half-hour zones look correct.
+    QString offsetString = QStringLiteral("GMT%1%2")
+            .arg(offsetSeconds >= 0 ? u'+' : u'-')
+            .arg(offsetHours, 2, 10, QLatin1Char('0'));
+    if (offsetMinutes > 0) {
+        offsetString += QStringLiteral(":%1").arg(offsetMinutes, 2, 10, QLatin1Char('0'));
+    }
+
+    const QString timestamp = QStringLiteral("%1 | %2")
+            .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
+    m_missionMetaLabel->setText(timestamp);
+>>>>>>> cb12191 (logistic files commit)
 }
