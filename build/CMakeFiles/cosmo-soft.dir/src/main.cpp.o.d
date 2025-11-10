@@ -1180,6 +1180,15 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qhash.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qvarlengtharray.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFontDatabase \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontdatabase.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QStringList \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDebug \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QResource \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qresource.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
@@ -1189,8 +1198,6 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qicon.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpalette.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qbrush.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfont.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qendian.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontmetrics.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontinfo.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontvariableaxis.h \
