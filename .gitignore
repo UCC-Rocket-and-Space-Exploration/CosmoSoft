@@ -70,3 +70,6 @@ Desktop.ini
 # Generated documentation or artifacts
 /docs/_build/
 *.user
+
+# Build artifacts
+build/

@@ -18,7 +18,9 @@ class ISerialPortScanner;
 =======
 
 class QAction;
+class QLabel;
 class QStackedWidget;
+class QTimer;
 class QWidget;
 
 // MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked pages, and a chart demo).
@@ -60,16 +62,15 @@ private:
     ISerialPortScanner *m_portScanner = nullptr; // Owned by factory; lifetime for app run.
 =======
     void setupPages();       // Construct the stacked pages that behave like separate windows.
-    void setupChartPage();   // Prepare the sample chart content page.
+    void updateMissionClock();  // Refresh the GMT label with the current UTC timestamp.
 
     QAction *m_showDashboardAction = nullptr;
     QAction *m_showSettingsAction = nullptr;
 
     QStackedWidget *m_pages = nullptr;
-    QWidget *m_dashboardPage = nullptr;
-    QWidget *m_settingsPage = nullptr;
-    QWidget *m_chartPage = nullptr;
->>>>>>> f77beb0 (UI Skeleton)
+    DashboardPage *m_dashboardPage = nullptr;
+    SettingsPage *m_settingsPage = nullptr;
+    ChartPage *m_chartPage = nullptr;
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

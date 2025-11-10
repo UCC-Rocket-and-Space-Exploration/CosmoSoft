@@ -1,13 +1,9 @@
 #include <QApplication>
-<<<<<<< HEAD
 #include <QFont>
 #include <QFontDatabase>
+#include <QStringList>
 #include <QDebug>
 #include <QResource>
-#include <QStringList>
-
-#include "MainWindow.h"   // Our custom UI shell with toolbar and stacked pages.
-=======
 #include "MainWindow.h"   // Our custom UI shell with toolbar, stacked pages, and a demo chart.
 >>>>>>> f77beb0 (UI Skeleton)
 
@@ -19,7 +15,6 @@ int main(int argc, char *argv[]) {
     return QApplication::exec();
     QApplication app(argc, argv);    // QApplication owns the event loop and must be created first.
 
-<<<<<<< HEAD
     Q_INIT_RESOURCE(resources);
 
     const auto loadFontFamily = [](const QString &resource, const QString &label) -> QString {
@@ -46,8 +41,6 @@ int main(int argc, char *argv[]) {
         app.setProperty("workbenchFontFamily", workbenchFamily);
     }
 
-=======
->>>>>>> f77beb0 (UI Skeleton)
     MainWindow window;               // Main window assembles the skeleton UI described in MainWindow.cpp.
     window.show();                   // Display the window before handing control to the event loop.
 
