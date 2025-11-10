@@ -4,4 +4,8 @@
         <file alias="Logo_nb.png">images/Logo_nb.png</file>
         <file alias="Logo.png">images/Logo.png</file>
     </qresource>
+    <qresource prefix="/fonts">
+        <file alias="RedHatMono-Regular.ttf">fonts/RedHatMono-Regular.ttf</file>
+        <file alias="Workbench-Regular.ttf">fonts/Workbench-Regular.ttf</file>
+    </qresource>
 </RCC>

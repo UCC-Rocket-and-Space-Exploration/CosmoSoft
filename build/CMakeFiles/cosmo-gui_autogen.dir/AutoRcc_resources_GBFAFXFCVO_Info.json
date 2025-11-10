@@ -11,7 +11,9 @@
 	[
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/images/Logo_nb.png",
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/images/Logo_rounded.png",
-		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/images/Logo.png"
+		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/images/Logo.png",
+		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/fonts/Workbench-Regular.ttf",
+		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/fonts/RedHatMono-Regular.ttf"
 	],
 	"LOCK_FILE" : "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles/cosmo-gui_autogen.dir/AutoRcc_resources_GBFAFXFCVO_Lock.lock",
 	"MULTI_CONFIG" : false,

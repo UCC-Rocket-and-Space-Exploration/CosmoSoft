@@ -1186,11 +1186,54 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QAction \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QActionGroup \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qactiongroup.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QApplication \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qapplication.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreevent.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qbasictimer.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstracteventdispatcher.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qeventloop.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qdeadlinetimer.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qelapsedtimer.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qnativeinterface.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication_platform.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qinputmethod.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qlocale.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDateTime \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qdatetime.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcalendar.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsDropShadowEffect \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicseffect.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QHBoxLayout \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qboxlayout.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayout.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayoutitem.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgridlayout.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QIcon \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStatusBar \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstatusbar.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolBar \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtoolbar.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QLabel \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlabel.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpicture.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qiodevice.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtextdocument.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qurl.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QSizePolicy \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStackedWidget \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstackedwidget.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QStatusBar \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstatusbar.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtGlobal \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QTimer \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtimer.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolBar \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtoolbar.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QToolButton \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtoolbutton.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractbutton.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QVBoxLayout \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QVariant
