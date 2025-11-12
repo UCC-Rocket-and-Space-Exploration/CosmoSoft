@@ -1,5 +1,5 @@
 #include "MainWindow.h"
-#include "pages/DashboardPage.h"   // Live telemetry overview.
+#include "pages/MonitoringPage.h"   // Live telemetry overview.
 #include "pages/SettingsPage.h"    // Placeholder for ground-station settings.
 #include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
 #include <QAction>
@@ -25,32 +25,38 @@
 using namespace Qt::StringLiterals;
 
 // Entry point for the GUI shell; constructs the basic chrome and loads placeholder pages.
-MainWindow::MainWindow(QWidget *parent)
-        : QMainWindow(parent) {
-    setWindowTitle(u"CosmoSoft<style/>"_s);                                        // Title bar text so the window is identifiable.
+MainWindow::MainWindow(QWidget *parent): QMainWindow(parent) {
+    setWindowTitle(u"CosmoSoft"_s);                                        // Title bar text so the window is identifiable.
     setWindowIcon(QIcon(":/images/Logo_rounded.png"));                            // Use the rounded logo bundled in resources.qrc.
     setupActions();                                                               // Prepare navigation commands first.
     setupToolbar();                                          // Install the toolbar directly under the title bar.
+    setupDataBar();                                         // Build the telemetry strip that sits under the toolbar.
     setupPages();                                            // Fill the central widget with placeholder pages.
     statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s); // Friendly status message on boot.
+}
+
+void MainWindow::showStatusMessage(const QString &message, int timeout) {
+    if (auto *sb = statusBar()) {
+        sb->showMessage(message, timeout);
+    }
 }
 
 void MainWindow::setupActions() {
 
     // Actions encapsulate the intent behind toolbar/menu buttons.
-    m_showDashboardAction = new QAction(u"Monitoring"_s, this);
-    m_showDashboardAction->setToolTip(u"Switch to the dashboard page."_s);
+    m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
+    m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
 
     m_showSettingsAction = new QAction(u"Flight Data"_s, this);
     m_showSettingsAction->setToolTip(u"Switch to the flight data (settings placeholder) page."_s);
 
-    m_showChartAction = new QAction(u"Coolstuff"_s, this);
+    m_showChartAction = new QAction(u"Charts"_s, this);
     m_showChartAction->setToolTip(u"Switch to the charts page."_s);
 
     // Each action simply points the stacked widget at the matching page.
-    connect(m_showDashboardAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_dashboardPage);
-        statusBar()->showMessage(u"Dashboard page selected."_s, 2000);
+    connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
+        m_pages->setCurrentWidget(m_monitoringPage);
+        statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
     });
 
     connect(m_showSettingsAction, &QAction::triggered, this, [this]() {
@@ -128,7 +134,7 @@ void MainWindow::setupToolbar() {
     )"_s);
     addToolBar(Qt::TopToolBarArea, toolbar);
 
-    // Add a subtle drop shadow to the toolbar for depth.
+    // TEXT SHADOWS.
     QGraphicsDropShadowEffect* text_shadow = new QGraphicsDropShadowEffect(this);
     text_shadow->setBlurRadius(5);
     text_shadow->setColor(QColor(0, 0, 0, 160));
@@ -139,8 +145,6 @@ void MainWindow::setupToolbar() {
     auto *contentLayout = new QHBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(24);
-
-
 
     // Group the logo/mission labels inside their own QWidget so the stylesheet can target them easily.
     auto *brandBlock = new QWidget(content);
@@ -183,11 +187,11 @@ void MainWindow::setupToolbar() {
     // QActionGroup locks the nav buttons into a radio-group so only one destination can be “checked” at a time.
     auto *navGroup = new QActionGroup(this);
     navGroup->setExclusive(true);
-    for (auto *action : {m_showDashboardAction, m_showSettingsAction, m_showChartAction}) {
+    for (auto *action : {m_showMonitoringAction, m_showSettingsAction, m_showChartAction}) {
         action->setCheckable(true);
         navGroup->addAction(action);
     }
-    m_showDashboardAction->setChecked(true);
+    m_showMonitoringAction->setChecked(true);
 
     // Helper to wrap each QAction inside a QToolButton; QMainWindow handles shortcuts/enable state automatically.
     auto makeNavButton = [](QAction *action, QWidget *parent) {
@@ -204,7 +208,7 @@ void MainWindow::setupToolbar() {
     auto *navLayout = new QHBoxLayout(navContainer);
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(12);
-    navLayout->addWidget(makeNavButton(m_showDashboardAction, navContainer));
+    navLayout->addWidget(makeNavButton(m_showMonitoringAction, navContainer));
     navLayout->addWidget(makeNavButton(m_showSettingsAction, navContainer));
 
     navLayout->addWidget(makeNavButton(m_showChartAction, navContainer));
@@ -214,21 +218,77 @@ void MainWindow::setupToolbar() {
     toolbar->addWidget(content);
 }
 
+void MainWindow::setupDataBar() {
+    if (m_dataBar) {
+        return; // Nothing to do if we've already built it.
+    }
+
+    m_dataBar = new QWidget(this);
+    m_dataBar->setObjectName(u"telemetryStrip"_s);
+    m_dataBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    auto *dataLayout = new QHBoxLayout(m_dataBar);
+    dataLayout->setContentsMargins(16, 6, 16, 6);
+    dataLayout->setSpacing(24);
+
+    auto buildBadgeLabel = [](const QString &text, QWidget *parent) {
+        auto *label = new QLabel(text, parent);
+        label->setObjectName(u"telemetryBadge"_s);
+        label->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+        label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+        return label;
+    };
+
+    m_dataLinkStatusLabel = buildBadgeLabel(u"SOME DATA"_s, m_dataBar);
+    dataLayout->addWidget(m_dataLinkStatusLabel);
+    dataLayout->addWidget(m_dataRateLabel);
+    dataLayout->addStretch(1);
+
+    m_dataBar->setStyleSheet(uR"(
+        QWidget#telemetryStrip {
+            background: rgba(26, 26, 26, 0.95);
+            color: #f0f0f0;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.7);
+        }
+
+        QWidget#telemetryStrip QLabel#telemetryBadge {
+            font-size: 12px;
+            color: #f7f7f7;
+            letter-spacing: 1px;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            }
+    )"_s);
+}
+
 void MainWindow::setupPages() {
     // QStackedWidget is the Qt6 “page router”: we add each QWidget once and flip between them with setCurrentWidget().
-    m_pages = new QStackedWidget(this);                 // Central stacked widget lives inside MainWindow.
-    setCentralWidget(m_pages);
+    auto *central = new QWidget(this);
+    auto *centralLayout = new QVBoxLayout(central);
+    centralLayout->setContentsMargins(0, 0, 0, 0);
+    centralLayout->setSpacing(0);
+
+    if (!m_dataBar) {
+        setupDataBar();  // Ensure strip exists before wiring layout.
+    }
+    if (m_dataBar) {
+        centralLayout->addWidget(m_dataBar);
+    }
+
+    m_pages = new QStackedWidget(central);                 // Central stacked widget lives inside MainWindow.
+    centralLayout->addWidget(m_pages, /*stretch=*/1);
+    setCentralWidget(central);
 
     // Each page lives in its own QWidget subclass so logic stays modular.
-    m_dashboardPage = new DashboardPage(this);
+    m_monitoringPage = new MonitoringPage(this);
     m_settingsPage = new SettingsPage(this);
     m_chartPage = new ChartPage(this);
 
     // Order determines indices; we keep all pages accessible via actions.
-    m_pages->addWidget(m_dashboardPage);
+    m_pages->addWidget(m_monitoringPage);
     m_pages->addWidget(m_settingsPage);
     m_pages->addWidget(m_chartPage);
-    m_pages->setCurrentWidget(m_dashboardPage);          // Default landing page.
+    m_pages->setCurrentWidget(m_monitoringPage);          // Default landing page.
 }
 
 // Compute and inject the current local timestamp plus GMT offset into the mission meta label.
