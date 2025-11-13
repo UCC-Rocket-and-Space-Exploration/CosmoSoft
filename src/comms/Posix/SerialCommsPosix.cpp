@@ -1,4 +1,4 @@
-#include "../../include/comms/SerialCommsPosix.h"
+#include "comms/SerialCommsPosix.h"
 
 #include <glob.h>
 #include <vector>

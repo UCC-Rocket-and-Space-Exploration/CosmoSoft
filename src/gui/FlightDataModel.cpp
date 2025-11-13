@@ -1,1 +1,1 @@
-#include "../../include/gui/FlightDataModel.h"
+#include "gui/FlightDataModel.h"
