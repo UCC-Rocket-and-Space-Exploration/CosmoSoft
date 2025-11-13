@@ -12,6 +12,11 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets)
+#file(GLOB_RECURSE SOURCES "src/*.cpp")
+#add_executable(cosmo-soft ${SOURCES})
+
+add_subdirectory(src)
+target_include_directories(cosmo-soft PRIVATE include)
 
 set(BACKEND_SOURCES
         src/flight/FlightCalculator.cpp
