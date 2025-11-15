@@ -11,9 +11,10 @@ set(CMAKE_AUTORCC ON)
 
 #file(GLOB_RECURSE SOURCES "src/*.cpp")
 #add_executable(cosmo-soft ${SOURCES})
+add_library(headers INTERFACE)
+target_include_directories(headers INTERFACE ${CMAKE_SOURCE_DIR}/include)
 
 add_subdirectory(src)
-target_include_directories(cosmo-soft PRIVATE include)
 
 set(BACKEND_SOURCES
         src/flight/FlightCalculator.cpp

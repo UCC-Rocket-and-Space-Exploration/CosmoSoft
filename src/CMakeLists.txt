@@ -7,6 +7,5 @@ add_subdirectory(gui)
 add_subdirectory(persistence)
 add_subdirectory(telemetry)
 
-target_include_directories(cosmo-soft PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
 
