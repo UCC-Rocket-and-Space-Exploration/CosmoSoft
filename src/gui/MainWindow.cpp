@@ -1,7 +1,12 @@
 #include "MainWindow.h"
+<<<<<<< HEAD
 #include "pages/DashboardPage.h"   // Live telemetry overview.
 #include "pages/SettingsPage.h"    // Placeholder for ground-station settings.
 #include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
+=======
+#include "pages/MonitoringPage.h"   // Live telemetry overview.
+#include "pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
+>>>>>>> 800aba1 (remove some pages)
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -322,6 +327,7 @@ void MainWindow::setupPages() {
 
     // Each page lives in its own QWidget subclass so logic stays modular.
     m_monitoringPage = new MonitoringPage(this);
+<<<<<<< HEAD
     if (m_monitoringPage) {
         connect(m_monitoringPage, &MonitoringPage::scanPortsRequested, this, [this]() {
             if (!m_portScanner) {
@@ -341,6 +347,8 @@ void MainWindow::setupPages() {
             // Hook up backend connection here when available.
         });
     }
+=======
+>>>>>>> 800aba1 (remove some pages)
     m_pages->addWidget(m_monitoringPage);
     m_pages->setCurrentWidget(m_monitoringPage);          // Default landing page.
 }

@@ -23,8 +23,12 @@ class QStackedWidget;
 class QTimer;
 class QWidget;
 
+<<<<<<< HEAD
 // MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked pages, and a chart demo).
 >>>>>>> f77beb0 (UI Skeleton)
+=======
+// MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked page, and settings entry point).
+>>>>>>> 800aba1 (remove some pages)
 class MainWindow : public QMainWindow {
     Q_OBJECT
 

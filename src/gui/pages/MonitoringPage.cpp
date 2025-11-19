@@ -6,7 +6,6 @@
 #include <QColor>
 #include <QDateTime>
 #include <QFrame>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
 #include <QPainter>
