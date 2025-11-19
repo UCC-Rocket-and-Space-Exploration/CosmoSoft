@@ -9,3 +9,4 @@ int main(int argc, char *argv[]) {
     button.show();
     return QApplication::exec();
 }
+

@@ -9,9 +9,12 @@ find_package(Qt6 COMPONENTS
         Widgets
         REQUIRED)
 
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-add_executable(cosmo-soft ${SOURCES})
-target_include_directories(cosmo-soft PRIVATE include)
+#file(GLOB_RECURSE SOURCES "src/*.cpp")
+#add_executable(cosmo-soft ${SOURCES})
+add_library(headers INTERFACE)
+target_include_directories(headers INTERFACE ${CMAKE_SOURCE_DIR}/include)
+
+add_subdirectory(src)
 
 target_link_libraries(cosmo-soft
         Qt::Core
