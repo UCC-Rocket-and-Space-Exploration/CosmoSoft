@@ -11,8 +11,6 @@ class QStackedWidget;
 class QTimer;
 class QWidget;
 class MonitoringPage;
-class FlightDataPage;
-class ChartPage;
 class SettingsPage;
 =======
 
@@ -23,7 +21,7 @@ class QTimer;
 class QWidget;
 >>>>>>> 1c03da1 (UI Skeleton)
 
-// MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked pages, and a chart demo).
+// MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked page, and settings entry point).
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -46,14 +44,10 @@ private:
     void updateMissionClock();  // Refresh the GMT label with the current UTC timestamp.
 
     QAction *m_showMonitoringAction = nullptr;
-    QAction *m_showFlightDataAction = nullptr;
-    QAction *m_showChartAction = nullptr;
     QAction *m_openSettingsAction = nullptr;
 
     QStackedWidget *m_pages = nullptr;
     MonitoringPage *m_monitoringPage = nullptr;
-    FlightDataPage *m_flightDataPage = nullptr;
-    ChartPage *m_chartPage = nullptr;
     SettingsPage *m_settingsWindow = nullptr;
 
     QLabel *m_missionMetaLabel = nullptr;   // Pointer to the GMT readout in the toolbar.

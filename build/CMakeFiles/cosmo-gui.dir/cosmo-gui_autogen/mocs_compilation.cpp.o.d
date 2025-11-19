@@ -1188,13 +1188,9 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qtmocconstants.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20algorithm.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q23type_traits.h \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/../../../include/gui/pages/ChartPage.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/moc_FlightDataPage.cpp \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/../../../include/gui/pages/FlightDataPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/../../../include/gui/pages/MonitoringPage.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/../../../include/gui/pages/SettingsPage.h
 =======

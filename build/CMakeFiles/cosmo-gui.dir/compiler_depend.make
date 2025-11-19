@@ -3585,6 +3585,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: /Users/glebslyusar/Desktop/UC
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qwidget.h
 
+<<<<<<< HEAD
 CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h \
@@ -6069,6 +6070,8 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: /Users/glebslyusar/D
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qwidget.h
 
+=======
+>>>>>>> 495a53e (remove some pages)
 CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h \
@@ -8609,6 +8612,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QPushButton:
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPaintEvent:
@@ -8662,15 +8666,30 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsview.h:
 
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstyle.h:
+
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h:
+
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qrubberband.h:
+
+>>>>>>> 495a53e (remove some pages)
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicslayoutitem.h:
 
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsitem.h:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QPushButton:
+
+>>>>>>> 495a53e (remove some pages)
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsWidget:
+
+/opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvalidator.h:
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qscreen.h:
 
@@ -8715,6 +8734,11 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+/opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPaintEvent:
+
+>>>>>>> 495a53e (remove some pages)
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush:
 
 =======
@@ -8777,9 +8801,13 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit)
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp:
+=======
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp:
+>>>>>>> 495a53e (remove some pages)
 
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtoolbutton.h:
 
@@ -9834,12 +9862,15 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QHeaderView:
 
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 495a53e (remove some pages)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/minmax.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_transform.h:
@@ -10445,12 +10476,15 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp:
 
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 495a53e (remove some pages)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__fwd/memory.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/for_each_segment.h:
@@ -11083,8 +11117,11 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtableview.h:
 
+=======
+>>>>>>> 495a53e (remove some pages)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_set_difference.h:
 
 =======
@@ -11532,6 +11569,7 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 <<<<<<< HEAD
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/ranges_sort.h:
 
+<<<<<<< HEAD
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGridLayout:
 =======
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_enum.h:
@@ -11546,6 +11584,8 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp:
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGridLayout:
 >>>>>>> cb12191 (logistic files commit)
 
+=======
+>>>>>>> 495a53e (remove some pages)
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/comp_ref_type.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__algorithm/adjacent_find.h:

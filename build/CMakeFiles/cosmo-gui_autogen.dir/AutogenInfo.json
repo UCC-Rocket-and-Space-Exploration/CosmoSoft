@@ -393,6 +393,7 @@
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Widgets/Qt6QMacStylePluginTargets-release.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Widgets/Qt6QMacStylePluginAdditionalTargetInfo.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Widgets/Qt6WidgetsVersionlessAliasTargets.cmake",
+<<<<<<< HEAD
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsConfigVersion.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsConfigVersionImpl.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsConfig.cmake",
@@ -451,6 +452,8 @@
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateVersionlessAliasTargets.cmake",
 <<<<<<< HEAD
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsVersionlessAliasTargets.cmake",
+=======
+>>>>>>> 495a53e (remove some pages)
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc"
 =======
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsVersionlessAliasTargets.cmake"
@@ -470,18 +473,6 @@
 <<<<<<< HEAD
 		],
 		[
-			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h",
-			"MU",
-			"2E3XLRTW7Z/moc_ChartPage.cpp",
-			null
-		],
-		[
-			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h",
-			"MU",
-			"2E3XLRTW7Z/moc_FlightDataPage.cpp",
-			null
-		],
-		[
 			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h",
 			"MU",
 			"2E3XLRTW7Z/moc_MonitoringPage.cpp",
@@ -499,16 +490,7 @@
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
 	"INCLUDE_DIR" : "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/include",
 	"MOC_COMPILATION_FILE" : "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/mocs_compilation.cpp",
-	"MOC_DEFINITIONS" : 
-	[
-		"QT_CHARTS_LIB",
-		"QT_CORE_LIB",
-		"QT_GUI_LIB",
-		"QT_NO_DEBUG",
-		"QT_OPENGLWIDGETS_LIB",
-		"QT_OPENGL_LIB",
-		"QT_WIDGETS_LIB"
-	],
+	"MOC_DEFINITIONS" : [ "QT_CORE_LIB", "QT_GUI_LIB", "QT_NO_DEBUG", "QT_WIDGETS_LIB" ],
 	"MOC_DEPEND_FILTERS" : 
 	[
 		[
@@ -527,12 +509,6 @@
 		"/opt/homebrew/opt/qt/lib/QtGui.framework",
 		"/opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers",
 		"/opt/homebrew/opt/qt/lib/QtWidgets.framework",
-		"/opt/homebrew/opt/qt/lib/QtCharts.framework/Headers",
-		"/opt/homebrew/opt/qt/lib/QtCharts.framework",
-		"/opt/homebrew/opt/qt/lib/QtOpenGL.framework/Headers",
-		"/opt/homebrew/opt/qt/lib/QtOpenGL.framework",
-		"/opt/homebrew/opt/qt/lib/QtOpenGLWidgets.framework/Headers",
-		"/opt/homebrew/opt/qt/lib/QtOpenGLWidgets.framework",
 		"/usr/local/include",
 		"/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1",
 		"/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include",
@@ -589,16 +565,6 @@
 			"MU",
 			null
 <<<<<<< HEAD
-		],
-		[
-			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp",
-			"MU",
-			null
-		],
-		[
-			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp",
-			"MU",
-			null
 		],
 		[
 			"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp",

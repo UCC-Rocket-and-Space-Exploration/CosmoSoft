@@ -1185,6 +1185,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit):build/CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o.d
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QComboBox \
@@ -1206,12 +1207,11 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qrubberband.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstractitemmodel.h \
+=======
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QColor \
+>>>>>>> 495a53e (remove some pages)
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QFrame \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QHBoxLayout \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qboxlayout.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayout.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayoutitem.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgridlayout.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QLabel \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlabel.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpicture.h \
@@ -1250,7 +1250,9 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication_platform.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qinputmethod.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qlocale.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h \
+<<<<<<< HEAD
 =======
 >>>>>>> cb12191 (logistic files commit):build/CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o.d
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QPushButton \
@@ -1328,3 +1330,11 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QValueAxis \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qvalueaxis.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtMath
+=======
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QPointF \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QVBoxLayout \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qboxlayout.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayout.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayoutitem.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgridlayout.h
+>>>>>>> 495a53e (remove some pages)

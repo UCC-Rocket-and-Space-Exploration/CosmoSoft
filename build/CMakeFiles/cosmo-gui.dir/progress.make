@@ -7,8 +7,11 @@ CMAKE_PROGRESS_5 = 19
 CMAKE_PROGRESS_6 = 20
 CMAKE_PROGRESS_7 = 21
 CMAKE_PROGRESS_8 = 22
+<<<<<<< HEAD
 CMAKE_PROGRESS_9 = 23
 CMAKE_PROGRESS_10 = 24
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> 495a53e (remove some pages)
 

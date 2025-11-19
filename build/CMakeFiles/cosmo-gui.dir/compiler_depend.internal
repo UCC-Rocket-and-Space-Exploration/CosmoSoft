@@ -3590,6 +3590,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qwidget.h
 
+<<<<<<< HEAD
 CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp
  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h
@@ -6077,6 +6078,8 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h
  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qwidget.h
 
+=======
+>>>>>>> 495a53e (remove some pages)
 CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp
  /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h

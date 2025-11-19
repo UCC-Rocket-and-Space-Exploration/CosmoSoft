@@ -1185,8 +1185,6 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/FlightDataPage.h \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QAction \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QActionGroup \

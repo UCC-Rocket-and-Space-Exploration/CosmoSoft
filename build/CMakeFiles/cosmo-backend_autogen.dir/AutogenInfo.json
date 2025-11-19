@@ -393,6 +393,7 @@
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Widgets/Qt6QMacStylePluginTargets-release.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Widgets/Qt6QMacStylePluginAdditionalTargetInfo.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Widgets/Qt6WidgetsVersionlessAliasTargets.cmake",
+<<<<<<< HEAD
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsConfigVersion.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsConfigVersionImpl.cmake",
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsConfig.cmake",
@@ -451,6 +452,8 @@
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6ChartsPrivate/Qt6ChartsPrivateVersionlessAliasTargets.cmake",
 <<<<<<< HEAD
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsVersionlessAliasTargets.cmake",
+=======
+>>>>>>> 495a53e (remove some pages)
 		"/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/resources.qrc"
 =======
 		"/opt/homebrew/opt/qt/lib/cmake/Qt6Charts/Qt6ChartsVersionlessAliasTargets.cmake"

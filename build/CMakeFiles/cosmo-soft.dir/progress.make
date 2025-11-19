@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 CMAKE_PROGRESS_1 = 26
 CMAKE_PROGRESS_2 = 27
 CMAKE_PROGRESS_3 = 28
@@ -7,4 +8,9 @@ CMAKE_PROGRESS_1 = 20
 CMAKE_PROGRESS_2 = 21
 CMAKE_PROGRESS_3 = 22
 >>>>>>> 1c03da1 (UI Skeleton)
+=======
+CMAKE_PROGRESS_1 = 24
+CMAKE_PROGRESS_2 = 25
+CMAKE_PROGRESS_3 = 26
+>>>>>>> 495a53e (remove some pages)
 
