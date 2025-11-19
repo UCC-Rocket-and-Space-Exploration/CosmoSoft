@@ -12,6 +12,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o.d"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o.d"
+  "CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o"
+  "CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o.d"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o.d"
   "CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o"

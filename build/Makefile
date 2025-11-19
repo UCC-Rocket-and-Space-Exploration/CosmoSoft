@@ -593,6 +593,30 @@ src/gui/pages/ChartPage.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.s
 .PHONY : src/gui/pages/ChartPage.cpp.s
 
+src/gui/pages/FlightDataPage.o: src/gui/pages/FlightDataPage.cpp.o
+.PHONY : src/gui/pages/FlightDataPage.o
+
+# target to build an object file
+src/gui/pages/FlightDataPage.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o
+.PHONY : src/gui/pages/FlightDataPage.cpp.o
+
+src/gui/pages/FlightDataPage.i: src/gui/pages/FlightDataPage.cpp.i
+.PHONY : src/gui/pages/FlightDataPage.i
+
+# target to preprocess a source file
+src/gui/pages/FlightDataPage.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.i
+.PHONY : src/gui/pages/FlightDataPage.cpp.i
+
+src/gui/pages/FlightDataPage.s: src/gui/pages/FlightDataPage.cpp.s
+.PHONY : src/gui/pages/FlightDataPage.s
+
+# target to generate assembly for a file
+src/gui/pages/FlightDataPage.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.s
+.PHONY : src/gui/pages/FlightDataPage.cpp.s
+
 src/gui/pages/MonitoringPage.o: src/gui/pages/MonitoringPage.cpp.o
 .PHONY : src/gui/pages/MonitoringPage.o
 
@@ -799,6 +823,9 @@ help:
 	@echo "... src/gui/pages/ChartPage.o"
 	@echo "... src/gui/pages/ChartPage.i"
 	@echo "... src/gui/pages/ChartPage.s"
+	@echo "... src/gui/pages/FlightDataPage.o"
+	@echo "... src/gui/pages/FlightDataPage.i"
+	@echo "... src/gui/pages/FlightDataPage.s"
 	@echo "... src/gui/pages/MonitoringPage.o"
 	@echo "... src/gui/pages/MonitoringPage.i"
 	@echo "... src/gui/pages/MonitoringPage.s"

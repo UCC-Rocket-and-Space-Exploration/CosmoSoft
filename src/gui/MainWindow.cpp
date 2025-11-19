@@ -1,7 +1,8 @@
 #include "MainWindow.h"
 #include "pages/MonitoringPage.h"   // Live telemetry overview.
-#include "pages/SettingsPage.h"    // Placeholder for ground-station settings.
+#include "pages/FlightDataPage.h"    // Placeholder for ground-station settings.
 #include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
+#include "pages/SettingsPage.h"       // Imaginary chart viewer until data is wired up.
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -11,6 +12,7 @@
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
+#include <QSize>
 #include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -47,11 +49,18 @@ void MainWindow::setupActions() {
     m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
     m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
 
-    m_showSettingsAction = new QAction(u"Flight Data"_s, this);
-    m_showSettingsAction->setToolTip(u"Switch to the flight data (settings placeholder) page."_s);
+    m_showFlightDataAction = new QAction(u"Flight Data"_s, this);
+    m_showFlightDataAction->setToolTip(u"Switch to the flight data page."_s);
 
     m_showChartAction = new QAction(u"Charts"_s, this);
     m_showChartAction->setToolTip(u"Switch to the charts page."_s);
+
+    QIcon settingsIcon;
+    settingsIcon.addFile(u":/icons/settings_button.png"_s, QSize(), QIcon::Normal, QIcon::Off);
+    settingsIcon.addFile(u":/icons/settings_button_black.png"_s, QSize(), QIcon::Normal, QIcon::On);
+    m_openSettingsAction = new QAction(settingsIcon, u"Settings"_s, this);
+    m_openSettingsAction->setToolTip(u"Open the settings window."_s);
+    m_openSettingsAction->setCheckable(true);
 
     // Each action simply points the stacked widget at the matching page.
     connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
@@ -59,14 +68,18 @@ void MainWindow::setupActions() {
         statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
     });
 
-    connect(m_showSettingsAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_settingsPage);
-        statusBar()->showMessage(u"Settings page selected."_s, 2000);
+    connect(m_showFlightDataAction, &QAction::triggered, this, [this]() {
+        m_pages->setCurrentWidget(m_flightDataPage);
+        statusBar()->showMessage(u"Flight data page selected."_s, 2000);
     });
 
     connect(m_showChartAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_chartPage);
         statusBar()->showMessage(u"Chart page selected."_s, 2000);
+    });
+
+    connect(m_openSettingsAction, &QAction::triggered, this, [this]() {
+        openSettingsWindow();
     });
 }
 
@@ -131,6 +144,21 @@ void MainWindow::setupToolbar() {
             border-color: rgba(255, 255, 255, 70);
             background-color: rgba(255, 255, 255, 0);
         }
+
+        QToolButton[kind="iconButton"] {
+            min-width: 30px;
+            min-height: 30px;
+            border: none;
+            background-color: transparent;
+        }
+
+        QToolButton[kind="iconButton"]:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        QToolButton[kind="iconButton"]:checked {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
     )"_s);
     addToolBar(Qt::TopToolBarArea, toolbar);
 
@@ -187,20 +215,28 @@ void MainWindow::setupToolbar() {
     // QActionGroup locks the nav buttons into a radio-group so only one destination can be “checked” at a time.
     auto *navGroup = new QActionGroup(this);
     navGroup->setExclusive(true);
-    for (auto *action : {m_showMonitoringAction, m_showSettingsAction, m_showChartAction}) {
+    for (auto *action : {m_showMonitoringAction, m_showFlightDataAction, m_showChartAction}) {
         action->setCheckable(true);
         navGroup->addAction(action);
     }
     m_showMonitoringAction->setChecked(true);
 
     // Helper to wrap each QAction inside a QToolButton; QMainWindow handles shortcuts/enable state automatically.
-    auto makeNavButton = [](QAction *action, QWidget *parent) {
+    auto makeNavButton = [](QAction *action,
+            QWidget *parent,
+            Qt::ToolButtonStyle style = Qt::ToolButtonTextOnly,
+            QString kind = u"navButton"_s,
+            QSize iconSize = QSize()) {
         auto *button = new QToolButton(parent);
-        button->setProperty("kind", u"navButton"_s);
+        button->setProperty("kind", kind);
         button->setAutoRaise(false);
         button->setCheckable(true);
         button->setCursor(Qt::PointingHandCursor);
         button->setDefaultAction(action);
+        button->setToolButtonStyle(style);
+        if (iconSize.isValid()) {
+            button->setIconSize(iconSize);
+        }
         return button;
     };
 
@@ -209,9 +245,9 @@ void MainWindow::setupToolbar() {
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(12);
     navLayout->addWidget(makeNavButton(m_showMonitoringAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_showSettingsAction, navContainer));
-
+    navLayout->addWidget(makeNavButton(m_showFlightDataAction, navContainer));
     navLayout->addWidget(makeNavButton(m_showChartAction, navContainer));
+    navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
 
     contentLayout->addWidget(navContainer);
 
@@ -281,14 +317,41 @@ void MainWindow::setupPages() {
 
     // Each page lives in its own QWidget subclass so logic stays modular.
     m_monitoringPage = new MonitoringPage(this);
-    m_settingsPage = new SettingsPage(this);
+    m_flightDataPage = new FlightDataPage(this);
     m_chartPage = new ChartPage(this);
 
     // Order determines indices; we keep all pages accessible via actions.
     m_pages->addWidget(m_monitoringPage);
-    m_pages->addWidget(m_settingsPage);
+    m_pages->addWidget(m_flightDataPage);
     m_pages->addWidget(m_chartPage);
     m_pages->setCurrentWidget(m_monitoringPage);          // Default landing page.
+}
+
+void MainWindow::openSettingsWindow() {
+    if (!m_openSettingsAction) {
+        return;
+    }
+
+    if (!m_settingsWindow) {
+        m_settingsWindow = new SettingsPage();
+        m_settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
+        m_settingsWindow->setWindowTitle(u"CosmoSoft Settings"_s);
+        m_settingsWindow->setWindowIcon(QIcon(u":/icons/settings_button.png"_s));
+        m_settingsWindow->resize(520, 600);
+
+        connect(m_settingsWindow, &QObject::destroyed, this, [this]() {
+            m_settingsWindow = nullptr;
+            if (m_openSettingsAction) {
+                m_openSettingsAction->setChecked(false);
+            }
+        });
+    }
+
+    m_settingsWindow->show();
+    m_settingsWindow->raise();
+    m_settingsWindow->activateWindow();
+    m_openSettingsAction->setChecked(true);
+    statusBar()->showMessage(u"Settings window opened."_s, 2000);
 }
 
 // Compute and inject the current local timestamp plus GMT offset into the mission meta label.

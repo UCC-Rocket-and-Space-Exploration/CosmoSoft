@@ -1216,6 +1216,33 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtextoption.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpen.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPaintEvent \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qevent.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreevent.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qbasictimer.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstracteventdispatcher.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qeventloop.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qdeadlinetimer.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qelapsedtimer.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qeventpoint.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvector2d.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvectornd.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpointingdevice.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qinputdevice.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qscreen.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QList \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QObject \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QRect \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QSize \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QSizeF \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QTransform \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qnativeinterface.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qscreen_platform.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication_platform.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qinputmethod.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QPushButton \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractbutton.h \
@@ -1233,37 +1260,11 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPen \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QVariant \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QObject \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QLegend \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qlegend.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsWidget \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicswidget.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicslayoutitem.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qevent.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreevent.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qbasictimer.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstracteventdispatcher.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qeventloop.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qdeadlinetimer.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qelapsedtimer.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qeventpoint.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvector2d.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvectornd.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpointingdevice.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qinputdevice.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qscreen.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QList \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QRect \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QSize \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QSizeF \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QTransform \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qnativeinterface.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qscreen_platform.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication_platform.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qinputmethod.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsitem.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpainterpath.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QMargins \

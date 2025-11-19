@@ -76,6 +76,8 @@ cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /Users/glebslyusar/Desktop/UCC/R
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/images/Logo.png
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/fonts/Workbench-Regular.ttf
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/fonts/RedHatMono-Regular.ttf
+cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/icons/settings_button_black.png
+cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/assets/icons/settings_button.png
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /opt/homebrew/opt/qt/share/qt/libexec/rcc
 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp: /opt/homebrew/opt/qt/share/qt/libexec/rcc
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Automatic RCC for assets/resources.qrc"
@@ -140,10 +142,24 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp -o CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.s
 
+CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o: CMakeFiles/cosmo-gui.dir/flags.make
+CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp
+CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o: CMakeFiles/cosmo-gui.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o -MF CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o.d -o CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o -c /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp
+
+CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp > CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.i
+
+CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp -o CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.s
+
 CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: CMakeFiles/cosmo-gui.dir/flags.make
 CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp
 CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: CMakeFiles/cosmo-gui.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o -MF CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o.d -o CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o -c /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp
 
 CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.i: cmake_force
@@ -157,7 +173,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.s: cmake_force
 CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o: CMakeFiles/cosmo-gui.dir/flags.make
 CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp
 CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o: CMakeFiles/cosmo-gui.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o -MF CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o.d -o CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o -c /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp
 
 CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.i: cmake_force
@@ -171,7 +187,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.s: cmake_force
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o: CMakeFiles/cosmo-gui.dir/flags.make
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o: cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o: CMakeFiles/cosmo-gui.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o -MF CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o.d -o CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o -c /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
 
 CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.i: cmake_force
@@ -188,6 +204,7 @@ cosmo__gui_OBJECTS = \
 "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o" \
 "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o" \
 "CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o" \
+"CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o" \
 "CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o" \
 "CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o" \
 "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o"
@@ -199,12 +216,13 @@ libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.
 libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o
 libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o
 libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
+libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o
 libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o
 libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o
 libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp.o
 libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/build.make
 libcosmo-gui.a: CMakeFiles/cosmo-gui.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking CXX static library libcosmo-gui.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Linking CXX static library libcosmo-gui.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/cosmo-gui.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/cosmo-gui.dir/link.txt --verbose=$(VERBOSE)
 
