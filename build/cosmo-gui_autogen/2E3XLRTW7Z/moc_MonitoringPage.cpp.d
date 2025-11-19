@@ -1,4 +1,4 @@
-/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/moc_DashboardPage.cpp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h \
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/moc_predefs.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h \

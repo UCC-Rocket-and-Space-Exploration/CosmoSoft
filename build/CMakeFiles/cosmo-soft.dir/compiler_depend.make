@@ -1029,6 +1029,7 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDebug \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QResource \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QStringList \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q17memory.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20functional.h \
@@ -1420,6 +1421,8 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/Cos
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20functional.h:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QStringList:
+
+/opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString:
 
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h:
 

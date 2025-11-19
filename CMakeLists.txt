@@ -47,12 +47,12 @@ target_compile_features(cosmo-backend PUBLIC cxx_std_20)
 
 set(GUI_SOURCES
         include/gui/MainWindow.h
-        include/gui/pages/DashboardPage.h
+        include/gui/pages/MonitoringPage.h
         include/gui/pages/SettingsPage.h
         include/gui/pages/ChartPage.h
         src/gui/FlightDataModel.cpp
         src/gui/MainWindow.cpp
-        src/gui/pages/DashboardPage.cpp
+        src/gui/pages/MonitoringPage.cpp
         src/gui/pages/SettingsPage.cpp
         src/gui/pages/ChartPage.cpp
         assets/resources.qrc
