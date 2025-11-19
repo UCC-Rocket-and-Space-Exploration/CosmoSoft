@@ -3,7 +3,7 @@
 
 #include <QWidget>
 
-// SettingsPage demonstrates forms for configuring comms and appearance preferences.
+// FlightDataPage demonstrates forms for configuring comms and appearance preferences.
 class SettingsPage : public QWidget {
     Q_OBJECT
 

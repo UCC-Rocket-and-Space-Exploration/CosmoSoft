@@ -8,4 +8,8 @@
         <file alias="RedHatMono-Regular.ttf">fonts/RedHatMono-Regular.ttf</file>
         <file alias="Workbench-Regular.ttf">fonts/Workbench-Regular.ttf</file>
     </qresource>
+    <qresource prefix="/icons">
+        <file alias="settings_button.png">icons/settings_button.png</file>
+        <file alias="settings_button_black.png">icons/settings_button_black.png</file>
+    </qresource>
 </RCC>

@@ -10,8 +10,9 @@ class QStackedWidget;
 class QTimer;
 class QWidget;
 class MonitoringPage;
-class SettingsPage;
+class FlightDataPage;
 class ChartPage;
+class SettingsPage;
 
 // MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked pages, and a chart demo).
 class MainWindow : public QMainWindow {
@@ -27,16 +28,19 @@ private:
     void setupToolbar();     // Build the visible toolbar with skeleton buttons.
     void setupDataBar();     // Create the thin telemetry strip that sits under the toolbar.
     void setupPages();       // Construct the stacked pages that behave like separate windows.
+    void openSettingsWindow(); // Launch the detached settings window.
     void updateMissionClock();  // Refresh the GMT label with the current UTC timestamp.
 
     QAction *m_showMonitoringAction = nullptr;
-    QAction *m_showSettingsAction = nullptr;
+    QAction *m_showFlightDataAction = nullptr;
     QAction *m_showChartAction = nullptr;
+    QAction *m_openSettingsAction = nullptr;
 
     QStackedWidget *m_pages = nullptr;
     MonitoringPage *m_monitoringPage = nullptr;
-    SettingsPage *m_settingsPage = nullptr;
+    FlightDataPage *m_flightDataPage = nullptr;
     ChartPage *m_chartPage = nullptr;
+    SettingsPage *m_settingsWindow = nullptr;
 
     QLabel *m_missionMetaLabel = nullptr;   // Pointer to the GMT readout in the toolbar.
     QTimer *m_missionClockTimer = nullptr;  // Ticks every second to update the UTC timestamp.
