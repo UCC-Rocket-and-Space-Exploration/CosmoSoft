@@ -5,7 +5,7 @@
 
 class SerialPortScannerFactory {
 public:
-    static ISerialPortScanner createSerialPortScanner();
+    static ISerialPortScanner* createSerialPortScanner();
 };
 
 

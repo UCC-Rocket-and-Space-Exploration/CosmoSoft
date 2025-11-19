@@ -13,14 +13,14 @@ struct Acceleration {
 };
 
 struct Coordinates {
-    double longitude, latitude;
+    double latitude, longitude;
 };
 
 struct FlightSample {
     long timestamp; //milliseconds from epoch
     double Rssi;
     AngularVelocity angularVelocity;
-    Acceleration linearVelocity;
+    Acceleration acceleration;
     Coordinates coordinates;
     double altitude;
     double pressure;

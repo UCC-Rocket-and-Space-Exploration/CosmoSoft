@@ -15,7 +15,7 @@ public:
 
     //Blocking write function
     // uint8_t* data: pointer to the start of a block of unsigned 8-bit integers (serial port streams operate on a per-byte basis)
-    // size_t sze: how many bytes to write starting from the pointer as an unsigned long
+    // size_t size: how many bytes to write starting from the pointer as an unsigned long
     // returns a signed long of the amount of data written
     virtual ssize_t write(const uint8_t* data, size_t size) = 0;
 
