@@ -2,7 +2,6 @@
 #define COSMO_SOFT_SERIALWORKER_H
 #include <functional>
 #include <thread>
-
 #include "IComms.h"
 #include "ISerialPortScanner.h"
 
@@ -22,12 +21,14 @@ public:
     void setErrorCallback(ErrorCallback callback);
 
 private:
+    void run();
+
     std::thread m_workerThread;
-    std::atomic<bool> running_;
+    std::atomic<bool> m_running;
     IComms* m_connectedPort;
     ISerialPortScanner* m_scanner;
     DataCallback m_onData;
-    ErrorCallback onError;
+    ErrorCallback m_onError;
 };
 
 
