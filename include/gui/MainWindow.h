@@ -13,6 +13,19 @@ class MonitoringPage;
 class SettingsPage;
 
 // MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked page, and settings entry point).
+<<<<<<< HEAD
+=======
+
+class QAction;
+class QLabel;
+class QStackedWidget;
+class QTimer;
+class QWidget;
+
+// MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked pages, and a chart demo).
+>>>>>>> 1c03da1 (UI Skeleton)
+=======
+>>>>>>> 495a53e (remove some pages)
 class MainWindow : public QMainWindow {
     Q_OBJECT
 

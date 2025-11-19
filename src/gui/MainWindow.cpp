@@ -1,6 +1,14 @@
 #include "MainWindow.h"
 #include "pages/MonitoringPage.h"   // Live telemetry overview.
 #include "pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
+<<<<<<< HEAD
+=======
+#include "pages/DashboardPage.h"   // Live telemetry overview.
+#include "pages/SettingsPage.h"    // Placeholder for ground-station settings.
+#include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
+>>>>>>> cb12191 (logistic files commit)
+=======
+>>>>>>> 495a53e (remove some pages)
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
