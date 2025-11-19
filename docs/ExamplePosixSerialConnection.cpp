@@ -17,7 +17,7 @@ std::vector<std::string> enumerate_ports() {
     const char* patterns[] = {
         "/dev/ttyUSB*",   // Linux USB-to-serial (what we likely need)
         "/dev/ttyACM*",   // Linux CDC-ACM devices (e.g. Arduino)
-        "/dev/ttyS*",     // Linux legacy serial
+        //"/dev/ttyS*",     // Linux legacy serial
         "/dev/pts/*",     // PTYs created by socat (For general testing
     };
 
@@ -37,7 +37,7 @@ std::vector<std::string> enumerate_ports() {
 }
 
 void show_stat(const std::string &path) {
-    struct stat st;
+    struct stat st{};
     std::chrono::seconds secs = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch());
     if (stat(path.c_str(), &st) == 0) {
         std::cout << path
@@ -60,7 +60,7 @@ int try_open(const std::string &path) {
     if (fd < 0) return -1; // failed to open
 
     // Configure termios for raw mode so kernal doesnt
-    struct termios tty;
+    termios tty;
     if (tcgetattr(fd, &tty) != 0) { close(fd); return -1; }
     cfmakeraw(&tty);             // disables canonical mode, echo, signals
     cfsetospeed(&tty, B115200);  // output baud (we are using 115200 baud rate )
@@ -82,7 +82,7 @@ void read_loop(int fd) {
         int r = poll(&pfd, 1, -1); // block until data
         if (r > 0) {
             if (pfd.revents & POLLIN) {
-                unsigned char buf[1024];
+                uint8_t buf[1024];
                 ssize_t n = read(fd, buf, sizeof(buf)); //read from fd into the buffer all possible bytes
                 if (n > 0) { //while there is still data in the buffer
                     std::cout << "Received " << n << " bytes: ";
@@ -97,6 +97,8 @@ void read_loop(int fd) {
             if (pfd.revents & POLLERR) { //general error, typically a problem with the code itself (inc. frame errors, line errors
                 std::cerr << "Serial port error!\n";
             }
+
+
             if (pfd.revents & POLLHUP) { //fires if a disconnect happens without explicit closing
                 std::cerr << "Serial port disconnected (HUP)!\n";
                 break; // or handle reconnect
@@ -105,6 +107,7 @@ void read_loop(int fd) {
                 std::cerr << "Peer closed connection (RDHUP)\n";
                 break;
             }
+            //if ()
         }
 
     }
@@ -123,16 +126,24 @@ int main() {
 
     int fd = -1;
     std::string chosen;
+
+    std::cout << "\nReadable Ports:\n";
     for (auto &p : ports) {
         int tryfd = try_open(p);
         if (tryfd >= 0) { fd = tryfd; chosen = p;
-            std::cout << "Port \"" << chosen << "\" readable!!! \n";
+            std::cout << "Port \"" << chosen << "\"\n";
         }
     }
 
+    std::cout << "\nChoose Port:\n";
+    std::cin >> chosen;
+    fd = try_open(chosen);
+    std::cout << "Connecting to port \"" << chosen << "\"...\n";
     if (fd < 0) {
-        std::cerr << "Could not open any candidate device. Check permissions or run socat.\n";
+        std::cerr << "Could not open the candidate device. Check permissions or run socat.\n";
         return 1;
+    } else {
+        std::cout << "Connected to port \"" << chosen << "\"\n";
     }
 
     read_loop(fd);

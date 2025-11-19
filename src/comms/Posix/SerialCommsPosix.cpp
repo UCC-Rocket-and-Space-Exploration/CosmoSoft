@@ -29,13 +29,15 @@ bool SerialCommsPosix::open() {
 }
 
 void SerialCommsPosix::close() {
-    if (m_fd >= 0) {
-        m_fd = ::close(m_fd);
+    if (m_fd > 0) {
+        ::close(m_fd);
+        m_fd = -1;
     }
+
 }
 
 bool SerialCommsPosix::isOpen() const {
-    return m_fd >= 0;
+    return m_fd > 0;
 }
 
 ssize_t SerialCommsPosix::write(const uint8_t *data, size_t size) {
@@ -47,11 +49,11 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
     pfd.fd = m_fd;
     pfd.events = POLLIN | POLLERR | POLLHUP | POLLRDHUP;
 
-    while (true) {
+    while (isOpen()) {
         int data = poll(&pfd, 1, -1); // block until data
         if (data > 0) {
             if (pfd.revents & POLLIN) { //when there is data to be read
-                const ssize_t n = ::read(m_fd, buffer, sizeof(buffer)); //read from fd into the buffer all possible bytes
+                const ssize_t n = ::read(m_fd, buffer, maxSize); //read from fd into the buffer all possible bytes
                 return n;
             }
             if (pfd.revents & POLLERR) { //general error, typically a problem with the code itself (inc. frame errors, line errors)
