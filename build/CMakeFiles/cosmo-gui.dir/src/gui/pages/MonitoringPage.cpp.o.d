@@ -1,6 +1,6 @@
-CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/DashboardPage.cpp \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h \
+CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: \
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp \
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qwidget.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
@@ -1179,6 +1179,11 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qsizepolicy.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qcursor.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qbitmap.h \
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QComboBox \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qcombobox.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractitemdelegate.h \
@@ -1191,7 +1196,6 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractslider.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstyle.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabbar.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qrubberband.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstractitemmodel.h \
@@ -1211,6 +1215,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpainter.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qtextoption.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpen.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QPushButton \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractbutton.h \
@@ -1261,7 +1266,6 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsitem.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpainterpath.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QBrush \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QMargins \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QChartView \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qchartview.h \

@@ -1202,4 +1202,5 @@ CMakeFiles/cosmo-soft.dir/src/main.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontinfo.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qfontvariableaxis.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qsizepolicy.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString

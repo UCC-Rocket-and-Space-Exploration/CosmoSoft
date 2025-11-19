@@ -1027,13 +1027,14 @@ CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o: cosmo-gui_aut
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stddef.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h \
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h \
   cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp \
-  cosmo-gui_autogen/2E3XLRTW7Z/moc_DashboardPage.cpp \
+  cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp \
   cosmo-gui_autogen/2E3XLRTW7Z/moc_SettingsPage.cpp \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   cosmo-gui_autogen/BMPI5EA7AM/moc_MainWindow.cpp \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q17memory.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20algorithm.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20functional.h \
@@ -3177,9 +3178,10 @@ CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o: /Users/glebslyusar/Desktop/UC
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/ChartPage.h \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h \
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
   /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/SettingsPage.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QDateTime \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QTimer \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QVariant \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtGlobal \
@@ -4652,7 +4654,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o: /Users/glebslyusar/Deskt
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qwidget.h
 
-CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/DashboardPage.cpp \
+CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/Availability.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternal.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/AvailabilityInternalLegacy.h \
@@ -5675,7 +5677,8 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: /Users/glebslyusar/D
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdbool.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stddef.h \
   /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/stdint.h \
-  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h \
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h \
+  /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QAbstractAxis \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QAbstractSeries \
   /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QChart \
@@ -5702,6 +5705,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: /Users/glebslyusar/D
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QRect \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QSize \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QSizeF \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QVariant \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtMath \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q17memory.h \
@@ -5898,6 +5902,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: /Users/glebslyusar/D
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsWidget \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QHBoxLayout \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QLabel \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QMainWindow \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QPushButton \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QVBoxLayout \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QWidget \
@@ -5918,6 +5923,7 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o: /Users/glebslyusar/D
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlabel.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayout.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayoutitem.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qrubberband.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h \
@@ -7154,6 +7160,8 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvalidator.h:
 
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp:
+
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h:
 
 /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsview.h:
@@ -7466,13 +7474,15 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o: /Users/glebslyusar/De
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/q20functional.h:
 
+/opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString:
+
 cosmo-gui_autogen/BMPI5EA7AM/moc_MainWindow.cpp:
 
 /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/MainWindow.h:
 
-cosmo-gui_autogen/2E3XLRTW7Z/moc_DashboardPage.cpp:
-
 cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
+
+/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/MonitoringPage.h:
 
 /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qstringmatcher.h:
 
@@ -7669,8 +7679,6 @@ cosmo-gui_autogen/2E3XLRTW7Z/moc_ChartPage.cpp:
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/nl_types.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/math.h:
-
-/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/include/gui/pages/DashboardPage.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/malloc/_ptrcheck.h:
 
@@ -8604,6 +8612,8 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__functional/bind_front.h:
 
+cosmo-gui_autogen/2E3XLRTW7Z/moc_MonitoringPage.cpp:
+
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/__stddef_offsetof.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/detected_or.h:
@@ -8939,8 +8949,6 @@ cosmo-gui_autogen/mocs_compilation.cpp:
 /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/__stdarg_header_macro.h:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__functional/mem_fun_ref.h:
-
-/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/DashboardPage.cpp:
 
 /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__type_traits/is_pod.h:
 

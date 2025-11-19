@@ -593,29 +593,29 @@ src/gui/pages/ChartPage.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.s
 .PHONY : src/gui/pages/ChartPage.cpp.s
 
-src/gui/pages/DashboardPage.o: src/gui/pages/DashboardPage.cpp.o
-.PHONY : src/gui/pages/DashboardPage.o
+src/gui/pages/MonitoringPage.o: src/gui/pages/MonitoringPage.cpp.o
+.PHONY : src/gui/pages/MonitoringPage.o
 
 # target to build an object file
-src/gui/pages/DashboardPage.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.o
-.PHONY : src/gui/pages/DashboardPage.cpp.o
+src/gui/pages/MonitoringPage.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o
+.PHONY : src/gui/pages/MonitoringPage.cpp.o
 
-src/gui/pages/DashboardPage.i: src/gui/pages/DashboardPage.cpp.i
-.PHONY : src/gui/pages/DashboardPage.i
+src/gui/pages/MonitoringPage.i: src/gui/pages/MonitoringPage.cpp.i
+.PHONY : src/gui/pages/MonitoringPage.i
 
 # target to preprocess a source file
-src/gui/pages/DashboardPage.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.i
-.PHONY : src/gui/pages/DashboardPage.cpp.i
+src/gui/pages/MonitoringPage.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.i
+.PHONY : src/gui/pages/MonitoringPage.cpp.i
 
-src/gui/pages/DashboardPage.s: src/gui/pages/DashboardPage.cpp.s
-.PHONY : src/gui/pages/DashboardPage.s
+src/gui/pages/MonitoringPage.s: src/gui/pages/MonitoringPage.cpp.s
+.PHONY : src/gui/pages/MonitoringPage.s
 
 # target to generate assembly for a file
-src/gui/pages/DashboardPage.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/DashboardPage.cpp.s
-.PHONY : src/gui/pages/DashboardPage.cpp.s
+src/gui/pages/MonitoringPage.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.s
+.PHONY : src/gui/pages/MonitoringPage.cpp.s
 
 src/gui/pages/SettingsPage.o: src/gui/pages/SettingsPage.cpp.o
 .PHONY : src/gui/pages/SettingsPage.o
@@ -799,9 +799,9 @@ help:
 	@echo "... src/gui/pages/ChartPage.o"
 	@echo "... src/gui/pages/ChartPage.i"
 	@echo "... src/gui/pages/ChartPage.s"
-	@echo "... src/gui/pages/DashboardPage.o"
-	@echo "... src/gui/pages/DashboardPage.i"
-	@echo "... src/gui/pages/DashboardPage.s"
+	@echo "... src/gui/pages/MonitoringPage.o"
+	@echo "... src/gui/pages/MonitoringPage.i"
+	@echo "... src/gui/pages/MonitoringPage.s"
 	@echo "... src/gui/pages/SettingsPage.o"
 	@echo "... src/gui/pages/SettingsPage.i"
 	@echo "... src/gui/pages/SettingsPage.s"
