@@ -12,8 +12,6 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/cosmo-gui_autogen/mocs_compilation.cpp" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/cosmo-gui_autogen/mocs_compilation.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/FlightDataModel.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/FlightDataModel.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/MainWindow.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/MainWindow.cpp.o.d"
-  "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/ChartPage.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/pages/ChartPage.cpp.o.d"
-  "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/FlightDataPage.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/pages/FlightDataPage.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/MonitoringPage.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o.d"
   "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/src/gui/pages/SettingsPage.cpp" "CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o" "gcc" "CMakeFiles/cosmo-gui.dir/src/gui/pages/SettingsPage.cpp.o.d"
   )

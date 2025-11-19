@@ -113,10 +113,7 @@ cosmo-soft: CMakeFiles/cosmo-soft.dir/src/main.cpp.o
 cosmo-soft: CMakeFiles/cosmo-soft.dir/build.make
 cosmo-soft: libcosmo-gui.a
 cosmo-soft: libcosmo-backend.a
-cosmo-soft: /opt/homebrew/opt/qt/lib/QtCharts.framework/Versions/A/QtCharts
-cosmo-soft: /opt/homebrew/opt/qt/lib/QtOpenGLWidgets.framework/Versions/A/QtOpenGLWidgets
 cosmo-soft: /opt/homebrew/opt/qt/lib/QtWidgets.framework/Versions/A/QtWidgets
-cosmo-soft: /opt/homebrew/opt/qt/lib/QtOpenGL.framework/Versions/A/QtOpenGL
 cosmo-soft: /opt/homebrew/opt/qt/lib/QtGui.framework/Versions/A/QtGui
 cosmo-soft: /opt/homebrew/opt/qt/lib/QtCore.framework/Versions/A/QtCore
 cosmo-soft: CMakeFiles/cosmo-soft.dir/link.txt

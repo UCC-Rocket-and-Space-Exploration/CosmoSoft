@@ -1184,27 +1184,9 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qmainwindow.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabwidget.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QString \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QComboBox \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qcombobox.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractitemdelegate.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstyleoption.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qlocale.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractspinbox.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qvalidator.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qregularexpression.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qslider.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractslider.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qstyle.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qtabbar.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qrubberband.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qabstractitemmodel.h \
+  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QColor \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QFrame \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QHBoxLayout \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qboxlayout.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayout.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayoutitem.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgridlayout.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qframe.h \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QLabel \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlabel.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpicture.h \
@@ -1242,44 +1224,11 @@ CMakeFiles/cosmo-gui.dir/src/gui/pages/MonitoringPage.cpp.o: \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication.h \
   /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qcoreapplication_platform.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qinputmethod.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/qlocale.h \
   /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qguiapplication_platform.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QPushButton \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qpushbutton.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractbutton.h \
+  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QPointF \
   /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QVBoxLayout \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QChart \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qchart.h \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QAbstractSeries \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qabstractseries.h \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QChartGlobal \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qchartglobal.h \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qtcharts-config.h \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qtchartsexports.h \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QAbstractAxis \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qabstractaxis.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QPen \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QFont \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QVariant \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QLegend \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qlegend.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsWidget \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicswidget.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicslayoutitem.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsitem.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/qpainterpath.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QMargins \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QChartView \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qchartview.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/QGraphicsView \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsview.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qscrollarea.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qabstractscrollarea.h \
-  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgraphicsscene.h \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QLineSeries \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qlineseries.h \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QXYSeries \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qxyseries.h \
-  /opt/homebrew/opt/qt/lib/QtGui.framework/Headers/QImage \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/QValueAxis \
-  /opt/homebrew/opt/qt/lib/QtCharts.framework/Headers/qvalueaxis.h \
-  /opt/homebrew/opt/qt/lib/QtCore.framework/Headers/QtMath
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qboxlayout.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayout.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qlayoutitem.h \
+  /opt/homebrew/opt/qt/lib/QtWidgets.framework/Headers/qgridlayout.h

@@ -1,8 +1,6 @@
 #include "MainWindow.h"
 #include "pages/MonitoringPage.h"   // Live telemetry overview.
-#include "pages/FlightDataPage.h"    // Placeholder for ground-station settings.
-#include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
-#include "pages/SettingsPage.h"       // Imaginary chart viewer until data is wired up.
+#include "pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -49,12 +47,6 @@ void MainWindow::setupActions() {
     m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
     m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
 
-    m_showFlightDataAction = new QAction(u"Flight Data"_s, this);
-    m_showFlightDataAction->setToolTip(u"Switch to the flight data page."_s);
-
-    m_showChartAction = new QAction(u"Charts"_s, this);
-    m_showChartAction->setToolTip(u"Switch to the charts page."_s);
-
     QIcon settingsIcon;
     settingsIcon.addFile(u":/icons/settings_button.png"_s, QSize(), QIcon::Normal, QIcon::Off);
     settingsIcon.addFile(u":/icons/settings_button_black.png"_s, QSize(), QIcon::Normal, QIcon::On);
@@ -66,16 +58,6 @@ void MainWindow::setupActions() {
     connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_monitoringPage);
         statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
-    });
-
-    connect(m_showFlightDataAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_flightDataPage);
-        statusBar()->showMessage(u"Flight data page selected."_s, 2000);
-    });
-
-    connect(m_showChartAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_chartPage);
-        statusBar()->showMessage(u"Chart page selected."_s, 2000);
     });
 
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() {
@@ -215,10 +197,8 @@ void MainWindow::setupToolbar() {
     // QActionGroup locks the nav buttons into a radio-group so only one destination can be “checked” at a time.
     auto *navGroup = new QActionGroup(this);
     navGroup->setExclusive(true);
-    for (auto *action : {m_showMonitoringAction, m_showFlightDataAction, m_showChartAction}) {
-        action->setCheckable(true);
-        navGroup->addAction(action);
-    }
+    m_showMonitoringAction->setCheckable(true);
+    navGroup->addAction(m_showMonitoringAction);
     m_showMonitoringAction->setChecked(true);
 
     // Helper to wrap each QAction inside a QToolButton; QMainWindow handles shortcuts/enable state automatically.
@@ -245,8 +225,6 @@ void MainWindow::setupToolbar() {
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(12);
     navLayout->addWidget(makeNavButton(m_showMonitoringAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_showFlightDataAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_showChartAction, navContainer));
     navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
 
     contentLayout->addWidget(navContainer);
@@ -317,13 +295,7 @@ void MainWindow::setupPages() {
 
     // Each page lives in its own QWidget subclass so logic stays modular.
     m_monitoringPage = new MonitoringPage(this);
-    m_flightDataPage = new FlightDataPage(this);
-    m_chartPage = new ChartPage(this);
-
-    // Order determines indices; we keep all pages accessible via actions.
     m_pages->addWidget(m_monitoringPage);
-    m_pages->addWidget(m_flightDataPage);
-    m_pages->addWidget(m_chartPage);
     m_pages->setCurrentWidget(m_monitoringPage);          // Default landing page.
 }
 

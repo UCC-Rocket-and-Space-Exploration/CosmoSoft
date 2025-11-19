@@ -1,20 +1,14 @@
 #include "pages/MonitoringPage.h"
 #include "MainWindow.h"
 
-#include <QComboBox>
+#include <QColor>
 #include <QFrame>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
 #include <QBrush>
 #include <QPaintEvent>
-#include <QPushButton>
+#include <QPointF>
 #include <QVBoxLayout>
-#include <QtCharts/QChart>
-#include <QtCharts/QChartView>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QValueAxis>
-#include <QtMath>
 
 using namespace Qt::StringLiterals;
 
