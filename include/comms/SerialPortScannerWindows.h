@@ -1,8 +1,12 @@
 #ifndef COSMO_SOFT_SERIALPORTSCANNERWINDOWS_H
 #define COSMO_SOFT_SERIALPORTSCANNERWINDOWS_H
 
+#include "ISerialPortScanner.h"
 
-class SerialPortScannerWindows {
+class SerialPortScannerWindows : public ISerialPortScanner {
+public:
+    std::vector<std::string> enumeratePorts() override { return {}; }
+    bool tryOpenPort(const std::string &) override { return false; }
 };
 
 

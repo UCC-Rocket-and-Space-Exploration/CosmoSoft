@@ -11,21 +11,9 @@ class QTimer;
 class QWidget;
 class MonitoringPage;
 class SettingsPage;
+class ISerialPortScanner;
 
 // MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked page, and settings entry point).
-<<<<<<< HEAD
-=======
-
-class QAction;
-class QLabel;
-class QStackedWidget;
-class QTimer;
-class QWidget;
-
-// MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked pages, and a chart demo).
->>>>>>> 1c03da1 (UI Skeleton)
-=======
->>>>>>> 495a53e (remove some pages)
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -55,6 +43,8 @@ private:
     QWidget *m_dataBar = nullptr;           // Thin strip shown under the toolbar.
     QLabel *m_dataLinkStatusLabel = nullptr;
     QLabel *m_dataRateLabel = nullptr;
+
+    ISerialPortScanner *m_portScanner = nullptr; // Owned by factory; lifetime for app run.
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

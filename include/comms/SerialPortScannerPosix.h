@@ -4,7 +4,7 @@
 #include "ISerialPortScanner.h"
 
 //TODO
-class SerialPortScannerPosix : ISerialPortScanner {
+class SerialPortScannerPosix : public ISerialPortScanner {
 public:
     std::vector<std::string> enumeratePorts() override;
 
@@ -13,5 +13,5 @@ public:
 };
 
 
-#endif //Posix Check
+#endif //LINUX
 #endif //COSMO_SOFT_SERIALPORTSCANNERPOSIX_H

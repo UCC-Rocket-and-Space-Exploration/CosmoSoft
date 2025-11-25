@@ -1,10 +1,11 @@
 #include <QApplication>
 #include <QFont>
 #include <QFontDatabase>
-#include <QStringList>
 #include <QDebug>
 #include <QResource>
-#include "MainWindow.h"   // Our custom UI shell with toolbar, stacked pages, and a demo chart.
+#include <QStringList>
+
+#include "MainWindow.h"   // Our custom UI shell with toolbar and stacked pages.
 
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);

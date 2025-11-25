@@ -11,16 +11,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets)
-#file(GLOB_RECURSE SOURCES "src/*.cpp")
-#add_executable(cosmo-soft ${SOURCES})
-add_library(headers INTERFACE)
-target_include_directories(headers INTERFACE ${CMAKE_SOURCE_DIR}/include)
-
-add_subdirectory(src)
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts)
-find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets)
-
 set(BACKEND_SOURCES
         src/flight/FlightCalculator.cpp
         src/comms/SerialPortScannerPosix.cpp
@@ -38,6 +29,7 @@ set(BACKEND_SOURCES
 add_library(cosmo-backend STATIC ${BACKEND_SOURCES})
 target_include_directories(cosmo-backend
         PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/comms>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/flight>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/persistence>
@@ -63,6 +55,7 @@ set(GUI_SOURCES
 add_library(cosmo-gui STATIC ${GUI_SOURCES})
 target_include_directories(cosmo-gui
         PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/gui>
         $<INSTALL_INTERFACE:include/gui>
 )
@@ -71,16 +64,7 @@ target_link_libraries(cosmo-gui
         Qt::Core
         Qt::Gui
         Qt::Widgets
-)
-target_compile_features(cosmo-gui PUBLIC cxx_std_20)
-
-add_executable(cosmo-soft
-        src/main.cpp
-)
-target_link_libraries(cosmo-soft
-        PRIVATE
-        cosmo-gui
-        cosmo-backend
+        Qt::Charts
 )
 target_compile_features(cosmo-gui PUBLIC cxx_std_20)
 

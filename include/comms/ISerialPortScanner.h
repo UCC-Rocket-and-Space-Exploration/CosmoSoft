@@ -11,14 +11,9 @@ class ISerialPortScanner {
 protected:
     ~ISerialPortScanner() = default;
 
-public:
-    //virtual ~ISerialPortScanner() = default;
+    virtual std::vector<std::string> enumeratePorts() = 0;
 
-    virtual std::vector<std::string> enumeratePorts();
-
-    virtual bool tryOpenPort(const std::string& portName);
-private:
-
+    virtual bool tryOpenPort(const std::string& portName) = 0;
 };
 
 

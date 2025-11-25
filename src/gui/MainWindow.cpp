@@ -1,14 +1,8 @@
 #include "MainWindow.h"
 #include "pages/MonitoringPage.h"   // Live telemetry overview.
-#include "pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
-<<<<<<< HEAD
-=======
-#include "pages/DashboardPage.h"   // Live telemetry overview.
-#include "pages/SettingsPage.h"    // Placeholder for ground-station settings.
-#include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> 495a53e (remove some pages)
+#include "pages/SettingsPage.h"     // Settings dialog decoupled from the stacked widget.
+#include "comms/SerialPortScannerFactory.h"
+
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -35,11 +29,12 @@ using namespace Qt::StringLiterals;
 // Entry point for the GUI shell; constructs the basic chrome and loads placeholder pages.
 MainWindow::MainWindow(QWidget *parent): QMainWindow(parent) {
     setWindowTitle(u"CosmoSoft"_s);                                        // Title bar text so the window is identifiable.
-    setWindowIcon(QIcon(":/images/Logo_rounded.png"));                            // Use the rounded logo bundled in resources.qrc.
-    setupActions();                                                               // Prepare navigation commands first.
-    setupToolbar();                                          // Install the toolbar directly under the title bar.
-    setupDataBar();                                         // Build the telemetry strip that sits under the toolbar.
-    setupPages();                                            // Fill the central widget with placeholder pages.
+    setWindowIcon(QIcon(":/images/Logo_rounded.png"));                    // Use the rounded logo bundled in resources.qrc.
+    m_portScanner = SerialPortScannerFactory::createSerialPortScanner();   // UI owns this for the app lifetime.
+    setupActions();                                                       // Prepare navigation commands first.
+    setupToolbar();                                                       // Install the toolbar directly under the title bar.
+    setupDataBar();                                                       // Build the telemetry strip that sits under the toolbar.
+    setupPages();                                                         // Fill the central widget with placeholder pages.
     statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s); // Friendly status message on boot.
 }
 
@@ -50,7 +45,6 @@ void MainWindow::showStatusMessage(const QString &message, int timeout) {
 }
 
 void MainWindow::setupActions() {
-
     // Actions encapsulate the intent behind toolbar/menu buttons.
     m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
     m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
@@ -64,7 +58,9 @@ void MainWindow::setupActions() {
 
     // Each action simply points the stacked widget at the matching page.
     connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_monitoringPage);
+        if (m_pages && m_monitoringPage) {
+            m_pages->setCurrentWidget(m_monitoringPage);
+        }
         statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
     });
 
@@ -303,6 +299,25 @@ void MainWindow::setupPages() {
 
     // Each page lives in its own QWidget subclass so logic stays modular.
     m_monitoringPage = new MonitoringPage(this);
+    if (m_monitoringPage) {
+        connect(m_monitoringPage, &MonitoringPage::scanPortsRequested, this, [this]() {
+            if (!m_portScanner) {
+                showStatusMessage(u"No port scanner available."_s, 4000);
+                return;
+            }
+            const auto ports = m_portScanner->enumeratePorts();
+            QStringList portList;
+            for (const auto &p : ports) {
+                portList << QString::fromStdString(p);
+            }
+            m_monitoringPage->showAvailablePorts(portList);
+            showStatusMessage(portList.isEmpty() ? u"No ports found."_s : u"Ports refreshed."_s, 2000);
+        });
+        connect(m_monitoringPage, &MonitoringPage::connectToPortRequested, this, [this](const QString &portName) {
+            showStatusMessage(u"Connecting to "_s + portName, 2000);
+            // Hook up backend connection here when available.
+        });
+    }
     m_pages->addWidget(m_monitoringPage);
     m_pages->setCurrentWidget(m_monitoringPage);          // Default landing page.
 }
