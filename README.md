@@ -37,3 +37,7 @@ PATH=FILE/PATH/TO/QT/Tools/mingw_xx/bin
 
 ## License
 MIT
+
+###### Notes:
+
+<small>this is rocket science</small>
