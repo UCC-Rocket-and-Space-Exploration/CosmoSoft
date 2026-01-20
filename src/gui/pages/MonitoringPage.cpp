@@ -1,5 +1,5 @@
-#include "pages/MonitoringPage.h"
-#include "MainWindow.h"
+#include "gui/pages/MonitoringPage.h"
+#include "gui/MainWindow.h"
 
 #include <QColor>
 #include <QFrame>

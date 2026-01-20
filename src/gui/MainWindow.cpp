@@ -1,6 +1,6 @@
-#include "MainWindow.h"
-#include "pages/MonitoringPage.h"   // Live telemetry overview.
-#include "pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
+#include "gui/MainWindow.h"
+#include "gui/pages/MonitoringPage.h"   // Live telemetry overview.
+#include "gui/pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>

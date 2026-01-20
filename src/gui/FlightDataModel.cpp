@@ -1,4 +1,4 @@
-#include "FlightDataModel.h"
+#include "gui/FlightDataModel.h"
 
 FlightDataModel::FlightDataModel() = default;
 FlightDataModel::~FlightDataModel() = default;

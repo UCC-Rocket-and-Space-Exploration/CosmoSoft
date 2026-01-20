@@ -4,7 +4,8 @@
 #include <QStringList>
 #include <QDebug>
 #include <QResource>
-#include "MainWindow.h"   // Our custom UI shell with toolbar, stacked pages, and a demo chart.
+#include <QPushButton>
+#include "gui/MainWindow.h"   // Our custom UI shell with toolbar, stacked pages, and a demo chart.
 
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
@@ -44,4 +45,9 @@ int main(int argc, char *argv[]) {
     window.show();                   // Display the window before handing control to the event loop.
 
     return app.exec();               // Hand over control to Qt; finishes when the window closes.
+
+
+
+
+
 }

@@ -1,5 +1,5 @@
-#include "../../include/comms/SerialWorker.h"
-#include "../../include/comms/SerialPortScannerFactory.h"
+#include "comms/SerialWorker.h"
+#include "comms/SerialPortScannerFactory.h"
 
 SerialWorker::SerialWorker(IComms* comms) {
     m_running = false;

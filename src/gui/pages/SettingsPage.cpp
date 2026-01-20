@@ -1,4 +1,4 @@
-#include "pages/SettingsPage.h"
+#include "gui/pages/SettingsPage.h"
 
 #include <QFrame>
 #include <QLabel>
