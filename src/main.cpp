@@ -8,12 +8,13 @@
 #include <QStringList>
 #include <QDebug>
 #include <QResource>
+#include <QPushButton>
 <<<<<<< HEAD
 =======
 >>>>>>> 1c03da1 (UI Skeleton)
 =======
 >>>>>>> cb12191 (logistic files commit)
-#include "MainWindow.h"   // Our custom UI shell with toolbar, stacked pages, and a demo chart.
+#include "gui/MainWindow.h"   // Our custom UI shell with toolbar, stacked pages, and a demo chart.
 
 int main(int argc, char *argv[]) {
 <<<<<<< HEAD
@@ -49,6 +50,11 @@ int main(int argc, char *argv[]) {
     window.show();                   // Display the window before handing control to the event loop.
 
     return app.exec();               // Hand over control to Qt; finishes when the window closes.
+
+
+
+
+
 }
 =======
     QApplication a(argc, argv);
@@ -94,5 +100,10 @@ int main(int argc, char *argv[]) {
     window.show();                   // Display the window before handing control to the event loop.
 
     return app.exec();               // Hand over control to Qt; finishes when the window closes.
+
+
+
+
+
 }
 >>>>>>> 1c03da1 (UI Skeleton)

@@ -1,1 +1,1 @@
-#include "../../include/telemetry/TelemetryParser.h"
+#include "telemetry/TelemetryParser.h"

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include "MainWindow.h"
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -14,6 +15,11 @@
 =======
 #include "pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
 >>>>>>> 495a53e (remove some pages)
+=======
+#include "gui/MainWindow.h"
+#include "gui/pages/MonitoringPage.h"   // Live telemetry overview.
+#include "gui/pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
+>>>>>>> 6608b32 (Cmake files were modifying across the code base)
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
