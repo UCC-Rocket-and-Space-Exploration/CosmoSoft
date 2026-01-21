@@ -1,0 +1,11 @@
+
+#ifndef COSMO_SOFT_ANGULARVELOCITYCOORDINATES_H
+#define COSMO_SOFT_ANGULARVELOCITYCOORDINATES_H
+
+
+class AngularVelocityCoordinates {
+    double x,y,z;
+};
+
+
+#endif //COSMO_SOFT_ANGULARVELOCITYCOORDINATES_H
