@@ -15,10 +15,10 @@ target_link_libraries(cosmo-backend
         Qt6::Widgets
 )
 
-add_subdirectory(comms)
-add_subdirectory(flight)
-add_subdirectory(persistence)
-add_subdirectory(telemetry)
+add_subdirectory(Gateway/comms)
+add_subdirectory(Services/flight)
+add_subdirectory(Services/persistence)
+add_subdirectory(Services/telemetry)
 add_subdirectory(gui)
 #add_subdirectory(gui)
 
