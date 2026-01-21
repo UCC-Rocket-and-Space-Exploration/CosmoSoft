@@ -1,5 +1,9 @@
 
-add_library(cosmo-backend "")
+add_library(cosmo-backend ""
+        Domain/AngularVelocityCoordinates.h
+        Domain/AccelerationCoordinates.h
+        Domain/LocationCoordinates.h
+        Domain/FlightSample.h)
 
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 
@@ -10,7 +14,6 @@ target_link_libraries(cosmo-backend
         Qt6::Gui
         Qt6::Widgets
 )
-
 
 add_subdirectory(comms)
 add_subdirectory(flight)

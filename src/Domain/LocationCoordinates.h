@@ -1,0 +1,9 @@
+
+#ifndef COSMO_SOFT_LOCATIONCOORDINATES_H
+#define COSMO_SOFT_LOCATIONCOORDINATES_H
+
+struct LocationCoordinates {
+    double x,y,z;
+};
+
+#endif //COSMO_SOFT_LOCATIONCOORDINATES_H
