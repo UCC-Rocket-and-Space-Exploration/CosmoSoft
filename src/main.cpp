@@ -51,10 +51,6 @@ int main(int argc, char *argv[]) {
 
     return app.exec();               // Hand over control to Qt; finishes when the window closes.
 
-
-
-
-
 }
 =======
     QApplication a(argc, argv);
