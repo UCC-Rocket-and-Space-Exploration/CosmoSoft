@@ -3,7 +3,7 @@
 #define COSMO_SOFT_SERIALCOMMSPOSIX_H
 #include <string>
 
-#include "IComms.h"
+#include "../IComms.h"
 
 
 class SerialCommsPosix : public IComms {

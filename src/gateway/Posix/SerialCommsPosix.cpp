@@ -1,4 +1,4 @@
-#include "comms/SerialCommsPosix.h"
+#include "../../../include/gateway/posix/SerialCommsPosix.h"
 
 #include <glob.h>
 #include <vector>
@@ -33,7 +33,6 @@ void SerialCommsPosix::close() {
         ::close(m_fd);
         m_fd = -1;
     }
-
 }
 
 bool SerialCommsPosix::isOpen() const {
@@ -51,7 +50,6 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
 #ifdef POLLRDHUP
     pfd.events |= POLLRDHUP;
 #endif
-
     while (isOpen()) {
         int data = poll(&pfd, 1, -1); // block until data
         if (data > 0) {
