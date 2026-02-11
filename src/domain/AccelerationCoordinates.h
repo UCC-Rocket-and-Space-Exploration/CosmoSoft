@@ -1,8 +1,0 @@
-
-#ifndef COSMO_SOFT_ACCELERATIONCOORDINATES_H
-#define COSMO_SOFT_ACCELERATIONCOORDINATES_H
-struct AccelerationCoordinates {
-    double x,y,z;
-};
-
-#endif //COSMO_SOFT_ACCELERATIONCOORDINATES_H
