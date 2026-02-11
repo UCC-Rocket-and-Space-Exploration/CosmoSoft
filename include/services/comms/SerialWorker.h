@@ -2,8 +2,8 @@
 #define COSMO_SOFT_SERIALWORKER_H
 #include <functional>
 #include <thread>
-#include "IComms.h"
-#include "ISerialPortScanner.h"
+#include "../../gateway/IComms.h"
+#include "../../comms/ISerialPortScanner.h"
 
 //To avoid blocking the UI when fetching serial data, we need to use Qt's signals and slots technique for async data fetching
 class SerialWorker {

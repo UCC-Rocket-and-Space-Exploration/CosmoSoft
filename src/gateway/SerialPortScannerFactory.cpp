@@ -1,1 +1,1 @@
-#include "comms/SerialPortScannerFactory.h"
+#include "../../include/gateway/SerialPortScannerFactory.h"

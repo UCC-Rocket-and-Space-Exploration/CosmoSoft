@@ -5,6 +5,10 @@ add_library(cosmo-backend ""
         Domain/LocationCoordinates.h
         Domain/FlightSample.h)
 
+#domain
+# flight sample
+# flight session - metadata, collection of flight samples
+
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 
 #target_include_directories(cosmo-backend INTERFACE ${CMAKE_SOURCE_DIR}/include)
@@ -24,4 +28,3 @@ add_subdirectory(gui)
 
 add_executable(cosmo-soft-bin main.cpp)
 target_link_libraries(cosmo-soft-bin cosmo-backend)
-

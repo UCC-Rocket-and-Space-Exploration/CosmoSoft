@@ -1,7 +1,8 @@
-#include "comms/SerialPortScannerPosix.h"
+#include "../../../include/gateway/posix/SerialPortScannerPosix.h"
 
 #include <fcntl.h>
 #include <glob.h>
+#include <string>
 #include <unistd.h>
 #include <vector>
 
