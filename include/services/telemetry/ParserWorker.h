@@ -1,0 +1,8 @@
+#ifndef COSMO_SOFT_PARSERWORKER_H
+#define COSMO_SOFT_PARSERWORKER_H
+
+class ParserWorker {
+
+};
+
+#endif //COSMO_SOFT_PARSERWORKER_H
