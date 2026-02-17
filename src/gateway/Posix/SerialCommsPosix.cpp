@@ -23,20 +23,21 @@ SerialCommsPosix::~SerialCommsPosix() {
 }
 
 bool SerialCommsPosix::open() {
+    ::close(m_fd);
     m_fd = ::open(m_device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (m_fd < 0) return false; // failed to open
     return true;
 }
 
 void SerialCommsPosix::close() {
-    if (m_fd > 0) {
+    if (m_fd >= 0) {
         ::close(m_fd);
         m_fd = -1;
     }
 }
 
 bool SerialCommsPosix::isOpen() const {
-    return m_fd > 0;
+    return m_fd >= 0;
 }
 
 ssize_t SerialCommsPosix::write(const uint8_t *data, size_t size) {
@@ -51,7 +52,10 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
     pfd.events |= POLLRDHUP;
 #endif
     while (isOpen()) {
-        int data = poll(&pfd, 1, -1); // block until data
+        int data = poll(&pfd, 1, 200); // block until data
+        if (data == 0) { //timeout, no data received
+            return 0;
+        }
         if (data > 0) {
             if (pfd.revents & POLLIN) { //when there is data to be read
                 const ssize_t n = ::read(m_fd, buffer, maxSize); //read from fd into the buffer all possible bytes
