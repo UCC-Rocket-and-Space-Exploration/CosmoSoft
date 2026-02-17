@@ -2,6 +2,8 @@
 #define COSMO_SOFT_FILEMANAGER_H
 
 class FileManager {
+public:
+    FileManager();
 
 };
 
