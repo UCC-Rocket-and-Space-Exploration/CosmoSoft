@@ -1,3 +1,6 @@
+
+#include <atomic>
+
 #include "../../include/services/comms/SerialWorker.h"
 #include "../../include/gateway/SerialPortScannerFactory.h"
 
@@ -12,16 +15,17 @@ SerialWorker::~SerialWorker() {
     }
 }
 
+//TODO: implement handshake
 bool SerialWorker::start() {
-    if (m_running) return true;
-    try {
-        std::thread(&SerialWorker::run, this);
-    } catch (const std::exception& e) {
+    if (m_workerThread.joinable()) return true;
+        m_running = true;
+        m_workerThread = std::thread(&SerialWorker::run, this);
+    if (!m_workerThread.joinable()) {
+        m_running = false;
         return false;
     }
-    m_running = true;
     return true;
-}
+    }
 
 void SerialWorker::stop() {
     m_running = false;
@@ -30,17 +34,20 @@ void SerialWorker::stop() {
     };
 }
 
+//TODO: refactor to disallow setting data callback after start, perhaps put in constructor?
 void SerialWorker::setDataCallback(DataCallback callback) {
     m_onData = std::move(callback);
 }
 
+//TODO: refactor to disallow setting error callback after start, perhaps put in constructor?
 void SerialWorker::setErrorCallback(ErrorCallback callback) {
     m_onError = std::move(callback);
 }
 
 
-//TODO consider making async instead, but since this is in its own thread shouldnt be a problem
+//TODO rewrite to instead pass to new parsing thread
 void SerialWorker::run() {
+    //TODO change from static size buffer
     uint8_t buffer[256];
     while (m_running) {
         ssize_t n = m_connectedPort->read(buffer, sizeof(buffer));

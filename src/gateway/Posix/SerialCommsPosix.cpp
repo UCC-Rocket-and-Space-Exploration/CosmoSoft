@@ -90,6 +90,11 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
             }
 #endif
         }
+        if (data < 0) { //error during poll
+            if (errno == EAGAIN) { // can be thrown in non-blocking mode
+
+            }
+        }
     }
     return -1;
 }
