@@ -1,5 +1,6 @@
 #ifndef COSMO_SOFT_SERIALWORKER_H
 #define COSMO_SOFT_SERIALWORKER_H
+#include <atomic>
 #include <functional>
 #include <thread>
 
@@ -9,6 +10,7 @@
 
 //To avoid blocking the UI when fetching serial data, we need to use Qt's signals and slots technique for async data fetching
 //TODO complete refactor; make async if possible, include error handling & logging, parsing, etc.
+// - Also rewrite to use std::jthread and std::stop_token for better thread management and cancellation
 class SerialWorker {
 public:
     explicit SerialWorker(IComms* comms);
