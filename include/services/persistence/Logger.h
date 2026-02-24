@@ -1,5 +1,6 @@
 #ifndef COSMO_SOFT_FLIGHTLOGMANAGER_H
 #define COSMO_SOFT_FLIGHTLOGMANAGER_H
+#include <memory_resource>
 #include <string>
 
 #include "../../domain/FlightSession.h"

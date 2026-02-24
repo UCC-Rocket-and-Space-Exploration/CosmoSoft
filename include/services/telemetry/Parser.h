@@ -6,7 +6,7 @@
 //TODO turn into producer-consumer pair
 class Parser {
 public:
-    Parser(&is_empty);
+    Parser() = default;
     // serial input - > block output
     // handle errors?
     // start - end frame denoters
