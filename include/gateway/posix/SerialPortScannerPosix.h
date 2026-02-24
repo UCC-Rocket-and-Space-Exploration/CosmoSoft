@@ -1,10 +1,10 @@
 #ifndef COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
 #define COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
 #if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
-#include "../../comms/ISerialPortScanner.h"
+#include "../ISerialPortScanner.h"
 
 //TODO
-class SerialPortScannerPosix : ISerialPortScanner {
+class SerialPortScannerPosix : public ISerialPortScanner {
 public:
     std::vector<std::string> enumeratePorts() override;
 
@@ -13,5 +13,10 @@ public:
 };
 
 
+<<<<<<< HEAD
 #endif //LINUX
 #endif //COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
+=======
+#endif //Posix Check
+#endif //COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
+>>>>>>> f9eac6a (fix: headers, incudes and cmakefile)

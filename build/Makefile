@@ -126,34 +126,21 @@ cosmo-backend: cmake_check_build_system
 
 # fast build rule for target.
 cosmo-backend/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/build
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-backend.dir/build.make src/CMakeFiles/cosmo-backend.dir/build
 .PHONY : cosmo-backend/fast
 
 #=============================================================================
-# Target rules for targets named cosmo-gui
+# Target rules for targets named cosmo-soft-bin
 
 # Build rule for target.
-cosmo-gui: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-gui
-.PHONY : cosmo-gui
+cosmo-soft-bin: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-soft-bin
+.PHONY : cosmo-soft-bin
 
 # fast build rule for target.
-cosmo-gui/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui.dir/build.make CMakeFiles/cosmo-gui.dir/build
-.PHONY : cosmo-gui/fast
-
-#=============================================================================
-# Target rules for targets named cosmo-soft
-
-# Build rule for target.
-cosmo-soft: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-soft
-.PHONY : cosmo-soft
-
-# fast build rule for target.
-cosmo-soft/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft.dir/build.make CMakeFiles/cosmo-soft.dir/build
-.PHONY : cosmo-soft/fast
+cosmo-soft-bin/fast:
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-soft-bin.dir/build.make src/CMakeFiles/cosmo-soft-bin.dir/build
+.PHONY : cosmo-soft-bin/fast
 
 #=============================================================================
 # Target rules for targets named cosmo-backend_autogen_timestamp_deps
@@ -165,7 +152,7 @@ cosmo-backend_autogen_timestamp_deps: cmake_check_build_system
 
 # fast build rule for target.
 cosmo-backend_autogen_timestamp_deps/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/build.make CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/build
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/build.make src/CMakeFiles/cosmo-backend_autogen_timestamp_deps.dir/build
 .PHONY : cosmo-backend_autogen_timestamp_deps/fast
 
 #=============================================================================
@@ -178,57 +165,58 @@ cosmo-backend_autogen: cmake_check_build_system
 
 # fast build rule for target.
 cosmo-backend_autogen/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend_autogen.dir/build.make CMakeFiles/cosmo-backend_autogen.dir/build
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-backend_autogen.dir/build.make src/CMakeFiles/cosmo-backend_autogen.dir/build
 .PHONY : cosmo-backend_autogen/fast
 
 #=============================================================================
-# Target rules for targets named cosmo-gui_autogen_timestamp_deps
+# Target rules for targets named cosmo-soft-bin_autogen_timestamp_deps
 
 # Build rule for target.
-cosmo-gui_autogen_timestamp_deps: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-gui_autogen_timestamp_deps
-.PHONY : cosmo-gui_autogen_timestamp_deps
+cosmo-soft-bin_autogen_timestamp_deps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-soft-bin_autogen_timestamp_deps
+.PHONY : cosmo-soft-bin_autogen_timestamp_deps
 
 # fast build rule for target.
-cosmo-gui_autogen_timestamp_deps/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui_autogen_timestamp_deps.dir/build.make CMakeFiles/cosmo-gui_autogen_timestamp_deps.dir/build
-.PHONY : cosmo-gui_autogen_timestamp_deps/fast
+cosmo-soft-bin_autogen_timestamp_deps/fast:
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-soft-bin_autogen_timestamp_deps.dir/build.make src/CMakeFiles/cosmo-soft-bin_autogen_timestamp_deps.dir/build
+.PHONY : cosmo-soft-bin_autogen_timestamp_deps/fast
 
 #=============================================================================
-# Target rules for targets named cosmo-gui_autogen
+# Target rules for targets named cosmo-soft-bin_autogen
 
 # Build rule for target.
-cosmo-gui_autogen: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-gui_autogen
-.PHONY : cosmo-gui_autogen
+cosmo-soft-bin_autogen: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-soft-bin_autogen
+.PHONY : cosmo-soft-bin_autogen
 
 # fast build rule for target.
-cosmo-gui_autogen/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-gui_autogen.dir/build.make CMakeFiles/cosmo-gui_autogen.dir/build
-.PHONY : cosmo-gui_autogen/fast
+cosmo-soft-bin_autogen/fast:
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-soft-bin_autogen.dir/build.make src/CMakeFiles/cosmo-soft-bin_autogen.dir/build
+.PHONY : cosmo-soft-bin_autogen/fast
 
 #=============================================================================
-# Target rules for targets named cosmo-soft_autogen_timestamp_deps
+# Target rules for targets named comms
 
 # Build rule for target.
-cosmo-soft_autogen_timestamp_deps: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-soft_autogen_timestamp_deps
-.PHONY : cosmo-soft_autogen_timestamp_deps
+comms: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 comms
+.PHONY : comms
 
 # fast build rule for target.
-cosmo-soft_autogen_timestamp_deps/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft_autogen_timestamp_deps.dir/build.make CMakeFiles/cosmo-soft_autogen_timestamp_deps.dir/build
-.PHONY : cosmo-soft_autogen_timestamp_deps/fast
+comms/fast:
+	$(MAKE) $(MAKESILENT) -f src/gateway/CMakeFiles/comms.dir/build.make src/gateway/CMakeFiles/comms.dir/build
+.PHONY : comms/fast
 
 #=============================================================================
-# Target rules for targets named cosmo-soft_autogen
+# Target rules for targets named comms_autogen_timestamp_deps
 
 # Build rule for target.
-cosmo-soft_autogen: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cosmo-soft_autogen
-.PHONY : cosmo-soft_autogen
+comms_autogen_timestamp_deps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 comms_autogen_timestamp_deps
+.PHONY : comms_autogen_timestamp_deps
 
 # fast build rule for target.
+<<<<<<< HEAD
 cosmo-soft_autogen/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-soft_autogen.dir/build.make CMakeFiles/cosmo-soft_autogen.dir/build
 .PHONY : cosmo-soft_autogen/fast
@@ -769,6 +757,219 @@ src/telemetry/TelemetryParser.s: src/telemetry/TelemetryParser.cpp.s
 src/telemetry/TelemetryParser.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/cosmo-backend.dir/build.make CMakeFiles/cosmo-backend.dir/src/telemetry/TelemetryParser.cpp.s
 .PHONY : src/telemetry/TelemetryParser.cpp.s
+=======
+comms_autogen_timestamp_deps/fast:
+	$(MAKE) $(MAKESILENT) -f src/gateway/CMakeFiles/comms_autogen_timestamp_deps.dir/build.make src/gateway/CMakeFiles/comms_autogen_timestamp_deps.dir/build
+.PHONY : comms_autogen_timestamp_deps/fast
+
+#=============================================================================
+# Target rules for targets named comms_autogen
+
+# Build rule for target.
+comms_autogen: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 comms_autogen
+.PHONY : comms_autogen
+
+# fast build rule for target.
+comms_autogen/fast:
+	$(MAKE) $(MAKESILENT) -f src/gateway/CMakeFiles/comms_autogen.dir/build.make src/gateway/CMakeFiles/comms_autogen.dir/build
+.PHONY : comms_autogen/fast
+
+#=============================================================================
+# Target rules for targets named PosixComms
+
+# Build rule for target.
+PosixComms: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 PosixComms
+.PHONY : PosixComms
+
+# fast build rule for target.
+PosixComms/fast:
+	$(MAKE) $(MAKESILENT) -f src/gateway/Posix/CMakeFiles/PosixComms.dir/build.make src/gateway/Posix/CMakeFiles/PosixComms.dir/build
+.PHONY : PosixComms/fast
+
+#=============================================================================
+# Target rules for targets named PosixComms_autogen_timestamp_deps
+
+# Build rule for target.
+PosixComms_autogen_timestamp_deps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 PosixComms_autogen_timestamp_deps
+.PHONY : PosixComms_autogen_timestamp_deps
+
+# fast build rule for target.
+PosixComms_autogen_timestamp_deps/fast:
+	$(MAKE) $(MAKESILENT) -f src/gateway/Posix/CMakeFiles/PosixComms_autogen_timestamp_deps.dir/build.make src/gateway/Posix/CMakeFiles/PosixComms_autogen_timestamp_deps.dir/build
+.PHONY : PosixComms_autogen_timestamp_deps/fast
+
+#=============================================================================
+# Target rules for targets named PosixComms_autogen
+
+# Build rule for target.
+PosixComms_autogen: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 PosixComms_autogen
+.PHONY : PosixComms_autogen
+
+# fast build rule for target.
+PosixComms_autogen/fast:
+	$(MAKE) $(MAKESILENT) -f src/gateway/Posix/CMakeFiles/PosixComms_autogen.dir/build.make src/gateway/Posix/CMakeFiles/PosixComms_autogen.dir/build
+.PHONY : PosixComms_autogen/fast
+
+#=============================================================================
+# Target rules for targets named flight
+
+# Build rule for target.
+flight: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 flight
+.PHONY : flight
+
+# fast build rule for target.
+flight/fast:
+	$(MAKE) $(MAKESILENT) -f src/services/flight/CMakeFiles/flight.dir/build.make src/services/flight/CMakeFiles/flight.dir/build
+.PHONY : flight/fast
+
+#=============================================================================
+# Target rules for targets named flight_autogen_timestamp_deps
+
+# Build rule for target.
+flight_autogen_timestamp_deps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 flight_autogen_timestamp_deps
+.PHONY : flight_autogen_timestamp_deps
+
+# fast build rule for target.
+flight_autogen_timestamp_deps/fast:
+	$(MAKE) $(MAKESILENT) -f src/services/flight/CMakeFiles/flight_autogen_timestamp_deps.dir/build.make src/services/flight/CMakeFiles/flight_autogen_timestamp_deps.dir/build
+.PHONY : flight_autogen_timestamp_deps/fast
+
+#=============================================================================
+# Target rules for targets named flight_autogen
+
+# Build rule for target.
+flight_autogen: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 flight_autogen
+.PHONY : flight_autogen
+
+# fast build rule for target.
+flight_autogen/fast:
+	$(MAKE) $(MAKESILENT) -f src/services/flight/CMakeFiles/flight_autogen.dir/build.make src/services/flight/CMakeFiles/flight_autogen.dir/build
+.PHONY : flight_autogen/fast
+
+#=============================================================================
+# Target rules for targets named persistence
+
+# Build rule for target.
+persistence: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 persistence
+.PHONY : persistence
+
+# fast build rule for target.
+persistence/fast:
+	$(MAKE) $(MAKESILENT) -f src/services/persistence/CMakeFiles/persistence.dir/build.make src/services/persistence/CMakeFiles/persistence.dir/build
+.PHONY : persistence/fast
+
+#=============================================================================
+# Target rules for targets named persistence_autogen_timestamp_deps
+
+# Build rule for target.
+persistence_autogen_timestamp_deps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 persistence_autogen_timestamp_deps
+.PHONY : persistence_autogen_timestamp_deps
+
+# fast build rule for target.
+persistence_autogen_timestamp_deps/fast:
+	$(MAKE) $(MAKESILENT) -f src/services/persistence/CMakeFiles/persistence_autogen_timestamp_deps.dir/build.make src/services/persistence/CMakeFiles/persistence_autogen_timestamp_deps.dir/build
+.PHONY : persistence_autogen_timestamp_deps/fast
+
+#=============================================================================
+# Target rules for targets named persistence_autogen
+
+# Build rule for target.
+persistence_autogen: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 persistence_autogen
+.PHONY : persistence_autogen
+
+# fast build rule for target.
+persistence_autogen/fast:
+	$(MAKE) $(MAKESILENT) -f src/services/persistence/CMakeFiles/persistence_autogen.dir/build.make src/services/persistence/CMakeFiles/persistence_autogen.dir/build
+.PHONY : persistence_autogen/fast
+
+#=============================================================================
+# Target rules for targets named telemetry
+
+# Build rule for target.
+telemetry: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 telemetry
+.PHONY : telemetry
+
+# fast build rule for target.
+telemetry/fast:
+	$(MAKE) $(MAKESILENT) -f src/services/telemetry/CMakeFiles/telemetry.dir/build.make src/services/telemetry/CMakeFiles/telemetry.dir/build
+.PHONY : telemetry/fast
+
+#=============================================================================
+# Target rules for targets named telemetry_autogen_timestamp_deps
+
+# Build rule for target.
+telemetry_autogen_timestamp_deps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 telemetry_autogen_timestamp_deps
+.PHONY : telemetry_autogen_timestamp_deps
+
+# fast build rule for target.
+telemetry_autogen_timestamp_deps/fast:
+	$(MAKE) $(MAKESILENT) -f src/services/telemetry/CMakeFiles/telemetry_autogen_timestamp_deps.dir/build.make src/services/telemetry/CMakeFiles/telemetry_autogen_timestamp_deps.dir/build
+.PHONY : telemetry_autogen_timestamp_deps/fast
+
+#=============================================================================
+# Target rules for targets named telemetry_autogen
+
+# Build rule for target.
+telemetry_autogen: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 telemetry_autogen
+.PHONY : telemetry_autogen
+
+# fast build rule for target.
+telemetry_autogen/fast:
+	$(MAKE) $(MAKESILENT) -f src/services/telemetry/CMakeFiles/telemetry_autogen.dir/build.make src/services/telemetry/CMakeFiles/telemetry_autogen.dir/build
+.PHONY : telemetry_autogen/fast
+
+#=============================================================================
+# Target rules for targets named gui
+
+# Build rule for target.
+gui: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gui
+.PHONY : gui
+
+# fast build rule for target.
+gui/fast:
+	$(MAKE) $(MAKESILENT) -f src/gui/CMakeFiles/gui.dir/build.make src/gui/CMakeFiles/gui.dir/build
+.PHONY : gui/fast
+
+#=============================================================================
+# Target rules for targets named gui_autogen_timestamp_deps
+
+# Build rule for target.
+gui_autogen_timestamp_deps: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gui_autogen_timestamp_deps
+.PHONY : gui_autogen_timestamp_deps
+
+# fast build rule for target.
+gui_autogen_timestamp_deps/fast:
+	$(MAKE) $(MAKESILENT) -f src/gui/CMakeFiles/gui_autogen_timestamp_deps.dir/build.make src/gui/CMakeFiles/gui_autogen_timestamp_deps.dir/build
+.PHONY : gui_autogen_timestamp_deps/fast
+
+#=============================================================================
+# Target rules for targets named gui_autogen
+
+# Build rule for target.
+gui_autogen: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gui_autogen
+.PHONY : gui_autogen
+
+# fast build rule for target.
+gui_autogen/fast:
+	$(MAKE) $(MAKESILENT) -f src/gui/CMakeFiles/gui_autogen.dir/build.make src/gui/CMakeFiles/gui_autogen.dir/build
+.PHONY : gui_autogen/fast
+>>>>>>> f9eac6a (fix: headers, incudes and cmakefile)
 
 # Help Target
 help:
@@ -778,13 +979,26 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... PosixComms_autogen"
+	@echo "... PosixComms_autogen_timestamp_deps"
+	@echo "... comms_autogen"
+	@echo "... comms_autogen_timestamp_deps"
 	@echo "... cosmo-backend_autogen"
 	@echo "... cosmo-backend_autogen_timestamp_deps"
-	@echo "... cosmo-gui_autogen"
-	@echo "... cosmo-gui_autogen_timestamp_deps"
-	@echo "... cosmo-soft_autogen"
-	@echo "... cosmo-soft_autogen_timestamp_deps"
+	@echo "... cosmo-soft-bin_autogen"
+	@echo "... cosmo-soft-bin_autogen_timestamp_deps"
+	@echo "... flight_autogen"
+	@echo "... flight_autogen_timestamp_deps"
+	@echo "... gui_autogen"
+	@echo "... gui_autogen_timestamp_deps"
+	@echo "... persistence_autogen"
+	@echo "... persistence_autogen_timestamp_deps"
+	@echo "... telemetry_autogen"
+	@echo "... telemetry_autogen_timestamp_deps"
+	@echo "... PosixComms"
+	@echo "... comms"
 	@echo "... cosmo-backend"
+<<<<<<< HEAD
 	@echo "... cosmo-gui"
 	@echo "... cosmo-soft"
 	@echo "... cosmo-backend_autogen/mocs_compilation.o"
@@ -862,6 +1076,13 @@ help:
 	@echo "... src/telemetry/TelemetryParser.o"
 	@echo "... src/telemetry/TelemetryParser.i"
 	@echo "... src/telemetry/TelemetryParser.s"
+=======
+	@echo "... cosmo-soft-bin"
+	@echo "... flight"
+	@echo "... gui"
+	@echo "... persistence"
+	@echo "... telemetry"
+>>>>>>> f9eac6a (fix: headers, incudes and cmakefile)
 .PHONY : help
 
 

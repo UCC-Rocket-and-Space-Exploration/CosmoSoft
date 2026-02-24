@@ -2,7 +2,9 @@
 #define COSMO_SOFT_SERIALWORKER_H
 #include <atomic>
 #include <functional>
+#include <string>
 #include <thread>
+#include <vector>
 
 #include "../../domain/FlightSample.h"
 #include "../../gateway/IComms.h"
