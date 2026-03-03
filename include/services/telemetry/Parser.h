@@ -3,15 +3,16 @@
 #include <cstdint>
 #include <vector>
 
+#include "Framer.h"
+#include "domain/FlightSample.h"
+
 class Parser {
 public:
     Parser();
-    //needed methods:
-    // - convert frame to sample
-    // -
+
+    FlightSample decode(Frame frame);
 
 private:
-    //std::vector<std::uint8_t> m_buf; //considering whether parser needs its own buffer; could instead have it just input a single frame and output a single sample
 };
 
 #endif //COSMO_SOFT_TELEMETRYPARSER_H
