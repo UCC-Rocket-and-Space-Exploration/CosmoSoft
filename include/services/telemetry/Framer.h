@@ -17,7 +17,7 @@ struct Frame {
 class Framer {
 public:
     //appends incoming bytes on to the input buffer, then processes the buffer to extract complete frames and move them to the output buffer
-    void appendData(const uint8_t* data, std::size_t size);
+    void ingest(const uint8_t* data, std::size_t size);
 
     //pops all complete frames from the output buffer and writes them to the provided data buffer, returning an array of frames and the number of frames read (TODO: refactor to use std::vector or similar for better memory management)
     Frame *readData(uint8_t *data, std::size_t size);
@@ -32,7 +32,7 @@ public:
     // - setErrorCallback() to allow for reporting framing errors back to the caller
 
 private:
-    uint8_t m_boundedInputBuffer[4 * Kilobyte] = {};
+    uint8_t m_boundedInputBuffer[4 * Kilobyte] = {}; //TODO instantiat RingBuffer with this
     Frame m_boundedOutputBuffer[256] = {};
 
 

@@ -1,14 +1,16 @@
-
 #include <atomic>
 #include <chrono>
 #include <vector>
 
-#include "../../include/services/comms/SerialWorker.h"
-#include "../../include/gateway/SerialPortScannerFactory.h"
+#include "../../../include/services/comms/SerialWorker.h"
+#include "../../../include/gateway/SerialPortScannerFactory.h"
 
+<<<<<<< HEAD:src/gateway/SerialWorker.cpp
 SerialWorker::SerialWorker(IComms* comms)
     : m_running(false), m_connectedPort(comms), m_scanner(nullptr) {}
 
+=======
+>>>>>>> e7d53e9 (branching off from refactor to work on parsing thread):src/gateway/comms/SerialWorker.cpp
 SerialWorker::~SerialWorker() {
     if (m_running) {
         stop();
@@ -33,17 +35,6 @@ void SerialWorker::stop() {
         m_workerThread.join();
     };
 }
-
-//TODO: refactor to disallow setting data callback after start, perhaps put in constructor?
-void SerialWorker::setDataCallback(DataCallback callback) {
-    m_onData = std::move(callback);
-}
-
-//TODO: refactor to disallow setting error callback after start, perhaps put in constructor?
-void SerialWorker::setErrorCallback(ErrorCallback callback) {
-    m_onError = std::move(callback);
-}
-
 
 //TODO rewrite to instead pass to new parsing thread
 void SerialWorker::run() {
