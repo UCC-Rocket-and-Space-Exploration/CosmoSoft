@@ -1,14 +1,8 @@
-
 #include <atomic>
 
-#include "../../include/services/comms/SerialWorker.h"
-#include "../../include/gateway/SerialPortScannerFactory.h"
+#include "../../../include/services/comms/SerialWorker.h"
+#include "../../../include/gateway/SerialPortScannerFactory.h"
 
-SerialWorker::SerialWorker(IComms* comms) {
-    m_running = false;
-    m_connectedPort = comms;
-    //m_scanner = SerialPortScannerFactory::createSerialPortScanner();
-}
 SerialWorker::~SerialWorker() {
     if (m_running) {
         stop();
@@ -33,17 +27,6 @@ void SerialWorker::stop() {
         m_workerThread.join();
     };
 }
-
-//TODO: refactor to disallow setting data callback after start, perhaps put in constructor?
-void SerialWorker::setDataCallback(DataCallback callback) {
-    m_onData = std::move(callback);
-}
-
-//TODO: refactor to disallow setting error callback after start, perhaps put in constructor?
-void SerialWorker::setErrorCallback(ErrorCallback callback) {
-    m_onError = std::move(callback);
-}
-
 
 //TODO rewrite to instead pass to new parsing thread
 void SerialWorker::run() {

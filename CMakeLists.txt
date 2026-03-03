@@ -12,6 +12,7 @@ set(CMAKE_AUTORCC ON)
 set(HEADERS "${CMAKE_SOURCE_DIR}/include")
 
 find_package(Qt6 6.9 REQUIRED COMPONENTS Core Gui Widgets Charts)
+add_library(cosmo-soft "")
 add_subdirectory(src)
 
 target_compile_features(cosmo-backend PUBLIC cxx_std_20)

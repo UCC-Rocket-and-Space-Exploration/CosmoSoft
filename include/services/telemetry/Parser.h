@@ -3,15 +3,15 @@
 #include <cstdint>
 #include <vector>
 
-//TODO turn into producer-consumer pair
 class Parser {
 public:
-    Parser(&is_empty);
-    // serial input - > block output
-    // handle errors?
-    // start - end frame denoters
+    Parser();
+    //needed methods:
+    // - convert frame to sample
+    // -
+
 private:
-    std::vector<std::uint8_t> m_buf;
+    //std::vector<std::uint8_t> m_buf; //considering whether parser needs its own buffer; could instead have it just input a single frame and output a single sample
 };
 
 #endif //COSMO_SOFT_TELEMETRYPARSER_H

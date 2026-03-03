@@ -12,24 +12,23 @@
 //TODO complete refactor; make async if possible, include error handling & logging, parsing, etc.
 // - Also rewrite to use std::jthread and std::stop_token for better thread management and cancellation
 class SerialWorker {
-public:
-    explicit SerialWorker(IComms* comms);
-    ~SerialWorker();
-
-    using DataCallback = std::function<void(std::vector<FlightSample>)>;
+    using DataCallback = std::function<void(std::vector<uint8_t>)>;
     using ErrorCallback = std::function<void(const std::string&)>;
+
+public:
+
+    explicit SerialWorker(IComms* comms, DataCallback onData, ErrorCallback onError) : m_connectedPort(comms), m_onData(std::move(onData)), m_onError(std::move(onError)), m_running(false) {};
+    ~SerialWorker();
 
     bool start();
     void stop();
-
-    void setDataCallback(DataCallback callback);
-    void setErrorCallback(ErrorCallback callback);
 
 private:
     void run();
 
     std::thread m_workerThread;
     std::atomic<bool> m_running;
+
     IComms* m_connectedPort;
     ISerialPortScanner* m_scanner;
     DataCallback m_onData;

@@ -1,30 +1,24 @@
 
-add_library(cosmo-backend ""
-        Domain/AngularVelocityCoordinates.h
-        Domain/AccelerationCoordinates.h
-        Domain/LocationCoordinates.h
-        Domain/FlightSample.h)
 
-#domain
-# flight sample
-# flight session - metadata, collection of flight samples
+target_include_directories(cosmo-soft PUBLIC "${HEADERS}")
 
-target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
+target_include_directories(cosmo-soft INTERFACE ${CMAKE_SOURCE_DIR}/include)
 
-#target_include_directories(cosmo-backend INTERFACE ${CMAKE_SOURCE_DIR}/include)
+add_library(cosmo-backend "")
 
-target_link_libraries(cosmo-backend
+add_subdirectory(gateway/comms)
+add_subdirectory(services/flight)
+add_subdirectory(services/persistence)
+add_subdirectory(services/telemetry)
+add_subdirectory(frontend)
+#add_subdirectory(gui)
+
+add_executable(cosmo-soft-bin main.cpp)
+
+target_link_libraries(cosmo-soft
         Qt6::Core
         Qt6::Gui
         Qt6::Widgets
 )
 
-add_subdirectory(Gateway/comms)
-add_subdirectory(Services/flight)
-add_subdirectory(Services/persistence)
-add_subdirectory(Services/telemetry)
-add_subdirectory(gui)
-#add_subdirectory(gui)
-
-add_executable(cosmo-soft-bin main.cpp)
 target_link_libraries(cosmo-soft-bin cosmo-backend)
