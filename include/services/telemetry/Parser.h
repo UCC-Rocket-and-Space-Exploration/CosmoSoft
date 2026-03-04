@@ -3,15 +3,16 @@
 #include <cstdint>
 #include <vector>
 
-//TODO turn into producer-consumer pair
+#include "Framer.h"
+#include "domain/FlightSample.h"
+
 class Parser {
 public:
-    Parser() = default;
-    // serial input - > block output
-    // handle errors?
-    // start - end frame denoters
+    Parser();
+
+    FlightSample decode(Frame frame);
+
 private:
-    std::vector<std::uint8_t> m_buf;
 };
 
 #endif //COSMO_SOFT_TELEMETRYPARSER_H

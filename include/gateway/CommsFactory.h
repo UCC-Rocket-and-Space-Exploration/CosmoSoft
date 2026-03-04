@@ -7,7 +7,7 @@ class CommsFactory {
 public:
 
     //TODO Consider what other parameters are platform agnostic and required
-    static IComms* createComms(std::string serialPort, int baudRate);
+    static std::unique_ptr<IComms> createSerialComms(const std::string &device, int baud);
 };
 
 #endif //COSMO_SOFT_COMMSFACTORY_H

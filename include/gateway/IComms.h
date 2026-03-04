@@ -26,7 +26,6 @@ public:
 
     // Device info & metadata, add more later depending on applicability
     [[nodiscard]] virtual std::string getDeviceName() const = 0;
-    [[nodiscard]] virtual std::string getDevicePort() const = 0;
 };
 
 #endif //COSMO_SOFT_ICOMMS_H

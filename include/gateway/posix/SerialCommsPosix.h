@@ -20,7 +20,6 @@ public:
     ssize_t read(uint8_t* buffer, size_t maxSize) override;
 
     [[nodiscard]] std::string getDeviceName() const override;
-    [[nodiscard]] std::string getDevicePort() const override;
 
 private:
     std::string m_device;
