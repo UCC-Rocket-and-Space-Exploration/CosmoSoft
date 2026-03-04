@@ -24,6 +24,8 @@ public:
 
     bool readableData(); //Returns true if there is at least one complete frame in the output buffer
 
+    bool try_next_frame(Frame& out); // out points to owned memory or caller-provided buffer
+
     //other methods to consider:
     // - peekData() to look at the next frame without removing it from the output buffer
     // - clear() to reset the buffers and state of the framer
@@ -34,7 +36,6 @@ public:
 private:
     uint8_t m_boundedInputBuffer[4 * Kilobyte] = {}; //TODO instantiat RingBuffer with this
     Frame m_boundedOutputBuffer[256] = {};
-
 
     //TODO
 

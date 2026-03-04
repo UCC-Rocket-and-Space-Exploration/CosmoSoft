@@ -28,6 +28,11 @@ struct FlightSample {
     double pressure;
     double temperature;
     double batteryVoltage;
+    unsigned int errorFlags : 9; //TODO define error flags
+
+    explicit operator bool() const {
+        return errorFlags == 0;
+    }
 };
 
 #endif //COSMO_SOFT_FLIGHTSAMPLE_H

@@ -29,7 +29,7 @@ void SerialWorker::stop() {
 }
 
 //TODO rewrite to instead pass to new parsing thread
-void SerialWorker::run() {
+void SerialWorker::run() const {
     //TODO change from static size buffer
     uint8_t buffer[256];
     while (m_running) {

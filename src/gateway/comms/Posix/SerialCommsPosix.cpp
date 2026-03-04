@@ -1,4 +1,4 @@
-#include "../../../include/gateway/posix/SerialCommsPosix.h"
+#include "gateway/posix/SerialCommsPosix.h"
 
 #include <glob.h>
 #include <vector>
@@ -101,8 +101,4 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
 
 std::string SerialCommsPosix::getDeviceName() const {
     return m_device;
-}
-
-std::string SerialCommsPosix::getDevicePort() const {
-    return m_port;
 }

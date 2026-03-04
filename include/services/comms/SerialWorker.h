@@ -24,7 +24,7 @@ public:
     void stop();
 
 private:
-    void run();
+    void run() const;
 
     std::thread m_workerThread;
     std::atomic<bool> m_running;
