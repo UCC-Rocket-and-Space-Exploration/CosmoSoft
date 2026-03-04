@@ -30,7 +30,7 @@ void ParserWorker::run(const std::stop_token &st) {
                 if (m_onError) m_onError("Failed to decode frame");
                 continue;
             }
-            if (m_onData) m_onData(std::move(*sampleOpt));
+            if (m_onData) m_onData(std::move(sampleOpt));
         }
     }
 }
