@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "../../../include/services/comms/SerialWorker.h"
-#include "../../../include/gateway/SerialPortScannerFactory.h"
+#include "../../../include/gateway/comms/SerialPortScannerFactory.h"
 
 <<<<<<< HEAD:src/gateway/SerialWorker.cpp
 SerialWorker::SerialWorker(IComms* comms)

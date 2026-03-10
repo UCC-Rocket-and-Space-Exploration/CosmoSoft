@@ -1,4 +1,4 @@
-#include "gateway/posix/SerialCommsPosix.h"
+#include "gateway/comms/posix/SerialCommsPosix.h"
 
 #include <glob.h>
 #include <vector>
@@ -23,7 +23,7 @@ SerialCommsPosix::~SerialCommsPosix() {
 }
 
 bool SerialCommsPosix::open() {
-    ::close(m_fd);
+    close();
     m_fd = ::open(m_device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (m_fd < 0) return false; // failed to open
     return true;
@@ -73,7 +73,7 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
                     if (open()) {
                         break; //the connection is reestablished
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
 
                 if (isOpen()) {
