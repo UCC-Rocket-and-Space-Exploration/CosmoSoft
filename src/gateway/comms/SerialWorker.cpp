@@ -1,7 +1,7 @@
 #include <atomic>
 
 #include "../../../include/services/comms/SerialWorker.h"
-#include "../../../include/gateway/SerialPortScannerFactory.h"
+#include "../../../include/gateway/comms/SerialPortScannerFactory.h"
 
 SerialWorker::~SerialWorker() {
     if (m_running) {
