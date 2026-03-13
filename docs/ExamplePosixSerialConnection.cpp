@@ -98,7 +98,6 @@ void read_loop(int fd) {
                 std::cerr << "Serial port error!\n";
             }
 
-
             if (pfd.revents & POLLHUP) { //fires if a disconnect happens without explicit closing
                 std::cerr << "Serial port disconnected (HUP)!\n";
                 break; // or handle reconnect

@@ -1,17 +1,11 @@
 #include "gui/MainWindow.h"
-#include "gui/pages/DashboardPage.h"   // Live telemetry overview.
-#include "gui/pages/SettingsPage.h"    // Placeholder for ground-station settings.
-#include "gui/pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
 #include "gui/pages/MonitoringPage.h"   // Live telemetry overview.
 #include "gui/pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
 #include <QDateTime>
-#include <QDateTime>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
-#include <QHBoxLayout>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QIcon>
@@ -19,10 +13,7 @@
 #include <QSize>
 #include <QSizePolicy>
 #include <QStackedWidget>
-#include <QStackedWidget>
 #include <QStatusBar>
-#include <QtGlobal>
-#include <QTimer>
 #include <QtGlobal>
 #include <QTimer>
 #include <QToolBar>
@@ -34,17 +25,24 @@
 using namespace Qt::StringLiterals;
 
 // Entry point for the GUI shell; constructs the basic chrome and loads placeholder pages.
-MainWindow::MainWindow(QWidget *parent)
-        : QMainWindow(parent) {
-    setWindowTitle(u"CosmoSoft<style/>"_s);                                        // Title bar text so the window is identifiable.
+MainWindow::MainWindow(QWidget *parent): QMainWindow(parent) {
+    setWindowTitle(u"CosmoSoft"_s);                                        // Title bar text so the window is identifiable.
     setWindowIcon(QIcon(":/images/Logo_rounded.png"));                            // Use the rounded logo bundled in resources.qrc.
     setupActions();                                                               // Prepare navigation commands first.
     setupToolbar();                                          // Install the toolbar directly under the title bar.
+    setupDataBar();                                         // Build the telemetry strip that sits under the toolbar.
     setupPages();                                            // Fill the central widget with placeholder pages.
     statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s); // Friendly status message on boot.
 }
 
+void MainWindow::showStatusMessage(const QString &message, int timeout) {
+    if (auto *sb = statusBar()) {
+        sb->showMessage(message, timeout);
+    }
+}
+
 void MainWindow::setupActions() {
+
     // Actions encapsulate the intent behind toolbar/menu buttons.
     m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
     m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
@@ -58,29 +56,12 @@ void MainWindow::setupActions() {
 
     // Each action simply points the stacked widget at the matching page.
     connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
-        if (m_pages && m_monitoringPage) {
-            m_pages->setCurrentWidget(m_monitoringPage);
-        }
+        m_pages->setCurrentWidget(m_monitoringPage);
         statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
     });
 
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() {
         openSettingsWindow();
-    m_showDashboardAction = new QAction(u"Dashboard"_s, this);
-    m_showDashboardAction->setToolTip(u"Switch to the dashboard page."_s);
-
-    m_showSettingsAction = new QAction(u"Settings"_s, this);
-    m_showSettingsAction->setToolTip(u"Switch to the settings page."_s);
-
-    // Each action simply points the stacked widget at the matching page.
-    connect(m_showDashboardAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_dashboardPage);
-        statusBar()->showMessage(u"Dashboard page selected."_s, 2000);
-    });
-
-    connect(m_showSettingsAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_settingsPage);
-        statusBar()->showMessage(u"Settings page selected."_s, 2000);
     });
 }
 
@@ -108,16 +89,12 @@ void MainWindow::setupToolbar() {
         QWidget#brandBlock QLabel#brandLabel {
             font-size: 26px;
             font-weight: 400;
-            font-weight: 400;
             font-family: "Workbench","Courier New", "Roboto Mono", monospace;
-            letter-spacing: 3px;
-            color: #f4f4f4;
             letter-spacing: 3px;
             color: #f4f4f4;
         }
         QWidget#brandBlock QLabel#missionMeta {
             font-size: 14px;
-            color: #dadada;
             color: #dadada;
             font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
         }
@@ -125,7 +102,6 @@ void MainWindow::setupToolbar() {
         QToolButton[kind="navButton"] {
             font-size: 12px;
             min-width: 150px;
-            padding: 5px 8px;
             padding: 5px 8px;
             border: 2px solid #cfcfcf;
             border-radius: 0;
@@ -150,10 +126,25 @@ void MainWindow::setupToolbar() {
             border-color: rgba(255, 255, 255, 70);
             background-color: rgba(255, 255, 255, 0);
         }
+
+        QToolButton[kind="iconButton"] {
+            min-width: 30px;
+            min-height: 30px;
+            border: none;
+            background-color: transparent;
+        }
+
+        QToolButton[kind="iconButton"]:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        QToolButton[kind="iconButton"]:checked {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
     )"_s);
     addToolBar(Qt::TopToolBarArea, toolbar);
 
-    // Add a subtle drop shadow to the toolbar for depth.
+    // TEXT SHADOWS.
     QGraphicsDropShadowEffect* text_shadow = new QGraphicsDropShadowEffect(this);
     text_shadow->setBlurRadius(5);
     text_shadow->setColor(QColor(0, 0, 0, 160));
@@ -165,21 +156,15 @@ void MainWindow::setupToolbar() {
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(24);
 
-
-
     // Group the logo/mission labels inside their own QWidget so the stylesheet can target them easily.
     auto *brandBlock = new QWidget(content);
     brandBlock->setObjectName(u"brandBlock"_s);
-    brandBlock->setGraphicsEffect(text_shadow);
     brandBlock->setGraphicsEffect(text_shadow);
     auto *brandLayout = new QVBoxLayout(brandBlock);
     brandLayout->setContentsMargins(0, 0, 0, 0);
     brandLayout->setSpacing(2);
     auto *brandLabel = new QLabel(u"Cosmo<span style=\"color:#000000\">Soft</span>"_s, brandBlock);
-    auto *brandLabel = new QLabel(u"Cosmo<span style=\"color:#000000\">Soft</span>"_s, brandBlock);
     brandLabel->setObjectName(u"brandLabel"_s);
-    brandLabel->setTextFormat(Qt::RichText);
-    // Fonts are registered in main.cpp; expose the resolved family via qApp so we don’t need global singletons.
     brandLabel->setTextFormat(Qt::RichText);
     // Fonts are registered in main.cpp; expose the resolved family via qApp so we don’t need global singletons.
     const QVariant workbenchFamily = qApp->property("workbenchFontFamily");
@@ -197,21 +182,7 @@ void MainWindow::setupToolbar() {
     m_missionMetaLabel->setObjectName(u"missionMeta"_s);
     m_missionMetaLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     brandLayout->addWidget(m_missionMetaLabel);
-
-    // Mission meta line: show the live UTC clock so UI feels tethered to ground ops.
-    m_missionMetaLabel = new QLabel(u"GMT: --:--:-- | -- --- ----"_s, brandBlock);
-    m_missionMetaLabel->setObjectName(u"missionMeta"_s);
-    m_missionMetaLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
-    brandLayout->addWidget(m_missionMetaLabel);
     contentLayout->addWidget(brandBlock);
-
-    updateMissionClock();  // Seed immediately so the label never shows placeholder data.
-    if (!m_missionClockTimer) {
-        m_missionClockTimer = new QTimer(this);
-        m_missionClockTimer->setInterval(1000);  // Update every second to keep HH:mm:ss accurate.
-        connect(m_missionClockTimer, &QTimer::timeout, this, &MainWindow::updateMissionClock);
-        m_missionClockTimer->start();
-    }
 
     updateMissionClock();  // Seed immediately so the label never shows placeholder data.
     if (!m_missionClockTimer) {
@@ -224,7 +195,6 @@ void MainWindow::setupToolbar() {
     contentLayout->addStretch(1);
 
     // QActionGroup locks the nav buttons into a radio-group so only one destination can be “checked” at a time.
-    // QActionGroup locks the nav buttons into a radio-group so only one destination can be “checked” at a time.
     auto *navGroup = new QActionGroup(this);
     navGroup->setExclusive(true);
     m_showMonitoringAction->setCheckable(true);
@@ -232,7 +202,11 @@ void MainWindow::setupToolbar() {
     m_showMonitoringAction->setChecked(true);
 
     // Helper to wrap each QAction inside a QToolButton; QMainWindow handles shortcuts/enable state automatically.
-    auto makeNavButton = [](QAction *action, QWidget *parent) {
+    auto makeNavButton = [](QAction *action,
+            QWidget *parent,
+            Qt::ToolButtonStyle style = Qt::ToolButtonTextOnly,
+            QString kind = u"navButton"_s,
+            QSize iconSize = QSize()) {
         auto *button = new QToolButton(parent);
         button->setProperty("kind", kind);
         button->setAutoRaise(false);
@@ -321,25 +295,6 @@ void MainWindow::setupPages() {
 
     // Each page lives in its own QWidget subclass so logic stays modular.
     m_monitoringPage = new MonitoringPage(this);
-    if (m_monitoringPage) {
-        connect(m_monitoringPage, &MonitoringPage::scanPortsRequested, this, [this]() {
-            if (!m_portScanner) {
-                showStatusMessage(u"No port scanner available."_s, 4000);
-                return;
-            }
-            const auto ports = m_portScanner->enumeratePorts();
-            QStringList portList;
-            for (const auto &p : ports) {
-                portList << QString::fromStdString(p);
-            }
-            m_monitoringPage->showAvailablePorts(portList);
-            showStatusMessage(portList.isEmpty() ? u"No ports found."_s : u"Ports refreshed."_s, 2000);
-        });
-        connect(m_monitoringPage, &MonitoringPage::connectToPortRequested, this, [this](const QString &portName) {
-            showStatusMessage(u"Connecting to "_s + portName, 2000);
-            // Hook up backend connection here when available.
-        });
-    }
     m_pages->addWidget(m_monitoringPage);
     m_pages->setCurrentWidget(m_monitoringPage);          // Default landing page.
 }
@@ -369,72 +324,6 @@ void MainWindow::openSettingsWindow() {
     m_settingsWindow->activateWindow();
     m_openSettingsAction->setChecked(true);
     statusBar()->showMessage(u"Settings window opened."_s, 2000);
-}
-
-// Compute and inject the current local timestamp plus GMT offset into the mission meta label.
-void MainWindow::updateMissionClock() {
-    if (!m_missionMetaLabel) {
-        return;  // Toolbar was not built yet; nothing to update.
-    }
-
-    const QDateTime localNow = QDateTime::currentDateTime();
-    const int offsetSeconds = localNow.offsetFromUtc();
-    const int absOffsetSeconds = qAbs(offsetSeconds);
-    const int offsetHours = absOffsetSeconds / 3600;
-    const int offsetMinutes = (absOffsetSeconds % 3600) / 60;
-
-    // Format GMT±HH[:MM] so even half-hour zones look correct.
-    QString offsetString = QStringLiteral("GMT%1%2")
-            .arg(offsetSeconds >= 0 ? u'+' : u'-')
-            .arg(offsetHours, 2, 10, QLatin1Char('0'));
-    if (offsetMinutes > 0) {
-        offsetString += QStringLiteral(":%1").arg(offsetMinutes, 2, 10, QLatin1Char('0'));
-    }
-
-    const QString timestamp = QStringLiteral("%1 | %2")
-            .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
-    m_missionMetaLabel->setText(timestamp);
-=======
-    auto *toolbar = addToolBar(u"Main Toolbar"_s);      // QMainWindow handles lifetime.
-    toolbar->setMovable(false);                         // Keep the toolbar docked for now.
-
-    toolbar->addAction(m_showDashboardAction);          // Primary navigation button.
-    toolbar->addAction(m_showSettingsAction);           // Secondary navigation button.
-
-    // The next actions are placeholders that hint at future functionality.
-    auto *chartsAction = toolbar->addAction(u"Charts"_s);
-    chartsAction->setEnabled(false);
-    chartsAction->setToolTip(u"Placeholder for chart tools."_s);
-
-    auto *logsAction = toolbar->addAction(u"Logs"_s);
-    logsAction->setEnabled(false);
-    logsAction->setToolTip(u"Placeholder for log viewer."_s);
-}
-
-void MainWindow::setupPages() {
-    // QStackedWidget is the Qt6 “page router”: we add each QWidget once and flip between them with setCurrentWidget().
-    m_pages = new QStackedWidget(this);                 // Central stacked widget lives inside MainWindow.
-    setCentralWidget(m_pages);
-
-    // Dashboard placeholder – a simple column of informative labels.
-    m_dashboardPage = new QWidget(this);
-    auto *dashboardLayout = new QVBoxLayout(m_dashboardPage);
-    dashboardLayout->addWidget(new QLabel(u"Dashboard placeholder."_s, m_dashboardPage));
-    dashboardLayout->addWidget(new QLabel(u"Add telemetry summaries and widgets here."_s, m_dashboardPage));
-
-    // Settings placeholder – another simple column layout.
-    m_settingsPage = new QWidget(this);
-    auto *settingsLayout = new QVBoxLayout(m_settingsPage);
-    settingsLayout->addWidget(new QLabel(u"Settings placeholder."_s, m_settingsPage));
-    settingsLayout->addWidget(new QLabel(u"Add configuration controls here."_s, m_settingsPage));
-
-    setupChartPage();                                     // Creates m_chartPage with a simple chart.
-
-    // Order determines indices; we keep all pages accessible via actions.
-    m_pages->addWidget(m_dashboardPage);
-    m_pages->addWidget(m_settingsPage);
-    m_pages->addWidget(m_chartPage);
-    m_pages->setCurrentWidget(m_dashboardPage);          // Default landing page.
 }
 
 // Compute and inject the current local timestamp plus GMT offset into the mission meta label.

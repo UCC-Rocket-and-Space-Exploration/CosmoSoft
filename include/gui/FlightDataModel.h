@@ -2,7 +2,6 @@
 #define COSMO_SOFT_FLIGHTDATAMODEL_H
 #include <format>
 #include <vector>
-#include <vector>
 
 struct AngularVelocity {
     double x, y, z;
