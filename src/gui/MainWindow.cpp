@@ -1,12 +1,9 @@
-#include "MainWindow.h"
-<<<<<<< HEAD
-#include "pages/DashboardPage.h"   // Live telemetry overview.
-#include "pages/SettingsPage.h"    // Placeholder for ground-station settings.
-#include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
-=======
-#include "pages/MonitoringPage.h"   // Live telemetry overview.
-#include "pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
->>>>>>> 800aba1 (remove some pages)
+#include "gui/MainWindow.h"
+#include "gui/pages/DashboardPage.h"   // Live telemetry overview.
+#include "gui/pages/SettingsPage.h"    // Placeholder for ground-station settings.
+#include "gui/pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
+#include "gui/pages/MonitoringPage.h"   // Live telemetry overview.
+#include "gui/pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -49,7 +46,6 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::setupActions() {
     // Actions encapsulate the intent behind toolbar/menu buttons.
-<<<<<<< HEAD
     m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
     m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
 
@@ -70,7 +66,6 @@ void MainWindow::setupActions() {
 
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() {
         openSettingsWindow();
-=======
     m_showDashboardAction = new QAction(u"Dashboard"_s, this);
     m_showDashboardAction->setToolTip(u"Switch to the dashboard page."_s);
 
@@ -86,7 +81,6 @@ void MainWindow::setupActions() {
     connect(m_showSettingsAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_settingsPage);
         statusBar()->showMessage(u"Settings page selected."_s, 2000);
->>>>>>> f77beb0 (UI Skeleton)
     });
 }
 
@@ -327,7 +321,6 @@ void MainWindow::setupPages() {
 
     // Each page lives in its own QWidget subclass so logic stays modular.
     m_monitoringPage = new MonitoringPage(this);
-<<<<<<< HEAD
     if (m_monitoringPage) {
         connect(m_monitoringPage, &MonitoringPage::scanPortsRequested, this, [this]() {
             if (!m_portScanner) {
@@ -347,8 +340,6 @@ void MainWindow::setupPages() {
             // Hook up backend connection here when available.
         });
     }
-=======
->>>>>>> 800aba1 (remove some pages)
     m_pages->addWidget(m_monitoringPage);
     m_pages->setCurrentWidget(m_monitoringPage);          // Default landing page.
 }

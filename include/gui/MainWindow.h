@@ -2,7 +2,6 @@
 #define COSMO_SOFT_MAINWINDOW_H
 
 #include <QMainWindow>    // Base class that already owns menu/status bars and a central widget slot.
-<<<<<<< HEAD
 #include <QString>
 
 class QAction;
@@ -15,7 +14,6 @@ class SettingsPage;
 class ISerialPortScanner;
 
 // MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked page, and settings entry point).
-=======
 
 class QAction;
 class QLabel;
@@ -23,27 +21,19 @@ class QStackedWidget;
 class QTimer;
 class QWidget;
 
-<<<<<<< HEAD
 // MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked pages, and a chart demo).
->>>>>>> f77beb0 (UI Skeleton)
-=======
 // MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked page, and settings entry point).
->>>>>>> 800aba1 (remove some pages)
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
-<<<<<<< HEAD
     void showStatusMessage(const QString &message, int timeout = 0);
-=======
->>>>>>> f77beb0 (UI Skeleton)
     ~MainWindow() override = default;
 
 private:
     void setupActions();     // Create QAction objects that will drive toolbar navigation.
     void setupToolbar();     // Build the visible toolbar with skeleton buttons.
-<<<<<<< HEAD
     void setupDataBar();     // Create the thin telemetry strip that sits under the toolbar.
     void setupPages();       // Construct the stacked pages that behave like separate windows.
     void openSettingsWindow(); // Launch the detached settings window.
@@ -64,17 +54,8 @@ private:
     QLabel *m_dataRateLabel = nullptr;
 
     ISerialPortScanner *m_portScanner = nullptr; // Owned by factory; lifetime for app run.
-=======
-    void setupPages();       // Construct the stacked pages that behave like separate windows.
-    void updateMissionClock();  // Refresh the GMT label with the current UTC timestamp.
-
     QAction *m_showDashboardAction = nullptr;
     QAction *m_showSettingsAction = nullptr;
-
-    QStackedWidget *m_pages = nullptr;
-    DashboardPage *m_dashboardPage = nullptr;
-    SettingsPage *m_settingsPage = nullptr;
-    ChartPage *m_chartPage = nullptr;
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

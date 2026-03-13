@@ -1,6 +1,9 @@
 
 file(GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
-target_link_libraries(cosmo-soft ${SOURCES})
+add_library(teleme ${SOURCES})
+target_include_directories(teleme PUBLIC include)
+
+target_link_libraries(cosmo-backend teleme)
 
 

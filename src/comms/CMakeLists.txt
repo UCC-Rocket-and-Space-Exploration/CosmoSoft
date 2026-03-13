@@ -1,3 +1,4 @@
+add_library(Comms ${SOURCES})
 
 if (WIN32)
     add_subdirectory(Windows)
@@ -6,9 +7,11 @@ if(UNIX)
     add_subdirectory(Posix)
 endif()
 
-file(GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+#file(GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
-target_link_libraries(cosmo-soft ${SOURCES})
+target_include_directories(Comms PUBLIC include)
 
-target_include_directories(cosmo-soft PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
+target_link_libraries(cosmo-backend Comms)
+
+#target_include_directories(cosmo-soft PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include)
 

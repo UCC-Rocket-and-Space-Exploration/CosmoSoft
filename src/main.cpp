@@ -4,15 +4,14 @@
 #include <QStringList>
 #include <QDebug>
 #include <QResource>
-#include "MainWindow.h"   // Our custom UI shell with toolbar, stacked pages, and a demo chart.
->>>>>>> f77beb0 (UI Skeleton)
+#include "gui/MainWindow.h"   // Our custom UI shell with toolbar, stacked pages, and a demo chart.
 
 int main(int argc, char *argv[]) {
-    QApplication a(argc, argv);
-    QPushButton button("Hello world!", nullptr);
-    button.resize(200, 100);
-    button.show();
-    return QApplication::exec();
+    // QApplication app(argc, argv);
+    // QPushButton button("Hello world!", nullptr);
+    // button.resize(200, 100);
+    // button.show();
+    // return QApplication::exec();
     QApplication app(argc, argv);    // QApplication owns the event loop and must be created first.
 
     Q_INIT_RESOURCE(resources);
