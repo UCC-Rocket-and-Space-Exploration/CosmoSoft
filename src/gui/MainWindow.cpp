@@ -22,6 +22,7 @@
 #include <QVariant>
 #include <QWidget>
 
+class QString;
 using namespace Qt::StringLiterals;
 
 // Entry point for the GUI shell; constructs the basic chrome and loads placeholder pages.

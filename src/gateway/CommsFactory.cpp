@@ -1,4 +1,4 @@
-#include "../../../include/gateway/comms/CommsFactory.h"
+#include "../../include/gateway/comms/CommsFactory.h"
 
 #include "gateway/posix/SerialCommsPosix.h"
 
