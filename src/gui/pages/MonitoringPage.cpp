@@ -15,7 +15,7 @@ using namespace Qt::StringLiterals;
 MonitoringPage::MonitoringPage(MainWindow *hostWindow, QWidget *parent)
 : QWidget(parent), m_hostWindow(hostWindow) {
     setAttribute(Qt::WA_OpaquePaintEvent);
-    setAutoFillBackground(false);
+    setAutoFillBackground(false);x
 
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(24, 24, 24, 24);

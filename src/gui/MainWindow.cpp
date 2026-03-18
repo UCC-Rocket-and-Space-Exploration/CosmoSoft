@@ -163,7 +163,7 @@ void MainWindow::setupToolbar() {
     auto *brandLayout = new QVBoxLayout(brandBlock);
     brandLayout->setContentsMargins(0, 0, 0, 0);
     brandLayout->setSpacing(2);
-    auto *brandLabel = new QLabel(u"Cosmo<span style=\"color:#000000\">Soft</span>"_s, brandBlock);
+    auto *brandLabel = new QLabel(u"CosmoSoft"_s, brandBlock);
     brandLabel->setObjectName(u"brandLabel"_s);
     brandLabel->setTextFormat(Qt::RichText);
     // Fonts are registered in main.cpp; expose the resolved family via qApp so we don’t need global singletons.
@@ -262,7 +262,7 @@ void MainWindow::setupDataBar() {
         QWidget#telemetryStrip {
             background: rgba(26, 26, 26, 0.95);
             color: #f0f0f0;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(7, 7, 7, 0.08);
             border-bottom: 1px solid rgba(0, 0, 0, 0.7);
         }
 
