@@ -276,6 +276,7 @@ void MainWindow::setupDataBar() {
     };
 
     m_dataLinkStatusLabel = buildBadgeLabel(u"DATA BAR. MAYBE... in future"_s, m_dataBar);
+    m_dataRateLabel = buildBadgeLabel(u"RATE: --"_s, m_dataBar);
     dataLayout->addWidget(m_dataLinkStatusLabel);
     dataLayout->addWidget(m_dataRateLabel);
     dataLayout->addStretch(1);
