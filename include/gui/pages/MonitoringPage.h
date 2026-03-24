@@ -23,8 +23,6 @@ public:
 
 signals:
     void scanPortsRequested();
-    void connectToPortRequested(const QString &portName);
-
 public slots:
     void showAvailablePorts(const QStringList &ports);
     void appendSerialLog(const QString &text);

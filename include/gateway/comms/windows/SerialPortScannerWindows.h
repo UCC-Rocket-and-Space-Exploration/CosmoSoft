@@ -4,13 +4,14 @@
 #include <string>
 #include <vector>
 
-#include "ISerialPortScanner.h"
-#include "gui/MainWindow.h"
+#include "gateway/comms/ISerialPortScanner.h"
 
 class SerialPortScannerWindows : public ISerialPortScanner {
 public:
-    std::vector<std::string> enumeratePorts() override { return {}; }
-    bool tryOpenPort(const std::string &) override { return false; }
+    std::vector<std::string> enumeratePorts() override;
+    bool tryOpenPort(const std::string& portName) override;
+    // const std::string* &portName
+    //bool tryOpenPort(const char* &)
 };
 
 

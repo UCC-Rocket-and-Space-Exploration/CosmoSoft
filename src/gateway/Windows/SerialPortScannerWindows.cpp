@@ -1,4 +1,4 @@
-#include "gateway/windows/SerialPortScannerWindows.h"
+#include "gateway/comms/windows/SerialPortScannerWindows.h"
 
 
 // #include "comms/SerialPortScannerWindows.h"
@@ -55,8 +55,9 @@ std::vector<std::string> SerialPortScannerWindows::enumeratePorts() {
 }
 
 bool SerialPortScannerWindows::tryOpenPort(const std::string &portName) {
-    HANDLE h = CreateFile(portName, GENERIC_READ | GENERIC_WRITE,
+    HANDLE h = CreateFile(portName.c_str(), GENERIC_READ | GENERIC_WRITE,
                                0, NULL, OPEN_EXISTING,NULL,NULL);
+
     bool isValid = h != INVALID_HANDLE_VALUE;
     CloseHandle(h);
     return isValid;

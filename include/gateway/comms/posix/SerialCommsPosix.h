@@ -12,7 +12,7 @@ public:
     ~SerialCommsPosix() override; //destructor
 
     bool open() override;
-    //bool open(std::string* flags);
+    // bool open(std::string* flags);
     void close() override;
     [[nodiscard]] bool isOpen() const override;
 

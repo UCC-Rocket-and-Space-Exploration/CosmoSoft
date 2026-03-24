@@ -2,7 +2,8 @@
 file(GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 file(GLOB pages "pages/*.cpp")
 
-add_library(gui ${SOURCES} ${pages})
+add_library(gui ${SOURCES} ${pages}
+        pages/DashboardPage.cpp)
 target_include_directories(gui PUBLIC ${HEADERS})
 
 target_link_libraries(gui
