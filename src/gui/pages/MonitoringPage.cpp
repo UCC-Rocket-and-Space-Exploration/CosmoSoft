@@ -40,7 +40,7 @@ MonitoringPage::MonitoringPage(MainWindow *hostWindow, FlightDataModel *model, Q
     )");
 
     m_summaryLabel = new QLabel(
-        u"Monitoring: waiting for telemetry. Open Settings to connect a serial port."_s,
+        u"Monitoring: waiting for telemetry. Use the connection bar to connect a serial port."_s,
         textFrame);
     m_summaryLabel->setWordWrap(true);
     m_summaryLabel->setStyleSheet(u"color: #e8e8e8; font-size: 14px;"_s);

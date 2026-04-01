@@ -321,7 +321,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     chartFrameLayout->addWidget(chartWrapper);
 
     auto *chartHint = new QLabel(
-        u"Live: charts fill from serial telemetry. Replay: load a CSV in Settings, then scrub or play."_s,
+        u"Live: charts fill from serial telemetry. Replay: open a log from the connection bar, then scrub or play."_s,
         chartFrame);
     chartHint->setAlignment(Qt::AlignCenter);
     chartHint->setStyleSheet(u"color: #8f9aa8; font-style: italic;"_s);

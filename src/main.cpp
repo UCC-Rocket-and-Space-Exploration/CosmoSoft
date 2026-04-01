@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QFont>
 #include <QFontDatabase>
+#include <QSettings>
 #include <QStringList>
 #include <QMetaType>
 #include <QResource>
@@ -28,11 +29,13 @@ int main(int argc, char *argv[]) {
     };
 
     const QString redHatFamily = loadFontFamily(QStringLiteral(":/fonts/RedHatMono-Regular.ttf"), QStringLiteral("Red Hat Mono"));
-    if (!redHatFamily.isEmpty()) {
-        app.setFont(QFont(redHatFamily));
-    } else {
-        app.setFont(QFont("Red Hat Mono"));
+    QFont baseFont = !redHatFamily.isEmpty() ? QFont(redHatFamily) : QFont(QStringLiteral("Red Hat Mono"));
+    QSettings settings(QStringLiteral("CosmoSoft"), QStringLiteral("cosmo-soft"));
+    const int savedPt = settings.value(QStringLiteral("ui/fontPointSize"), 12).toInt();
+    if (savedPt >= 6 && savedPt <= 48) {
+        baseFont.setPointSize(savedPt);
     }
+    app.setFont(baseFont);
 
     const QString workbenchFamily = loadFontFamily(QStringLiteral(":/fonts/Workbench-Regular.ttf"), QStringLiteral("Workbench"));
     if (!workbenchFamily.isEmpty()) {

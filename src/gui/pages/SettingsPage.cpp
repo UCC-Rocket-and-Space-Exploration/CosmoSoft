@@ -1,16 +1,15 @@
 #include "gui/pages/SettingsPage.h"
 
+#include <QApplication>
 #include <QCloseEvent>
-#include <QDir>
-#include <QFrame>
+#include <QCheckBox>
 #include <QComboBox>
-#include <QFileDialog>
+#include <QFont>
 #include <QFormLayout>
+#include <QFrame>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QLineEdit>
-#include <QPushButton>
 #include <QScrollArea>
 #include <QSettings>
 #include <QShowEvent>
@@ -45,100 +44,38 @@ void SettingsPage::buildUi() {
     heading->setObjectName(u"settingsHeading"_s);
     layout->addWidget(heading);
 
-    m_connectionGroup = new QGroupBox(u"Serial connection"_s, inner);
-    auto *connForm = new QFormLayout(m_connectionGroup);
-    connForm->setSpacing(10);
+    auto *intro = new QLabel(
+        u"Appearance and audio preferences. On the main window, use the connection bar (under the toolbar) for serial and flight logs."_s,
+        inner);
+    intro->setWordWrap(true);
+    intro->setObjectName(u"settingsMutedLabel"_s);
+    layout->addWidget(intro);
 
-    auto *portRow = new QHBoxLayout();
-    m_portCombo = new QComboBox(m_connectionGroup);
-    m_portCombo->setMinimumWidth(260);
-    m_portCombo->setEditable(true);
-    auto *refreshBtn = new QPushButton(u"Refresh ports"_s, m_connectionGroup);
-    connect(refreshBtn, &QPushButton::clicked, this, &SettingsPage::refreshPortsRequested);
-    portRow->addWidget(m_portCombo, 1);
-    portRow->addWidget(refreshBtn);
-    connForm->addRow(u"Port:"_s, portRow);
+    m_fontGroup = new QGroupBox(u"Font"_s, inner);
+    auto *fontForm = new QFormLayout(m_fontGroup);
+    fontForm->setSpacing(10);
+    m_fontSizeCombo = new QComboBox(m_fontGroup);
+    for (int pt = 9; pt <= 18; ++pt) {
+        m_fontSizeCombo->addItem(QString::number(pt), pt);
+    }
+    m_fontSizeCombo->setCurrentIndex(3);
+    connect(m_fontSizeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SettingsPage::onFontSizeChanged);
+    fontForm->addRow(u"UI font size (pt):"_s, m_fontSizeCombo);
+    layout->addWidget(m_fontGroup);
 
-    m_baudCombo = new QComboBox(m_connectionGroup);
-    m_baudCombo->addItems({u"9600"_s, u"19200"_s, u"38400"_s, u"57600"_s, u"115200"_s, u"921600"_s});
-    m_baudCombo->setCurrentText(u"115200"_s);
-    connForm->addRow(u"Baud rate:"_s, m_baudCombo);
-
-    m_linkStatus = new QLabel(u"Disconnected."_s, m_connectionGroup);
-    m_linkStatus->setObjectName(u"settingsMutedLabel"_s);
-    connForm->addRow(u"Status:"_s, m_linkStatus);
-
-    auto *btnRow = new QHBoxLayout();
-    auto *connectBtn = new QPushButton(u"Connect"_s, m_connectionGroup);
-    auto *disconnectBtn = new QPushButton(u"Disconnect"_s, m_connectionGroup);
-    btnRow->addWidget(connectBtn);
-    btnRow->addWidget(disconnectBtn);
-    btnRow->addStretch(1);
-    connForm->addRow(btnRow);
-
-    connect(connectBtn, &QPushButton::clicked, this, [this]() {
-        saveConnectionFields();
-        const QString port = m_portCombo->currentText().trimmed();
-        const int baud = m_baudCombo->currentText().toInt();
-        emit connectRequested(port, baud);
-    });
-    connect(disconnectBtn, &QPushButton::clicked, this, &SettingsPage::disconnectRequested);
-
-    connect(m_portCombo, &QComboBox::editTextChanged, this, &SettingsPage::saveConnectionFields);
-    connect(m_baudCombo, &QComboBox::currentTextChanged, this, &SettingsPage::saveConnectionFields);
-
-    layout->addWidget(m_connectionGroup);
-
-    m_replayGroup = new QGroupBox(u"Flight replay"_s, inner);
-    auto *replayLayout = new QVBoxLayout(m_replayGroup);
-    replayLayout->setSpacing(10);
-
-    auto *replayHint = new QLabel(
-        u"Load Theseus CSV or TELEM logs for offline playback on the Flight data page."_s,
-        m_replayGroup);
-    replayHint->setWordWrap(true);
-    replayHint->setObjectName(u"settingsMutedLabel"_s);
-    replayLayout->addWidget(replayHint);
-
-    auto *dirRow = new QHBoxLayout();
-    m_replayDirEdit = new QLineEdit(m_replayGroup);
-    m_replayDirEdit->setPlaceholderText(u"Default folder for file picker"_s);
-    auto *browseDirBtn = new QPushButton(u"Choose folder…"_s, m_replayGroup);
-    connect(browseDirBtn, &QPushButton::clicked, this, [this]() {
-        const QString start = m_replayDirEdit->text().trimmed();
-        const QString dir = QFileDialog::getExistingDirectory(
-            this,
-            u"Replay files folder"_s,
-            start.isEmpty() ? QDir::homePath() : start);
-        if (!dir.isEmpty()) {
-            m_replayDirEdit->setText(dir);
-            QSettings s(kOrg, kApp);
-            s.setValue(u"paths/replayDir"_s, dir);
-        }
-    });
-    dirRow->addWidget(m_replayDirEdit, 1);
-    dirRow->addWidget(browseDirBtn);
-    replayLayout->addLayout(dirRow);
-
-    auto *replayBtnRow = new QHBoxLayout();
-    auto *openBtn = new QPushButton(u"Open flight log…"_s, m_replayGroup);
-    auto *clearBtn = new QPushButton(u"Clear loaded flight"_s, m_replayGroup);
-    connect(openBtn, &QPushButton::clicked, this, &SettingsPage::openReplayFileRequested);
-    connect(clearBtn, &QPushButton::clicked, this, &SettingsPage::clearFlightDataRequested);
-    replayBtnRow->addWidget(openBtn);
-    replayBtnRow->addWidget(clearBtn);
-    replayBtnRow->addStretch(1);
-    replayLayout->addLayout(replayBtnRow);
-
-    layout->addWidget(m_replayGroup);
-
-    m_appGroup = new QGroupBox(u"Application"_s, inner);
-    auto *appLayout = new QVBoxLayout(m_appGroup);
-    auto *appNote = new QLabel(u"Preferences are stored automatically when this window closes."_s, m_appGroup);
-    appNote->setWordWrap(true);
-    appNote->setObjectName(u"settingsMutedLabel"_s);
-    appLayout->addWidget(appNote);
-    layout->addWidget(m_appGroup);
+    m_soundGroup = new QGroupBox(u"Sound"_s, inner);
+    auto *soundLayout = new QVBoxLayout(m_soundGroup);
+    m_uiSoundsCheck = new QCheckBox(u"Enable UI sounds (when available)"_s, m_soundGroup);
+    m_uiSoundsCheck->setChecked(true);
+    connect(m_uiSoundsCheck, &QCheckBox::toggled, this, &SettingsPage::onSoundsToggled);
+    soundLayout->addWidget(m_uiSoundsCheck);
+    auto *soundHint = new QLabel(
+        u"Reserved for future alerts and feedback tones."_s,
+        m_soundGroup);
+    soundHint->setWordWrap(true);
+    soundHint->setObjectName(u"settingsMutedLabel"_s);
+    soundLayout->addWidget(soundHint);
+    layout->addWidget(m_soundGroup);
 
     layout->addStretch(1);
 
@@ -204,6 +141,14 @@ void SettingsPage::buildUi() {
             selection-background-color: #4b4b4b;
             border: 1px solid #4d4d4d;
         }
+        QCheckBox {
+            color: #f8f8f8;
+            spacing: 8px;
+        }
+        QCheckBox::indicator {
+            width: 18px;
+            height: 18px;
+        }
         QPushButton {
             border: 2px solid #cfcfcf;
             border-radius: 4px;
@@ -233,28 +178,30 @@ void SettingsPage::buildUi() {
     )"_s);
 }
 
-QString SettingsPage::replayDirectory() const {
-    if (!m_replayDirEdit) {
-        return {};
-    }
-    return m_replayDirEdit->text().trimmed();
-}
-
-void SettingsPage::setPortNames(const QStringList &ports) {
-    if (!m_portCombo) {
+void SettingsPage::applyFontPointSize(int pt) {
+    if (pt < 6 || pt > 48) {
         return;
     }
-    const QString prev = m_portCombo->currentText();
-    m_portCombo->clear();
-    m_portCombo->addItems(ports);
-    if (!prev.isEmpty()) {
-        const int idx = m_portCombo->findText(prev);
-        if (idx >= 0) {
-            m_portCombo->setCurrentIndex(idx);
-        } else {
-            m_portCombo->setEditText(prev);
-        }
+    QFont f = qApp->font();
+    f.setPointSize(pt);
+    qApp->setFont(f);
+}
+
+void SettingsPage::onFontSizeChanged(int index) {
+    if (!m_fontSizeCombo || index < 0) {
+        return;
     }
+    const int pt = m_fontSizeCombo->itemData(index).toInt();
+    if (pt > 0) {
+        applyFontPointSize(pt);
+        QSettings s(kOrg, kApp);
+        s.setValue(u"ui/fontPointSize"_s, pt);
+    }
+}
+
+void SettingsPage::onSoundsToggled(bool enabled) {
+    QSettings s(kOrg, kApp);
+    s.setValue(u"ui/soundsEnabled"_s, enabled);
 }
 
 void SettingsPage::showEvent(QShowEvent *event) {
@@ -269,25 +216,18 @@ void SettingsPage::closeEvent(QCloseEvent *event) {
 
 void SettingsPage::loadFromSettings() {
     QSettings s(kOrg, kApp);
-    const QString port = s.value(u"serial/port"_s).toString();
-    if (!port.isEmpty() && m_portCombo) {
-        const int idx = m_portCombo->findText(port);
+    const int pt = s.value(u"ui/fontPointSize"_s, 12).toInt();
+    if (m_fontSizeCombo) {
+        const int idx = m_fontSizeCombo->findData(pt);
         if (idx >= 0) {
-            m_portCombo->setCurrentIndex(idx);
-        } else {
-            m_portCombo->setEditText(port);
+            m_fontSizeCombo->blockSignals(true);
+            m_fontSizeCombo->setCurrentIndex(idx);
+            m_fontSizeCombo->blockSignals(false);
         }
+        applyFontPointSize(pt);
     }
-    const QString baud = s.value(u"serial/baud"_s, u"115200"_s).toString();
-    if (m_baudCombo) {
-        const int bi = m_baudCombo->findText(baud);
-        if (bi >= 0) {
-            m_baudCombo->setCurrentIndex(bi);
-        }
-    }
-    const QString rdir = s.value(u"paths/replayDir"_s, QDir::homePath()).toString();
-    if (m_replayDirEdit) {
-        m_replayDirEdit->setText(rdir);
+    if (m_uiSoundsCheck) {
+        m_uiSoundsCheck->setChecked(s.value(u"ui/soundsEnabled"_s, true).toBool());
     }
 
     const QByteArray geo = s.value(u"window/settingsGeometry"_s).toByteArray();
@@ -298,30 +238,14 @@ void SettingsPage::loadFromSettings() {
 
 void SettingsPage::saveToSettings() {
     QSettings s(kOrg, kApp);
-    if (m_portCombo) {
-        s.setValue(u"serial/port"_s, m_portCombo->currentText().trimmed());
+    if (m_fontSizeCombo) {
+        const int pt = m_fontSizeCombo->currentData().toInt();
+        if (pt > 0) {
+            s.setValue(u"ui/fontPointSize"_s, pt);
+        }
     }
-    if (m_baudCombo) {
-        s.setValue(u"serial/baud"_s, m_baudCombo->currentText());
-    }
-    if (m_replayDirEdit) {
-        s.setValue(u"paths/replayDir"_s, m_replayDirEdit->text().trimmed());
+    if (m_uiSoundsCheck) {
+        s.setValue(u"ui/soundsEnabled"_s, m_uiSoundsCheck->isChecked());
     }
     s.setValue(u"window/settingsGeometry"_s, saveGeometry());
-}
-
-void SettingsPage::setSerialLinkStatus(const QString &text) {
-    if (m_linkStatus) {
-        m_linkStatus->setText(text);
-    }
-}
-
-void SettingsPage::saveConnectionFields() {
-    QSettings s(kOrg, kApp);
-    if (m_portCombo) {
-        s.setValue(u"serial/port"_s, m_portCombo->currentText().trimmed());
-    }
-    if (m_baudCombo) {
-        s.setValue(u"serial/baud"_s, m_baudCombo->currentText());
-    }
 }

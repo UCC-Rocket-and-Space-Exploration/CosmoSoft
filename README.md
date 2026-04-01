@@ -10,13 +10,14 @@ The app builds and runs with:
 
 - **Monitoring** — summary of the latest decoded sample (live or replay).
 - **Flight data** — dashboard with **three time-based charts** (altitude, temperature, pressure), stat tiles, and **replay controls** (play / pause / stop, scrub slider, speed).
-- **Settings** (separate window) — serial port and baud, persisted via **QSettings** (`CosmoSoft` / `cosmo-soft`); **flight replay** section to open logs or clear loaded data.
+- **Connection bar** (under the toolbar) — serial port, baud, **Refresh** / **Connect** / **Disconnect**, **Open log…** and **Clear flight**; port, baud, and last replay folder are persisted via **QSettings** (`CosmoSoft` / `cosmo-soft`).
+- **Settings** (separate window) — appearance (UI font size) and sound preference flags only.
 
-**Offline replay:** Load **Theseus-style CSV** (see `sample_data/theseus_flight_data.csv`) via *Settings → Open flight log…*. Timestamps are taken from the `time` column (seconds → stored as milliseconds).
+**Offline replay:** Load **Theseus-style CSV** (see `sample_data/theseus_flight_data.csv`) via *Open log…* on the connection bar. Timestamps are taken from the `time` column (seconds → stored as milliseconds).
 
 **`.telem` files:** Lines are hex-decoded and fed through the telemetry **Framer** / **Parser**. Those layers are still **stubs**, so `.telem` replay will not produce samples until binary framing and decoding are implemented.
 
-**Live serial:** Connect from Settings; bytes flow through `ParserWorker` → `Framer` → `Parser`. Until parsing is implemented, decoded live samples may not appear in the UI.
+**Live serial:** Connect from the connection bar; bytes flow through `ParserWorker` → `Framer` → `Parser`. Until parsing is implemented, decoded live samples may not appear in the UI.
 
 ## Requirements
 
@@ -87,7 +88,7 @@ The `sample_data/` folder contains example logs:
 
 | File | Use |
 |------|-----|
-| `theseus_flight_data.csv` | Replay in the app (Settings → Open flight log…) |
+| `theseus_flight_data.csv` | Replay in the app (connection bar → Open log…) |
 | `*.telem` | Altos-style hex lines; needs Framer/Parser implementation to decode |
 
 ## Project structure

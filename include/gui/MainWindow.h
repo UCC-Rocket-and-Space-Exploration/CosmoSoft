@@ -10,6 +10,7 @@
 #include "services/BlockingQueue.h"
 
 class QAction;
+class QComboBox;
 class QLabel;
 class QStackedWidget;
 class QTimer;
@@ -48,6 +49,9 @@ private:
     void setupActions();
     void setupToolbar();
     void setupDataBar();
+    void setupConnectionBar();
+    void loadSerialPrefsToUi();
+    void persistSerialPrefs();
     void setupPages();
     void openSettingsWindow();
 
@@ -62,6 +66,10 @@ private:
 
     QLabel *m_missionMetaLabel = nullptr;
     QTimer *m_missionClockTimer = nullptr;
+
+    QWidget *m_connectionBar = nullptr;
+    QComboBox *m_portCombo = nullptr;
+    QComboBox *m_baudCombo = nullptr;
 
     QWidget *m_dataBar = nullptr;
     QLabel *m_dataLinkStatusLabel = nullptr;

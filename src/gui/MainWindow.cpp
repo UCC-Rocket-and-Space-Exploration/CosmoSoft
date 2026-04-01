@@ -19,11 +19,15 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QComboBox>
 #include <QDateTime>
 #include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QFont>
+#include <QPushButton>
+#include <QSettings>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QIcon>
@@ -52,6 +56,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupToolbar();
     setupDataBar();
     setupPages();
+    refreshSerialPorts();
 
     connect(m_replay.get(), &FlightReplayController::positionChanged, this, &MainWindow::onReplayPositionChanged);
 
@@ -310,11 +315,151 @@ void MainWindow::setupDataBar() {
     )"_s);
 }
 
+void MainWindow::setupConnectionBar() {
+    if (m_connectionBar) {
+        return;
+    }
+
+    m_connectionBar = new QWidget(this);
+    m_connectionBar->setObjectName(u"connectionStrip"_s);
+    m_connectionBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    auto *row = new QHBoxLayout(m_connectionBar);
+    row->setContentsMargins(16, 8, 16, 8);
+    row->setSpacing(12);
+
+    auto *portLabel = new QLabel(u"Port"_s, m_connectionBar);
+    portLabel->setStyleSheet(u"color: #c8c8c8; font-family: \"Red Hat Mono\", monospace;"_s);
+    m_portCombo = new QComboBox(m_connectionBar);
+    m_portCombo->setEditable(true);
+    m_portCombo->setMinimumWidth(200);
+    m_portCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+
+    auto *baudLabel = new QLabel(u"Baud"_s, m_connectionBar);
+    baudLabel->setStyleSheet(portLabel->styleSheet());
+    m_baudCombo = new QComboBox(m_connectionBar);
+    const QList<int> bauds = {9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
+    for (int b : bauds) {
+        m_baudCombo->addItem(QString::number(b), b);
+    }
+    m_baudCombo->setCurrentIndex(4);
+
+    auto *refreshBtn = new QPushButton(u"Refresh"_s, m_connectionBar);
+    auto *connectBtn = new QPushButton(u"Connect"_s, m_connectionBar);
+    auto *disconnectBtn = new QPushButton(u"Disconnect"_s, m_connectionBar);
+    auto *openLogBtn = new QPushButton(u"Open log…"_s, m_connectionBar);
+    auto *clearFlightBtn = new QPushButton(u"Clear flight"_s, m_connectionBar);
+
+    row->addWidget(portLabel);
+    row->addWidget(m_portCombo);
+    row->addWidget(baudLabel);
+    row->addWidget(m_baudCombo);
+    row->addWidget(refreshBtn);
+    row->addWidget(connectBtn);
+    row->addWidget(disconnectBtn);
+    row->addSpacing(16);
+    row->addWidget(openLogBtn);
+    row->addWidget(clearFlightBtn);
+    row->addStretch(1);
+
+    connect(refreshBtn, &QPushButton::clicked, this, &MainWindow::refreshSerialPorts);
+    connect(connectBtn, &QPushButton::clicked, this, [this]() {
+        persistSerialPrefs();
+        const QString port = m_portCombo ? m_portCombo->currentText().trimmed() : QString{};
+        int baud = 115200;
+        if (m_baudCombo) {
+            baud = m_baudCombo->currentData().toInt();
+            if (baud <= 0) {
+                baud = m_baudCombo->currentText().toInt();
+            }
+            if (baud <= 0) {
+                baud = 115200;
+            }
+        }
+        startSerial(port, baud);
+    });
+    connect(disconnectBtn, &QPushButton::clicked, this, &MainWindow::stopSerial);
+    connect(openLogBtn, &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
+    connect(clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
+
+    m_connectionBar->setStyleSheet(uR"(
+        QWidget#connectionStrip {
+            background: rgba(34, 34, 34, 0.98);
+            color: #f0f0f0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        QWidget#connectionStrip QComboBox {
+            background-color: #1a1a1a;
+            color: #f5f5f5;
+            border: 1px solid #4d4d4d;
+            border-radius: 4px;
+            padding: 4px 8px;
+            min-height: 22px;
+            font-family: "Red Hat Mono", "Courier New", monospace;
+        }
+        QWidget#connectionStrip QComboBox::drop-down { border: none; width: 22px; }
+        QWidget#connectionStrip QComboBox QAbstractItemView {
+            background-color: #2b2d33;
+            color: #f5f5f5;
+            selection-background-color: #4b4b4b;
+        }
+        QWidget#connectionStrip QPushButton {
+            border: 1px solid #6a6a6a;
+            border-radius: 4px;
+            padding: 5px 12px;
+            background-color: #3d3f47;
+            color: #f0f0f0;
+            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-size: 12px;
+        }
+        QWidget#connectionStrip QPushButton:hover { background-color: #4d4f57; }
+        QWidget#connectionStrip QPushButton:pressed { background-color: #2d2f37; }
+    )"_s);
+
+    loadSerialPrefsToUi();
+}
+
+void MainWindow::loadSerialPrefsToUi() {
+    QSettings s(u"CosmoSoft"_s, u"cosmo-soft"_s);
+    const QString port = s.value(u"serial/port"_s).toString();
+    if (m_portCombo && !port.isEmpty()) {
+        const int idx = m_portCombo->findText(port);
+        if (idx >= 0) {
+            m_portCombo->setCurrentIndex(idx);
+        } else {
+            m_portCombo->setCurrentText(port);
+        }
+    }
+    if (m_baudCombo) {
+        const QString baudStr = s.value(u"serial/baud"_s, u"115200"_s).toString();
+        const int idx = m_baudCombo->findText(baudStr);
+        if (idx >= 0) {
+            m_baudCombo->setCurrentIndex(idx);
+        } else {
+            m_baudCombo->setCurrentText(baudStr);
+        }
+    }
+}
+
+void MainWindow::persistSerialPrefs() {
+    if (!m_portCombo || !m_baudCombo) {
+        return;
+    }
+    QSettings s(u"CosmoSoft"_s, u"cosmo-soft"_s);
+    s.setValue(u"serial/port"_s, m_portCombo->currentText().trimmed());
+    s.setValue(u"serial/baud"_s, m_baudCombo->currentText());
+}
+
 void MainWindow::setupPages() {
     auto *central = new QWidget(this);
     auto *centralLayout = new QVBoxLayout(central);
     centralLayout->setContentsMargins(0, 0, 0, 0);
     centralLayout->setSpacing(0);
+
+    setupConnectionBar();
+    if (m_connectionBar) {
+        centralLayout->addWidget(m_connectionBar);
+    }
 
     if (!m_dataBar) {
         setupDataBar();
@@ -346,20 +491,12 @@ void MainWindow::openSettingsWindow() {
         m_settingsWindow->setWindowIcon(QIcon(u":/icons/settings_button.png"_s));
         m_settingsWindow->resize(520, 600);
 
-        connect(m_settingsWindow, &SettingsPage::refreshPortsRequested, this, &MainWindow::refreshSerialPorts);
-        connect(m_settingsWindow, &SettingsPage::connectRequested, this, &MainWindow::startSerial);
-        connect(m_settingsWindow, &SettingsPage::disconnectRequested, this, &MainWindow::stopSerial);
-        connect(m_settingsWindow, &SettingsPage::openReplayFileRequested, this, &MainWindow::onOpenReplayFile);
-        connect(m_settingsWindow, &SettingsPage::clearFlightDataRequested, this, &MainWindow::onClearFlightData);
-
         connect(m_settingsWindow, &QObject::destroyed, this, [this]() {
             m_settingsWindow = nullptr;
             if (m_openSettingsAction) {
                 m_openSettingsAction->setChecked(false);
             }
         });
-
-        refreshSerialPorts();
     }
 
     m_settingsWindow->show();
@@ -404,14 +541,28 @@ void MainWindow::updateDataRateLabel() {
 
 void MainWindow::refreshSerialPorts() {
     std::unique_ptr<ISerialPortScanner> scanner(SerialPortScannerFactory::createSerialPortScanner());
-    if (!scanner || !m_settingsWindow) {
+    if (!scanner || !m_portCombo) {
         return;
     }
+    const QString prev = m_portCombo->currentText().trimmed();
     QStringList ports;
     for (const auto &p : scanner->enumeratePorts()) {
         ports.append(QString::fromStdString(p));
     }
-    m_settingsWindow->setPortNames(ports);
+    m_portCombo->blockSignals(true);
+    m_portCombo->clear();
+    m_portCombo->addItems(ports);
+    if (!prev.isEmpty()) {
+        const int idx = m_portCombo->findText(prev);
+        if (idx >= 0) {
+            m_portCombo->setCurrentIndex(idx);
+        } else {
+            m_portCombo->setCurrentText(prev);
+        }
+    } else {
+        loadSerialPrefsToUi();
+    }
+    m_portCombo->blockSignals(false);
 }
 
 void MainWindow::onReplayPositionChanged(int trailLength) {
@@ -426,22 +577,22 @@ void MainWindow::onReplayPositionChanged(int trailLength) {
 }
 
 void MainWindow::onOpenReplayFile() {
-    QString startDir;
-    if (m_settingsWindow) {
-        startDir = m_settingsWindow->replayDirectory();
-    }
+    QSettings s(u"CosmoSoft"_s, u"cosmo-soft"_s);
+    QString startDir = s.value(u"paths/replayDir"_s, QDir::homePath()).toString();
     if (startDir.isEmpty()) {
         startDir = QDir::homePath();
     }
 
     const QString path = QFileDialog::getOpenFileName(
-        m_settingsWindow ? static_cast<QWidget *>(m_settingsWindow) : this,
+        this,
         u"Open flight log"_s,
         startDir,
         u"Flight logs (*.csv *.telem);;CSV (*.csv);;TELEM (*.telem);;All files (*)"_s);
     if (path.isEmpty()) {
         return;
     }
+
+    s.setValue(u"paths/replayDir"_s, QFileInfo(path).absolutePath());
 
     stopSerial();
 
@@ -458,7 +609,7 @@ void MainWindow::onOpenReplayFile() {
 
     if (err) {
         QMessageBox::warning(
-            m_settingsWindow ? static_cast<QWidget *>(m_settingsWindow) : this,
+            this,
             u"Could not load log"_s,
             QString::fromStdString(*err));
         return;
@@ -556,10 +707,7 @@ void MainWindow::startSerial(const QString &portName, int baud) {
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
     }
-    if (m_settingsWindow) {
-        m_settingsWindow->setSerialLinkStatus(QStringLiteral("Connected: %1 @ %2").arg(portName).arg(baud));
-    }
-    showStatusMessage(QStringLiteral("Connected to %1").arg(portName), 3000);
+    showStatusMessage(QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud), 3000);
 }
 
 void MainWindow::stopSerial() {
@@ -577,8 +725,5 @@ void MainWindow::stopSerial() {
     }
     if (m_dataLinkStatusLabel) {
         m_dataLinkStatusLabel->setText(u"LINK: idle"_s);
-    }
-    if (m_settingsWindow) {
-        m_settingsWindow->setSerialLinkStatus(u"Disconnected."_s);
     }
 }
