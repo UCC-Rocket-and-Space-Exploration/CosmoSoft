@@ -3,6 +3,7 @@
 
 #include <QWidget>
 
+#include <array>
 #include <vector>
 
 #include "domain/FlightSample.h"
@@ -10,7 +11,7 @@
 
 class QChart;
 class QChartView;
-class QComboBox;
+class QCheckBox;
 class QLabel;
 class QLineSeries;
 class QPaintEvent;
@@ -26,6 +27,8 @@ class DashboardPage : public QWidget {
     Q_OBJECT
 
 public:
+    static constexpr int kMetricCount = 9;
+
     explicit DashboardPage(FlightDataModel *model, FlightReplayController *replay, QWidget *parent = nullptr);
     void setReplaySession(const FlightSession *session);
     void setReplayTrailLength(int trailLength);
@@ -36,23 +39,26 @@ protected:
 private slots:
     void onSampleUpdated(const FlightSample &sample);
     void onSessionReset();
-    void onMetricComboChanged(int index);
-    void onPrevMetric();
-    void onNextMetric();
+    void onAnyMetricToggled();
     void onResetChartZoom();
+    void onTracePresetAltTempPress();
+    void onChartVisualOptionsToggled();
 
 private:
     void rebuildReplayCharts(int trailLength);
     void appendLiveChartPoint(const FlightSample &sample);
     void rebuildLiveSeriesFromHistory();
-    void applyMetricToChartUi();
-    void updateLiveAxisRanges();
+    void refreshAllSeriesFromData();
+    void applyChartTheme();
     void updateHoverReadoutDefault();
     void updateChartStatsLabel();
     void updateReplayPanel();
-    [[nodiscard]] QString formatMetricHover(double tSec, double value, int sampleIndex, int totalSamples) const;
+    void syncCheckboxStatesFromFlags();
+    void ensureAtLeastOneMetricEnabled();
+    void applySeriesPointDisplay(QLineSeries *series, int pointCount, int nEnabledMetrics) const;
 
-    static double elapsedSeconds(long t0Ms, long tMs);
+    [[nodiscard]] int countEnabledMetrics() const;
+    [[nodiscard]] QString formatMultiMetricHover(double tSec, int sampleIndex, int totalSamples) const;
 
     FlightDataModel *m_model = nullptr;
     FlightReplayController *m_replay = nullptr;
@@ -65,22 +71,21 @@ private:
 
     QChart *m_chart = nullptr;
     QChartView *m_chartView = nullptr;
-    QLineSeries *m_series = nullptr;
+    std::array<QLineSeries *, kMetricCount> m_lineSeries{};
     QValueAxis *m_axisX = nullptr;
     QValueAxis *m_axisY = nullptr;
 
-    QComboBox *m_metricCombo = nullptr;
-    QPushButton *m_metricPrevBtn = nullptr;
-    QPushButton *m_metricNextBtn = nullptr;
+    std::array<QCheckBox *, kMetricCount> m_metricChecks{};
+    std::array<bool, kMetricCount> m_metricEnabled{};
+    QPushButton *m_tracePresetBtn = nullptr;
     QPushButton *m_zoomResetBtn = nullptr;
+    QCheckBox *m_showMarkersCheck = nullptr;
+    QCheckBox *m_showPointValuesCheck = nullptr;
     QLabel *m_hoverReadoutLabel = nullptr;
     QLabel *m_chartStatsLabel = nullptr;
 
-    int m_metricIndex = 0;
     int m_lastReplayTrailLength = 0;
 
-    long m_t0Ms = 0;
-    bool m_haveT0 = false;
     std::vector<FlightSample> m_liveSamples;
 
     QPushButton *m_playBtn = nullptr;
