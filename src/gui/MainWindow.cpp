@@ -98,11 +98,13 @@ void MainWindow::setupActions() {
 
     connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_monitoringPage);
+        updateTopBarsForCurrentPage();
         statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
     });
 
     connect(m_showFlightDataAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_flightDataPage);
+        updateTopBarsForCurrentPage();
         statusBar()->showMessage(u"Flight data page selected."_s, 2000);
     });
 
@@ -138,6 +140,14 @@ void MainWindow::setupToolbar() {
         QWidget#brandBlock QLabel#missionMeta {
             font-size: 14px;
             color: #dadada;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+        }
+
+        QLabel#missionPageTitle {
+            font-size: 15px;
+            font-weight: 600;
+            color: #c8c8c8;
+            letter-spacing: 2px;
             font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
         }
 
@@ -222,6 +232,11 @@ void MainWindow::setupToolbar() {
     brandLayout->addWidget(m_missionMetaLabel);
     contentLayout->addWidget(brandBlock);
 
+    m_toolbarPageLabel = new QLabel(u"Monitoring"_s, content);
+    m_toolbarPageLabel->setObjectName(u"missionPageTitle"_s);
+    contentLayout->addWidget(m_toolbarPageLabel);
+    contentLayout->addSpacing(8);
+
     updateMissionClock();
     if (!m_missionClockTimer) {
         m_missionClockTimer = new QTimer(this);
@@ -292,8 +307,11 @@ void MainWindow::setupDataBar() {
         return label;
     };
 
+    m_dataStripPageLabel = buildBadgeLabel(u"Monitoring"_s, m_dataBar);
+    m_dataStripPageLabel->setObjectName(u"telemetryStripPage"_s);
     m_dataLinkStatusLabel = buildBadgeLabel(u"LINK: idle"_s, m_dataBar);
     m_dataRateLabel = buildBadgeLabel(u"RATE: -- B/s"_s, m_dataBar);
+    dataLayout->addWidget(m_dataStripPageLabel);
     dataLayout->addWidget(m_dataLinkStatusLabel);
     dataLayout->addWidget(m_dataRateLabel);
     dataLayout->addStretch(1);
@@ -304,6 +322,14 @@ void MainWindow::setupDataBar() {
             color: #f0f0f0;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
             border-bottom: 1px solid rgba(0, 0, 0, 0.7);
+        }
+
+        QWidget#telemetryStrip QLabel#telemetryStripPage {
+            font-size: 11px;
+            color: #8fa0b0;
+            letter-spacing: 3px;
+            font-weight: 600;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
         }
 
         QWidget#telemetryStrip QLabel#telemetryBadge {
@@ -328,36 +354,51 @@ void MainWindow::setupConnectionBar() {
     row->setContentsMargins(16, 8, 16, 8);
     row->setSpacing(12);
 
-    auto *portLabel = new QLabel(u"Port"_s, m_connectionBar);
+    m_connectionPageLabel = new QLabel(m_connectionBar);
+    m_connectionPageLabel->setObjectName(u"connectionStripContext"_s);
+    m_connectionPageLabel->setWordWrap(false);
+    m_connectionPageLabel->setMinimumWidth(200);
+    m_connectionPageLabel->setStyleSheet(
+        u"color: #9aa7b8; font-size: 12px; font-family: \"Red Hat Mono\", monospace;"_s);
+
+    m_serialControlBlock = new QWidget(m_connectionBar);
+    auto *serialRow = new QHBoxLayout(m_serialControlBlock);
+    serialRow->setContentsMargins(0, 0, 0, 0);
+    serialRow->setSpacing(12);
+
+    auto *portLabel = new QLabel(u"Port"_s, m_serialControlBlock);
     portLabel->setStyleSheet(u"color: #c8c8c8; font-family: \"Red Hat Mono\", monospace;"_s);
-    m_portCombo = new QComboBox(m_connectionBar);
+    m_portCombo = new QComboBox(m_serialControlBlock);
     m_portCombo->setEditable(true);
     m_portCombo->setMinimumWidth(200);
     m_portCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
 
-    auto *baudLabel = new QLabel(u"Baud"_s, m_connectionBar);
+    auto *baudLabel = new QLabel(u"Baud"_s, m_serialControlBlock);
     baudLabel->setStyleSheet(portLabel->styleSheet());
-    m_baudCombo = new QComboBox(m_connectionBar);
+    m_baudCombo = new QComboBox(m_serialControlBlock);
     const QList<int> bauds = {9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
     for (int b : bauds) {
         m_baudCombo->addItem(QString::number(b), b);
     }
     m_baudCombo->setCurrentIndex(4);
 
-    auto *refreshBtn = new QPushButton(u"Refresh"_s, m_connectionBar);
-    auto *connectBtn = new QPushButton(u"Connect"_s, m_connectionBar);
-    auto *disconnectBtn = new QPushButton(u"Disconnect"_s, m_connectionBar);
+    auto *refreshBtn = new QPushButton(u"Refresh"_s, m_serialControlBlock);
+    auto *connectBtn = new QPushButton(u"Connect"_s, m_serialControlBlock);
+    auto *disconnectBtn = new QPushButton(u"Disconnect"_s, m_serialControlBlock);
+    serialRow->addWidget(portLabel);
+    serialRow->addWidget(m_portCombo);
+    serialRow->addWidget(baudLabel);
+    serialRow->addWidget(m_baudCombo);
+    serialRow->addWidget(refreshBtn);
+    serialRow->addWidget(connectBtn);
+    serialRow->addWidget(disconnectBtn);
+
     auto *openLogBtn = new QPushButton(u"Open log…"_s, m_connectionBar);
     auto *clearFlightBtn = new QPushButton(u"Clear flight"_s, m_connectionBar);
 
-    row->addWidget(portLabel);
-    row->addWidget(m_portCombo);
-    row->addWidget(baudLabel);
-    row->addWidget(m_baudCombo);
-    row->addWidget(refreshBtn);
-    row->addWidget(connectBtn);
-    row->addWidget(disconnectBtn);
-    row->addSpacing(16);
+    row->addWidget(m_connectionPageLabel);
+    row->addWidget(m_serialControlBlock);
+    row->addSpacing(12);
     row->addWidget(openLogBtn);
     row->addWidget(clearFlightBtn);
     row->addStretch(1);
@@ -477,6 +518,70 @@ void MainWindow::setupPages() {
     m_pages->addWidget(m_monitoringPage);
     m_pages->addWidget(m_flightDataPage);
     m_pages->setCurrentWidget(m_monitoringPage);
+
+    connect(m_pages, &QStackedWidget::currentChanged, this, [this](int) {
+        updateTopBarsForCurrentPage();
+    });
+    connect(m_flightModel.get(), &FlightDataModel::replayModeChanged, this, [this](bool) {
+        syncTelemetryStrip();
+    });
+
+    updateTopBarsForCurrentPage();
+}
+
+bool MainWindow::isMonitoringPageActive() const {
+    return m_pages && m_pages->currentWidget() == m_monitoringPage;
+}
+
+void MainWindow::updateTopBarsForCurrentPage() {
+    const bool monitoring = isMonitoringPageActive();
+    if (m_toolbarPageLabel) {
+        m_toolbarPageLabel->setText(monitoring ? u"Monitoring"_s : u"Flight data"_s);
+    }
+    if (m_connectionPageLabel) {
+        m_connectionPageLabel->setText(
+            monitoring ? u"Serial — port, baud, Connect. Flight logs — Open log…"_s
+                       : u"Replay — Open log… or Clear flight. Serial controls are on Monitoring."_s);
+    }
+    if (m_serialControlBlock) {
+        m_serialControlBlock->setVisible(monitoring);
+    }
+    if (m_flightModel) {
+        m_prevBytesForRate = m_flightModel->totalBytesReceived();
+    }
+    syncTelemetryStrip();
+    updateDataRateLabel();
+}
+
+void MainWindow::syncTelemetryStrip() {
+    if (!m_dataStripPageLabel || !m_dataLinkStatusLabel || !m_dataRateLabel || !m_flightModel) {
+        return;
+    }
+    if (isMonitoringPageActive()) {
+        m_dataStripPageLabel->setText(u"MONITORING"_s);
+        if (m_serialPortSummary.isEmpty()) {
+            m_dataLinkStatusLabel->setText(u"LINK: idle"_s);
+        } else {
+            m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1").arg(m_serialPortSummary));
+        }
+        return;
+    }
+
+    m_dataStripPageLabel->setText(u"FLIGHT DATA"_s);
+    const bool replay = m_flightModel->replayMode();
+    const int n = m_replay ? m_replay->sampleCount() : 0;
+    const int pos = m_replay ? m_replay->index() : 0;
+    if (replay && n > 0) {
+        m_dataLinkStatusLabel->setText(
+            QStringLiteral("SESSION: replay · %1 / %2 samples").arg(pos).arg(n));
+        m_dataRateLabel->setText(u"HINT: Play / slider on Flight data page"_s);
+    } else if (replay && n == 0) {
+        m_dataLinkStatusLabel->setText(u"SESSION: replay (empty)"_s);
+        m_dataRateLabel->setText(u"Open a log to load samples"_s);
+    } else {
+        const QString link = m_serialPortSummary.isEmpty() ? u"idle"_s : m_serialPortSummary;
+        m_dataLinkStatusLabel->setText(QStringLiteral("SESSION: live · %1").arg(link));
+    }
 }
 
 void MainWindow::openSettingsWindow() {
@@ -536,6 +641,13 @@ void MainWindow::updateDataRateLabel() {
     const qint64 total = m_flightModel->totalBytesReceived();
     const qint64 delta = total - m_prevBytesForRate;
     m_prevBytesForRate = total;
+    if (isMonitoringPageActive()) {
+        m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
+        return;
+    }
+    if (m_flightModel->replayMode()) {
+        return;
+    }
     m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
 }
 
@@ -574,6 +686,7 @@ void MainWindow::onReplayPositionChanged(int trailLength) {
         return;
     }
     m_flightModel->setDisplayedSample(m_loadedSession.samples[static_cast<std::size_t>(trailLength - 1)]);
+    syncTelemetryStrip();
 }
 
 void MainWindow::onOpenReplayFile() {
@@ -622,6 +735,7 @@ void MainWindow::onOpenReplayFile() {
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(&m_loadedSession);
     }
+    syncTelemetryStrip();
     showStatusMessage(QStringLiteral("Loaded flight: %1").arg(path), 4000);
 }
 
@@ -634,6 +748,7 @@ void MainWindow::onClearFlightData() {
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
     }
+    syncTelemetryStrip();
     showStatusMessage(u"Cleared flight replay data."_s, 2000);
 }
 
@@ -700,13 +815,12 @@ void MainWindow::startSerial(const QString &portName, int baud) {
         return;
     }
 
-    if (m_dataLinkStatusLabel) {
-        m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1 @ %2").arg(portName).arg(baud));
-    }
+    m_serialPortSummary = QStringLiteral("%1 @ %2").arg(portName).arg(baud);
     m_flightModel->setReplayMode(false);
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
     }
+    syncTelemetryStrip();
     showStatusMessage(QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud), 3000);
 }
 
@@ -723,7 +837,6 @@ void MainWindow::stopSerial() {
         m_comms->close();
         m_comms.reset();
     }
-    if (m_dataLinkStatusLabel) {
-        m_dataLinkStatusLabel->setText(u"LINK: idle"_s);
-    }
+    m_serialPortSummary.clear();
+    syncTelemetryStrip();
 }

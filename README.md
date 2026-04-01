@@ -9,7 +9,7 @@ The project is written in C++20 and uses Qt 6 for the user interface and CMake f
 The app builds and runs with:
 
 - **Monitoring** — summary of the latest decoded sample (live or replay).
-- **Flight data** — dashboard with **three time-based charts** (altitude, temperature, pressure), stat tiles, and **replay controls** (play / pause / stop, scrub slider, speed).
+- **Flight data** — one interactive time-series chart (metric carousel: altitude, temp, pressure, accel, battery, RSSI, gyro, lat/lon), full-history replay scrubber, zoom, and stat tiles (accel, alt, temp, pressure).
 - **Connection bar** (under the toolbar) — serial port, baud, **Refresh** / **Connect** / **Disconnect**, **Open log…** and **Clear flight**; port, baud, and last replay folder are persisted via **QSettings** (`CosmoSoft` / `cosmo-soft`).
 - **Settings** (separate window) — appearance (UI font size) and sound preference flags only.
 

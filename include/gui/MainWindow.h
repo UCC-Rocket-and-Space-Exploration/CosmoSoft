@@ -54,6 +54,9 @@ private:
     void persistSerialPrefs();
     void setupPages();
     void openSettingsWindow();
+    void updateTopBarsForCurrentPage();
+    void syncTelemetryStrip();
+    [[nodiscard]] bool isMonitoringPageActive() const;
 
     QAction *m_showMonitoringAction = nullptr;
     QAction *m_showFlightDataAction = nullptr;
@@ -65,13 +68,17 @@ private:
     SettingsPage *m_settingsWindow = nullptr;
 
     QLabel *m_missionMetaLabel = nullptr;
+    QLabel *m_toolbarPageLabel = nullptr;
     QTimer *m_missionClockTimer = nullptr;
 
     QWidget *m_connectionBar = nullptr;
+    QLabel *m_connectionPageLabel = nullptr;
+    QWidget *m_serialControlBlock = nullptr;
     QComboBox *m_portCombo = nullptr;
     QComboBox *m_baudCombo = nullptr;
 
     QWidget *m_dataBar = nullptr;
+    QLabel *m_dataStripPageLabel = nullptr;
     QLabel *m_dataLinkStatusLabel = nullptr;
     QLabel *m_dataRateLabel = nullptr;
 
@@ -86,6 +93,8 @@ private:
 
     QTimer *m_dataRateTimer = nullptr;
     qint64 m_prevBytesForRate = 0;
+
+    QString m_serialPortSummary;
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

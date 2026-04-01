@@ -23,9 +23,16 @@ bool FlightDataModel::replayMode() const {
 }
 
 void FlightDataModel::setReplayMode(bool on) {
+    bool changed = false;
     {
         QMutexLocker lock(&m_mutex);
-        m_replayMode = on;
+        if (m_replayMode != on) {
+            m_replayMode = on;
+            changed = true;
+        }
+    }
+    if (changed) {
+        emit replayModeChanged(on);
     }
 }
 

@@ -35,6 +35,7 @@ signals:
     void sampleUpdated(const FlightSample &sample);
     void bytesReceivedChanged(qint64 totalBytes);
     void sessionReset();
+    void replayModeChanged(bool replay);
 
 private:
     mutable QMutex m_mutex;
