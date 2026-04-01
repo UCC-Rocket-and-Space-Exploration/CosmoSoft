@@ -18,6 +18,7 @@ class QPaintEvent;
 class QPushButton;
 class QSlider;
 class QDoubleSpinBox;
+class QToolButton;
 class QValueAxis;
 
 class FlightDataModel;
@@ -41,7 +42,6 @@ private slots:
     void onSessionReset();
     void onAnyMetricToggled();
     void onResetChartZoom();
-    void onTracePresetAltTempPress();
     void onChartVisualOptionsToggled();
 
 private:
@@ -77,10 +77,11 @@ private:
 
     std::array<QCheckBox *, kMetricCount> m_metricChecks{};
     std::array<bool, kMetricCount> m_metricEnabled{};
-    QPushButton *m_tracePresetBtn = nullptr;
+    QPushButton *m_zoomOutBtn = nullptr;
+    QPushButton *m_zoomInBtn = nullptr;
     QPushButton *m_zoomResetBtn = nullptr;
-    QCheckBox *m_showMarkersCheck = nullptr;
-    QCheckBox *m_showPointValuesCheck = nullptr;
+    QToolButton *m_showMarkersToggle = nullptr;
+    QToolButton *m_showPointValuesToggle = nullptr;
     QLabel *m_hoverReadoutLabel = nullptr;
     QLabel *m_chartStatsLabel = nullptr;
 

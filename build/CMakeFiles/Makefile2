@@ -671,8 +671,8 @@ src/services/flight/CMakeFiles/flight_autogen.dir/clean:
 # Target rules for target src/services/persistence/CMakeFiles/persistence.dir
 
 # All Build rule for target.
-src/services/persistence/CMakeFiles/persistence.dir/all: src/services/persistence/CMakeFiles/persistence_autogen_timestamp_deps.dir/all
 src/services/persistence/CMakeFiles/persistence.dir/all: src/services/persistence/CMakeFiles/persistence_autogen.dir/all
+src/services/persistence/CMakeFiles/persistence.dir/all: src/services/persistence/CMakeFiles/persistence_autogen_timestamp_deps.dir/all
 	$(MAKE) $(MAKESILENT) -f src/services/persistence/CMakeFiles/persistence.dir/build.make src/services/persistence/CMakeFiles/persistence.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/services/persistence/CMakeFiles/persistence.dir/build.make src/services/persistence/CMakeFiles/persistence.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/hslyusar/Desktop/CosmoSoft/build/CMakeFiles --progress-num=34,35,36 "Built target persistence"
@@ -865,8 +865,8 @@ src/services/telemetry/CMakeFiles/telemetry_autogen.dir/clean:
 # Target rules for target src/services/import/CMakeFiles/import.dir
 
 # All Build rule for target.
-src/services/import/CMakeFiles/import.dir/all: src/services/telemetry/CMakeFiles/telemetry.dir/all
 src/services/import/CMakeFiles/import.dir/all: src/services/import/CMakeFiles/import_autogen.dir/all
+src/services/import/CMakeFiles/import.dir/all: src/services/telemetry/CMakeFiles/telemetry.dir/all
 src/services/import/CMakeFiles/import.dir/all: src/services/import/CMakeFiles/import_autogen_timestamp_deps.dir/all
 	$(MAKE) $(MAKESILENT) -f src/services/import/CMakeFiles/import.dir/build.make src/services/import/CMakeFiles/import.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/services/import/CMakeFiles/import.dir/build.make src/services/import/CMakeFiles/import.dir/build
@@ -963,9 +963,9 @@ src/services/import/CMakeFiles/import_autogen.dir/clean:
 # Target rules for target src/gui/CMakeFiles/gui.dir
 
 # All Build rule for target.
+src/gui/CMakeFiles/gui.dir/all: src/gui/CMakeFiles/gui_autogen.dir/all
 src/gui/CMakeFiles/gui.dir/all: src/services/telemetry/CMakeFiles/telemetry.dir/all
 src/gui/CMakeFiles/gui.dir/all: src/services/import/CMakeFiles/import.dir/all
-src/gui/CMakeFiles/gui.dir/all: src/gui/CMakeFiles/gui_autogen.dir/all
 src/gui/CMakeFiles/gui.dir/all: src/gui/CMakeFiles/gui_autogen_timestamp_deps.dir/all
 	$(MAKE) $(MAKESILENT) -f src/gui/CMakeFiles/gui.dir/build.make src/gui/CMakeFiles/gui.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/gui/CMakeFiles/gui.dir/build.make src/gui/CMakeFiles/gui.dir/build
