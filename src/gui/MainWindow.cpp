@@ -1,80 +1,70 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-#include "MainWindow.h"
-<<<<<<< HEAD
-<<<<<<< HEAD
-#include "pages/MonitoringPage.h"   // Live telemetry overview.
-<<<<<<< HEAD
-#include "pages/FlightDataPage.h"    // Placeholder for ground-station settings.
-#include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
-#include "pages/SettingsPage.h"       // Imaginary chart viewer until data is wired up.
-=======
-#include "pages/DashboardPage.h"   // Live telemetry overview.
-#include "pages/SettingsPage.h"    // Placeholder for ground-station settings.
-#include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
->>>>>>> cb12191 (logistic files commit)
-=======
-#include "pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
->>>>>>> 495a53e (remove some pages)
-=======
-=======
->>>>>>> bc5cfb6 (UI Skeleton)
 #include "gui/MainWindow.h"
-#include "gui/pages/MonitoringPage.h"   // Live telemetry overview.
-#include "gui/pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
->>>>>>> 6608b32 (Cmake files were modifying across the code base)
-=======
-#include "gui/MainWindow.h"
-#include "gui/pages/MonitoringPage.h"   // Live telemetry overview.
-#include "gui/pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
-=======
-#include "MainWindow.h"
-#include "pages/DashboardPage.h"   // Live telemetry overview.
-#include "pages/SettingsPage.h"    // Placeholder for ground-station settings.
-#include "pages/ChartPage.h"       // Imaginary chart viewer until data is wired up.
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
+
+#include "domain/FlightSample.h"
+#include "domain/FlightSession.h"
+#include "gateway/comms/CommsFactory.h"
+#include "gateway/comms/ISerialPortScanner.h"
+#include "gateway/comms/SerialPortScannerFactory.h"
+#include "gui/FlightDataModel.h"
+#include "gui/FlightReplayController.h"
+#include "gui/pages/DashboardPage.h"
+#include "gui/pages/MonitoringPage.h"
+#include "gui/pages/SettingsPage.h"
+#include "services/comms/SerialWorker.h"
+#include "services/import/SampleFileLoader.h"
+#include "services/telemetry/Framer.h"
+#include "services/telemetry/Parser.h"
+#include "services/telemetry/ParserWorker.h"
+
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
 #include <QDateTime>
+#include <QDir>
+#include <QFileDialog>
+#include <QMessageBox>
 #include <QFont>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
-<<<<<<< HEAD
-#include <QSize>
-=======
-<<<<<<< HEAD
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
+#include <QMetaObject>
 #include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStatusBar>
-#include <QtGlobal>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <QVariant>
 #include <QWidget>
-<<<<<<< HEAD
 
 using namespace Qt::StringLiterals;
 
-// Entry point for the GUI shell; constructs the basic chrome and loads placeholder pages.
-MainWindow::MainWindow(QWidget *parent): QMainWindow(parent) {
-    setWindowTitle(u"CosmoSoft"_s);                                        // Title bar text so the window is identifiable.
-    setWindowIcon(QIcon(":/images/Logo_rounded.png"));                            // Use the rounded logo bundled in resources.qrc.
-    setupActions();                                                               // Prepare navigation commands first.
-    setupToolbar();                                          // Install the toolbar directly under the title bar.
-    setupDataBar();                                         // Build the telemetry strip that sits under the toolbar.
-    setupPages();                                            // Fill the central widget with placeholder pages.
-    statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s); // Friendly status message on boot.
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent),
+      m_flightModel(std::make_unique<FlightDataModel>(this)),
+      m_replay(std::make_unique<FlightReplayController>(this)) {
+    setWindowTitle(u"CosmoSoft"_s);
+    setWindowIcon(QIcon(u":/images/Logo_rounded.png"_s));
+
+    setupActions();
+    setupToolbar();
+    setupDataBar();
+    setupPages();
+
+    connect(m_replay.get(), &FlightReplayController::positionChanged, this, &MainWindow::onReplayPositionChanged);
+
+    m_dataRateTimer = new QTimer(this);
+    m_dataRateTimer->setInterval(1000);
+    connect(m_dataRateTimer, &QTimer::timeout, this, &MainWindow::updateDataRateLabel);
+    m_dataRateTimer->start();
+
+    statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s);
+}
+
+MainWindow::~MainWindow() {
+    stopSerial();
 }
 
 void MainWindow::showStatusMessage(const QString &message, int timeout) {
@@ -83,11 +73,16 @@ void MainWindow::showStatusMessage(const QString &message, int timeout) {
     }
 }
 
-void MainWindow::setupActions() {
+void MainWindow::onParserError(const QString &message) {
+    showStatusMessage(message, 5000);
+}
 
-    // Actions encapsulate the intent behind toolbar/menu buttons.
+void MainWindow::setupActions() {
     m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
     m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
+
+    m_showFlightDataAction = new QAction(u"Flight data"_s, this);
+    m_showFlightDataAction->setToolTip(u"Switch to flight data and charts."_s);
 
     QIcon settingsIcon;
     settingsIcon.addFile(u":/icons/settings_button.png"_s, QSize(), QIcon::Normal, QIcon::Off);
@@ -96,127 +91,20 @@ void MainWindow::setupActions() {
     m_openSettingsAction->setToolTip(u"Open the settings window."_s);
     m_openSettingsAction->setCheckable(true);
 
-    // Each action simply points the stacked widget at the matching page.
     connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_monitoringPage);
         statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
     });
 
-    connect(m_openSettingsAction, &QAction::triggered, this, [this]() {
-        openSettingsWindow();
-=======
-<<<<<<< HEAD
-=======
-#include "MainWindow.h"
->>>>>>> bc5cfb6 (UI Skeleton)
-
-#include <QAction>
-#include <cmath>
-#include <QLabel>
-#include <QStatusBar>
-#include <QToolBar>
-#include <QVBoxLayout>
-#include <QtMath>
-#include <QtCharts/QChart>
-#include <QtCharts/QChartView>
-#include <QtCharts/QLineSeries>
-#include <QtCharts/QValueAxis>
-#include <QPainter>
-#include <QStackedWidget>
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> cb12191 (logistic files commit)
-
-using namespace Qt::StringLiterals;
-
-// Entry point for the GUI shell; constructs the basic chrome and loads placeholder pages.
-MainWindow::MainWindow(QWidget *parent)
-        : QMainWindow(parent) {
-<<<<<<< HEAD
-=======
-=======
-=======
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
-
-using namespace Qt::StringLiterals;
-
-// Entry point for the GUI shell; constructs the basic chrome and loads placeholder pages.
-MainWindow::MainWindow(QWidget *parent)
-        : QMainWindow(parent) {
-<<<<<<< HEAD
->>>>>>> bc5cfb6 (UI Skeleton)
-=======
-<<<<<<< HEAD
->>>>>>> 866748a (logistic files commit)
-    setWindowTitle(u"CosmoSoft UI Skeleton"_s);              // Title bar text so the window is identifiable.
-
-    setupActions();                                          // Prepare navigation commands first.
-    setupToolbar();                                          // Install the toolbar directly under the title bar.
-    setupPages();                                            // Fill the central widget with placeholder pages.
-
-    statusBar()->showMessage(u"Ready – explore the scaffolded UI."_s); // Friendly status message on boot.
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 866748a (logistic files commit)
-=======
-    setWindowTitle(u"CosmoSoft<style/>"_s);                                        // Title bar text so the window is identifiable.
-    setWindowIcon(QIcon(":/images/Logo_rounded.png"));                            // Use the rounded logo bundled in resources.qrc.
-    setupActions();                                                               // Prepare navigation commands first.
-    setupToolbar();                                          // Install the toolbar directly under the title bar.
-    setupPages();                                            // Fill the central widget with placeholder pages.
-    statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s); // Friendly status message on boot.
-<<<<<<< HEAD
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> bc5cfb6 (UI Skeleton)
-=======
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
-}
-
-void MainWindow::setupActions() {
-    // Actions encapsulate the intent behind toolbar/menu buttons.
-    m_showDashboardAction = new QAction(u"Dashboard"_s, this);
-    m_showDashboardAction->setToolTip(u"Switch to the dashboard page."_s);
-
-    m_showSettingsAction = new QAction(u"Settings"_s, this);
-    m_showSettingsAction->setToolTip(u"Switch to the settings page."_s);
-
-    // Each action simply points the stacked widget at the matching page.
-    connect(m_showDashboardAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_dashboardPage);
-        statusBar()->showMessage(u"Dashboard page selected."_s, 2000);
+    connect(m_showFlightDataAction, &QAction::triggered, this, [this]() {
+        m_pages->setCurrentWidget(m_flightDataPage);
+        statusBar()->showMessage(u"Flight data page selected."_s, 2000);
     });
 
-    connect(m_showSettingsAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_settingsPage);
-        statusBar()->showMessage(u"Settings page selected."_s, 2000);
-<<<<<<< HEAD
->>>>>>> 1c03da1 (UI Skeleton)
-=======
->>>>>>> 0e07fec (UI Skeleton)
->>>>>>> bc5cfb6 (UI Skeleton)
-    });
+    connect(m_openSettingsAction, &QAction::triggered, this, [this]() { openSettingsWindow(); });
 }
 
 void MainWindow::setupToolbar() {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> bc5cfb6 (UI Skeleton)
-=======
-=======
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
-    // QToolBar integrates directly with QMainWindow, so new users get docking,
-    // layout management, and keyboard shortcuts “for free” without manual layout work.
     auto *toolbar = new QToolBar(u"Mission Toolbar"_s, this);
     toolbar->setObjectName(u"missionToolbar"_s);
     toolbar->setMovable(false);
@@ -274,7 +162,6 @@ void MainWindow::setupToolbar() {
             color: rgba(255, 255, 255, 120);
             border-color: rgba(255, 255, 255, 70);
             background-color: rgba(255, 255, 255, 0);
-<<<<<<< HEAD
         }
 
         QToolButton[kind="iconButton"] {
@@ -290,26 +177,11 @@ void MainWindow::setupToolbar() {
 
         QToolButton[kind="iconButton"]:checked {
             background-color: rgba(255, 255, 255, 0.15);
-=======
-<<<<<<< HEAD
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
         }
     )"_s);
     addToolBar(Qt::TopToolBarArea, toolbar);
 
-<<<<<<< HEAD
-    // TEXT SHADOWS.
-=======
-    // Add a subtle drop shadow to the toolbar for depth.
-<<<<<<< HEAD
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
-    QGraphicsDropShadowEffect* text_shadow = new QGraphicsDropShadowEffect(this);
+    auto *text_shadow = new QGraphicsDropShadowEffect(this);
     text_shadow->setBlurRadius(5);
     text_shadow->setColor(QColor(0, 0, 0, 160));
     text_shadow->setOffset(1, 1);
@@ -320,16 +192,6 @@ void MainWindow::setupToolbar() {
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(24);
 
-<<<<<<< HEAD
-=======
-
-
-<<<<<<< HEAD
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
-    // Group the logo/mission labels inside their own QWidget so the stylesheet can target them easily.
     auto *brandBlock = new QWidget(content);
     brandBlock->setObjectName(u"brandBlock"_s);
     brandBlock->setGraphicsEffect(text_shadow);
@@ -339,7 +201,6 @@ void MainWindow::setupToolbar() {
     auto *brandLabel = new QLabel(u"Cosmo<span style=\"color:#000000\">Soft</span>"_s, brandBlock);
     brandLabel->setObjectName(u"brandLabel"_s);
     brandLabel->setTextFormat(Qt::RichText);
-    // Fonts are registered in main.cpp; expose the resolved family via qApp so we don’t need global singletons.
     const QVariant workbenchFamily = qApp->property("workbenchFontFamily");
     if (workbenchFamily.isValid()) {
         QFont brandFont = brandLabel->font();
@@ -350,44 +211,35 @@ void MainWindow::setupToolbar() {
     }
     brandLayout->addWidget(brandLabel);
 
-    // Mission meta line: show the live UTC clock so UI feels tethered to ground ops.
     m_missionMetaLabel = new QLabel(u"GMT: --:--:-- | -- --- ----"_s, brandBlock);
     m_missionMetaLabel->setObjectName(u"missionMeta"_s);
     m_missionMetaLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     brandLayout->addWidget(m_missionMetaLabel);
     contentLayout->addWidget(brandBlock);
 
-    updateMissionClock();  // Seed immediately so the label never shows placeholder data.
+    updateMissionClock();
     if (!m_missionClockTimer) {
         m_missionClockTimer = new QTimer(this);
-        m_missionClockTimer->setInterval(1000);  // Update every second to keep HH:mm:ss accurate.
+        m_missionClockTimer->setInterval(1000);
         connect(m_missionClockTimer, &QTimer::timeout, this, &MainWindow::updateMissionClock);
         m_missionClockTimer->start();
     }
 
     contentLayout->addStretch(1);
 
-    // QActionGroup locks the nav buttons into a radio-group so only one destination can be “checked” at a time.
     auto *navGroup = new QActionGroup(this);
     navGroup->setExclusive(true);
     m_showMonitoringAction->setCheckable(true);
+    m_showFlightDataAction->setCheckable(true);
     navGroup->addAction(m_showMonitoringAction);
+    navGroup->addAction(m_showFlightDataAction);
     m_showMonitoringAction->setChecked(true);
 
-    // Helper to wrap each QAction inside a QToolButton; QMainWindow handles shortcuts/enable state automatically.
-<<<<<<< HEAD
     auto makeNavButton = [](QAction *action,
-            QWidget *parent,
-            Qt::ToolButtonStyle style = Qt::ToolButtonTextOnly,
-            QString kind = u"navButton"_s,
-            QSize iconSize = QSize()) {
-=======
-    auto makeNavButton = [](QAction *action, QWidget *parent) {
-<<<<<<< HEAD
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
+                          QWidget *parent,
+                          Qt::ToolButtonStyle style = Qt::ToolButtonTextOnly,
+                          const QString &kind = u"navButton"_s,
+                          const QSize &iconSize = QSize()) {
         auto *button = new QToolButton(parent);
         button->setProperty("kind", kind);
         button->setAutoRaise(false);
@@ -406,6 +258,7 @@ void MainWindow::setupToolbar() {
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(12);
     navLayout->addWidget(makeNavButton(m_showMonitoringAction, navContainer));
+    navLayout->addWidget(makeNavButton(m_showFlightDataAction, navContainer));
     navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
 
     contentLayout->addWidget(navContainer);
@@ -415,7 +268,7 @@ void MainWindow::setupToolbar() {
 
 void MainWindow::setupDataBar() {
     if (m_dataBar) {
-        return; // Nothing to do if we've already built it.
+        return;
     }
 
     m_dataBar = new QWidget(this);
@@ -434,8 +287,8 @@ void MainWindow::setupDataBar() {
         return label;
     };
 
-    m_dataLinkStatusLabel = buildBadgeLabel(u"DATA BAR. MAYBE... in future"_s, m_dataBar);
-    m_dataRateLabel = buildBadgeLabel(u"RATE: --"_s, m_dataBar);
+    m_dataLinkStatusLabel = buildBadgeLabel(u"LINK: idle"_s, m_dataBar);
+    m_dataRateLabel = buildBadgeLabel(u"RATE: -- B/s"_s, m_dataBar);
     dataLayout->addWidget(m_dataLinkStatusLabel);
     dataLayout->addWidget(m_dataRateLabel);
     dataLayout->addStretch(1);
@@ -458,27 +311,27 @@ void MainWindow::setupDataBar() {
 }
 
 void MainWindow::setupPages() {
-    // QStackedWidget is the Qt6 “page router”: we add each QWidget once and flip between them with setCurrentWidget().
     auto *central = new QWidget(this);
     auto *centralLayout = new QVBoxLayout(central);
     centralLayout->setContentsMargins(0, 0, 0, 0);
     centralLayout->setSpacing(0);
 
     if (!m_dataBar) {
-        setupDataBar();  // Ensure strip exists before wiring layout.
+        setupDataBar();
     }
     if (m_dataBar) {
         centralLayout->addWidget(m_dataBar);
     }
 
-    m_pages = new QStackedWidget(central);                 // Central stacked widget lives inside MainWindow.
-    centralLayout->addWidget(m_pages, /*stretch=*/1);
+    m_pages = new QStackedWidget(central);
+    centralLayout->addWidget(m_pages, 1);
     setCentralWidget(central);
 
-    // Each page lives in its own QWidget subclass so logic stays modular.
-    m_monitoringPage = new MonitoringPage(this);
+    m_monitoringPage = new MonitoringPage(this, m_flightModel.get());
+    m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_monitoringPage);
-    m_pages->setCurrentWidget(m_monitoringPage);          // Default landing page.
+    m_pages->addWidget(m_flightDataPage);
+    m_pages->setCurrentWidget(m_monitoringPage);
 }
 
 void MainWindow::openSettingsWindow() {
@@ -493,12 +346,20 @@ void MainWindow::openSettingsWindow() {
         m_settingsWindow->setWindowIcon(QIcon(u":/icons/settings_button.png"_s));
         m_settingsWindow->resize(520, 600);
 
+        connect(m_settingsWindow, &SettingsPage::refreshPortsRequested, this, &MainWindow::refreshSerialPorts);
+        connect(m_settingsWindow, &SettingsPage::connectRequested, this, &MainWindow::startSerial);
+        connect(m_settingsWindow, &SettingsPage::disconnectRequested, this, &MainWindow::stopSerial);
+        connect(m_settingsWindow, &SettingsPage::openReplayFileRequested, this, &MainWindow::onOpenReplayFile);
+        connect(m_settingsWindow, &SettingsPage::clearFlightDataRequested, this, &MainWindow::onClearFlightData);
+
         connect(m_settingsWindow, &QObject::destroyed, this, [this]() {
             m_settingsWindow = nullptr;
             if (m_openSettingsAction) {
                 m_openSettingsAction->setChecked(false);
             }
         });
+
+        refreshSerialPorts();
     }
 
     m_settingsWindow->show();
@@ -508,10 +369,9 @@ void MainWindow::openSettingsWindow() {
     statusBar()->showMessage(u"Settings window opened."_s, 2000);
 }
 
-// Compute and inject the current local timestamp plus GMT offset into the mission meta label.
 void MainWindow::updateMissionClock() {
     if (!m_missionMetaLabel) {
-        return;  // Toolbar was not built yet; nothing to update.
+        return;
     }
 
     const QDateTime localNow = QDateTime::currentDateTime();
@@ -520,169 +380,205 @@ void MainWindow::updateMissionClock() {
     const int offsetHours = absOffsetSeconds / 3600;
     const int offsetMinutes = (absOffsetSeconds % 3600) / 60;
 
-    // Format GMT±HH[:MM] so even half-hour zones look correct.
     QString offsetString = QStringLiteral("GMT%1%2")
-            .arg(offsetSeconds >= 0 ? u'+' : u'-')
-            .arg(offsetHours, 2, 10, QLatin1Char('0'));
+                               .arg(offsetSeconds >= 0 ? u'+' : u'-')
+                               .arg(offsetHours, 2, 10, QLatin1Char('0'));
     if (offsetMinutes > 0) {
         offsetString += QStringLiteral(":%1").arg(offsetMinutes, 2, 10, QLatin1Char('0'));
     }
 
     const QString timestamp = QStringLiteral("%1 | %2")
-            .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
+                                  .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
     m_missionMetaLabel->setText(timestamp);
-=======
-    auto *toolbar = addToolBar(u"Main Toolbar"_s);      // QMainWindow handles lifetime.
-    toolbar->setMovable(false);                         // Keep the toolbar docked for now.
-
-    toolbar->addAction(m_showDashboardAction);          // Primary navigation button.
-    toolbar->addAction(m_showSettingsAction);           // Secondary navigation button.
-
-    // The next actions are placeholders that hint at future functionality.
-    auto *chartsAction = toolbar->addAction(u"Charts"_s);
-    chartsAction->setEnabled(false);
-    chartsAction->setToolTip(u"Placeholder for chart tools."_s);
-
-    auto *logsAction = toolbar->addAction(u"Logs"_s);
-    logsAction->setEnabled(false);
-    logsAction->setToolTip(u"Placeholder for log viewer."_s);
 }
 
-void MainWindow::setupPages() {
-<<<<<<< HEAD
-<<<<<<< HEAD
-    // QStackedWidget is the Qt6 “page router”: we add each QWidget once and flip between them with setCurrentWidget().
-=======
->>>>>>> bc5cfb6 (UI Skeleton)
-=======
-    // QStackedWidget is the Qt6 “page router”: we add each QWidget once and flip between them with setCurrentWidget().
->>>>>>> 866748a (logistic files commit)
-    m_pages = new QStackedWidget(this);                 // Central stacked widget lives inside MainWindow.
-    setCentralWidget(m_pages);
-
-    // Dashboard placeholder – a simple column of informative labels.
-    m_dashboardPage = new QWidget(this);
-    auto *dashboardLayout = new QVBoxLayout(m_dashboardPage);
-    dashboardLayout->addWidget(new QLabel(u"Dashboard placeholder."_s, m_dashboardPage));
-    dashboardLayout->addWidget(new QLabel(u"Add telemetry summaries and widgets here."_s, m_dashboardPage));
-
-    // Settings placeholder – another simple column layout.
-    m_settingsPage = new QWidget(this);
-    auto *settingsLayout = new QVBoxLayout(m_settingsPage);
-    settingsLayout->addWidget(new QLabel(u"Settings placeholder."_s, m_settingsPage));
-    settingsLayout->addWidget(new QLabel(u"Add configuration controls here."_s, m_settingsPage));
-
-    setupChartPage();                                     // Creates m_chartPage with a simple chart.
-
-    // Order determines indices; we keep all pages accessible via actions.
-    m_pages->addWidget(m_dashboardPage);
-    m_pages->addWidget(m_settingsPage);
-    m_pages->addWidget(m_chartPage);
-    m_pages->setCurrentWidget(m_dashboardPage);          // Default landing page.
+void MainWindow::updateDataRateLabel() {
+    if (!m_dataRateLabel || !m_flightModel) {
+        return;
+    }
+    const qint64 total = m_flightModel->totalBytesReceived();
+    const qint64 delta = total - m_prevBytesForRate;
+    m_prevBytesForRate = total;
+    m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> bc5cfb6 (UI Skeleton)
-=======
->>>>>>> 866748a (logistic files commit)
-void MainWindow::setupChartPage() {
-    // Build a line series with sample data (sine wave to mimic telemetry variation).
-    auto *series = new QLineSeries(this);
-    series->setName(u"Sample Telemetry"_s);
+void MainWindow::refreshSerialPorts() {
+    std::unique_ptr<ISerialPortScanner> scanner(SerialPortScannerFactory::createSerialPortScanner());
+    if (!scanner || !m_settingsWindow) {
+        return;
+    }
+    QStringList ports;
+    for (const auto &p : scanner->enumeratePorts()) {
+        ports.append(QString::fromStdString(p));
+    }
+    m_settingsWindow->setPortNames(ports);
+}
 
-    for (int degrees = 0; degrees <= 360; degrees += 30) {
-        const double radians = qDegreesToRadians(static_cast<double>(degrees));
-        series->append(degrees, std::sin(radians));
+void MainWindow::onReplayPositionChanged(int trailLength) {
+    if (trailLength <= 0) {
+        m_flightModel->setDisplayedSample(FlightSample{});
+        return;
+    }
+    if (trailLength > static_cast<int>(m_loadedSession.samples.size())) {
+        return;
+    }
+    m_flightModel->setDisplayedSample(m_loadedSession.samples[static_cast<std::size_t>(trailLength - 1)]);
+}
+
+void MainWindow::onOpenReplayFile() {
+    QString startDir;
+    if (m_settingsWindow) {
+        startDir = m_settingsWindow->replayDirectory();
+    }
+    if (startDir.isEmpty()) {
+        startDir = QDir::homePath();
     }
 
-    auto *chart = new QChart();
-    chart->addSeries(series);
-    chart->setTitle(u"Flight Altitude Trend (placeholder data)"_s);
-
-    // X axis reports the sample angle; in real data this would be time or packet count.
-    auto *axisX = new QValueAxis();
-    axisX->setTitleText(u"Sample (degrees placeholder)"_s);
-    axisX->setTickCount(series->count());
-    chart->addAxis(axisX, Qt::AlignBottom);
-    series->attachAxis(axisX);
-
-    // Y axis shows the sine output so we can see a wave.
-    auto *axisY = new QValueAxis();
-    axisY->setTitleText(u"Altitude (normalized)"_s);
-    axisY->setRange(-1.1, 1.1);
-    chart->addAxis(axisY, Qt::AlignLeft);
-    series->attachAxis(axisY);
-
-    chart->legend()->setVisible(true);
-    chart->legend()->setAlignment(Qt::AlignBottom);
-
-    auto *chartView = new QChartView(chart);
-    chartView->setRenderHint(QPainter::Antialiasing);    // Smooth lines for a nicer look.
-
-    m_chartPage = new QWidget(this);
-    auto *chartLayout = new QVBoxLayout(m_chartPage);
-    chartLayout->addWidget(new QLabel(u"Telemetry Chart"_s, m_chartPage));
-    chartLayout->addWidget(chartView);
-    chartLayout->addWidget(new QLabel(u"Replace this sample with live data when ready."_s, m_chartPage));
-<<<<<<< HEAD
->>>>>>> 1c03da1 (UI Skeleton)
-=======
-// Compute and inject the current local timestamp plus GMT offset into the mission meta label.
-void MainWindow::updateMissionClock() {
-    if (!m_missionMetaLabel) {
-        return;  // Toolbar was not built yet; nothing to update.
+    const QString path = QFileDialog::getOpenFileName(
+        m_settingsWindow ? static_cast<QWidget *>(m_settingsWindow) : this,
+        u"Open flight log"_s,
+        startDir,
+        u"Flight logs (*.csv *.telem);;CSV (*.csv);;TELEM (*.telem);;All files (*)"_s);
+    if (path.isEmpty()) {
+        return;
     }
 
-    const QDateTime localNow = QDateTime::currentDateTime();
-    const int offsetSeconds = localNow.offsetFromUtc();
-    const int absOffsetSeconds = qAbs(offsetSeconds);
-    const int offsetHours = absOffsetSeconds / 3600;
-    const int offsetMinutes = (absOffsetSeconds % 3600) / 60;
+    stopSerial();
 
-    // Format GMT±HH[:MM] so even half-hour zones look correct.
-    QString offsetString = QStringLiteral("GMT%1%2")
-            .arg(offsetSeconds >= 0 ? u'+' : u'-')
-            .arg(offsetHours, 2, 10, QLatin1Char('0'));
-    if (offsetMinutes > 0) {
-        offsetString += QStringLiteral(":%1").arg(offsetMinutes, 2, 10, QLatin1Char('0'));
+    FlightSession session;
+    std::optional<std::string> err;
+
+    if (path.endsWith(u".telem", Qt::CaseInsensitive)) {
+        Framer framer;
+        Parser parser;
+        err = SampleFileLoader::loadTelemFile(path.toStdString(), session, framer, parser);
+    } else {
+        err = SampleFileLoader::loadTheseusCsv(path.toStdString(), session);
     }
 
-    const QString timestamp = QStringLiteral("%1 | %2")
-            .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
-    m_missionMetaLabel->setText(timestamp);
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> 0e07fec (UI Skeleton)
-<<<<<<< HEAD
->>>>>>> bc5cfb6 (UI Skeleton)
-=======
-=======
-// Compute and inject the current local timestamp plus GMT offset into the mission meta label.
-void MainWindow::updateMissionClock() {
-    if (!m_missionMetaLabel) {
-        return;  // Toolbar was not built yet; nothing to update.
+    if (err) {
+        QMessageBox::warning(
+            m_settingsWindow ? static_cast<QWidget *>(m_settingsWindow) : this,
+            u"Could not load log"_s,
+            QString::fromStdString(*err));
+        return;
     }
 
-    const QDateTime localNow = QDateTime::currentDateTime();
-    const int offsetSeconds = localNow.offsetFromUtc();
-    const int absOffsetSeconds = qAbs(offsetSeconds);
-    const int offsetHours = absOffsetSeconds / 3600;
-    const int offsetMinutes = (absOffsetSeconds % 3600) / 60;
+    m_loadedSession = std::move(session);
+    m_flightModel->resetSession();
+    m_flightModel->setReplayMode(true);
+    m_replay->setSession(m_loadedSession);
+    if (m_flightDataPage) {
+        m_flightDataPage->setReplaySession(&m_loadedSession);
+    }
+    showStatusMessage(QStringLiteral("Loaded flight: %1").arg(path), 4000);
+}
 
-    // Format GMT±HH[:MM] so even half-hour zones look correct.
-    QString offsetString = QStringLiteral("GMT%1%2")
-            .arg(offsetSeconds >= 0 ? u'+' : u'-')
-            .arg(offsetHours, 2, 10, QLatin1Char('0'));
-    if (offsetMinutes > 0) {
-        offsetString += QStringLiteral(":%1").arg(offsetMinutes, 2, 10, QLatin1Char('0'));
+void MainWindow::onClearFlightData() {
+    m_replay->stop();
+    m_loadedSession.samples.clear();
+    m_replay->setSession({});
+    m_flightModel->setReplayMode(false);
+    m_flightModel->resetSession();
+    if (m_flightDataPage) {
+        m_flightDataPage->setReplaySession(nullptr);
+    }
+    showStatusMessage(u"Cleared flight replay data."_s, 2000);
+}
+
+void MainWindow::startSerial(const QString &portName, int baud) {
+    stopSerial();
+    if (portName.isEmpty()) {
+        showStatusMessage(u"Select a serial port first."_s, 3000);
+        return;
     }
 
-    const QString timestamp = QStringLiteral("%1 | %2")
-            .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
-    m_missionMetaLabel->setText(timestamp);
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
+    m_comms = CommsFactory::createSerialComms(portName.toStdString(), baud);
+    if (!m_comms || !m_comms->open()) {
+        showStatusMessage(u"Failed to open serial port."_s, 5000);
+        m_comms.reset();
+        return;
+    }
+
+    m_prevBytesForRate = m_flightModel->totalBytesReceived();
+
+    m_parserWorker = std::make_unique<ParserWorker>(
+        m_rawQueue,
+        [this](FlightSample &&s) {
+            FlightDataModel *model = m_flightModel.get();
+            QMetaObject::invokeMethod(
+                model,
+                "appendSample",
+                Qt::QueuedConnection,
+                Q_ARG(FlightSample, s));
+        },
+        [this](std::string_view err) {
+            const QString msg = QString::fromUtf8(err.data(), static_cast<int>(err.size()));
+            QMetaObject::invokeMethod(this, "onParserError", Qt::QueuedConnection, Q_ARG(QString, msg));
+        });
+
+    if (!m_parserWorker->start()) {
+        showStatusMessage(u"Parser thread failed to start."_s, 5000);
+        m_parserWorker.reset();
+        m_comms.reset();
+        return;
+    }
+
+    m_serialWorker = std::make_unique<SerialWorker>(
+        m_comms.get(),
+        [this](std::vector<uint8_t> chunk) {
+            const qint64 n = static_cast<qint64>(chunk.size());
+            m_rawQueue.push(std::move(chunk));
+            FlightDataModel *model = m_flightModel.get();
+            QMetaObject::invokeMethod(
+                model,
+                "addBytesReceived",
+                Qt::QueuedConnection,
+                Q_ARG(qint64, n));
+        },
+        [this](const std::string &err) {
+            const QString msg = QString::fromStdString(err);
+            QMetaObject::invokeMethod(this, "onParserError", Qt::QueuedConnection, Q_ARG(QString, msg));
+        });
+
+    if (!m_serialWorker->start()) {
+        showStatusMessage(u"Serial reader failed to start."_s, 5000);
+        m_serialWorker.reset();
+        m_parserWorker.reset();
+        m_comms.reset();
+        return;
+    }
+
+    if (m_dataLinkStatusLabel) {
+        m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1 @ %2").arg(portName).arg(baud));
+    }
+    m_flightModel->setReplayMode(false);
+    if (m_flightDataPage) {
+        m_flightDataPage->setReplaySession(nullptr);
+    }
+    if (m_settingsWindow) {
+        m_settingsWindow->setSerialLinkStatus(QStringLiteral("Connected: %1 @ %2").arg(portName).arg(baud));
+    }
+    showStatusMessage(QStringLiteral("Connected to %1").arg(portName), 3000);
+}
+
+void MainWindow::stopSerial() {
+    if (m_serialWorker) {
+        m_serialWorker->stop();
+        m_serialWorker.reset();
+    }
+    if (m_parserWorker) {
+        m_parserWorker->stop();
+        m_parserWorker.reset();
+    }
+    if (m_comms) {
+        m_comms->close();
+        m_comms.reset();
+    }
+    if (m_dataLinkStatusLabel) {
+        m_dataLinkStatusLabel->setText(u"LINK: idle"_s);
+    }
+    if (m_settingsWindow) {
+        m_settingsWindow->setSerialLinkStatus(u"Disconnected."_s);
+    }
 }

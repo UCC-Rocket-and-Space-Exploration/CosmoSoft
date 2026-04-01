@@ -1,40 +1,46 @@
 #ifndef COSMO_SOFT_FLIGHTDATAMODEL_H
 #define COSMO_SOFT_FLIGHTDATAMODEL_H
-#include <format>
-#include <vector>
 
-struct AngularVelocity {
-    double x, y, z;
-};
+#include <QMutex>
+#include <QObject>
 
-struct Acceleration {
-    double x, y, z;
-};
+#include "domain/FlightSample.h"
 
-struct Coordinates {
-    double latitude, longitude;
-};
+class FlightDataModel : public QObject {
+    Q_OBJECT
 
-struct FlightSample {
-    long timestamp; //milliseconds from epoch
-    double Rssi;
-    AngularVelocity angularVelocity;
-    Acceleration acceleration;
-    Coordinates coordinates;
-    double altitude;
-    double pressure;
-    double temperature;
-    double batteryVoltage;
-};
-
-//data model for the UI to use; contains all the formulated data for use by the GUI controller
-class FlightDataModel {
 public:
-    FlightDataModel();
-    ~FlightDataModel();
+    explicit FlightDataModel(QObject *parent = nullptr);
+
+    FlightSample latestSample() const;
+    qint64 totalBytesReceived() const;
+
+    bool replayMode() const;
+    void setReplayMode(bool on);
+
+    /** Clears latest sample to defaults and notifies charts to reset (does not change byte counters). */
+    void resetSession();
+
+    /** Zero live byte counter (e.g. after disconnect). */
+    void resetByteCounter();
+
+    /** Updates latest sample for monitoring text without changing replay chart logic. */
+    void setDisplayedSample(const FlightSample &sample);
+
+public slots:
+    void appendSample(FlightSample sample);
+    void addBytesReceived(qint64 byteCount);
+
+signals:
+    void sampleUpdated(const FlightSample &sample);
+    void bytesReceivedChanged(qint64 totalBytes);
+    void sessionReset();
 
 private:
-    std::vector<FlightSample> m_flightSamples;
+    mutable QMutex m_mutex;
+    FlightSample m_latest;
+    qint64 m_bytesReceived = 0;
+    bool m_replayMode = false;
 };
 
-#endif //COSMO_SOFT_FLIGHTDATAMODEL_H
+#endif // COSMO_SOFT_FLIGHTDATAMODEL_H

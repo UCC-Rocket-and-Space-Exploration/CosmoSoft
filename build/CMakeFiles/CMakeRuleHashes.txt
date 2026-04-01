@@ -1,34 +1,18 @@
 # Hashes of file build rules.
-<<<<<<< HEAD
-c2b315e83258f5a55750a8e5f3706e15 cosmo-backend_autogen/timestamp
-<<<<<<< HEAD
-536ca972567d425032da7e540d969c10 cosmo-gui_autogen/GBFAFXFCVO/qrc_resources.cpp
-=======
->>>>>>> 1c03da1 (UI Skeleton)
-073491c1c6e3e070c440f3a7df9cb563 cosmo-gui_autogen/timestamp
-6e7bfa5d8f92e9b961cb4b0174466a11 cosmo-soft_autogen/timestamp
-40266022ec515dd3716ccdf21d28a816 src/CMakeFiles/cosmo-backend_autogen
-40266022ec515dd3716ccdf21d28a816 src/CMakeFiles/cosmo-soft-bin_autogen
-1dbd7391784c96ca408471757b189986 src/cosmo-backend_autogen/timestamp
-c6305db55894ceb7a2b6b7b0109127bf src/cosmo-soft-bin_autogen/QU2567GMYG/qrc_resources.cpp
-caaf6afd30884033b00db0930283c1f1 src/cosmo-soft-bin_autogen/timestamp
-79653652980563993e30a233aada5d24 src/gateway/CMakeFiles/comms_autogen
-b509b492941d642fd8f30a2948ecb27f src/gateway/Posix/CMakeFiles/PosixComms_autogen
-44a66722c7c512c91d03ab093ac5f4a1 src/gateway/Posix/PosixComms_autogen/timestamp
-d503c9dbbb6d64128e184a16195e544c src/gateway/comms_autogen/timestamp
-2e0a190b6a55a847967eff17a572fcdd src/gui/CMakeFiles/gui_autogen
-f8bbce6d45c2b0b8347805c980d2eb4a src/gui/gui_autogen/timestamp
-e4c99ce583d5506798d9e13d575a125f src/services/flight/CMakeFiles/flight_autogen
-3a00fc956d445e2f64440814fd3a141f src/services/flight/flight_autogen/timestamp
-3c7f30e6ddab9d48780d758e8c407656 src/services/persistence/CMakeFiles/persistence_autogen
-7ce976d66e2f3ba20186e7b8cbee4a1b src/services/persistence/persistence_autogen/timestamp
-e6ec398ded2f1018d49fa8cb06ca4f79 src/services/telemetry/CMakeFiles/telemetry_autogen
-92462d9370ee7145406bdb5dc2cc3d9f src/services/telemetry/telemetry_autogen/timestamp
-=======
-4207e898f903af44bbb8e9d69f6f4191 CMakeFiles/cosmo-backend_autogen
-4207e898f903af44bbb8e9d69f6f4191 CMakeFiles/cosmo-gui_autogen
-4207e898f903af44bbb8e9d69f6f4191 CMakeFiles/cosmo-soft_autogen
-c2b315e83258f5a55750a8e5f3706e15 cosmo-backend_autogen/timestamp
-073491c1c6e3e070c440f3a7df9cb563 cosmo-gui_autogen/timestamp
-6e7bfa5d8f92e9b961cb4b0174466a11 cosmo-soft_autogen/timestamp
->>>>>>> 0e07fec (UI Skeleton)
+c5625a27b12321bacb802f2a73606ada src/CMakeFiles/cosmo-soft-bin_autogen
+81766f58e4ef8bbd0924c4924df5c641 src/cosmo-soft-bin_autogen/QU2567GMYG/qrc_resources.cpp
+37c0f2360f89ff6d3fef3465b8acf21d src/cosmo-soft-bin_autogen/timestamp
+9f476dd87d39e57b3a036aac87c8300e src/gateway/comms/CMakeFiles/comms_autogen
+42c3b5f17084a08053fce350d14550eb src/gateway/comms/Posix/CMakeFiles/PosixComms_autogen
+1a1d9fbd9ad046c5d5de37d7cd58aba7 src/gateway/comms/Posix/PosixComms_autogen/timestamp
+866ba9be8aa74b1ab709f74b3c429387 src/gateway/comms/comms_autogen/timestamp
+6f38d0d4ad59e625b6b8a81ca8429b15 src/gui/CMakeFiles/gui_autogen
+f9287bd9f55e029bb34569eac70e3096 src/gui/gui_autogen/timestamp
+dc478e80488c88599ea22527a681f42d src/services/flight/CMakeFiles/flight_autogen
+d11831b556c4bf401982c66a58d1a85a src/services/flight/flight_autogen/timestamp
+d29258d9735470574e9b669e859cf3f3 src/services/import/CMakeFiles/import_autogen
+abeed66afa5d6d71259e4a72000d5995 src/services/import/import_autogen/timestamp
+9472801d1b1c63cbe928ebcafcce4892 src/services/persistence/CMakeFiles/persistence_autogen
+227781409bf0de5e4a3b963e85c7714f src/services/persistence/persistence_autogen/timestamp
+8bfb2ef9d7e17c900b72a772445f87c8 src/services/telemetry/CMakeFiles/telemetry_autogen
+7e13aed6552fd876e0d06f74a47b0e2c src/services/telemetry/telemetry_autogen/timestamp

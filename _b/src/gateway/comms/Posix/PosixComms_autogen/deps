@@ -1,0 +1,5 @@
+PosixComms_autogen/timestamp: \
+	/Users/hslyusar/Desktop/CosmoSoft/src/gateway/comms/Posix/CMakeLists.txt \
+	/Users/hslyusar/Desktop/CosmoSoft/src/gateway/comms/Posix/SerialCommsPosix.cpp \
+	/Users/hslyusar/Desktop/CosmoSoft/src/gateway/comms/Posix/SerialPortScannerPosix.cpp \
+	/opt/homebrew/bin/cmake

@@ -1,5 +1,9 @@
 #ifndef COSMO_SOFT_COMMSFACTORY_H
 #define COSMO_SOFT_COMMSFACTORY_H
+
+#include <memory>
+#include <string>
+
 #include "IComms.h"
 
 //factory class design pattern for handling instantiating either POSIX or windows implementation of IComms

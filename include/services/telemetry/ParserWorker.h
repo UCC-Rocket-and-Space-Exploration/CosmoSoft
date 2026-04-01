@@ -1,30 +1,24 @@
 #ifndef COSMO_SOFT_PARSERWORKER_H
 #define COSMO_SOFT_PARSERWORKER_H
-#include <atomic>
+
 #include <functional>
-#include <queue>
 #include <string>
 #include <thread>
-<<<<<<< HEAD
 #include <vector>
-=======
-#include <stop_token>
->>>>>>> e7d53e9 (branching off from refactor to work on parsing thread)
 
-#include "Parser.h"
+#include "services/BlockingQueue.h"
+
 #include "Framer.h"
-#include "../../domain/FlightSample.h"
-
-template<typename T>
-class BlockingQueue;
+#include "Parser.h"
+#include "domain/FlightSample.h"
 
 class ParserWorker {
 public:
     using Chunk = std::vector<uint8_t>;
-    using DataCallback  = std::function<void(FlightSample&&)>;
+    using DataCallback = std::function<void(FlightSample &&)>;
     using ErrorCallback = std::function<void(std::string_view)>;
 
-    ParserWorker(BlockingQueue<Chunk>& inQueue,
+    ParserWorker(BlockingQueue<Chunk> &inQueue,
                  DataCallback onData,
                  ErrorCallback onError)
         : m_inQueue(inQueue),
@@ -37,7 +31,7 @@ public:
 private:
     void run(const std::stop_token &st);
 
-    BlockingQueue<Chunk>& m_inQueue;
+    BlockingQueue<Chunk> &m_inQueue;
     Framer m_framer;
     Parser m_parser;
 
@@ -47,13 +41,4 @@ private:
     ErrorCallback m_onError;
 };
 
-
-
-
-#endif //COSMO_SOFT_PARSERWORKER_H
-<<<<<<< HEAD
-=======
-
-
-
->>>>>>> e7d53e9 (branching off from refactor to work on parsing thread)
+#endif // COSMO_SOFT_PARSERWORKER_H

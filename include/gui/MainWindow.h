@@ -1,129 +1,83 @@
 #ifndef COSMO_SOFT_MAINWINDOW_H
 #define COSMO_SOFT_MAINWINDOW_H
 
-#include <QMainWindow>    // Base class that already owns menu/status bars and a central widget slot.
-<<<<<<< HEAD
+#include <QMainWindow>
 #include <QString>
 
+#include <memory>
+
+#include "domain/FlightSession.h"
+#include "services/BlockingQueue.h"
+
 class QAction;
 class QLabel;
 class QStackedWidget;
 class QTimer;
-class QWidget;
 class MonitoringPage;
+class DashboardPage;
 class SettingsPage;
-=======
+class FlightDataModel;
+class FlightReplayController;
+class ParserWorker;
+class SerialWorker;
+class IComms;
 
-class QAction;
-class QLabel;
-class QStackedWidget;
-class QTimer;
-class QWidget;
->>>>>>> 1c03da1 (UI Skeleton)
-
-// MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked page, and settings entry point).
-=======
-
-class QAction;
-class QLabel;
-class QStackedWidget;
-class QTimer;
-class QWidget;
-
-// MainWindow assembles the high-level Qt UI skeleton (toolbar, stacked pages, and a chart demo).
->>>>>>> 0e07fec (UI Skeleton)
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
     explicit MainWindow(QWidget *parent = nullptr);
-<<<<<<< HEAD
+    ~MainWindow() override;
+
     void showStatusMessage(const QString &message, int timeout = 0);
-=======
-<<<<<<< HEAD
->>>>>>> 1c03da1 (UI Skeleton)
-=======
->>>>>>> 0e07fec (UI Skeleton)
->>>>>>> bc5cfb6 (UI Skeleton)
-    ~MainWindow() override = default;
+
+public slots:
+    void onParserError(const QString &message);
+
+private slots:
+    void updateMissionClock();
+    void updateDataRateLabel();
+    void refreshSerialPorts();
+    void startSerial(const QString &portName, int baud);
+    void stopSerial();
+    void onReplayPositionChanged(int trailLength);
+    void onOpenReplayFile();
+    void onClearFlightData();
 
 private:
-    void setupActions();     // Create QAction objects that will drive toolbar navigation.
-    void setupToolbar();     // Build the visible toolbar with skeleton buttons.
-<<<<<<< HEAD
-    void setupDataBar();     // Create the thin telemetry strip that sits under the toolbar.
-    void setupPages();       // Construct the stacked pages that behave like separate windows.
-<<<<<<< HEAD
-    void openSettingsWindow(); // Launch the detached settings window.
-    void updateMissionClock();  // Refresh the GMT label with the current UTC timestamp.
+    void setupActions();
+    void setupToolbar();
+    void setupDataBar();
+    void setupPages();
+    void openSettingsWindow();
 
     QAction *m_showMonitoringAction = nullptr;
+    QAction *m_showFlightDataAction = nullptr;
     QAction *m_openSettingsAction = nullptr;
 
     QStackedWidget *m_pages = nullptr;
     MonitoringPage *m_monitoringPage = nullptr;
+    DashboardPage *m_flightDataPage = nullptr;
     SettingsPage *m_settingsWindow = nullptr;
 
-    QLabel *m_missionMetaLabel = nullptr;   // Pointer to the GMT readout in the toolbar.
-    QTimer *m_missionClockTimer = nullptr;  // Ticks every second to update the UTC timestamp.
+    QLabel *m_missionMetaLabel = nullptr;
+    QTimer *m_missionClockTimer = nullptr;
 
-    QWidget *m_dataBar = nullptr;           // Thin strip shown under the toolbar.
+    QWidget *m_dataBar = nullptr;
     QLabel *m_dataLinkStatusLabel = nullptr;
     QLabel *m_dataRateLabel = nullptr;
-=======
-    void setupPages();       // Construct the stacked pages that behave like separate windows.
-    void setupChartPage();   // Prepare the sample chart content page.
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-    void updateMissionClock();  // Refresh the GMT label with the current UTC timestamp.
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> bc5cfb6 (UI Skeleton)
-=======
-=======
-    void updateMissionClock();  // Refresh the GMT label with the current UTC timestamp.
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
 
-    QAction *m_showDashboardAction = nullptr;
-    QAction *m_showSettingsAction = nullptr;
+    std::unique_ptr<FlightDataModel> m_flightModel;
+    std::unique_ptr<FlightReplayController> m_replay;
+    FlightSession m_loadedSession;
 
-    QStackedWidget *m_pages = nullptr;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    QWidget *m_dashboardPage = nullptr;
-    QWidget *m_settingsPage = nullptr;
-    QWidget *m_chartPage = nullptr;
->>>>>>> 1c03da1 (UI Skeleton)
-=======
-    DashboardPage *m_dashboardPage = nullptr;
-    SettingsPage *m_settingsPage = nullptr;
-    ChartPage *m_chartPage = nullptr;
+    BlockingQueue<std::vector<uint8_t>> m_rawQueue{512};
+    std::unique_ptr<ParserWorker> m_parserWorker;
+    std::unique_ptr<SerialWorker> m_serialWorker;
+    std::unique_ptr<IComms> m_comms;
 
-    QLabel *m_missionMetaLabel = nullptr;   // Pointer to the GMT readout in the toolbar.
-    QTimer *m_missionClockTimer = nullptr;  // Ticks every second to update the UTC timestamp.
->>>>>>> cb12191 (logistic files commit)
-=======
-=======
->>>>>>> 866748a (logistic files commit)
-    QWidget *m_dashboardPage = nullptr;
-    QWidget *m_settingsPage = nullptr;
-    QWidget *m_chartPage = nullptr;
->>>>>>> 0e07fec (UI Skeleton)
-<<<<<<< HEAD
->>>>>>> bc5cfb6 (UI Skeleton)
-=======
-=======
-    DashboardPage *m_dashboardPage = nullptr;
-    SettingsPage *m_settingsPage = nullptr;
-    ChartPage *m_chartPage = nullptr;
-
-    QLabel *m_missionMetaLabel = nullptr;   // Pointer to the GMT readout in the toolbar.
-    QTimer *m_missionClockTimer = nullptr;  // Ticks every second to update the UTC timestamp.
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)
+    QTimer *m_dataRateTimer = nullptr;
+    qint64 m_prevBytesForRate = 0;
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

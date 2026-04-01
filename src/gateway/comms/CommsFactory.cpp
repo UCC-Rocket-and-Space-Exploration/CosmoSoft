@@ -1,14 +1,13 @@
-#include "../../../include/gateway/comms/CommsFactory.h"
+#include "gateway/comms/CommsFactory.h"
 
-#include "gateway/posix/SerialCommsPosix.h"
-
-
-#ifdef _WIN32
-//TODO implement windows version of SerialComms and include here
-#elif __unix__
-std::unique_ptr<IComms> CommsFactory::createSerialComms(const std::string& device, int baud) {
-    return std::make_unique<SerialCommsPosix>(device, baud);
-}
-#else
-#error "Unsupported platform"
+#if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
+#include "gateway/comms/posix/SerialCommsPosix.h"
 #endif
+
+std::unique_ptr<IComms> CommsFactory::createSerialComms(const std::string &device, int baud) {
+#if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
+    return std::make_unique<SerialCommsPosix>(device, baud);
+#else
+#error "Unsupported platform: implement Windows serial comms"
+#endif
+}

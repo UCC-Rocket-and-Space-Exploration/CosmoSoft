@@ -1,6 +1,0 @@
-<<<<<<< HEAD
-moc:d1e52c234d9d370c777e4464747d1b8818ae5b564bd5c66bee0d0621b031781f
-=======
-moc:1be38e52f0c0824b9d3dae89d69d5487b47cee6d7f09030cffd62dbf6c0c8ca2
->>>>>>> 0e07fec (UI Skeleton)
-uic:f8d4d1cd8138f99d6e8f6dffdecb0ef1cb6038d7635caa67b2836c6bf0c6627b

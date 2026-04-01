@@ -1,19 +1,24 @@
 #include "gui/pages/MonitoringPage.h"
+
+#include "gui/FlightDataModel.h"
 #include "gui/MainWindow.h"
 
+#include <QBrush>
 #include <QColor>
 #include <QFrame>
 #include <QLabel>
 #include <QPainter>
-#include <QBrush>
 #include <QPaintEvent>
 #include <QPointF>
 #include <QVBoxLayout>
 
 using namespace Qt::StringLiterals;
 
-MonitoringPage::MonitoringPage(MainWindow *hostWindow, QWidget *parent)
-: QWidget(parent), m_hostWindow(hostWindow) {
+MonitoringPage::MonitoringPage(MainWindow *hostWindow, FlightDataModel *model, QWidget *parent)
+    : QWidget(parent),
+      m_hostWindow(hostWindow),
+      m_model(model) {
+    Q_UNUSED(hostWindow);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAutoFillBackground(false);
 
@@ -34,12 +39,34 @@ MonitoringPage::MonitoringPage(MainWindow *hostWindow, QWidget *parent)
     }
     )");
 
+    m_summaryLabel = new QLabel(
+        u"Monitoring: waiting for telemetry. Open Settings to connect a serial port."_s,
+        textFrame);
+    m_summaryLabel->setWordWrap(true);
+    m_summaryLabel->setStyleSheet(u"color: #e8e8e8; font-size: 14px;"_s);
 
-    auto *description = new QLabel(u""_s,this);
-    description->setWordWrap(true);
-    layout->addWidget(description);
+    auto *frameLayout = new QVBoxLayout(textFrame);
+    frameLayout->addWidget(m_summaryLabel);
 
     layout->addWidget(textFrame);
+    layout->addStretch(1);
+
+    if (m_model) {
+        connect(m_model, &FlightDataModel::sampleUpdated, this, &MonitoringPage::onSampleUpdated);
+    }
+}
+
+void MonitoringPage::onSampleUpdated(const FlightSample &sample) {
+    if (!m_summaryLabel) {
+        return;
+    }
+    m_summaryLabel->setText(
+        QStringLiteral(
+            "Last sample — Alt: %1 m, Temp: %2 °C, Press: %3, Batt: %4 V")
+            .arg(sample.altitude, 0, 'f', 1)
+            .arg(sample.temperature, 0, 'f', 1)
+            .arg(sample.pressure, 0, 'f', 1)
+            .arg(sample.batteryVoltage, 0, 'f', 2));
 }
 
 void MonitoringPage::paintEvent(QPaintEvent *event) {

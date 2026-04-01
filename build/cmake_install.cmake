@@ -1,4 +1,4 @@
-# Install script for directory: /Users/glebslyusar/Desktop/UCC/RES/CosmoSoft
+# Install script for directory: /Users/hslyusar/Desktop/CosmoSoft
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -37,18 +37,15 @@ if(NOT DEFINED CMAKE_OBJDUMP)
   set(CMAKE_OBJDUMP "/usr/bin/objdump")
 endif()
 
-<<<<<<< HEAD
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/src/cmake_install.cmake")
+  include("/Users/hslyusar/Desktop/CosmoSoft/build/src/cmake_install.cmake")
 endif()
 
-=======
->>>>>>> 0e07fec (UI Skeleton)
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/install_local_manifest.txt"
+  file(WRITE "/Users/hslyusar/Desktop/CosmoSoft/build/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
 if(CMAKE_INSTALL_COMPONENT)
@@ -64,6 +61,6 @@ else()
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "/Users/glebslyusar/Desktop/UCC/RES/CosmoSoft/build/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "/Users/hslyusar/Desktop/CosmoSoft/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

@@ -3,26 +3,31 @@
 
 #include <QWidget>
 
+#include "domain/FlightSample.h"
+
 class QPaintEvent;
 
+class QLabel;
 class MainWindow;
+class FlightDataModel;
 
-// MonitoringPage hosts summary tiles and checklists displayed on the main screen.
-// The backend can later expose data setters so these labels update with live telemetry.
 class MonitoringPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit MonitoringPage(MainWindow *hostWindow, QWidget *parent = nullptr);
+    explicit MonitoringPage(MainWindow *hostWindow, FlightDataModel *model, QWidget *parent = nullptr);
     ~MonitoringPage() override = default;
 
 protected:
     void paintEvent(QPaintEvent *event) override;
 
+private slots:
+    void onSampleUpdated(const FlightSample &sample);
+
 private:
     MainWindow *m_hostWindow = nullptr;
+    FlightDataModel *m_model = nullptr;
+    QLabel *m_summaryLabel = nullptr;
 };
 
 #endif // COSMO_SOFT_MONITORINGPAGE_H
-
-

@@ -1,21 +1,17 @@
 #include "gateway/comms/posix/SerialCommsPosix.h"
 
-#include <glob.h>
-#include <vector>
-#include <string>
-#include <sys/stat.h>
-#include <iostream>
-#include <string.h>
 #include <fcntl.h>
-#include <iomanip>
+#include <poll.h>
+#include <cerrno>
+#include <unistd.h>
+
 #include <chrono>
 #include <thread>
-#include <unistd.h>
-#include <sys/poll.h>
 
 SerialCommsPosix::SerialCommsPosix(const std::string &device, const int baud) {
     m_baud = baud;
-    m_device = device; //TODO
+    m_device = device;
+    m_port = device;
 }
 
 SerialCommsPosix::~SerialCommsPosix() {
@@ -25,7 +21,9 @@ SerialCommsPosix::~SerialCommsPosix() {
 bool SerialCommsPosix::open() {
     close();
     m_fd = ::open(m_device.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-    if (m_fd < 0) return false; // failed to open
+    if (m_fd < 0) {
+        return false;
+    }
     return true;
 }
 
@@ -51,58 +49,41 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
 #ifdef POLLRDHUP
     pfd.events |= POLLRDHUP;
 #endif
-<<<<<<< HEAD:src/gateway/comms/Posix/SerialCommsPosix.cpp
+
     while (isOpen()) {
-        int data = poll(&pfd, 1, 200); // block until data
-        if (data == 0) { //timeout, no data received
+        const int data = poll(&pfd, 1, 200);
+        if (data == 0) {
             return 0;
         }
-=======
-
-    while (true) {
-        int data = poll(&pfd, 1, -1); // block until data
->>>>>>> 0e07fec (UI Skeleton):src/comms/SerialCommsPosix.cpp
         if (data > 0) {
-            if (pfd.revents & POLLIN) { //when there is data to be read
-                const ssize_t n = ::read(m_fd, buffer, maxSize); //read from fd into the buffer all possible bytes
+            if (pfd.revents & POLLIN) {
+                const ssize_t n = ::read(m_fd, buffer, maxSize);
                 return n;
             }
-            if (pfd.revents & POLLERR) { //general error, typically a problem with the code itself (inc. frame errors, line errors)
-                //std::cerr << "Serial port error!\n";
-                //TODO add logging & error handling (consider whether errors should be bubbled up or handled internally
+            if (pfd.revents & POLLERR) {
                 break;
             }
-            if (pfd.revents & POLLHUP) { //fires if a disconnect happens without explicit closing
-                //TODO improve handling of reconnecting
-                for (int i = 0; i < 10; ++i) {  //try to reconnect 10 times
-
+            if (pfd.revents & POLLHUP) {
+                for (int i = 0; i < 10; ++i) {
                     if (open()) {
-                        break; //the connection is reestablished
+                        break;
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
-
                 if (isOpen()) {
                     continue;
                 }
-                //std::cerr << "Serial port disconnected (HUP)!\n";
-                close(); //if connection has not been reestablished, close the connection
+                close();
                 break;
             }
 #ifdef POLLRDHUP
-            if (pfd.revents & POLLRDHUP) { //fires if the peer closes the serial connection
-                //std::cerr << "Peer closed connection (RDHUP)\n";
+            if (pfd.revents & POLLRDHUP) {
                 break;
             }
 #endif
-<<<<<<< HEAD:src/gateway/comms/Posix/SerialCommsPosix.cpp
         }
-        if (data < 0) { //error during poll
-            if (errno == EAGAIN) { // can be thrown in non-blocking mode
-
-            }
-=======
->>>>>>> 0e07fec (UI Skeleton):src/comms/SerialCommsPosix.cpp
+        if (data < 0 && errno != EAGAIN) {
+            break;
         }
     }
     return -1;
@@ -111,10 +92,3 @@ ssize_t SerialCommsPosix::read(uint8_t *buffer, size_t maxSize) {
 std::string SerialCommsPosix::getDeviceName() const {
     return m_device;
 }
-<<<<<<< HEAD:src/gateway/comms/Posix/SerialCommsPosix.cpp
-=======
-
-std::string SerialCommsPosix::getDevicePort() const {
-    return m_port;
-}
->>>>>>> 0e07fec (UI Skeleton):src/comms/SerialCommsPosix.cpp

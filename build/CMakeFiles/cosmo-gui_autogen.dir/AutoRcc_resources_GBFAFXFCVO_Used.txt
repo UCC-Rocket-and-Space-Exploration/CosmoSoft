@@ -1,9 +1,0 @@
-<<<<<<< HEAD
-rcc:6e355e444f20932b76dfec1d1088a624461dd5fab416edc4d84005fb1f892727
-=======
-rcc:2b4278108d536c1ca62c1812e6755b0282f8096271c71c6fff55d350026fedb8
-<<<<<<< HEAD
->>>>>>> cb12191 (logistic files commit)
-=======
->>>>>>> cbd2c7f (logistic files commit)
->>>>>>> 866748a (logistic files commit)

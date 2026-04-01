@@ -1,0 +1,6 @@
+telemetry_autogen/timestamp: \
+	/Users/hslyusar/Desktop/CosmoSoft/src/services/telemetry/CMakeLists.txt \
+	/Users/hslyusar/Desktop/CosmoSoft/src/services/telemetry/Framer.cpp \
+	/Users/hslyusar/Desktop/CosmoSoft/src/services/telemetry/Parser.cpp \
+	/Users/hslyusar/Desktop/CosmoSoft/src/services/telemetry/ParserWorker.cpp \
+	/opt/homebrew/bin/cmake
