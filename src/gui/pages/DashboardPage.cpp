@@ -721,52 +721,36 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
         QFrame#replayBar {
             background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 rgba(48, 48, 52, 0.97),
-                stop:1 rgba(22, 22, 24, 0.98));
+                stop:0 rgba(40, 41, 46, 0.97),
+                stop:1 rgba(20, 21, 24, 0.98));
             border: 1px solid rgba(255, 255, 255, 0.09);
-            border-radius: 18px;
+            border-radius: 8px;
         }
         QLabel#replayBarTitle {
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(168, 180, 192, 0.9);
             font-size: 11px;
             font-weight: 600;
             letter-spacing: 2px;
-            font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
         }
         QLabel#replayRateLabel {
-            color: rgba(255, 255, 255, 0.38);
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
-            padding-right: 6px;
-        }
-        QLabel#replaySampleCaption {
-            color: rgba(255, 255, 255, 0.55);
-            font-size: 12px;
-            font-weight: 500;
-            font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
-            padding: 2px 4px 0 4px;
-        }
-        QLabel#replayClockLabel {
-            color: rgba(255, 255, 255, 0.88);
-            font-size: 13px;
-            font-weight: 500;
-            font-variant-numeric: tabular-nums;
-            font-family: system-ui, -apple-system, "SF Mono", "SF Pro Text", "Menlo", monospace;
-        }
-        QLabel#replayTimeCaption {
-            color: rgba(255, 255, 255, 0.35);
+            color: rgba(168, 180, 192, 0.55);
             font-size: 10px;
             font-weight: 600;
-            letter-spacing: 0.8px;
-            font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
+            letter-spacing: 0.5px;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            padding-right: 4px;
         }
-        QLabel#replayStatusLabel {
-            color: rgba(255, 255, 255, 0.38);
+        QLabel#replaySampleCaption {
+            color: rgba(168, 180, 192, 0.7);
             font-size: 11px;
-            font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
-            padding-top: 2px;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+        }
+        QLabel#replayClockLabel {
+            color: rgba(240, 244, 248, 0.92);
+            font-size: 12px;
+            font-weight: 600;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
         }
         QFrame#replayVDiv {
             background-color: rgba(255, 255, 255, 0.1);
@@ -774,94 +758,100 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             border-radius: 1px;
         }
         QSlider#replayScrubSlider {
-            min-height: 32px;
+            min-height: 24px;
         }
         QSlider#replayScrubSlider::groove:horizontal {
-            height: 6px;
+            height: 4px;
             background: rgba(255, 255, 255, 0.14);
-            border-radius: 3px;
+            border-radius: 2px;
         }
         QSlider#replayScrubSlider::sub-page:horizontal {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #007aff, stop:1 #5ac8fa);
-            border-radius: 3px;
-            height: 6px;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3d6fa8, stop:1 #5a90c8);
+            border-radius: 2px;
+            height: 4px;
         }
         QSlider#replayScrubSlider::handle:horizontal {
-            width: 18px;
-            height: 18px;
-            margin: -6px 0;
-            background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.12);
-            border-radius: 9px;
+            width: 14px;
+            height: 14px;
+            margin: -5px 0;
+            background: #c8d4e0;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            border-radius: 7px;
         }
         QSlider#replayScrubSlider::handle:horizontal:hover {
-            background: #f5f5f7;
+            background: #e0e8f0;
         }
         QToolButton#replayTransportBtn, QToolButton#replaySkipBtn {
-            background: rgba(255, 255, 255, 0.07);
-            border: none;
-            border-radius: 12px;
-            padding: 9px;
-            min-width: 44px;
-            min-height: 44px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 4px;
+            min-width: 28px;
+            min-height: 28px;
+            max-width: 28px;
+            max-height: 28px;
         }
         QToolButton#replayTransportBtn:hover, QToolButton#replaySkipBtn:hover {
-            background: rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.13);
+            border-color: rgba(255, 255, 255, 0.18);
         }
         QToolButton#replayTransportBtn:pressed, QToolButton#replaySkipBtn:pressed {
             background: rgba(255, 255, 255, 0.2);
         }
         QToolButton#replayTransportBtn:disabled, QToolButton#replaySkipBtn:disabled {
-            background: rgba(255, 255, 255, 0.03);
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.05);
         }
         QToolButton#replayPlayPauseBtn {
-            background: rgba(0, 122, 255, 0.35);
-            border: 1px solid rgba(90, 200, 250, 0.45);
-            border-radius: 30px;
-            min-width: 60px;
-            max-width: 60px;
-            min-height: 60px;
-            max-height: 60px;
+            background: rgba(61, 111, 168, 0.4);
+            border: 1px solid rgba(90, 144, 200, 0.5);
+            border-radius: 4px;
+            min-width: 36px;
+            max-width: 36px;
+            min-height: 28px;
+            max-height: 28px;
             padding: 0px;
         }
         QToolButton#replayPlayPauseBtn:hover {
-            background: rgba(0, 122, 255, 0.48);
-            border-color: rgba(120, 210, 255, 0.55);
+            background: rgba(61, 111, 168, 0.6);
+            border-color: rgba(100, 160, 220, 0.65);
         }
         QToolButton#replayPlayPauseBtn:pressed {
-            background: rgba(0, 100, 220, 0.55);
+            background: rgba(40, 90, 150, 0.7);
         }
         QToolButton#replayPlayPauseBtn:disabled {
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.07);
         }
         QComboBox#replaySpeedCombo {
-            background-color: rgba(255, 255, 255, 0.09);
-            color: rgba(255, 255, 255, 0.92);
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: 10px;
-            padding: 6px 28px 6px 12px;
-            min-height: 32px;
-            min-width: 76px;
-            font-size: 13px;
-            font-weight: 500;
-            font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
+            background-color: rgba(255, 255, 255, 0.07);
+            color: rgba(200, 212, 224, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 4px;
+            padding: 2px 22px 2px 8px;
+            min-height: 26px;
+            max-height: 26px;
+            min-width: 62px;
+            font-size: 11px;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
         }
         QComboBox#replaySpeedCombo:hover {
-            background-color: rgba(255, 255, 255, 0.14);
-            border-color: rgba(255, 255, 255, 0.2);
+            background-color: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.18);
         }
         QComboBox#replaySpeedCombo::drop-down {
             border: none;
-            width: 22px;
+            width: 18px;
         }
         QComboBox#replaySpeedCombo QAbstractItemView {
-            background-color: #2c2c2e;
-            color: #f2f2f7;
-            selection-background-color: #0a84ff;
+            background-color: #22242a;
+            color: #c8d4e0;
+            selection-background-color: #3d6fa8;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 4px;
+            border-radius: 4px;
+            padding: 2px;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-size: 11px;
         }
         QDoubleSpinBox {
             background-color: #1a1a1a;
@@ -921,38 +911,61 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     replayBar->setObjectName(u"replayBar"_s);
     replayBar->setFocusPolicy(Qt::ClickFocus);
     replayBar->setToolTip(
-        u"Replay controls · Click this panel (or a control), then Space to play or pause"_s);
+        u"Replay controls · Space: play/pause · Left/Right: step frame · Click here first to capture keys"_s);
     auto *replayOuter = new QVBoxLayout(replayBar);
-    replayOuter->setContentsMargins(16, 14, 16, 14);
-    replayOuter->setSpacing(8);
+    replayOuter->setContentsMargins(8, 6, 8, 6);
+    replayOuter->setSpacing(4);
 
-    m_speedCombo = new QComboBox(replayBar);
-    m_speedCombo->setObjectName(u"replaySpeedCombo"_s);
-    m_speedCombo->setToolTip(
-        u"Playback speed relative to timestamps in the log (1× = real-time gaps between samples)"_s);
-    const QList<double> speedRates{0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0};
-    for (double r : speedRates) {
-        m_speedCombo->addItem(QStringLiteral("%1×").arg(r, 0, 'g', 3), r);
-    }
-    m_speedCombo->setCurrentIndex(3);
+    // ── Row 1: transport buttons | scrub slider | clock ──────────────────
+    auto *transportRow = new QHBoxLayout();
+    transportRow->setSpacing(4);
+    transportRow->setContentsMargins(0, 0, 0, 0);
 
-    auto *replayHeader = new QHBoxLayout();
-    replayHeader->setSpacing(10);
-    m_replayBarTitle = new QLabel(replayBar);
-    m_replayBarTitle->setObjectName(u"replayBarTitle"_s);
-    m_replayBarTitle->setText(u"REPLAY"_s);
-    replayHeader->addWidget(m_replayBarTitle, 0, Qt::AlignLeft | Qt::AlignVCenter);
-    replayHeader->addStretch(1);
-    auto *rateCaption = new QLabel(u"SPEED"_s, replayBar);
-    rateCaption->setObjectName(u"replayRateLabel"_s);
-    replayHeader->addWidget(rateCaption, 0, Qt::AlignRight | Qt::AlignVCenter);
-    replayHeader->addWidget(m_speedCombo, 0, Qt::AlignRight | Qt::AlignVCenter);
-    replayOuter->addLayout(replayHeader);
+    const auto setupTransportBtn = [](QToolButton *b, const QString &objName, QSize iconSz) {
+        b->setObjectName(objName);
+        b->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        b->setAutoRaise(false);
+        b->setFocusPolicy(Qt::StrongFocus);
+        b->setIconSize(iconSz);
+    };
 
-    m_replaySampleCaption = new QLabel(replayBar);
-    m_replaySampleCaption->setObjectName(u"replaySampleCaption"_s);
-    m_replaySampleCaption->setAlignment(Qt::AlignCenter);
-    replayOuter->addWidget(m_replaySampleCaption);
+    m_jumpStartBtn = new QToolButton(replayBar);
+    setupTransportBtn(m_jumpStartBtn, u"replaySkipBtn"_s, QSize(14, 14));
+    m_jumpStartBtn->setToolTip(u"Jump to start"_s);
+    m_jumpStartBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipBackward));
+
+    m_stepBackBtn = new QToolButton(replayBar);
+    setupTransportBtn(m_stepBackBtn, u"replaySkipBtn"_s, QSize(14, 14));
+    m_stepBackBtn->setToolTip(u"Step back one sample (Left)"_s);
+    m_stepBackBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSeekBackward));
+
+    m_playPauseBtn = new QToolButton(replayBar);
+    m_playPauseBtn->setObjectName(u"replayPlayPauseBtn"_s);
+    m_playPauseBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    m_playPauseBtn->setAutoRaise(false);
+    m_playPauseBtn->setFocusPolicy(Qt::StrongFocus);
+    m_playPauseBtn->setIconSize(QSize(16, 16));
+    m_playPauseBtn->setToolTip(u"Play / Pause (Space)"_s);
+    m_playPauseBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+
+    m_stepFwdBtn = new QToolButton(replayBar);
+    setupTransportBtn(m_stepFwdBtn, u"replaySkipBtn"_s, QSize(14, 14));
+    m_stepFwdBtn->setToolTip(u"Step forward one sample (Right)"_s);
+    m_stepFwdBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSeekForward));
+
+    m_jumpEndBtn = new QToolButton(replayBar);
+    setupTransportBtn(m_jumpEndBtn, u"replaySkipBtn"_s, QSize(14, 14));
+    m_jumpEndBtn->setToolTip(u"Jump to end"_s);
+    m_jumpEndBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
+
+    m_stopBtn = new QToolButton(replayBar);
+    setupTransportBtn(m_stopBtn, u"replayTransportBtn"_s, QSize(14, 14));
+    m_stopBtn->setToolTip(u"Stop and reset"_s);
+    m_stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
+
+    auto *replayDiv = new QFrame(replayBar);
+    replayDiv->setObjectName(u"replayVDiv"_s);
+    replayDiv->setFixedSize(1, 20);
 
     m_replaySlider = new QSlider(Qt::Horizontal, replayBar);
     m_replaySlider->setObjectName(u"replayScrubSlider"_s);
@@ -961,92 +974,72 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_replaySlider->setSingleStep(1);
     m_replaySlider->setPageStep(10);
     m_replaySlider->setTracking(true);
-    m_replaySlider->setToolTip(
-        u"Timeline — drag to choose how many samples appear on the chart (from the start of the file)"_s);
-    replayOuter->addWidget(m_replaySlider);
+    m_replaySlider->setToolTip(u"Timeline — drag to scrub through the log"_s);
 
-    auto *replayTimeRow = new QHBoxLayout();
-    replayTimeRow->setContentsMargins(0, 2, 0, 0);
-    auto *timeLeftCol = new QVBoxLayout();
-    timeLeftCol->setSpacing(2);
-    timeLeftCol->setContentsMargins(0, 0, 0, 0);
-    auto *posCap = new QLabel(u"POSITION"_s, replayBar);
-    posCap->setObjectName(u"replayTimeCaption"_s);
     m_replayTimeLeftLabel = new QLabel(u"—"_s, replayBar);
     m_replayTimeLeftLabel->setObjectName(u"replayClockLabel"_s);
-    timeLeftCol->addWidget(posCap, 0, Qt::AlignLeft);
-    timeLeftCol->addWidget(m_replayTimeLeftLabel, 0, Qt::AlignLeft);
-    auto *timeRightCol = new QVBoxLayout();
-    timeRightCol->setSpacing(2);
-    timeRightCol->setContentsMargins(0, 0, 0, 0);
-    auto *lenCap = new QLabel(u"FULL LENGTH"_s, replayBar);
-    lenCap->setObjectName(u"replayTimeCaption"_s);
-    lenCap->setAlignment(Qt::AlignRight);
+    m_replayTimeLeftLabel->setToolTip(u"Position / Duration"_s);
+
+    auto *clockSep = new QLabel(u"/"_s, replayBar);
+    clockSep->setObjectName(u"replayClockLabel"_s);
+
     m_replayTimeRightLabel = new QLabel(u"—"_s, replayBar);
     m_replayTimeRightLabel->setObjectName(u"replayClockLabel"_s);
-    m_replayTimeRightLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    timeRightCol->addWidget(lenCap, 0, Qt::AlignRight);
-    timeRightCol->addWidget(m_replayTimeRightLabel, 0, Qt::AlignRight);
-    replayTimeRow->addLayout(timeLeftCol);
-    replayTimeRow->addStretch(1);
-    replayTimeRow->addLayout(timeRightCol);
-    replayOuter->addLayout(replayTimeRow);
 
-    auto *replayTransportRow = new QHBoxLayout();
-    replayTransportRow->setSpacing(10);
-    replayTransportRow->addStretch(1);
+    transportRow->addWidget(m_jumpStartBtn, 0, Qt::AlignVCenter);
+    transportRow->addWidget(m_stepBackBtn,  0, Qt::AlignVCenter);
+    transportRow->addWidget(m_playPauseBtn, 0, Qt::AlignVCenter);
+    transportRow->addWidget(m_stepFwdBtn,   0, Qt::AlignVCenter);
+    transportRow->addWidget(m_jumpEndBtn,   0, Qt::AlignVCenter);
+    transportRow->addSpacing(4);
+    transportRow->addWidget(replayDiv,      0, Qt::AlignVCenter);
+    transportRow->addSpacing(4);
+    transportRow->addWidget(m_stopBtn,      0, Qt::AlignVCenter);
+    transportRow->addSpacing(8);
+    transportRow->addWidget(m_replaySlider, 1, Qt::AlignVCenter);
+    transportRow->addSpacing(6);
+    transportRow->addWidget(m_replayTimeLeftLabel, 0, Qt::AlignVCenter);
+    transportRow->addWidget(clockSep,              0, Qt::AlignVCenter);
+    transportRow->addWidget(m_replayTimeRightLabel, 0, Qt::AlignVCenter);
+    replayOuter->addLayout(transportRow);
 
-    const auto setupSkipOrStopBtn = [](QToolButton *b, const QString &objName) {
-        b->setObjectName(objName);
-        b->setToolButtonStyle(Qt::ToolButtonIconOnly);
-        b->setAutoRaise(true);
-        b->setFocusPolicy(Qt::StrongFocus);
-        b->setIconSize(QSize(24, 24));
-    };
+    // ── Row 2: title tag | sample caption | SPEED combo ──────────────────
+    auto *metaRow = new QHBoxLayout();
+    metaRow->setSpacing(6);
+    metaRow->setContentsMargins(0, 0, 0, 0);
 
-    m_jumpStartBtn = new QToolButton(replayBar);
-    setupSkipOrStopBtn(m_jumpStartBtn, u"replaySkipBtn"_s);
-    m_jumpStartBtn->setToolTip(u"Go to start — show from the first sample"_s);
-    m_jumpStartBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipBackward));
+    m_replayBarTitle = new QLabel(u"REPLAY"_s, replayBar);
+    m_replayBarTitle->setObjectName(u"replayBarTitle"_s);
+    metaRow->addWidget(m_replayBarTitle, 0, Qt::AlignVCenter);
 
-    m_playPauseBtn = new QToolButton(replayBar);
-    m_playPauseBtn->setObjectName(u"replayPlayPauseBtn"_s);
-    m_playPauseBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_playPauseBtn->setAutoRaise(true);
-    m_playPauseBtn->setFocusPolicy(Qt::StrongFocus);
-    m_playPauseBtn->setIconSize(QSize(30, 30));
-    m_playPauseBtn->setToolTip(u"Play or pause (Space when this panel is focused)"_s);
-    m_playPauseBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+    auto *metaSep = new QLabel(u"·"_s, replayBar);
+    metaSep->setObjectName(u"replayRateLabel"_s);
+    metaRow->addWidget(metaSep, 0, Qt::AlignVCenter);
 
-    m_jumpEndBtn = new QToolButton(replayBar);
-    setupSkipOrStopBtn(m_jumpEndBtn, u"replaySkipBtn"_s);
-    m_jumpEndBtn->setToolTip(u"Go to end — show the entire log on the chart"_s);
-    m_jumpEndBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
+    m_replaySampleCaption = new QLabel(replayBar);
+    m_replaySampleCaption->setObjectName(u"replaySampleCaption"_s);
+    metaRow->addWidget(m_replaySampleCaption, 1, Qt::AlignVCenter);
 
-    m_stopBtn = new QToolButton(replayBar);
-    setupSkipOrStopBtn(m_stopBtn, u"replayTransportBtn"_s);
-    m_stopBtn->setToolTip(u"Stop and reset to the beginning"_s);
-    m_stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
+    m_speedCombo = new QComboBox(replayBar);
+    m_speedCombo->setObjectName(u"replaySpeedCombo"_s);
+    m_speedCombo->setToolTip(u"Playback speed (1× = real-time)"_s);
+    const QList<double> speedRates{0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0};
+    for (double r : speedRates) {
+        m_speedCombo->addItem(QStringLiteral("%1×").arg(r, 0, 'g', 3), r);
+    }
+    m_speedCombo->setCurrentIndex(3);
 
-    auto *replayDiv = new QFrame(replayBar);
-    replayDiv->setObjectName(u"replayVDiv"_s);
-    replayDiv->setFixedSize(1, 30);
+    auto *rateCaption = new QLabel(u"SPEED"_s, replayBar);
+    rateCaption->setObjectName(u"replayRateLabel"_s);
+    metaRow->addWidget(rateCaption, 0, Qt::AlignVCenter);
+    metaRow->addWidget(m_speedCombo, 0, Qt::AlignVCenter);
+    replayOuter->addLayout(metaRow);
 
-    replayTransportRow->addWidget(m_jumpStartBtn, 0, Qt::AlignVCenter);
-    replayTransportRow->addWidget(m_playPauseBtn, 0, Qt::AlignVCenter);
-    replayTransportRow->addWidget(m_jumpEndBtn, 0, Qt::AlignVCenter);
-    replayTransportRow->addSpacing(6);
-    replayTransportRow->addWidget(replayDiv, 0, Qt::AlignVCenter);
-    replayTransportRow->addSpacing(6);
-    replayTransportRow->addWidget(m_stopBtn, 0, Qt::AlignVCenter);
-    replayTransportRow->addStretch(1);
-    replayOuter->addLayout(replayTransportRow);
-
+    // m_replayInfoLabel kept as hidden placeholder so updateReplayPanel() compiles unchanged
     m_replayInfoLabel = new QLabel(replayBar);
     m_replayInfoLabel->setObjectName(u"replayStatusLabel"_s);
-    m_replayInfoLabel->setWordWrap(true);
+    m_replayInfoLabel->setVisible(false);
     m_replayActivityText = u"Ready"_s;
-    replayOuter->addWidget(m_replayInfoLabel);
 
     if (m_replay) {
         connect(m_playPauseBtn, &QToolButton::clicked, this, [this]() {
@@ -1080,6 +1073,16 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         connect(m_jumpEndBtn, &QToolButton::clicked, this, [this]() {
             if (m_replaySlider) {
                 m_replaySlider->setValue(m_replaySlider->maximum());
+            }
+        });
+        connect(m_stepBackBtn, &QToolButton::clicked, this, [this]() {
+            if (m_replaySlider) {
+                m_replaySlider->setValue(m_replaySlider->value() - 1);
+            }
+        });
+        connect(m_stepFwdBtn, &QToolButton::clicked, this, [this]() {
+            if (m_replaySlider) {
+                m_replaySlider->setValue(m_replaySlider->value() + 1);
             }
         });
         connect(m_replay, &FlightReplayController::positionChanged, this, [this](int len) {
@@ -1123,6 +1126,22 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             m_replay->pause();
         } else {
             m_replay->play();
+        }
+    });
+
+    auto *replayLeftShortcut = new QShortcut(QKeySequence(Qt::Key_Left), replayBar);
+    replayLeftShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(replayLeftShortcut, &QShortcut::activated, this, [this]() {
+        if (m_stepBackBtn && m_stepBackBtn->isEnabled() && m_replaySlider) {
+            m_replaySlider->setValue(m_replaySlider->value() - 1);
+        }
+    });
+
+    auto *replayRightShortcut = new QShortcut(QKeySequence(Qt::Key_Right), replayBar);
+    replayRightShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(replayRightShortcut, &QShortcut::activated, this, [this]() {
+        if (m_stepFwdBtn && m_stepFwdBtn->isEnabled() && m_replaySlider) {
+            m_replaySlider->setValue(m_replaySlider->value() + 1);
         }
     });
 
@@ -1616,12 +1635,16 @@ void DashboardPage::syncReplayTransportChrome() {
     const bool live = !m_model || !m_model->replayMode();
     const bool hasLog = m_session && !m_session->samples.empty();
     const bool canUse = !live && hasLog && m_replay;
+    const bool isPlaying = m_replay && m_replay->isPlaying();
 
     if (m_replayBarTitle) {
-        m_replayBarTitle->setText(live ? u"LIVE BUFFER"_s : u"REPLAY"_s);
+        const QString base = live ? u"LIVE BUFFER"_s : u"REPLAY"_s;
+        const QString state = m_replayActivityText.isEmpty() ? QString{} : m_replayActivityText;
+        const bool showState = canUse && !state.isEmpty() && state != u"Ready"_s && state != u"Idle"_s;
+        m_replayBarTitle->setText(showState ? QStringLiteral("%1 · %2").arg(base, state) : base);
     }
-    if (m_replay && style()) {
-        const QIcon icon = style()->standardIcon(m_replay->isPlaying() ? QStyle::SP_MediaPause : QStyle::SP_MediaPlay);
+    if (style()) {
+        const QIcon icon = style()->standardIcon(isPlaying ? QStyle::SP_MediaPause : QStyle::SP_MediaPlay);
         m_playPauseBtn->setIcon(icon);
     }
     m_playPauseBtn->setEnabled(canUse);
@@ -1633,6 +1656,12 @@ void DashboardPage::syncReplayTransportChrome() {
     }
     if (m_jumpEndBtn) {
         m_jumpEndBtn->setEnabled(canUse);
+    }
+    if (m_stepBackBtn) {
+        m_stepBackBtn->setEnabled(canUse);
+    }
+    if (m_stepFwdBtn) {
+        m_stepFwdBtn->setEnabled(canUse);
     }
     if (m_speedCombo) {
         m_speedCombo->setEnabled(canUse);
@@ -1647,11 +1676,7 @@ void DashboardPage::syncReplayTransportChrome() {
 }
 
 void DashboardPage::updateReplayPanel() {
-    if (!m_replayInfoLabel) {
-        return;
-    }
     if (!m_model) {
-        m_replayInfoLabel->setText(u""_s);
         if (m_replaySampleCaption) {
             m_replaySampleCaption->setText(u""_s);
         }
@@ -1668,7 +1693,7 @@ void DashboardPage::updateReplayPanel() {
         const int n = static_cast<int>(m_liveSamples.size());
         if (m_replaySampleCaption) {
             m_replaySampleCaption->setText(
-                QStringLiteral("%1 samples buffered · open Replay from the toolbar to scrub a log file")
+                QStringLiteral("%1 samples buffered · open Replay from the toolbar")
                     .arg(formatIntGrouped(n)));
         }
         if (m_replayTimeLeftLabel) {
@@ -1677,8 +1702,6 @@ void DashboardPage::updateReplayPanel() {
         if (m_replayTimeRightLabel) {
             m_replayTimeRightLabel->setText(u"—"_s);
         }
-        m_replayInfoLabel->setText(
-            u"Live mode — connect serial on Monitoring. Timeline controls apply in Replay mode."_s);
         syncReplayTransportChrome();
         return;
     }
@@ -1693,8 +1716,6 @@ void DashboardPage::updateReplayPanel() {
         if (m_replayTimeRightLabel) {
             m_replayTimeRightLabel->setText(u"—"_s);
         }
-        m_replayInfoLabel->setText(
-            u"Open a flight log from the toolbar (or use Monitoring for live telemetry)."_s);
         syncReplayTransportChrome();
         return;
     }
@@ -1711,15 +1732,16 @@ void DashboardPage::updateReplayPanel() {
     if (m_replaySampleCaption) {
         if (head <= 0) {
             m_replaySampleCaption->setText(
-                QStringLiteral("%1 samples — drag the timeline right to show data on the chart")
+                QStringLiteral("%1 samples · drag timeline to start")
                     .arg(formatIntGrouped(n)));
         } else {
             const int pct =
                 n > 0 ? static_cast<int>(std::lround(100.0 * static_cast<double>(head) / static_cast<double>(n))) : 0;
-            m_replaySampleCaption->setText(QStringLiteral("%1 of %2 samples on chart · %3% of log")
-                                               .arg(formatIntGrouped(head))
-                                               .arg(formatIntGrouped(n))
-                                               .arg(pct));
+            m_replaySampleCaption->setText(
+                QStringLiteral("%1 / %2 samples · %3%")
+                    .arg(formatIntGrouped(head))
+                    .arg(formatIntGrouped(n))
+                    .arg(pct));
         }
     }
 
@@ -1732,22 +1754,6 @@ void DashboardPage::updateReplayPanel() {
         m_replayTimeRightLabel->setText(formatReplayClockHms(fullDur));
     }
 
-    const QString state = m_replayActivityText.isEmpty() ? u"Ready"_s : m_replayActivityText;
-    const bool trivialState =
-        (state == u"Ready"_s || state == u"Idle"_s || state == u"Playing"_s || state == u"Paused"_s
-         || state == u"Stopped"_s || state == u"Finished"_s);
-
-    QString footer;
-    if (!trivialState) {
-        footer = state;
-    } else if (head <= 0) {
-        footer = u"Tip: drag the timeline, then press Play to step through the log."_s;
-    } else {
-        footer =
-            QStringLiteral("%1 · Click this panel and press Space to play or pause.").arg(state);
-    }
-
-    m_replayInfoLabel->setText(footer);
     syncReplayTransportChrome();
 }
 

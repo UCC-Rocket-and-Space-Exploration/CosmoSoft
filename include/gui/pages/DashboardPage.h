@@ -111,6 +111,8 @@ private:
     QToolButton *m_stopBtn = nullptr;
     QToolButton *m_jumpStartBtn = nullptr;
     QToolButton *m_jumpEndBtn = nullptr;
+    QToolButton *m_stepBackBtn = nullptr;
+    QToolButton *m_stepFwdBtn = nullptr;
     QSlider *m_replaySlider = nullptr;
     QLabel *m_replayBarTitle = nullptr;
     QLabel *m_replaySampleCaption = nullptr;
