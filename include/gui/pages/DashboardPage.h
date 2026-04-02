@@ -12,6 +12,7 @@
 class QChart;
 class QChartView;
 class QCheckBox;
+class QFrame;
 class QLabel;
 class QLineSeries;
 class QPaintEvent;
@@ -45,6 +46,8 @@ private slots:
     void onSampleUpdated(const FlightSample &sample);
     void onSessionReset();
     void onAnyMetricToggled();
+    void onSelectAllTraces();
+    void onSelectNoneTraces();
     void onResetChartZoom();
     void onChartVisualOptionsToggled();
 
@@ -65,6 +68,9 @@ private:
     void syncCheckboxStatesFromFlags();
     void ensureAtLeastOneMetricEnabled();
     void applySeriesPointDisplay(QLineSeries *series, int pointCount, int nEnabledMetrics) const;
+    void updateTraceValueLabels(const FlightSample &sample);
+    void refreshTraceRowStates();
+    void refreshSwatchStates();
 
     [[nodiscard]] int countEnabledMetrics() const;
     [[nodiscard]] QString formatMultiMetricHover(double tSec, int displayPointIndex1Based) const;
@@ -85,6 +91,9 @@ private:
     QValueAxis *m_axisY = nullptr;
 
     std::array<QCheckBox *, kMetricCount> m_metricChecks{};
+    std::array<QLabel *, kMetricCount> m_traceValueLabels{};
+    std::array<QLabel *, kMetricCount> m_traceSwatches{};
+    std::array<QFrame *, kMetricCount> m_traceRows{};
     std::array<bool, kMetricCount> m_metricEnabled{};
     QPushButton *m_zoomOutBtn = nullptr;
     QPushButton *m_zoomInBtn = nullptr;

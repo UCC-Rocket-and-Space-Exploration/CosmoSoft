@@ -289,6 +289,29 @@ int nearestIndexByX(const QList<QPointF> &pts, double tx) {
     return dLo <= dHi ? lo : hi;
 }
 
+// Transparent full-viewport overlay that draws the hover crosshair.
+class ChartCrosshairOverlay : public QWidget {
+public:
+    int crosshairX = -1;
+
+    explicit ChartCrosshairOverlay(QWidget *parent) : QWidget(parent) {
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+        setAttribute(Qt::WA_NoSystemBackground);
+        setAutoFillBackground(false);
+    }
+
+protected:
+    void paintEvent(QPaintEvent *) override {
+        if (crosshairX < 0) {
+            return;
+        }
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing, false);
+        p.setPen(QPen(QColor(255, 255, 255, 100), 1));
+        p.drawLine(crosshairX, 0, crosshairX, height());
+    }
+};
+
 class TelemetryChartView : public QChartView {
 public:
     std::function<void(const QString &)> hoverReadout;
@@ -308,6 +331,28 @@ public:
         setMouseTracking(true);
         setContextMenuPolicy(Qt::NoContextMenu);
         setDragMode(QGraphicsView::NoDrag);
+
+        // Crosshair overlay — full viewport size, always raised above chart content.
+        m_crosshairOverlay = new ChartCrosshairOverlay(viewport());
+        m_crosshairOverlay->resize(viewport()->size());
+        m_crosshairOverlay->show();
+
+        // Floating text overlay — positioned near cursor, hidden by default.
+        m_hoverOverlay = new QLabel(viewport());
+        m_hoverOverlay->setWordWrap(true);
+        m_hoverOverlay->setMaximumWidth(300);
+        m_hoverOverlay->setStyleSheet(
+            u"background-color: rgba(10,11,14,220);"
+            u"color: #c8d4e0;"
+            u"font-size: 11px;"
+            u"font-family: 'Red Hat Mono', 'Courier New', monospace;"
+            u"border: 1px solid #4a4d56;"
+            u"border-radius: 6px;"
+            u"padding: 6px 8px;"_s);
+        m_hoverOverlay->hide();
+        m_crosshairOverlay->raise(); // keep crosshair above the text label
+
+        viewport()->installEventFilter(this);
     }
 
     void setChart(QChart *c) { m_chartPtr = c; }
@@ -489,6 +534,7 @@ protected:
         } else if (hoverReadout) {
             hoverReadout({});
         }
+        hideHoverOverlays();
         QChartView::leaveEvent(event);
     }
 
@@ -497,7 +543,25 @@ protected:
         QChartView::focusOutEvent(event);
     }
 
+    bool eventFilter(QObject *obj, QEvent *event) override {
+        if (obj == viewport() && event->type() == QEvent::Resize) {
+            if (m_crosshairOverlay) {
+                m_crosshairOverlay->resize(viewport()->size());
+            }
+        }
+        return QChartView::eventFilter(obj, event);
+    }
+
 private:
+    void hideHoverOverlays() {
+        if (m_hoverOverlay) {
+            m_hoverOverlay->hide();
+        }
+        if (m_crosshairOverlay) {
+            m_crosshairOverlay->crosshairX = -1;
+            m_crosshairOverlay->update();
+        }
+    }
     static void zoomValueAxesAtFocal(QValueAxis *axX, QValueAxis *axY, double ax, double ay, double spanScale) {
         const double xMin = axX->min();
         const double xMax = axX->max();
@@ -539,12 +603,15 @@ private:
     }
 
     void updateHoverReadoutAt(const QPoint &widgetPos) {
-        if (!hoverReadout || m_chartPtr == nullptr) {
+        if (m_chartPtr == nullptr) {
             return;
         }
         QLineSeries *ref = firstVisibleNonEmptyLineSeries(m_chartPtr);
         if (!ref) {
-            hoverReadout(u"—"_s);
+            hideHoverOverlays();
+            if (hoverReadout) {
+                hoverReadout(u"—"_s);
+            }
             return;
         }
         const QList<QPointF> pts = ref->points();
@@ -556,13 +623,48 @@ private:
             return;
         }
         const QPointF &p = pts[idx];
+        QString text;
         if (hoverDetail) {
-            hoverReadout(hoverDetail(p.x(), idx + 1, pts.size()));
+            text = hoverDetail(p.x(), idx + 1, pts.size());
         } else {
-            hoverReadout(QStringLiteral("t=%1 s · #%2 / %3")
-                             .arg(p.x(), 0, 'f', 3)
-                             .arg(idx + 1)
-                             .arg(pts.size()));
+            text = QStringLiteral("t=%1 s · #%2 / %3")
+                       .arg(p.x(), 0, 'f', 3)
+                       .arg(idx + 1)
+                       .arg(pts.size());
+        }
+
+        // Route text to the external label (now hidden) for backward compat.
+        if (hoverReadout) {
+            hoverReadout(text);
+        }
+
+        // Update crosshair.
+        if (m_crosshairOverlay) {
+            m_crosshairOverlay->crosshairX = widgetPos.x();
+            m_crosshairOverlay->update();
+        }
+
+        // Position and show the floating text overlay.
+        if (m_hoverOverlay && !text.isEmpty()) {
+            m_hoverOverlay->setText(text);
+            m_hoverOverlay->adjustSize();
+            constexpr int kMargin = 12;
+            const int vpW = viewport()->width();
+            const int vpH = viewport()->height();
+            const int overlayW = m_hoverOverlay->width();
+            const int overlayH = m_hoverOverlay->height();
+            int ox = widgetPos.x() + kMargin;
+            int oy = widgetPos.y() + kMargin;
+            if (ox + overlayW > vpW - kMargin) {
+                ox = widgetPos.x() - overlayW - kMargin;
+            }
+            if (oy + overlayH > vpH - kMargin) {
+                oy = widgetPos.y() - overlayH - kMargin;
+            }
+            ox = qBound(kMargin, ox, std::max(kMargin, vpW - overlayW - kMargin));
+            oy = qBound(kMargin, oy, std::max(kMargin, vpH - overlayH - kMargin));
+            m_hoverOverlay->move(ox, oy);
+            m_hoverOverlay->show();
         }
     }
 
@@ -570,6 +672,34 @@ private:
     bool m_panning = false;
     bool m_rubberZoomActive = false;
     QPoint m_lastPanPos;
+
+    ChartCrosshairOverlay *m_crosshairOverlay = nullptr;
+    QLabel *m_hoverOverlay = nullptr;
+};
+
+// Forwards mouse clicks on non-interactive row children (swatch, value label) to the checkbox.
+class TraceRowClickFilter : public QObject {
+    QCheckBox *m_cb;
+public:
+    explicit TraceRowClickFilter(QObject *parent, QCheckBox *cb)
+        : QObject(parent), m_cb(cb) {}
+
+    bool eventFilter(QObject *obj, QEvent *event) override {
+        if (event->type() == QEvent::MouseButtonRelease && m_cb) {
+            const auto *me = static_cast<const QMouseEvent *>(event);
+            if (me->button() == Qt::LeftButton) {
+                // If installed on the row frame itself, skip the click area of the checkbox.
+                if (const auto *w = qobject_cast<const QWidget *>(obj)) {
+                    if (w == m_cb->parentWidget() && m_cb->geometry().contains(me->pos())) {
+                        return false;
+                    }
+                }
+                m_cb->toggle();
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 QFrame *createStatTile(const QString &label, const QString &value, QWidget *parent, QLabel **valueLabelOut) {
@@ -650,6 +780,29 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             font-weight: 600;
             letter-spacing: 1px;
         }
+        QPushButton#tracesAllNoneBtn {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #7a8796;
+            background: transparent;
+            border: 1px solid #3b3b45;
+            border-radius: 3px;
+            padding: 1px 5px;
+            min-height: 16px;
+        }
+        QPushButton#tracesAllNoneBtn:hover {
+            color: #a8b4c0;
+            border-color: #5a5d68;
+            background: rgba(255,255,255,0.05);
+        }
+        QPushButton#tracesAllNoneBtn:pressed {
+            background: rgba(255,255,255,0.1);
+        }
+        QFrame#traceSeparator {
+            background-color: #2a2d34;
+            border: none;
+        }
         QScrollArea#traceScroll {
             background: transparent;
             border: none;
@@ -658,6 +811,17 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             color: #d8dee8;
             spacing: 6px;
             font-size: 11px;
+        }
+        QLabel#traceValueLabel {
+            color: #8fa0b0;
+            font-size: 10px;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+        }
+        QFrame#traceRow[noData="true"] QCheckBox#traceCheck {
+            color: #4a5260;
+        }
+        QFrame#traceRow[noData="true"] QLabel#traceValueLabel {
+            color: #3a4250;
         }
         QToolButton#chartToggleBtn {
             border: 1px solid #5a5d68;
@@ -701,22 +865,25 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         QPushButton#chartZoomBtn:pressed {
             background-color: #2e3038;
         }
+        QFrame#traceRow:hover {
+            background-color: rgba(255, 255, 255, 0.04);
+            border-radius: 3px;
+        }
         QCheckBox#traceCheck::indicator {
-            width: 18px;
-            height: 18px;
-            border-radius: 4px;
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
             border: 1px solid #5a5d68;
             background-color: #1e2026;
         }
         QCheckBox#traceCheck::indicator:hover {
-            border-color: #7a8796;
+            border-color: #8a9aaa;
+            background-color: #262a32;
         }
         QCheckBox#traceCheck::indicator:checked {
-            background-color: #3d5a80;
             border-color: #6a9fd5;
         }
         QCheckBox#traceCheck::indicator:checked:hover {
-            background-color: #4a6a95;
             border-color: #7ab0e8;
         }
         QFrame#replayBar {
@@ -880,6 +1047,24 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             background-color: #3d3f47;
             color: #f0f0f0;
         }
+        QToolButton#chartHelpBtn {
+            font-weight: 700;
+            font-size: 13px;
+            min-width: 22px;
+            max-width: 22px;
+            min-height: 22px;
+            max-height: 22px;
+            border: 1px solid #5a5d68;
+            border-radius: 11px;
+            background: #2a2d34;
+            color: #7a8796;
+            padding: 0px;
+        }
+        QToolButton#chartHelpBtn:hover {
+            color: #a8b4c0;
+            border-color: #8090a0;
+            background: #353840;
+        }
         QLabel#chartHoverReadout {
             color: #c8d4e0;
             font-size: 11px;
@@ -931,12 +1116,12 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     m_jumpStartBtn = new QToolButton(replayBar);
     setupTransportBtn(m_jumpStartBtn, u"replaySkipBtn"_s, QSize(14, 14));
-    m_jumpStartBtn->setToolTip(u"Jump to start"_s);
+    m_jumpStartBtn->setToolTip(u"Jump to start  [Home key]"_s);
     m_jumpStartBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipBackward));
 
     m_stepBackBtn = new QToolButton(replayBar);
     setupTransportBtn(m_stepBackBtn, u"replaySkipBtn"_s, QSize(14, 14));
-    m_stepBackBtn->setToolTip(u"Step back one sample (Left)"_s);
+    m_stepBackBtn->setToolTip(u"Step back one sample  [← key]"_s);
     m_stepBackBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSeekBackward));
 
     m_playPauseBtn = new QToolButton(replayBar);
@@ -945,22 +1130,22 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_playPauseBtn->setAutoRaise(false);
     m_playPauseBtn->setFocusPolicy(Qt::StrongFocus);
     m_playPauseBtn->setIconSize(QSize(16, 16));
-    m_playPauseBtn->setToolTip(u"Play / Pause (Space)"_s);
+    m_playPauseBtn->setToolTip(u"Play / Pause  [Space]"_s);
     m_playPauseBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
 
     m_stepFwdBtn = new QToolButton(replayBar);
     setupTransportBtn(m_stepFwdBtn, u"replaySkipBtn"_s, QSize(14, 14));
-    m_stepFwdBtn->setToolTip(u"Step forward one sample (Right)"_s);
+    m_stepFwdBtn->setToolTip(u"Step forward one sample  [→ key]"_s);
     m_stepFwdBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSeekForward));
 
     m_jumpEndBtn = new QToolButton(replayBar);
     setupTransportBtn(m_jumpEndBtn, u"replaySkipBtn"_s, QSize(14, 14));
-    m_jumpEndBtn->setToolTip(u"Jump to end"_s);
+    m_jumpEndBtn->setToolTip(u"Jump to end  [End key]"_s);
     m_jumpEndBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
 
     m_stopBtn = new QToolButton(replayBar);
     setupTransportBtn(m_stopBtn, u"replayTransportBtn"_s, QSize(14, 14));
-    m_stopBtn->setToolTip(u"Stop and reset"_s);
+    m_stopBtn->setToolTip(u"Stop replay and reset position"_s);
     m_stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
 
     auto *replayDiv = new QFrame(replayBar);
@@ -1157,22 +1342,34 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     auto *tracesPanel = new QFrame(this);
     tracesPanel->setObjectName(u"tracesPanel"_s);
-    tracesPanel->setMinimumWidth(100);
+    tracesPanel->setMinimumWidth(130);
     tracesPanel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     auto *tracesOuter = new QVBoxLayout(tracesPanel);
     tracesOuter->setContentsMargins(6, 6, 6, 6);
     tracesOuter->setSpacing(4);
 
+    // ── Header row: "TRACES" title + All / None buttons ──────────────────
+    auto *traceHeaderRow = new QHBoxLayout();
+    traceHeaderRow->setContentsMargins(0, 0, 0, 0);
+    traceHeaderRow->setSpacing(4);
     auto *tracesTitle = new QLabel(u"TRACES"_s, tracesPanel);
     tracesTitle->setObjectName(u"tracesPanelTitle"_s);
-    tracesOuter->addWidget(tracesTitle);
+    tracesTitle->setToolTip(u"Toggle which metrics appear on the chart.\n"
+                            u"2+ traces: Y axis is normalized (0–1).\n"
+                            u"Hover over chart to see SI values for all visible traces."_s);
+    traceHeaderRow->addWidget(tracesTitle, 1, Qt::AlignVCenter);
+    auto *allBtn = new QPushButton(u"ALL"_s, tracesPanel);
+    allBtn->setObjectName(u"tracesAllNoneBtn"_s);
+    allBtn->setToolTip(u"Enable all traces"_s);
+    auto *noneBtn = new QPushButton(u"NONE"_s, tracesPanel);
+    noneBtn->setObjectName(u"tracesAllNoneBtn"_s);
+    noneBtn->setToolTip(u"Disable all traces (keeps one minimum)"_s);
+    traceHeaderRow->addWidget(allBtn, 0, Qt::AlignVCenter);
+    traceHeaderRow->addWidget(noneBtn, 0, Qt::AlignVCenter);
+    tracesOuter->addLayout(traceHeaderRow);
 
-    auto *tracesHint = new QLabel(
-        u"2+ traces: Y normalized · hover = SI values"_s,
-        tracesPanel);
-    tracesHint->setWordWrap(true);
-    tracesHint->setStyleSheet(u"color: #7a8796; font-size: 10px;"_s);
-    tracesOuter->addWidget(tracesHint);
+    connect(allBtn, &QPushButton::clicked, this, &DashboardPage::onSelectAllTraces);
+    connect(noneBtn, &QPushButton::clicked, this, &DashboardPage::onSelectNoneTraces);
 
     auto *traceScroll = new QScrollArea(tracesPanel);
     traceScroll->setObjectName(u"traceScroll"_s);
@@ -1186,27 +1383,60 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     traceScrollInner->setObjectName(u"traceScrollInner"_s);
     auto *traceListLay = new QVBoxLayout(traceScrollInner);
     traceListLay->setContentsMargins(0, 0, 2, 0);
-    traceListLay->setSpacing(3);
+    traceListLay->setSpacing(2);
+
+    // Flight-critical group: 0=Alt, 1=Temp, 2=Press, 3=|a|, 4=Batt, 5=RSSI
+    // Secondary group:      6=Gyro, 7=Lat, 8=Lon
+    constexpr int kGroupSplit = 6;
 
     for (int i = 0; i < kMetricCount; ++i) {
-        auto *row = new QWidget(traceScrollInner);
+        if (i == kGroupSplit) {
+            auto *sep = new QFrame(traceScrollInner);
+            sep->setObjectName(u"traceSeparator"_s);
+            sep->setFrameShape(QFrame::HLine);
+            sep->setFixedHeight(1);
+            traceListLay->addWidget(sep);
+            traceListLay->addSpacing(2);
+        }
+
+        auto *row = new QFrame(traceScrollInner);
+        row->setObjectName(u"traceRow"_s);
+        row->setProperty("noData", false);
         auto *rowLay = new QHBoxLayout(row);
-        rowLay->setContentsMargins(0, 0, 0, 0);
-        rowLay->setSpacing(6);
+        rowLay->setContentsMargins(0, 1, 0, 1);
+        rowLay->setSpacing(5);
+
+        // Color swatch — 6×14 rounded-rect bar; dims to grey when trace is disabled.
         const QColor col = metricColor(i);
         auto *swatch = new QLabel(row);
-        swatch->setFixedSize(10, 10);
+        swatch->setFixedSize(6, 14);
         swatch->setStyleSheet(
-            QStringLiteral("QLabel { background-color: %1; border-radius: 5px; min-width:10px; min-height:10px; }")
+            QStringLiteral("QLabel { background-color: %1; border-radius: 2px; min-width:6px; min-height:14px; }")
                 .arg(col.name(QColor::HexRgb)));
+        m_traceSwatches[static_cast<std::size_t>(i)] = swatch;
+
         auto *cb = new QCheckBox(metricTraceShortName(i), row);
         cb->setObjectName(u"traceCheck"_s);
-        cb->setToolTip(
-            QStringLiteral("%1 — same color as on chart").arg(metricTitle(i)));
+        cb->setToolTip(QStringLiteral("%1  ·  click row to toggle").arg(metricTitle(i)));
         m_metricChecks[static_cast<std::size_t>(i)] = cb;
+
+        auto *valLabel = new QLabel(u"—"_s, row);
+        valLabel->setObjectName(u"traceValueLabel"_s);
+        valLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        valLabel->setMinimumWidth(52);
+        m_traceValueLabels[static_cast<std::size_t>(i)] = valLabel;
+
         rowLay->addWidget(swatch, 0, Qt::AlignVCenter);
         rowLay->addWidget(cb, 1, Qt::AlignVCenter);
+        rowLay->addWidget(valLabel, 0, Qt::AlignVCenter);
         traceListLay->addWidget(row);
+        m_traceRows[static_cast<std::size_t>(i)] = row;
+
+        // Clicking anywhere on the row (not just the checkbox) toggles the trace.
+        row->setCursor(Qt::PointingHandCursor);
+        row->setAttribute(Qt::WA_Hover);
+        row->installEventFilter(new TraceRowClickFilter(row, cb));
+
         connect(cb, &QCheckBox::toggled, this, &DashboardPage::onAnyMetricToggled);
     }
     traceScroll->setWidget(traceScrollInner);
@@ -1237,17 +1467,17 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     m_zoomOutBtn = new QPushButton(u"−"_s, chartHeader);
     m_zoomOutBtn->setObjectName(u"chartZoomBtn"_s);
-    m_zoomOutBtn->setToolTip(u"Zoom out ×2 (axis ranges, same idea as wheel)"_s);
+    m_zoomOutBtn->setToolTip(u"Zoom out ×2  [− key · scroll down]"_s);
     chartToolbar->addWidget(m_zoomOutBtn);
 
     m_zoomInBtn = new QPushButton(u"+"_s, chartHeader);
     m_zoomInBtn->setObjectName(u"chartZoomBtn"_s);
-    m_zoomInBtn->setToolTip(u"Zoom in ×2 (axis ranges, same idea as wheel)"_s);
+    m_zoomInBtn->setToolTip(u"Zoom in ×2  [+ key · scroll up]"_s);
     chartToolbar->addWidget(m_zoomInBtn);
 
     m_zoomResetBtn = new QPushButton(u"Fit"_s, chartHeader);
     m_zoomResetBtn->setObjectName(u"chartToolbarBtn"_s);
-    m_zoomResetBtn->setToolTip(u"Reset zoom to full data range"_s);
+    m_zoomResetBtn->setToolTip(u"Fit chart to full data range  [F key]"_s);
     chartToolbar->addWidget(m_zoomResetBtn);
     connect(m_zoomResetBtn, &QPushButton::clicked, this, &DashboardPage::onResetChartZoom);
 
@@ -1263,7 +1493,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_showMarkersToggle->setChecked(true);
     m_showMarkersToggle->setToolButtonStyle(Qt::ToolButtonTextOnly);
     m_showMarkersToggle->setToolTip(
-        u"Draw a dot on each sample (auto-disabled above 400 points/trace for clarity)."_s);
+        u"Draw a dot on each sample — auto-disabled above 400 pts/trace.  [M key]"_s);
     chartToolbar->addWidget(m_showMarkersToggle);
 
     m_showPointValuesToggle = new QToolButton(chartHeader);
@@ -1273,28 +1503,39 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_showPointValuesToggle->setChecked(false);
     m_showPointValuesToggle->setToolButtonStyle(Qt::ToolButtonTextOnly);
     m_showPointValuesToggle->setToolTip(
-        u"Show Y value next to each point — single trace only, max 100 points (engineering Y, not normalized)."_s);
+        u"Show Y value next to each point — single trace only, max 100 points.  [V key]"_s);
     chartToolbar->addWidget(m_showPointValuesToggle);
 
     connect(m_showMarkersToggle, &QToolButton::toggled, this, &DashboardPage::onChartVisualOptionsToggled);
     connect(m_showPointValuesToggle, &QToolButton::toggled, this, &DashboardPage::onChartVisualOptionsToggled);
 
     chartToolbar->addStretch(1);
+
+    // "?" help button at the far right of the toolbar — interaction hints as tooltip.
+    auto *chartHelpBtn = new QToolButton(chartHeader);
+    chartHelpBtn->setObjectName(u"chartHelpBtn"_s);
+    chartHelpBtn->setText(u"?"_s);
+    chartHelpBtn->setToolTip(
+        u"Chart controls:\n"
+        u"  Drag: pan  ·  Ctrl+drag: zoom rectangle\n"
+        u"  Scroll wheel / trackpad: zoom at pointer\n"
+        u"  ⌘/Ctrl + two-finger swipe: zoom at pointer\n"
+        u"  − / + keys: zoom out / in  ·  F: fit to data\n"
+        u"  M: toggle markers  ·  V: toggle point values\n"
+        u"  Hover cursor: floating readout + crosshair"_s);
+    chartToolbar->addWidget(chartHelpBtn);
+
     chartHeaderLay->addLayout(chartToolbar);
 
-    m_chartInteractionHint = new QLabel(
-        u"Drag: pan · Ctrl+drag: zoom box · Trackpad: two-finger pan · ⌘/Ctrl+scroll: zoom · Wheel: zoom · − / + / Fit"_s,
-        chartHeader);
+    // Interaction hint label — kept as member but NOT shown; content moved to ? tooltip.
+    m_chartInteractionHint = new QLabel(chartHeader);
     m_chartInteractionHint->setObjectName(u"chartInteractionHint"_s);
-    m_chartInteractionHint->setWordWrap(true);
-    chartHeaderLay->addWidget(m_chartInteractionHint);
+    m_chartInteractionHint->setVisible(false);
 
+    // Hover readout label — kept as member for lambda compat but NOT shown; replaced by overlay.
     m_hoverReadoutLabel = new QLabel(chartHeader);
     m_hoverReadoutLabel->setObjectName(u"chartHoverReadout"_s);
-    m_hoverReadoutLabel->setWordWrap(true);
-    m_hoverReadoutLabel->setMinimumHeight(40);
-    updateHoverReadoutDefault();
-    chartHeaderLay->addWidget(m_hoverReadoutLabel);
+    m_hoverReadoutLabel->setVisible(false);
 
     m_chartStatsLabel = new QLabel(chartHeader);
     m_chartStatsLabel->setObjectName(u"chartStatsLabel"_s);
@@ -1342,6 +1583,28 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         zoomChartAxesAtCenter(false);
     });
 
+    // Keyboard shortcuts for chart interactions.
+    auto *scZoomIn  = new QShortcut(QKeySequence(Qt::Key_Plus),  this);
+    auto *scZoomIn2 = new QShortcut(QKeySequence(Qt::Key_Equal), this);
+    auto *scZoomOut = new QShortcut(QKeySequence(Qt::Key_Minus), this);
+    auto *scFit     = new QShortcut(QKeySequence(Qt::Key_F),     this);
+    auto *scMarkers = new QShortcut(QKeySequence(Qt::Key_M),     this);
+    auto *scValues  = new QShortcut(QKeySequence(Qt::Key_V),     this);
+    connect(scZoomIn,  &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(true); });
+    connect(scZoomIn2, &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(true); });
+    connect(scZoomOut, &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(false); });
+    connect(scFit,     &QShortcut::activated, this, &DashboardPage::onResetChartZoom);
+    connect(scMarkers, &QShortcut::activated, this, [this]() {
+        if (m_showMarkersToggle) {
+            m_showMarkersToggle->setChecked(!m_showMarkersToggle->isChecked());
+        }
+    });
+    connect(scValues, &QShortcut::activated, this, [this]() {
+        if (m_showPointValuesToggle) {
+            m_showPointValuesToggle->setChecked(!m_showPointValuesToggle->isChecked());
+        }
+    });
+
     m_liveChartCoalesceTimer = new QTimer(this);
     m_liveChartCoalesceTimer->setSingleShot(true);
     connect(m_liveChartCoalesceTimer, &QTimer::timeout, this, [this]() {
@@ -1363,10 +1626,6 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     auto *tcv = new TelemetryChartView(m_chart, chartFrame);
     tcv->setObjectName(u"telemetryChartView"_s);
-    tcv->setToolTip(
-        u"Left drag: pan (map-style). Ctrl+left drag: zoom rectangle. "
-        u"Trackpad: two-finger scroll pans; ⌘ or Ctrl + two-finger scroll zooms at pointer. "
-        u"Mouse wheel: zoom at pointer. − / + / Fit: zoom. Hover: sample readout."_s);
     tcv->onUserAdjustedAxes = [this]() {
         m_preserveChartAxes = true;
     };
@@ -1475,6 +1734,7 @@ void DashboardPage::syncCheckboxStatesFromFlags() {
             m_metricChecks[static_cast<std::size_t>(i)]->setChecked(m_metricEnabled[static_cast<std::size_t>(i)]);
         }
     }
+    refreshSwatchStates();
 }
 
 void DashboardPage::ensureAtLeastOneMetricEnabled() {
@@ -1507,8 +1767,98 @@ void DashboardPage::onAnyMetricToggled() {
         }
     }
     ensureAtLeastOneMetricEnabled();
+    refreshSwatchStates();
     refreshAllSeriesFromData();
     updateChartStatsLabel();
+}
+
+void DashboardPage::onSelectAllTraces() {
+    for (int i = 0; i < kMetricCount; ++i) {
+        if (m_metricChecks[static_cast<std::size_t>(i)]) {
+            m_metricChecks[static_cast<std::size_t>(i)]->setChecked(true);
+        }
+    }
+}
+
+void DashboardPage::onSelectNoneTraces() {
+    // Keep at least the first enabled metric so the chart is never blank
+    int firstEnabled = -1;
+    for (int i = 0; i < kMetricCount; ++i) {
+        if (m_metricEnabled[static_cast<std::size_t>(i)]) {
+            firstEnabled = i;
+            break;
+        }
+    }
+    for (int i = 0; i < kMetricCount; ++i) {
+        if (m_metricChecks[static_cast<std::size_t>(i)]) {
+            m_metricChecks[static_cast<std::size_t>(i)]->setChecked(i == firstEnabled);
+        }
+    }
+}
+
+void DashboardPage::updateTraceValueLabels(const FlightSample &sample) {
+    auto setText = [&](int idx, const QString &text) {
+        if (auto *lbl = m_traceValueLabels[static_cast<std::size_t>(idx)]) {
+            lbl->setText(text);
+        }
+    };
+
+    const double accelMag = std::sqrt(
+        sample.acceleration.x * sample.acceleration.x
+        + sample.acceleration.y * sample.acceleration.y
+        + sample.acceleration.z * sample.acceleration.z);
+
+    // Order must match metricTitle indices (0=Alt, 1=Temp, 2=Press, 3=|a|, 4=Batt, 5=RSSI, 6=|Gyro|, 7=Lat, 8=Lon)
+    setText(0, QStringLiteral("%1m").arg(sample.altitude,        0, 'f', 0));
+    setText(1, QStringLiteral("%1°").arg(sample.temperature,     0, 'f', 0));
+    setText(2, QStringLiteral("%1").arg(sample.pressure,         0, 'f', 0));
+    setText(3, QStringLiteral("%1").arg(accelMag,                0, 'f', 1));
+    setText(4, QStringLiteral("%1V").arg(sample.batteryVoltage,  0, 'f', 1));
+    setText(5, QStringLiteral("%1").arg(sample.rssi,             0, 'f', 0));
+    const double gyroMag = std::sqrt(
+        sample.angularVelocity.x * sample.angularVelocity.x
+        + sample.angularVelocity.y * sample.angularVelocity.y
+        + sample.angularVelocity.z * sample.angularVelocity.z);
+    setText(6, QStringLiteral("%1").arg(gyroMag,                  0, 'f', 0));
+    setText(7, QStringLiteral("%1°").arg(sample.coordinates.latitude,  0, 'f', 3));
+    setText(8, QStringLiteral("%1°").arg(sample.coordinates.longitude, 0, 'f', 3));
+}
+
+void DashboardPage::refreshTraceRowStates() {
+    for (int i = 0; i < kMetricCount; ++i) {
+        auto *row = m_traceRows[static_cast<std::size_t>(i)];
+        if (!row) {
+            continue;
+        }
+        const auto *series = m_lineSeries[static_cast<std::size_t>(i)];
+        const bool hasData = series && series->count() > 0;
+        const bool noData  = !hasData;
+        if (row->property("noData").toBool() != noData) {
+            row->setProperty("noData", noData);
+            // Force stylesheet re-evaluation on children
+            row->style()->unpolish(row);
+            row->style()->polish(row);
+            const auto kids = row->findChildren<QWidget *>();
+            for (auto *child : kids) {
+                child->style()->unpolish(child);
+                child->style()->polish(child);
+            }
+        }
+    }
+}
+
+void DashboardPage::refreshSwatchStates() {
+    for (int i = 0; i < kMetricCount; ++i) {
+        auto *swatch = m_traceSwatches[static_cast<std::size_t>(i)];
+        if (!swatch) {
+            continue;
+        }
+        const bool enabled = m_metricEnabled[static_cast<std::size_t>(i)];
+        const QColor col = enabled ? metricColor(i) : QColor(u"#2e3138"_s);
+        swatch->setStyleSheet(
+            QStringLiteral("QLabel { background-color: %1; border-radius: 2px; min-width:6px; min-height:14px; }")
+                .arg(col.name(QColor::HexRgb)));
+    }
 }
 
 void DashboardPage::updateHoverReadoutDefault() {
@@ -2004,6 +2354,7 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
     }
 
     applyChartTheme();
+    refreshTraceRowStates();
     updateChartStatsLabel();
     updateReplayPanel();
 }
@@ -2174,6 +2525,7 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
     }
 
     applyChartTheme();
+    refreshTraceRowStates();
     updateChartStatsLabel();
     updateReplayPanel();
 }
@@ -2221,6 +2573,8 @@ void DashboardPage::onSampleUpdated(const FlightSample &sample) {
     if (m_pressValue) {
         m_pressValue->setText(QStringLiteral("%1").arg(sample.pressure, 0, 'f', 1));
     }
+
+    updateTraceValueLabels(sample);
 
     if (!m_model || m_model->replayMode()) {
         return;
