@@ -15,9 +15,10 @@ class QCheckBox;
 class QLabel;
 class QLineSeries;
 class QPaintEvent;
+class QComboBox;
 class QPushButton;
 class QSlider;
-class QDoubleSpinBox;
+class QTimer;
 class QToolButton;
 class QValueAxis;
 
@@ -46,13 +47,15 @@ private slots:
 
 private:
     void rebuildReplayCharts(int trailLength);
-    void appendLiveChartPoint(const FlightSample &sample);
+    void scheduleLiveChartRebuild();
     void rebuildLiveSeriesFromHistory();
+    void zoomChartAxesAtCenter(bool zoomIn);
     void refreshAllSeriesFromData();
     void applyChartTheme();
     void updateHoverReadoutDefault();
     void updateChartStatsLabel();
     void updateReplayPanel();
+    void syncReplayTransportChrome();
     void syncCheckboxStatesFromFlags();
     void ensureAtLeastOneMetricEnabled();
     void applySeriesPointDisplay(QLineSeries *series, int pointCount, int nEnabledMetrics) const;
@@ -82,21 +85,27 @@ private:
     QPushButton *m_zoomResetBtn = nullptr;
     QToolButton *m_showMarkersToggle = nullptr;
     QToolButton *m_showPointValuesToggle = nullptr;
+    QLabel *m_chartInteractionHint = nullptr;
     QLabel *m_hoverReadoutLabel = nullptr;
     QLabel *m_chartStatsLabel = nullptr;
+
+    QTimer *m_liveChartCoalesceTimer = nullptr;
+    bool m_preserveChartAxes = false;
 
     int m_lastReplayTrailLength = 0;
 
     std::vector<FlightSample> m_liveSamples;
 
-    QPushButton *m_playBtn = nullptr;
-    QPushButton *m_pauseBtn = nullptr;
-    QPushButton *m_stopBtn = nullptr;
-    QPushButton *m_jumpStartBtn = nullptr;
-    QPushButton *m_jumpEndBtn = nullptr;
+    QToolButton *m_playPauseBtn = nullptr;
+    QToolButton *m_stopBtn = nullptr;
+    QToolButton *m_jumpStartBtn = nullptr;
+    QToolButton *m_jumpEndBtn = nullptr;
     QSlider *m_replaySlider = nullptr;
+    QLabel *m_replayBarTitle = nullptr;
+    QLabel *m_replayTimeLeftLabel = nullptr;
+    QLabel *m_replayTimeRightLabel = nullptr;
     QLabel *m_replayInfoLabel = nullptr;
-    QDoubleSpinBox *m_speedSpin = nullptr;
+    QComboBox *m_speedCombo = nullptr;
 
     QString m_replayActivityText;
 };

@@ -22,6 +22,7 @@ public:
 
     void setSpeed(double multiplier);
     [[nodiscard]] double speed() const { return m_speed; }
+    [[nodiscard]] bool isPlaying() const { return m_playing; }
 
 public slots:
     void play();
