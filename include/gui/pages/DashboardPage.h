@@ -35,6 +35,9 @@ public:
     void setReplaySession(const FlightSession *session);
     void setReplayTrailLength(int trailLength);
 
+    static constexpr int kMaxChartDisplayPoints = 6000;
+    static constexpr int kMaxLiveBufferSamples = 25000;
+
 protected:
     void paintEvent(QPaintEvent *event) override;
 
@@ -46,6 +49,9 @@ private slots:
     void onChartVisualOptionsToggled();
 
 private:
+    void applyReplayControllerPosition(int trailLength);
+    void scheduleReplayChartRebuild();
+    void flushReplayChartRebuild();
     void rebuildReplayCharts(int trailLength);
     void scheduleLiveChartRebuild();
     void rebuildLiveSeriesFromHistory();
@@ -61,7 +67,7 @@ private:
     void applySeriesPointDisplay(QLineSeries *series, int pointCount, int nEnabledMetrics) const;
 
     [[nodiscard]] int countEnabledMetrics() const;
-    [[nodiscard]] QString formatMultiMetricHover(double tSec, int sampleIndex, int totalSamples) const;
+    [[nodiscard]] QString formatMultiMetricHover(double tSec, int displayPointIndex1Based) const;
 
     FlightDataModel *m_model = nullptr;
     FlightReplayController *m_replay = nullptr;
@@ -90,7 +96,12 @@ private:
     QLabel *m_chartStatsLabel = nullptr;
 
     QTimer *m_liveChartCoalesceTimer = nullptr;
+    QTimer *m_replayChartCoalesceTimer = nullptr;
     bool m_preserveChartAxes = false;
+
+    std::vector<int> m_hoverSampleIndexMap;
+    int m_hoverLogicalSampleCount = 0;
+    int m_replayChartBuiltTrailLength = -1;
 
     int m_lastReplayTrailLength = 0;
 
@@ -102,6 +113,7 @@ private:
     QToolButton *m_jumpEndBtn = nullptr;
     QSlider *m_replaySlider = nullptr;
     QLabel *m_replayBarTitle = nullptr;
+    QLabel *m_replaySampleCaption = nullptr;
     QLabel *m_replayTimeLeftLabel = nullptr;
     QLabel *m_replayTimeRightLabel = nullptr;
     QLabel *m_replayInfoLabel = nullptr;

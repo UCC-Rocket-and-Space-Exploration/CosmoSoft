@@ -20,6 +20,7 @@ target_link_libraries(gui
         Qt6::Gui
         Qt6::Widgets
         Qt6::Charts
+        Qt6::Concurrent
         import
 )
 

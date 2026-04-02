@@ -22,7 +22,7 @@ CMAKE_AR:FILEPATH=/usr/bin/ar
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=
+CMAKE_BUILD_TYPE:STRING=Release
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -273,6 +273,9 @@ QT_ADDITIONAL_PACKAGES_PREFIX_PATH:STRING=
 
 //The directory containing a CMake configuration file for Qt6Charts.
 Qt6Charts_DIR:PATH=/opt/homebrew/lib/cmake/Qt6Charts
+
+//The directory containing a CMake configuration file for Qt6Concurrent.
+Qt6Concurrent_DIR:PATH=/opt/homebrew/lib/cmake/Qt6Concurrent
 
 //The directory containing a CMake configuration file for Qt6CoreTools.
 Qt6CoreTools_DIR:PATH=/opt/homebrew/lib/cmake/Qt6CoreTools

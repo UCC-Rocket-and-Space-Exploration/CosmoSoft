@@ -10,6 +10,9 @@
 #include <QComboBox>
 #include <QEvent>
 #include <QFocusEvent>
+#include <QKeySequence>
+#include <QLocale>
+#include <QShortcut>
 #include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -22,7 +25,9 @@
 #include <QPointF>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QSettings>
 #include <QSignalBlocker>
+#include <QSplitter>
 #include <QSizePolicy>
 #include <QSize>
 #include <QSlider>
@@ -41,6 +46,7 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <numeric>
 
 using namespace Qt::StringLiterals;
 
@@ -64,6 +70,30 @@ constexpr long long kUnixEpochMsThreshold = 100'000'000'000LL;
         return static_cast<double>(tMs - refFirstMs) / 1000.0;
     }
     return static_cast<double>(tMs) / 1000.0;
+}
+
+/** Original sample indices [0, end) for plotting — at most maxPts spanning the full trail. */
+[[nodiscard]] std::vector<int> sampleIndicesForChartDisplay(int end, int maxPts) {
+    std::vector<int> idx;
+    if (end <= 0 || maxPts <= 0) {
+        return idx;
+    }
+    if (end == 1) {
+        idx.push_back(0);
+        return idx;
+    }
+    if (end <= maxPts) {
+        idx.resize(static_cast<size_t>(end));
+        std::iota(idx.begin(), idx.end(), 0);
+        return idx;
+    }
+    idx.reserve(static_cast<size_t>(maxPts));
+    const long long denom = maxPts - 1;
+    for (int k = 0; k < maxPts; ++k) {
+        const int i = static_cast<int>((static_cast<long long>(k) * (end - 1)) / denom);
+        idx.push_back(i);
+    }
+    return idx;
 }
 
 QString metricTitle(int idx) {
@@ -202,6 +232,10 @@ QString formatMetricValuePretty(int idx, double v) {
     }
 }
 
+QString formatIntGrouped(int v) {
+    return QLocale::system().toString(v);
+}
+
 QString formatReplayClockHms(double sec) {
     if (!std::isfinite(sec) || sec < 0.0) {
         return u"—"_s;
@@ -269,7 +303,7 @@ public:
         setFrameShape(QFrame::NoFrame);
         setContentsMargins(0, 0, 0, 0);
         setViewportMargins(0, 0, 0, 0);
-        setMinimumHeight(420);
+        setMinimumHeight(280);
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         setMouseTracking(true);
         setContextMenuPolicy(Qt::NoContextMenu);
@@ -686,101 +720,136 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             border-color: #7ab0e8;
         }
         QFrame#replayBar {
-            background-color: rgba(28, 28, 30, 0.94);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(48, 48, 52, 0.97),
+                stop:1 rgba(22, 22, 24, 0.98));
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 18px;
         }
         QLabel#replayBarTitle {
-            color: rgba(255, 255, 255, 0.45);
+            color: rgba(255, 255, 255, 0.5);
             font-size: 11px;
             font-weight: 600;
             letter-spacing: 2px;
             font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
         }
+        QLabel#replayRateLabel {
+            color: rgba(255, 255, 255, 0.38);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
+            padding-right: 6px;
+        }
+        QLabel#replaySampleCaption {
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 12px;
+            font-weight: 500;
+            font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
+            padding: 2px 4px 0 4px;
+        }
         QLabel#replayClockLabel {
-            color: rgba(255, 255, 255, 0.82);
+            color: rgba(255, 255, 255, 0.88);
             font-size: 13px;
             font-weight: 500;
             font-variant-numeric: tabular-nums;
             font-family: system-ui, -apple-system, "SF Mono", "SF Pro Text", "Menlo", monospace;
         }
-        QLabel#replayStatusLabel {
-            color: rgba(255, 255, 255, 0.42);
-            font-size: 11px;
+        QLabel#replayTimeCaption {
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
             font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
         }
+        QLabel#replayStatusLabel {
+            color: rgba(255, 255, 255, 0.38);
+            font-size: 11px;
+            font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
+            padding-top: 2px;
+        }
+        QFrame#replayVDiv {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 1px;
+        }
         QSlider#replayScrubSlider {
-            min-height: 28px;
+            min-height: 32px;
         }
         QSlider#replayScrubSlider::groove:horizontal {
-            height: 4px;
-            background: rgba(255, 255, 255, 0.18);
-            border-radius: 2px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.14);
+            border-radius: 3px;
         }
         QSlider#replayScrubSlider::sub-page:horizontal {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0a84ff, stop:1 #64d2ff);
-            border-radius: 2px;
-            height: 4px;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #007aff, stop:1 #5ac8fa);
+            border-radius: 3px;
+            height: 6px;
         }
         QSlider#replayScrubSlider::handle:horizontal {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             margin: -6px 0;
             background: #ffffff;
-            border: none;
-            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            border-radius: 9px;
         }
         QSlider#replayScrubSlider::handle:horizontal:hover {
-            background: #f2f2f7;
+            background: #f5f5f7;
         }
         QToolButton#replayTransportBtn, QToolButton#replaySkipBtn {
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.07);
             border: none;
-            border-radius: 10px;
-            padding: 8px;
-            min-width: 40px;
-            min-height: 40px;
+            border-radius: 12px;
+            padding: 9px;
+            min-width: 44px;
+            min-height: 44px;
         }
         QToolButton#replayTransportBtn:hover, QToolButton#replaySkipBtn:hover {
-            background: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.14);
         }
         QToolButton#replayTransportBtn:pressed, QToolButton#replaySkipBtn:pressed {
-            background: rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.2);
         }
         QToolButton#replayTransportBtn:disabled, QToolButton#replaySkipBtn:disabled {
             background: rgba(255, 255, 255, 0.03);
         }
         QToolButton#replayPlayPauseBtn {
-            background: rgba(255, 255, 255, 0.14);
-            border: none;
-            border-radius: 28px;
-            min-width: 56px;
-            max-width: 56px;
-            min-height: 56px;
-            max-height: 56px;
+            background: rgba(0, 122, 255, 0.35);
+            border: 1px solid rgba(90, 200, 250, 0.45);
+            border-radius: 30px;
+            min-width: 60px;
+            max-width: 60px;
+            min-height: 60px;
+            max-height: 60px;
             padding: 0px;
         }
         QToolButton#replayPlayPauseBtn:hover {
-            background: rgba(255, 255, 255, 0.22);
+            background: rgba(0, 122, 255, 0.48);
+            border-color: rgba(120, 210, 255, 0.55);
         }
         QToolButton#replayPlayPauseBtn:pressed {
-            background: rgba(255, 255, 255, 0.28);
+            background: rgba(0, 100, 220, 0.55);
         }
         QToolButton#replayPlayPauseBtn:disabled {
             background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
         QComboBox#replaySpeedCombo {
-            background-color: rgba(255, 255, 255, 0.08);
-            color: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            background-color: rgba(255, 255, 255, 0.09);
+            color: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.14);
             border-radius: 10px;
             padding: 6px 28px 6px 12px;
             min-height: 32px;
+            min-width: 76px;
             font-size: 13px;
+            font-weight: 500;
             font-family: system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", "Segoe UI", sans-serif;
         }
         QComboBox#replaySpeedCombo:hover {
-            background-color: rgba(255, 255, 255, 0.12);
+            background-color: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.2);
         }
         QComboBox#replaySpeedCombo::drop-down {
             border: none;
@@ -790,6 +859,9 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             background-color: #2c2c2e;
             color: #f2f2f7;
             selection-background-color: #0a84ff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 4px;
         }
         QDoubleSpinBox {
             background-color: #1a1a1a;
@@ -847,18 +919,40 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     auto *replayBar = new QFrame(this);
     replayBar->setObjectName(u"replayBar"_s);
+    replayBar->setFocusPolicy(Qt::ClickFocus);
+    replayBar->setToolTip(
+        u"Replay controls · Click this panel (or a control), then Space to play or pause"_s);
     auto *replayOuter = new QVBoxLayout(replayBar);
-    replayOuter->setContentsMargins(14, 12, 14, 14);
-    replayOuter->setSpacing(10);
+    replayOuter->setContentsMargins(16, 14, 16, 14);
+    replayOuter->setSpacing(8);
+
+    m_speedCombo = new QComboBox(replayBar);
+    m_speedCombo->setObjectName(u"replaySpeedCombo"_s);
+    m_speedCombo->setToolTip(
+        u"Playback speed relative to timestamps in the log (1× = real-time gaps between samples)"_s);
+    const QList<double> speedRates{0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0};
+    for (double r : speedRates) {
+        m_speedCombo->addItem(QStringLiteral("%1×").arg(r, 0, 'g', 3), r);
+    }
+    m_speedCombo->setCurrentIndex(3);
 
     auto *replayHeader = new QHBoxLayout();
-    replayHeader->setSpacing(8);
+    replayHeader->setSpacing(10);
     m_replayBarTitle = new QLabel(replayBar);
     m_replayBarTitle->setObjectName(u"replayBarTitle"_s);
     m_replayBarTitle->setText(u"REPLAY"_s);
     replayHeader->addWidget(m_replayBarTitle, 0, Qt::AlignLeft | Qt::AlignVCenter);
     replayHeader->addStretch(1);
+    auto *rateCaption = new QLabel(u"SPEED"_s, replayBar);
+    rateCaption->setObjectName(u"replayRateLabel"_s);
+    replayHeader->addWidget(rateCaption, 0, Qt::AlignRight | Qt::AlignVCenter);
+    replayHeader->addWidget(m_speedCombo, 0, Qt::AlignRight | Qt::AlignVCenter);
     replayOuter->addLayout(replayHeader);
+
+    m_replaySampleCaption = new QLabel(replayBar);
+    m_replaySampleCaption->setObjectName(u"replaySampleCaption"_s);
+    m_replaySampleCaption->setAlignment(Qt::AlignCenter);
+    replayOuter->addWidget(m_replaySampleCaption);
 
     m_replaySlider = new QSlider(Qt::Horizontal, replayBar);
     m_replaySlider->setObjectName(u"replayScrubSlider"_s);
@@ -868,73 +962,83 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_replaySlider->setPageStep(10);
     m_replaySlider->setTracking(true);
     m_replaySlider->setToolTip(
-        u"Timeline scrub — how much of the loaded log is shown on the chart (prefix of samples)."_s);
+        u"Timeline — drag to choose how many samples appear on the chart (from the start of the file)"_s);
     replayOuter->addWidget(m_replaySlider);
 
     auto *replayTimeRow = new QHBoxLayout();
-    replayTimeRow->setContentsMargins(2, 0, 2, 0);
+    replayTimeRow->setContentsMargins(0, 2, 0, 0);
+    auto *timeLeftCol = new QVBoxLayout();
+    timeLeftCol->setSpacing(2);
+    timeLeftCol->setContentsMargins(0, 0, 0, 0);
+    auto *posCap = new QLabel(u"POSITION"_s, replayBar);
+    posCap->setObjectName(u"replayTimeCaption"_s);
     m_replayTimeLeftLabel = new QLabel(u"—"_s, replayBar);
     m_replayTimeLeftLabel->setObjectName(u"replayClockLabel"_s);
+    timeLeftCol->addWidget(posCap, 0, Qt::AlignLeft);
+    timeLeftCol->addWidget(m_replayTimeLeftLabel, 0, Qt::AlignLeft);
+    auto *timeRightCol = new QVBoxLayout();
+    timeRightCol->setSpacing(2);
+    timeRightCol->setContentsMargins(0, 0, 0, 0);
+    auto *lenCap = new QLabel(u"FULL LENGTH"_s, replayBar);
+    lenCap->setObjectName(u"replayTimeCaption"_s);
+    lenCap->setAlignment(Qt::AlignRight);
     m_replayTimeRightLabel = new QLabel(u"—"_s, replayBar);
     m_replayTimeRightLabel->setObjectName(u"replayClockLabel"_s);
     m_replayTimeRightLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    replayTimeRow->addWidget(m_replayTimeLeftLabel, 0, Qt::AlignLeft | Qt::AlignVCenter);
+    timeRightCol->addWidget(lenCap, 0, Qt::AlignRight);
+    timeRightCol->addWidget(m_replayTimeRightLabel, 0, Qt::AlignRight);
+    replayTimeRow->addLayout(timeLeftCol);
     replayTimeRow->addStretch(1);
-    replayTimeRow->addWidget(m_replayTimeRightLabel, 0, Qt::AlignRight | Qt::AlignVCenter);
+    replayTimeRow->addLayout(timeRightCol);
     replayOuter->addLayout(replayTimeRow);
 
     auto *replayTransportRow = new QHBoxLayout();
-    replayTransportRow->setSpacing(12);
+    replayTransportRow->setSpacing(10);
     replayTransportRow->addStretch(1);
 
     const auto setupSkipOrStopBtn = [](QToolButton *b, const QString &objName) {
         b->setObjectName(objName);
         b->setToolButtonStyle(Qt::ToolButtonIconOnly);
         b->setAutoRaise(true);
-        b->setFocusPolicy(Qt::NoFocus);
-        b->setIconSize(QSize(22, 22));
+        b->setFocusPolicy(Qt::StrongFocus);
+        b->setIconSize(QSize(24, 24));
     };
 
     m_jumpStartBtn = new QToolButton(replayBar);
     setupSkipOrStopBtn(m_jumpStartBtn, u"replaySkipBtn"_s);
-    m_jumpStartBtn->setToolTip(u"Jump to start of log"_s);
+    m_jumpStartBtn->setToolTip(u"Go to start — show from the first sample"_s);
     m_jumpStartBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipBackward));
 
     m_playPauseBtn = new QToolButton(replayBar);
     m_playPauseBtn->setObjectName(u"replayPlayPauseBtn"_s);
     m_playPauseBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_playPauseBtn->setAutoRaise(true);
-    m_playPauseBtn->setFocusPolicy(Qt::NoFocus);
-    m_playPauseBtn->setIconSize(QSize(28, 28));
-    m_playPauseBtn->setToolTip(u"Play or pause"_s);
+    m_playPauseBtn->setFocusPolicy(Qt::StrongFocus);
+    m_playPauseBtn->setIconSize(QSize(30, 30));
+    m_playPauseBtn->setToolTip(u"Play or pause (Space when this panel is focused)"_s);
     m_playPauseBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
 
     m_jumpEndBtn = new QToolButton(replayBar);
     setupSkipOrStopBtn(m_jumpEndBtn, u"replaySkipBtn"_s);
-    m_jumpEndBtn->setToolTip(u"Jump to end of log"_s);
+    m_jumpEndBtn->setToolTip(u"Go to end — show the entire log on the chart"_s);
     m_jumpEndBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
 
     m_stopBtn = new QToolButton(replayBar);
     setupSkipOrStopBtn(m_stopBtn, u"replayTransportBtn"_s);
-    m_stopBtn->setToolTip(u"Stop and return to the beginning"_s);
+    m_stopBtn->setToolTip(u"Stop and reset to the beginning"_s);
     m_stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
 
-    m_speedCombo = new QComboBox(replayBar);
-    m_speedCombo->setObjectName(u"replaySpeedCombo"_s);
-    m_speedCombo->setToolTip(u"Playback rate — wall clock vs timestamps between samples"_s);
-    const QList<double> speedRates{0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0};
-    for (double r : speedRates) {
-        m_speedCombo->addItem(QStringLiteral("%1×").arg(r, 0, 'g', 3), r);
-    }
-    m_speedCombo->setCurrentIndex(3);
+    auto *replayDiv = new QFrame(replayBar);
+    replayDiv->setObjectName(u"replayVDiv"_s);
+    replayDiv->setFixedSize(1, 30);
 
     replayTransportRow->addWidget(m_jumpStartBtn, 0, Qt::AlignVCenter);
     replayTransportRow->addWidget(m_playPauseBtn, 0, Qt::AlignVCenter);
     replayTransportRow->addWidget(m_jumpEndBtn, 0, Qt::AlignVCenter);
-    replayTransportRow->addSpacing(16);
+    replayTransportRow->addSpacing(6);
+    replayTransportRow->addWidget(replayDiv, 0, Qt::AlignVCenter);
+    replayTransportRow->addSpacing(6);
     replayTransportRow->addWidget(m_stopBtn, 0, Qt::AlignVCenter);
-    replayTransportRow->addSpacing(8);
-    replayTransportRow->addWidget(m_speedCombo, 0, Qt::AlignVCenter);
     replayTransportRow->addStretch(1);
     replayOuter->addLayout(replayTransportRow);
 
@@ -979,12 +1083,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             }
         });
         connect(m_replay, &FlightReplayController::positionChanged, this, [this](int len) {
-            if (m_replaySlider) {
-                m_replaySlider->blockSignals(true);
-                m_replaySlider->setValue(len);
-                m_replaySlider->blockSignals(false);
-            }
-            setReplayTrailLength(len);
+            applyReplayControllerPosition(len);
         });
         connect(m_replay, &FlightReplayController::playbackStarted, this, [this]() {
             m_replayActivityText = u"Playing"_s;
@@ -992,14 +1091,17 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         });
         connect(m_replay, &FlightReplayController::playbackPaused, this, [this]() {
             m_replayActivityText = u"Paused"_s;
+            flushReplayChartRebuild();
             updateReplayPanel();
         });
         connect(m_replay, &FlightReplayController::playbackStopped, this, [this]() {
             m_replayActivityText = u"Stopped"_s;
+            flushReplayChartRebuild();
             updateReplayPanel();
         });
         connect(m_replay, &FlightReplayController::playbackFinished, this, [this]() {
             m_replayActivityText = u"Finished"_s;
+            flushReplayChartRebuild();
             updateReplayPanel();
         });
         connect(m_replay, &FlightReplayController::errorOccurred, this, [this](const QString &msg) {
@@ -1007,6 +1109,22 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             updateReplayPanel();
         });
     }
+
+    auto *replaySpaceShortcut = new QShortcut(QKeySequence(Qt::Key_Space), replayBar);
+    replaySpaceShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(replaySpaceShortcut, &QShortcut::activated, this, [this]() {
+        if (!m_replay || !m_model || !m_model->replayMode() || !m_session || m_session->samples.empty()) {
+            return;
+        }
+        if (!m_playPauseBtn || !m_playPauseBtn->isEnabled()) {
+            return;
+        }
+        if (m_replay->isPlaying()) {
+            m_replay->pause();
+        } else {
+            m_replay->play();
+        }
+    });
 
     auto *statsRowWidget = new QWidget(this);
     auto *statsLayout = new QHBoxLayout(statsRowWidget);
@@ -1018,13 +1136,10 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     statsLayout->addWidget(createStatTile(u"PRESSURE"_s, u"—"_s, statsRowWidget, &m_pressValue), 1);
     rootLayout->addWidget(statsRowWidget);
 
-    auto *contentLayout = new QHBoxLayout();
-    contentLayout->setSpacing(4);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-
     auto *tracesPanel = new QFrame(this);
     tracesPanel->setObjectName(u"tracesPanel"_s);
-    tracesPanel->setFixedWidth(168);
+    tracesPanel->setMinimumWidth(100);
+    tracesPanel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     auto *tracesOuter = new QVBoxLayout(tracesPanel);
     tracesOuter->setContentsMargins(6, 6, 6, 6);
     tracesOuter->setSpacing(4);
@@ -1045,8 +1160,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     traceScroll->setWidgetResizable(true);
     traceScroll->setFrameShape(QFrame::NoFrame);
     traceScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    traceScroll->setMinimumHeight(140);
-    traceScroll->setMaximumHeight(320);
+    traceScroll->setMinimumHeight(80);
+    traceScroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     auto *traceScrollInner = new QWidget(traceScroll);
     traceScrollInner->setObjectName(u"traceScrollInner"_s);
@@ -1081,11 +1196,13 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_metricEnabled = {true, true, true, false, false, false, false, false, false};
     syncCheckboxStatesFromFlags();
 
-    auto *chartColumn = new QVBoxLayout();
+    auto *chartHost = new QWidget(this);
+    chartHost->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    auto *chartColumn = new QVBoxLayout(chartHost);
     chartColumn->setSpacing(0);
     chartColumn->setContentsMargins(0, 0, 0, 0);
 
-    auto *chartFrame = new QFrame(this);
+    auto *chartFrame = new QFrame(chartHost);
     chartFrame->setObjectName(u"chartFrame"_s);
     auto *chartFrameLayout = new QVBoxLayout(chartFrame);
     chartFrameLayout->setContentsMargins(0, 0, 0, 0);
@@ -1211,6 +1328,18 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     connect(m_liveChartCoalesceTimer, &QTimer::timeout, this, [this]() {
         rebuildLiveSeriesFromHistory();
         updateChartStatsLabel();
+        if (!m_model || !m_model->replayMode()) {
+            updateReplayPanel();
+        }
+    });
+
+    m_replayChartCoalesceTimer = new QTimer(this);
+    m_replayChartCoalesceTimer->setSingleShot(true);
+    m_replayChartCoalesceTimer->setInterval(33);
+    connect(m_replayChartCoalesceTimer, &QTimer::timeout, this, [this]() {
+        if (m_model && m_model->replayMode() && m_session && !m_session->samples.empty()) {
+            rebuildReplayCharts(m_lastReplayTrailLength);
+        }
     });
 
     auto *tcv = new TelemetryChartView(m_chart, chartFrame);
@@ -1224,8 +1353,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     };
     m_chartView = tcv;
     tcv->setChart(m_chart);
-    tcv->hoverDetail = [this](double tSec, int sampleIndex1Based, int totalSamples) {
-        return formatMultiMetricHover(tSec, sampleIndex1Based, totalSamples);
+    tcv->hoverDetail = [this](double tSec, int sampleIndex1Based, int /*totalSamples*/) {
+        return formatMultiMetricHover(tSec, sampleIndex1Based);
     };
     tcv->hoverReadout = [this](const QString &s) {
         if (!m_hoverReadoutLabel) {
@@ -1244,10 +1373,26 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     chartColumn->addWidget(chartFrame, 1);
 
-    contentLayout->addWidget(tracesPanel, 0);
-    contentLayout->addLayout(chartColumn, 1);
-
-    rootLayout->addLayout(contentLayout, 1);
+    auto *dashSplitter = new QSplitter(Qt::Horizontal, this);
+    dashSplitter->setChildrenCollapsible(false);
+    dashSplitter->addWidget(tracesPanel);
+    dashSplitter->addWidget(chartHost);
+    dashSplitter->setStretchFactor(0, 0);
+    dashSplitter->setStretchFactor(1, 1);
+    {
+        QSettings dashSettings(u"CosmoSoft"_s, u"cosmo-soft"_s);
+        const QByteArray st = dashSettings.value(u"ui/dashboardSplitterState"_s).toByteArray();
+        if (!st.isEmpty()) {
+            dashSplitter->restoreState(st);
+        } else {
+            dashSplitter->setSizes({168, 1000});
+        }
+    }
+    connect(dashSplitter, &QSplitter::splitterMoved, this, [dashSplitter]() {
+        QSettings s(u"CosmoSoft"_s, u"cosmo-soft"_s);
+        s.setValue(u"ui/dashboardSplitterState"_s, dashSplitter->saveState());
+    });
+    rootLayout->addWidget(dashSplitter, 1);
     rootLayout->addWidget(replayBar);
 
     if (m_model) {
@@ -1410,6 +1555,9 @@ void DashboardPage::updateChartStatsLabel() {
     if (m_showPointValuesToggle && m_showPointValuesToggle->isChecked()) {
         opts += u" · point labels ≤100 (1 trace)"_s;
     }
+    if (!m_hoverSampleIndexMap.empty() && m_hoverLogicalSampleCount > static_cast<int>(m_hoverSampleIndexMap.size())) {
+        opts += u" · decimated display"_s;
+    }
     m_chartStatsLabel->setText(
         QStringLiteral("%1 · %2 traces · up to %3 points%4%5")
             .arg(mode)
@@ -1419,29 +1567,37 @@ void DashboardPage::updateChartStatsLabel() {
             .arg(opts));
 }
 
-QString DashboardPage::formatMultiMetricHover(double tSec, int sampleIndex, int totalSamples) const {
-    if (sampleIndex < 1 || sampleIndex > totalSamples || totalSamples <= 0) {
+QString DashboardPage::formatMultiMetricHover(double tSec, int displayPointIndex1Based) const {
+    if (displayPointIndex1Based < 1) {
         return {};
     }
-    const int i = sampleIndex - 1;
+    const int di = displayPointIndex1Based - 1;
+    int si = di;
+    if (!m_hoverSampleIndexMap.empty()) {
+        if (di < 0 || di >= static_cast<int>(m_hoverSampleIndexMap.size())) {
+            return {};
+        }
+        si = m_hoverSampleIndexMap[static_cast<size_t>(di)];
+    }
     const FlightSample *sp = nullptr;
     if (m_model && m_model->replayMode()) {
-        if (m_session && i >= 0 && i < static_cast<int>(m_session->samples.size())) {
-            sp = &m_session->samples[static_cast<std::size_t>(i)];
+        if (m_session && si >= 0 && si < static_cast<int>(m_session->samples.size())) {
+            sp = &m_session->samples[static_cast<std::size_t>(si)];
         }
     } else {
-        if (i >= 0 && i < static_cast<int>(m_liveSamples.size())) {
-            sp = &m_liveSamples[static_cast<std::size_t>(i)];
+        if (si >= 0 && si < static_cast<int>(m_liveSamples.size())) {
+            sp = &m_liveSamples[static_cast<std::size_t>(si)];
         }
     }
     if (!sp) {
         return {};
     }
+    const int totalLogical = m_hoverLogicalSampleCount > 0 ? m_hoverLogicalSampleCount : static_cast<int>(m_liveSamples.size());
     QStringList lines;
     lines << QStringLiteral("Time %1 s  ·  row %2 / %3")
                  .arg(tSec, 0, 'f', 3)
-                 .arg(sampleIndex)
-                 .arg(totalSamples);
+                 .arg(si + 1)
+                 .arg(std::max(1, totalLogical));
     for (int mi = 0; mi < kMetricCount; ++mi) {
         if (!m_metricEnabled[static_cast<std::size_t>(mi)]) {
             continue;
@@ -1496,6 +1652,9 @@ void DashboardPage::updateReplayPanel() {
     }
     if (!m_model) {
         m_replayInfoLabel->setText(u""_s);
+        if (m_replaySampleCaption) {
+            m_replaySampleCaption->setText(u""_s);
+        }
         if (m_replayTimeLeftLabel) {
             m_replayTimeLeftLabel->setText(u"—"_s);
         }
@@ -1507,6 +1666,11 @@ void DashboardPage::updateReplayPanel() {
     }
     if (!m_model->replayMode()) {
         const int n = static_cast<int>(m_liveSamples.size());
+        if (m_replaySampleCaption) {
+            m_replaySampleCaption->setText(
+                QStringLiteral("%1 samples buffered · open Replay from the toolbar to scrub a log file")
+                    .arg(formatIntGrouped(n)));
+        }
         if (m_replayTimeLeftLabel) {
             m_replayTimeLeftLabel->setText(u"—"_s);
         }
@@ -1514,12 +1678,15 @@ void DashboardPage::updateReplayPanel() {
             m_replayTimeRightLabel->setText(u"—"_s);
         }
         m_replayInfoLabel->setText(
-            QStringLiteral("Live capture · %1 samples in memory · connect serial on Monitoring.").arg(n));
+            u"Live mode — connect serial on Monitoring. Timeline controls apply in Replay mode."_s);
         syncReplayTransportChrome();
         return;
     }
 
     if (!m_session || m_session->samples.empty()) {
+        if (m_replaySampleCaption) {
+            m_replaySampleCaption->setText(u"No file loaded"_s);
+        }
         if (m_replayTimeLeftLabel) {
             m_replayTimeLeftLabel->setText(u"—"_s);
         }
@@ -1527,7 +1694,7 @@ void DashboardPage::updateReplayPanel() {
             m_replayTimeRightLabel->setText(u"—"_s);
         }
         m_replayInfoLabel->setText(
-            u"No flight file loaded. Open a log from the toolbar, or switch to Monitoring for live data."_s);
+            u"Open a flight log from the toolbar (or use Monitoring for live telemetry)."_s);
         syncReplayTransportChrome();
         return;
     }
@@ -1541,6 +1708,21 @@ void DashboardPage::updateReplayPanel() {
     const double tLogEnd = chartXSeconds(tRef, samples.back().timestamp, sessionElapsed);
     const double fullDur = std::max(0.0, tLogEnd - tLogStart);
 
+    if (m_replaySampleCaption) {
+        if (head <= 0) {
+            m_replaySampleCaption->setText(
+                QStringLiteral("%1 samples — drag the timeline right to show data on the chart")
+                    .arg(formatIntGrouped(n)));
+        } else {
+            const int pct =
+                n > 0 ? static_cast<int>(std::lround(100.0 * static_cast<double>(head) / static_cast<double>(n))) : 0;
+            m_replaySampleCaption->setText(QStringLiteral("%1 of %2 samples on chart · %3% of log")
+                                               .arg(formatIntGrouped(head))
+                                               .arg(formatIntGrouped(n))
+                                               .arg(pct));
+        }
+    }
+
     if (m_replayTimeLeftLabel && m_replayTimeRightLabel) {
         const double elapsedAlongLog =
             (head > 0)
@@ -1550,30 +1732,33 @@ void DashboardPage::updateReplayPanel() {
         m_replayTimeRightLabel->setText(formatReplayClockHms(fullDur));
     }
 
-    const double speedShown = m_replay ? m_replay->speed() : 1.0;
     const QString state = m_replayActivityText.isEmpty() ? u"Ready"_s : m_replayActivityText;
+    const bool trivialState =
+        (state == u"Ready"_s || state == u"Idle"_s || state == u"Playing"_s || state == u"Paused"_s
+         || state == u"Stopped"_s || state == u"Finished"_s);
 
-    QString detail;
-    if (head <= 0) {
-        detail = u"Scrub right to reveal samples on the chart."_s;
+    QString footer;
+    if (!trivialState) {
+        footer = state;
+    } else if (head <= 0) {
+        footer = u"Tip: drag the timeline, then press Play to step through the log."_s;
     } else {
-        const double tVisEnd =
-            chartXSeconds(tRef, samples[static_cast<std::size_t>(head - 1)].timestamp, sessionElapsed);
-        detail = QStringLiteral("Samples 1–%1 of %2 · visible %3–%4 s · full log to %5 s")
-                     .arg(head)
-                     .arg(n)
-                     .arg(tLogStart, 0, 'f', 2)
-                     .arg(tVisEnd, 0, 'f', 2)
-                     .arg(tLogEnd, 0, 'f', 2);
+        footer =
+            QStringLiteral("%1 · Click this panel and press Space to play or pause.").arg(state);
     }
 
-    m_replayInfoLabel->setText(
-        QStringLiteral("%1 · %2× — %3").arg(state).arg(speedShown, 0, 'f', 2).arg(detail));
+    m_replayInfoLabel->setText(footer);
     syncReplayTransportChrome();
 }
 
 void DashboardPage::setReplaySession(const FlightSession *session) {
     m_preserveChartAxes = false;
+    if (m_replayChartCoalesceTimer) {
+        m_replayChartCoalesceTimer->stop();
+    }
+    if (m_liveChartCoalesceTimer) {
+        m_liveChartCoalesceTimer->stop();
+    }
     m_session = session;
     const int n = session ? static_cast<int>(session->samples.size()) : 0;
     if (m_replaySlider) {
@@ -1621,10 +1806,42 @@ void DashboardPage::setReplaySession(const FlightSession *session) {
     updateReplayPanel();
 }
 
-void DashboardPage::setReplayTrailLength(int trailLength) {
+void DashboardPage::applyReplayControllerPosition(int trailLength) {
     m_preserveChartAxes = false;
+    if (m_replaySlider) {
+        m_replaySlider->blockSignals(true);
+        m_replaySlider->setValue(trailLength);
+        m_replaySlider->blockSignals(false);
+    }
     m_lastReplayTrailLength = trailLength;
+    if (m_replay && m_replay->isPlaying()) {
+        scheduleReplayChartRebuild();
+        return;
+    }
+    if (m_model && m_model->replayMode() && trailLength == m_replayChartBuiltTrailLength) {
+        updateReplayPanel();
+        return;
+    }
     rebuildReplayCharts(trailLength);
+}
+
+void DashboardPage::scheduleReplayChartRebuild() {
+    if (m_replayChartCoalesceTimer) {
+        m_replayChartCoalesceTimer->start();
+    }
+}
+
+void DashboardPage::flushReplayChartRebuild() {
+    if (m_replayChartCoalesceTimer) {
+        m_replayChartCoalesceTimer->stop();
+    }
+    if (m_model && m_model->replayMode()) {
+        rebuildReplayCharts(m_lastReplayTrailLength);
+    }
+}
+
+void DashboardPage::setReplayTrailLength(int trailLength) {
+    applyReplayControllerPosition(trailLength);
 }
 
 void DashboardPage::refreshAllSeriesFromData() {
@@ -1651,6 +1868,9 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
 
     if (!m_session || trailLength <= 0 || m_session->samples.empty()) {
         m_preserveChartAxes = false;
+        m_hoverSampleIndexMap.clear();
+        m_hoverLogicalSampleCount = 0;
+        m_replayChartBuiltTrailLength = 0;
         m_axisX->setRange(0, 10);
         m_axisY->setRange(-1, 1);
         m_chart->setTitle(u"Flight data"_s);
@@ -1663,17 +1883,33 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
     const int n = static_cast<int>(samples.size());
     const int end = std::min(trailLength, n);
     if (end <= 0) {
+        m_hoverSampleIndexMap.clear();
+        m_hoverLogicalSampleCount = 0;
+        m_replayChartBuiltTrailLength = 0;
         updateChartStatsLabel();
         updateReplayPanel();
         return;
     }
 
+    const std::vector<int> plotIdx = sampleIndicesForChartDisplay(end, kMaxChartDisplayPoints);
+    if (plotIdx.empty()) {
+        m_replayChartBuiltTrailLength = end;
+        updateChartStatsLabel();
+        updateReplayPanel();
+        return;
+    }
+    m_hoverSampleIndexMap = plotIdx;
+    m_hoverLogicalSampleCount = end;
+    m_replayChartBuiltTrailLength = end;
+
     const int nEn = countEnabledMetrics();
     const long tRef = samples.front().timestamp;
     const bool sessionElapsed = useSessionElapsedTimeAxis(samples.front().timestamp, samples.back().timestamp);
     m_axisX->setTitleText(sessionElapsed ? u"Session time (s)"_s : u"Flight time (s)"_s);
-    double xMin = chartXSeconds(tRef, samples.front().timestamp, sessionElapsed);
-    double xMax = chartXSeconds(tRef, samples[static_cast<std::size_t>(end - 1)].timestamp, sessionElapsed);
+    const int iFirst = plotIdx.front();
+    const int iLast = plotIdx.back();
+    double xMin = chartXSeconds(tRef, samples[static_cast<std::size_t>(iFirst)].timestamp, sessionElapsed);
+    double xMax = chartXSeconds(tRef, samples[static_cast<std::size_t>(iLast)].timestamp, sessionElapsed);
 
     std::array<double, kMetricCount> yMin{};
     std::array<double, kMetricCount> yMax{};
@@ -1682,8 +1918,8 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         yMax[static_cast<std::size_t>(mi)] = -std::numeric_limits<double>::infinity();
     }
 
-    for (int i = 0; i < end; ++i) {
-        const FlightSample &s = samples[static_cast<std::size_t>(i)];
+    for (int si : plotIdx) {
+        const FlightSample &s = samples[static_cast<std::size_t>(si)];
         for (int mi = 0; mi < kMetricCount; ++mi) {
             if (!m_metricEnabled[static_cast<std::size_t>(mi)]) {
                 continue;
@@ -1706,6 +1942,7 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         }
     }
 
+    const int plotN = static_cast<int>(plotIdx.size());
     for (int mi = 0; mi < kMetricCount; ++mi) {
         if (!m_metricEnabled[static_cast<std::size_t>(mi)]) {
             continue;
@@ -1716,9 +1953,9 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         const double span = std::max(hi - lo, 1e-12);
 
         QList<QPointF> pts;
-        pts.reserve(end);
-        for (int i = 0; i < end; ++i) {
-            const FlightSample &s = samples[static_cast<std::size_t>(i)];
+        pts.reserve(plotN);
+        for (int si : plotIdx) {
+            const FlightSample &s = samples[static_cast<std::size_t>(si)];
             const double x = chartXSeconds(tRef, s.timestamp, sessionElapsed);
             double y = sampleValueForMetric(s, mi);
             if (nEn > 1) {
@@ -1770,6 +2007,12 @@ void DashboardPage::onSessionReset() {
     if (m_liveChartCoalesceTimer) {
         m_liveChartCoalesceTimer->stop();
     }
+    if (m_replayChartCoalesceTimer) {
+        m_replayChartCoalesceTimer->stop();
+    }
+    m_hoverSampleIndexMap.clear();
+    m_hoverLogicalSampleCount = 0;
+    m_replayChartBuiltTrailLength = -1;
     m_liveSamples.clear();
     for (int mi = 0; mi < kMetricCount; ++mi) {
         if (m_lineSeries[static_cast<std::size_t>(mi)]) {
@@ -1808,6 +2051,8 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
 
     if (m_liveSamples.empty()) {
         m_preserveChartAxes = false;
+        m_hoverSampleIndexMap.clear();
+        m_hoverLogicalSampleCount = 0;
         m_axisX->setRange(0, 10);
         m_axisY->setRange(-1, 1);
         m_chart->setTitle(u"Flight data"_s);
@@ -1817,12 +2062,23 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
     }
 
     const int end = static_cast<int>(m_liveSamples.size());
+    const std::vector<int> plotIdx = sampleIndicesForChartDisplay(end, kMaxChartDisplayPoints);
+    if (plotIdx.empty()) {
+        updateChartStatsLabel();
+        updateReplayPanel();
+        return;
+    }
+    m_hoverSampleIndexMap = plotIdx;
+    m_hoverLogicalSampleCount = end;
+
     const long tRef = m_liveSamples.front().timestamp;
     const bool sessionElapsed =
         useSessionElapsedTimeAxis(m_liveSamples.front().timestamp, m_liveSamples.back().timestamp);
     m_axisX->setTitleText(sessionElapsed ? u"Session time (s)"_s : u"Flight time (s)"_s);
-    double xMin = chartXSeconds(tRef, m_liveSamples.front().timestamp, sessionElapsed);
-    double xMax = chartXSeconds(tRef, m_liveSamples.back().timestamp, sessionElapsed);
+    const int iFirst = plotIdx.front();
+    const int iLast = plotIdx.back();
+    double xMin = chartXSeconds(tRef, m_liveSamples[static_cast<std::size_t>(iFirst)].timestamp, sessionElapsed);
+    double xMax = chartXSeconds(tRef, m_liveSamples[static_cast<std::size_t>(iLast)].timestamp, sessionElapsed);
 
     const int nEn = countEnabledMetrics();
     std::array<double, kMetricCount> yMin{};
@@ -1832,8 +2088,8 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         yMax[static_cast<std::size_t>(mi)] = -std::numeric_limits<double>::infinity();
     }
 
-    for (int i = 0; i < end; ++i) {
-        const FlightSample &s = m_liveSamples[static_cast<std::size_t>(i)];
+    for (int si : plotIdx) {
+        const FlightSample &s = m_liveSamples[static_cast<std::size_t>(si)];
         for (int mi = 0; mi < kMetricCount; ++mi) {
             if (!m_metricEnabled[static_cast<std::size_t>(mi)]) {
                 continue;
@@ -1856,6 +2112,7 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         }
     }
 
+    const int plotN = static_cast<int>(plotIdx.size());
     for (int mi = 0; mi < kMetricCount; ++mi) {
         if (!m_metricEnabled[static_cast<std::size_t>(mi)]) {
             continue;
@@ -1866,9 +2123,9 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         const double span = std::max(hi - lo, 1e-12);
 
         QList<QPointF> pts;
-        pts.reserve(end);
-        for (int i = 0; i < end; ++i) {
-            const FlightSample &s = m_liveSamples[static_cast<std::size_t>(i)];
+        pts.reserve(plotN);
+        for (int si : plotIdx) {
+            const FlightSample &s = m_liveSamples[static_cast<std::size_t>(si)];
             const double x = chartXSeconds(tRef, s.timestamp, sessionElapsed);
             double y = sampleValueForMetric(s, mi);
             if (nEn > 1) {
@@ -1921,6 +2178,9 @@ void DashboardPage::scheduleLiveChartRebuild() {
     } else {
         rebuildLiveSeriesFromHistory();
         updateChartStatsLabel();
+        if (!m_model || !m_model->replayMode()) {
+            updateReplayPanel();
+        }
     }
 }
 
@@ -1960,8 +2220,11 @@ void DashboardPage::onSampleUpdated(const FlightSample &sample) {
         return;
     }
     m_liveSamples.push_back(sample);
+    if (static_cast<int>(m_liveSamples.size()) > kMaxLiveBufferSamples) {
+        const int drop = static_cast<int>(m_liveSamples.size()) - kMaxLiveBufferSamples;
+        m_liveSamples.erase(m_liveSamples.begin(), m_liveSamples.begin() + drop);
+    }
     scheduleLiveChartRebuild();
-    updateReplayPanel();
 }
 
 void DashboardPage::paintEvent(QPaintEvent *event) {

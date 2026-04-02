@@ -276,6 +276,7 @@ src/services/telemetry/clean: src/services/telemetry/CMakeFiles/telemetry_autoge
 # Target rules for target src/CMakeFiles/cosmo-soft-bin.dir
 
 # All Build rule for target.
+src/CMakeFiles/cosmo-soft-bin.dir/all: src/CMakeFiles/cosmo-soft-bin_autogen.dir/all
 src/CMakeFiles/cosmo-soft-bin.dir/all: src/gateway/comms/CMakeFiles/comms.dir/all
 src/CMakeFiles/cosmo-soft-bin.dir/all: src/gateway/comms/Posix/CMakeFiles/PosixComms.dir/all
 src/CMakeFiles/cosmo-soft-bin.dir/all: src/services/flight/CMakeFiles/flight.dir/all
@@ -284,7 +285,6 @@ src/CMakeFiles/cosmo-soft-bin.dir/all: src/services/telemetry/CMakeFiles/telemet
 src/CMakeFiles/cosmo-soft-bin.dir/all: src/services/import/CMakeFiles/import.dir/all
 src/CMakeFiles/cosmo-soft-bin.dir/all: src/gui/CMakeFiles/gui.dir/all
 src/CMakeFiles/cosmo-soft-bin.dir/all: src/CMakeFiles/cosmo-soft-bin_autogen_timestamp_deps.dir/all
-src/CMakeFiles/cosmo-soft-bin.dir/all: src/CMakeFiles/cosmo-soft-bin_autogen.dir/all
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-soft-bin.dir/build.make src/CMakeFiles/cosmo-soft-bin.dir/depend
 	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/cosmo-soft-bin.dir/build.make src/CMakeFiles/cosmo-soft-bin.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/Users/hslyusar/Desktop/CosmoSoft/build/CMakeFiles --progress-num=12,13,14,15,16 "Built target cosmo-soft-bin"

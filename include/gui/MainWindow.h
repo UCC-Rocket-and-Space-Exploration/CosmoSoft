@@ -38,6 +38,7 @@ public slots:
 private slots:
     void updateMissionClock();
     void updateDataRateLabel();
+    void applyPendingReplayTelemetryStrip();
     void refreshSerialPorts();
     void startSerial(const QString &portName, int baud);
     void stopSerial();
@@ -56,6 +57,7 @@ private:
     void openSettingsWindow();
     void updateTopBarsForCurrentPage();
     void syncTelemetryStrip();
+    void applyReplayTelemetrySample(int trailLength);
     [[nodiscard]] bool isMonitoringPageActive() const;
 
     QAction *m_showMonitoringAction = nullptr;
@@ -92,6 +94,8 @@ private:
     std::unique_ptr<IComms> m_comms;
 
     QTimer *m_dataRateTimer = nullptr;
+    QTimer *m_replayTelemetryCoalesceTimer = nullptr;
+    int m_pendingReplayTelemetryTrail = 0;
     qint64 m_prevBytesForRate = 0;
 
     QString m_serialPortSummary;

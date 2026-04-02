@@ -24,8 +24,10 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QMessageBox>
 #include <QFont>
+#include <QProgressDialog>
 #include <QPushButton>
 #include <QSettings>
 #include <QGraphicsDropShadowEffect>
@@ -43,7 +45,32 @@
 #include <QVariant>
 #include <QWidget>
 
+#include <QtConcurrent/QtConcurrentRun>
+
+#include <optional>
+
 using namespace Qt::StringLiterals;
+
+namespace {
+
+struct FlightLogLoadResult {
+    std::optional<std::string> error;
+    FlightSession session;
+};
+
+[[nodiscard]] FlightLogLoadResult loadFlightLogAtPath(const QString &path) {
+    FlightLogLoadResult r;
+    if (path.endsWith(u".telem", Qt::CaseInsensitive)) {
+        Framer framer;
+        Parser parser;
+        r.error = SampleFileLoader::loadTelemFile(path.toStdString(), r.session, framer, parser);
+    } else {
+        r.error = SampleFileLoader::loadTheseusCsv(path.toStdString(), r.session);
+    }
+    return r;
+}
+
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
@@ -59,6 +86,27 @@ MainWindow::MainWindow(QWidget *parent)
     refreshSerialPorts();
 
     connect(m_replay.get(), &FlightReplayController::positionChanged, this, &MainWindow::onReplayPositionChanged);
+
+    m_replayTelemetryCoalesceTimer = new QTimer(this);
+    m_replayTelemetryCoalesceTimer->setSingleShot(true);
+    m_replayTelemetryCoalesceTimer->setInterval(50);
+    connect(m_replayTelemetryCoalesceTimer, &QTimer::timeout, this, &MainWindow::applyPendingReplayTelemetryStrip);
+
+    const auto flushReplayTelemetryStrip = [this]() {
+        if (m_replayTelemetryCoalesceTimer) {
+            m_replayTelemetryCoalesceTimer->stop();
+        }
+        const int idx = m_replay ? m_replay->index() : 0;
+        if (idx <= 0) {
+            m_flightModel->setDisplayedSample(FlightSample{});
+            syncTelemetryStrip();
+        } else {
+            applyReplayTelemetrySample(idx);
+        }
+    };
+    connect(m_replay.get(), &FlightReplayController::playbackPaused, this, flushReplayTelemetryStrip);
+    connect(m_replay.get(), &FlightReplayController::playbackStopped, this, flushReplayTelemetryStrip);
+    connect(m_replay.get(), &FlightReplayController::playbackFinished, this, flushReplayTelemetryStrip);
 
     m_dataRateTimer = new QTimer(this);
     m_dataRateTimer->setInterval(1000);
@@ -679,14 +727,36 @@ void MainWindow::refreshSerialPorts() {
 
 void MainWindow::onReplayPositionChanged(int trailLength) {
     if (trailLength <= 0) {
+        if (m_replayTelemetryCoalesceTimer) {
+            m_replayTelemetryCoalesceTimer->stop();
+        }
         m_flightModel->setDisplayedSample(FlightSample{});
+        syncTelemetryStrip();
         return;
     }
     if (trailLength > static_cast<int>(m_loadedSession.samples.size())) {
         return;
     }
+    m_pendingReplayTelemetryTrail = trailLength;
+    if (m_replay && m_replay->isPlaying()) {
+        if (m_replayTelemetryCoalesceTimer) {
+            m_replayTelemetryCoalesceTimer->start();
+        }
+        return;
+    }
+    applyReplayTelemetrySample(trailLength);
+}
+
+void MainWindow::applyReplayTelemetrySample(int trailLength) {
+    if (trailLength <= 0 || trailLength > static_cast<int>(m_loadedSession.samples.size())) {
+        return;
+    }
     m_flightModel->setDisplayedSample(m_loadedSession.samples[static_cast<std::size_t>(trailLength - 1)]);
     syncTelemetryStrip();
+}
+
+void MainWindow::applyPendingReplayTelemetryStrip() {
+    applyReplayTelemetrySample(m_pendingReplayTelemetryTrail);
 }
 
 void MainWindow::onOpenReplayFile() {
@@ -709,34 +779,39 @@ void MainWindow::onOpenReplayFile() {
 
     stopSerial();
 
-    FlightSession session;
-    std::optional<std::string> err;
+    auto *progress = new QProgressDialog(u"Loading flight log…"_s, QString(), 0, 0, this);
+    progress->setWindowModality(Qt::WindowModal);
+    progress->setMinimumDuration(0);
+    progress->setCancelButton(nullptr);
+    progress->show();
 
-    if (path.endsWith(u".telem", Qt::CaseInsensitive)) {
-        Framer framer;
-        Parser parser;
-        err = SampleFileLoader::loadTelemFile(path.toStdString(), session, framer, parser);
-    } else {
-        err = SampleFileLoader::loadTheseusCsv(path.toStdString(), session);
-    }
-
-    if (err) {
-        QMessageBox::warning(
-            this,
-            u"Could not load log"_s,
-            QString::fromStdString(*err));
-        return;
-    }
-
-    m_loadedSession = std::move(session);
-    m_flightModel->resetSession();
-    m_flightModel->setReplayMode(true);
-    m_replay->setSession(m_loadedSession);
-    if (m_flightDataPage) {
-        m_flightDataPage->setReplaySession(&m_loadedSession);
-    }
-    syncTelemetryStrip();
-    showStatusMessage(QStringLiteral("Loaded flight: %1").arg(path), 4000);
+    auto *watcher = new QFutureWatcher<FlightLogLoadResult>(this);
+    connect(watcher, &QFutureWatcher<FlightLogLoadResult>::finished, this, [this, watcher, path, progress]() {
+        progress->close();
+        progress->deleteLater();
+        FlightLogLoadResult r = watcher->result();
+        watcher->deleteLater();
+        if (r.error) {
+            QMessageBox::warning(
+                this,
+                u"Could not load log"_s,
+                QString::fromStdString(*r.error));
+            return;
+        }
+        m_loadedSession = std::move(r.session);
+        m_flightModel->resetSession();
+        m_flightModel->setReplayMode(true);
+        m_replay->setSession(m_loadedSession);
+        if (m_flightDataPage) {
+            m_flightDataPage->setReplaySession(&m_loadedSession);
+        }
+        syncTelemetryStrip();
+        showStatusMessage(QStringLiteral("Loaded flight: %1").arg(path), 4000);
+    });
+    const QFuture<FlightLogLoadResult> future = QtConcurrent::run([path]() {
+        return loadFlightLogAtPath(path);
+    });
+    watcher->setFuture(future);
 }
 
 void MainWindow::onClearFlightData() {
