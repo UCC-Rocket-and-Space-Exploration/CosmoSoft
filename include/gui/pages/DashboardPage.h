@@ -98,12 +98,19 @@ private:
     void rebuildLiveSeriesFromHistory();
 
     // ── Chart helpers ─────────────────────────────────────────────────────────
+
+    /** Zooms both axes in or out by one step, centered on the current view. */
     void zoomChartAxesAtCenter(bool zoomIn);
-    void refreshAllSeriesFromData();     ///< Dispatches to replay or live rebuild.
+
+    /** Dispatches to rebuildReplayCharts or rebuildLiveSeriesFromHistory depending on mode. */
+    void refreshAllSeriesFromData();
     void applyChartTheme();
-    void updateHoverReadoutDefault();
     void updateChartStatsLabel();
 
+    /**
+     * Applies per-series point-marker and label visibility based on point count
+     * and the number of currently enabled metrics.
+     */
     void applySeriesPointDisplay(QLineSeries *series, int pointCount, int nEnabledMetrics) const;
     [[nodiscard]] int countEnabledMetrics() const;
     [[nodiscard]] QString formatMultiMetricHover(double tSec, int displayPointIndex1Based) const;
@@ -135,8 +142,6 @@ private:
     QPushButton  *m_zoomResetBtn          = nullptr;
     QToolButton  *m_showMarkersToggle     = nullptr;
     QToolButton  *m_showPointValuesToggle = nullptr;
-    QLabel       *m_chartInteractionHint  = nullptr;  ///< Hidden; content moved to ? tooltip.
-    QLabel       *m_hoverReadoutLabel     = nullptr;  ///< Hidden; replaced by on-chart overlay.
     QLabel       *m_chartStatsLabel       = nullptr;
 
     // ── Chart update coalescing ───────────────────────────────────────────────

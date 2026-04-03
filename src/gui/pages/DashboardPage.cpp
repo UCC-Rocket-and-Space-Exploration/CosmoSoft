@@ -395,16 +395,6 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     chartHeaderLay->addLayout(chartToolbar);
 
-    // Interaction hint label — kept as member but NOT shown; content moved to ? tooltip.
-    m_chartInteractionHint = new QLabel(chartHeader);
-    m_chartInteractionHint->setObjectName(u"chartInteractionHint"_s);
-    m_chartInteractionHint->setVisible(false);
-
-    // Hover readout label — kept as member for lambda compat but NOT shown; replaced by overlay.
-    m_hoverReadoutLabel = new QLabel(chartHeader);
-    m_hoverReadoutLabel->setObjectName(u"chartHoverReadout"_s);
-    m_hoverReadoutLabel->setVisible(false);
-
     m_chartStatsLabel = new QLabel(chartHeader);
     m_chartStatsLabel->setObjectName(u"chartStatsLabel"_s);
     chartHeaderLay->addWidget(m_chartStatsLabel);
@@ -507,18 +497,9 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     tcv->hoverDetail = [this](double tSec, int sampleIndex1Based, int /*totalSamples*/) {
         return formatMultiMetricHover(tSec, sampleIndex1Based);
     };
-    tcv->hoverReadout = [this](const QString &s) {
-        if (!m_hoverReadoutLabel) {
-            return;
-        }
-        if (s.isEmpty()) {
-            updateHoverReadoutDefault();
-        } else if (s == u"—"_s) {
-            m_hoverReadoutLabel->setText(u"No traces — enable metrics on the left or load data."_s);
-        } else {
-            m_hoverReadoutLabel->setText(s);
-        }
-    };
+    // hoverReadout text is displayed by TelemetryChartView's own floating overlay;
+    // no secondary label is needed in DashboardPage.
+    tcv->hoverReadout = nullptr;
 
     chartFrameLayout->addWidget(m_chartView, 1);
 
@@ -608,14 +589,6 @@ int DashboardPage::countEnabledMetrics() const {
         }
     }
     return n;
-}
-
-void DashboardPage::updateHoverReadoutDefault() {
-    if (m_hoverReadoutLabel) {
-        m_hoverReadoutLabel->setText(
-            u"Hover: time, row #, all trace values. Drag: pan · Ctrl+drag: zoom box · "
-            u"Trackpad: two-finger pan · ⌘/Ctrl+scroll: zoom · Wheel: zoom · − / + / Fit."_s);
-    }
 }
 
 void DashboardPage::onResetChartZoom() {

@@ -114,9 +114,13 @@ MainWindow::MainWindow(QWidget *parent)
     m_dataRateTimer->start();
 
     statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s);
+
+    if (const auto geom = QSettings{}.value(u"window/mainGeometry"_s).toByteArray(); !geom.isEmpty())
+        restoreGeometry(geom);
 }
 
 MainWindow::~MainWindow() {
+    QSettings{}.setValue(u"window/mainGeometry"_s, saveGeometry());
     stopSerial();
 }
 

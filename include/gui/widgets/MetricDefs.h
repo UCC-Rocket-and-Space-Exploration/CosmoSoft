@@ -121,7 +121,11 @@ inline QString formatMetricValuePretty(int idx, double v)
     }
 }
 
-// ── Timestamp / clock helpers ──────────────────────────────────────────────
+// ── Timestamp / X-axis helpers ─────────────────────────────────────────────
+//
+// These helpers convert raw sample timestamps (which may be either Unix-epoch
+// milliseconds or boot-relative milliseconds) to the floating-point seconds
+// used as chart X values, and format elapsed durations for the replay clock.
 
 /** Threshold separating Unix-epoch milliseconds from boot-relative milliseconds. */
 constexpr long long kUnixEpochMsThreshold = 100'000'000'000LL;

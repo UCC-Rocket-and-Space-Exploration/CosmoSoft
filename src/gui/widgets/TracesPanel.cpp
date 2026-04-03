@@ -15,8 +15,6 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-#include <cmath>
-
 using namespace Qt::StringLiterals;
 
 namespace {
@@ -243,28 +241,14 @@ void TracesPanel::setMetricDataStates(const std::array<bool, kMetricCount> &hasD
 
 void TracesPanel::updateLiveValues(const FlightSample &sample)
 {
-    auto setText = [&](int idx, const QString &text) {
-        if (auto *lbl = m_traceValueLabels[static_cast<std::size_t>(idx)])
-            lbl->setText(text);
-    };
-    const double accelMag = std::sqrt(
-        sample.acceleration.x * sample.acceleration.x
-        + sample.acceleration.y * sample.acceleration.y
-        + sample.acceleration.z * sample.acceleration.z);
-    const double gyroMag = std::sqrt(
-        sample.angularVelocity.x * sample.angularVelocity.x
-        + sample.angularVelocity.y * sample.angularVelocity.y
-        + sample.angularVelocity.z * sample.angularVelocity.z);
-
-    setText(0, QStringLiteral("%1m").arg(sample.altitude,         0, 'f', 0));
-    setText(1, QStringLiteral("%1°").arg(sample.temperature,      0, 'f', 0));
-    setText(2, QStringLiteral("%1").arg(sample.pressure,          0, 'f', 0));
-    setText(3, QStringLiteral("%1").arg(accelMag,                 0, 'f', 1));
-    setText(4, QStringLiteral("%1V").arg(sample.batteryVoltage,   0, 'f', 1));
-    setText(5, QStringLiteral("%1").arg(sample.rssi,              0, 'f', 0));
-    setText(6, QStringLiteral("%1").arg(gyroMag,                  0, 'f', 0));
-    setText(7, QStringLiteral("%1°").arg(sample.coordinates.latitude,  0, 'f', 3));
-    setText(8, QStringLiteral("%1°").arg(sample.coordinates.longitude, 0, 'f', 3));
+    for (int i = 0; i < kMetricCount; ++i) {
+        auto *lbl = m_traceValueLabels[static_cast<std::size_t>(i)];
+        if (!lbl) continue;
+        const double v    = MetricDefs::sampleValueForMetric(sample, i);
+        const QString val = MetricDefs::formatMetricValuePretty(i, v);
+        const QString unit = MetricDefs::metricAxisUnitShort(i);
+        lbl->setText(unit.isEmpty() ? val : val + u' ' + unit);
+    }
 }
 
 // ── Private slots ────────────────────────────────────────────────────────────

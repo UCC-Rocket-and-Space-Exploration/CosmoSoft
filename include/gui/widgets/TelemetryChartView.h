@@ -26,13 +26,32 @@ class QValueAxis;
 
 class TelemetryChartView : public QChartView {
 public:
+    /**
+     * Called with the formatted hover text on every mouse-move over the chart,
+     * and with an empty string when the cursor leaves.  Set to nullptr to ignore.
+     */
     std::function<void(const QString &)> hoverReadout;
+
+    /**
+     * Returns the multi-line text for the floating detail overlay.
+     * @param tSec              X-axis value at the cursor (seconds).
+     * @param sampleIndex1Based 1-based index of the nearest display point.
+     * @param totalSamples      Total number of display points in the series.
+     */
     std::function<QString(double tSec, int sampleIndex1Based, int totalSamples)> hoverDetail;
+
+    /**
+     * Called after any user-initiated pan or zoom so the owning widget can
+     * set a "preserve axes" flag and suppress automatic rescaling on rebuild.
+     */
     std::function<void()> onUserAdjustedAxes;
 
     explicit TelemetryChartView(QChart *chart, QWidget *parent = nullptr);
 
-    /** Update the internally stored chart pointer (e.g. after replacing the chart). */
+    /**
+     * Updates the internally stored chart pointer.
+     * Call this if the owning widget replaces the QChart instance.
+     */
     void setChart(QChart *c);
 
 protected:
@@ -57,6 +76,6 @@ private:
     bool     m_rubberZoomActive  = false;
     QPoint   m_lastPanPos;
 
-    QWidget *m_crosshairOverlay = nullptr;  ///< ChartCrosshairOverlay (defined in .cpp)
-    QLabel  *m_hoverOverlay     = nullptr;
+    QWidget *m_crosshairOverlay = nullptr;  ///< ChartCrosshairOverlay instance (type defined in .cpp).
+    QLabel  *m_hoverOverlay     = nullptr;  ///< Floating text bubble that follows the cursor.
 };

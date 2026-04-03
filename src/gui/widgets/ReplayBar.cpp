@@ -102,6 +102,20 @@ ReplayBar::ReplayBar(FlightReplayController *replay,
             m_replaySlider->setValue(m_replaySlider->value() + 1);
     });
 
+    auto *homeShortcut = new QShortcut(QKeySequence(Qt::Key_Home), this);
+    homeShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(homeShortcut, &QShortcut::activated, this, [this]() {
+        if (m_jumpStartBtn && m_jumpStartBtn->isEnabled())
+            m_jumpStartBtn->click();
+    });
+
+    auto *endShortcut = new QShortcut(QKeySequence(Qt::Key_End), this);
+    endShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(endShortcut, &QShortcut::activated, this, [this]() {
+        if (m_jumpEndBtn && m_jumpEndBtn->isEnabled())
+            m_jumpEndBtn->click();
+    });
+
     m_replayActivityText = u"Ready"_s;
     syncTransportChrome();
     updateLabels();

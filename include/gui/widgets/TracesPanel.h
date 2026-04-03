@@ -27,6 +27,7 @@ class TracesPanel : public QFrame {
     Q_OBJECT
 
 public:
+    /** Must match MetricDefs::kMetricCount and DashboardPage::kMetricCount. */
     static constexpr int kMetricCount = 9;
 
     explicit TracesPanel(QWidget *parent = nullptr);
