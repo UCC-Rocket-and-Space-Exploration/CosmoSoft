@@ -2,95 +2,113 @@
 
 #include "gui/FlightDataModel.h"
 #include "gui/MainWindow.h"
+#include "gui/widgets/MetricDefs.h"
+#include "gui/widgets/StatTileWidget.h"
 
-#include <QBrush>
-#include <QColor>
 #include <QFrame>
+#include <QGridLayout>
 #include <QLabel>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPointF>
 #include <QVBoxLayout>
 
+#include <cmath>
+
 using namespace Qt::StringLiterals;
+using namespace MetricDefs;
 
 MonitoringPage::MonitoringPage(MainWindow *hostWindow, FlightDataModel *model, QWidget *parent)
     : QWidget(parent),
       m_hostWindow(hostWindow),
-      m_model(model) {
+      m_model(model)
+{
     Q_UNUSED(hostWindow);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAutoFillBackground(false);
 
-    auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(24, 24, 24, 24);
-    layout->setSpacing(16);
+    auto *root = new QVBoxLayout(this);
+    root->setContentsMargins(24, 24, 24, 24);
+    root->setSpacing(16);
 
-    auto *textFrame = new QFrame(this);
-    textFrame->setObjectName("monitoringDescriptionFrame");
-    textFrame->setFrameShape(QFrame::StyledPanel);
-    textFrame->setFrameShadow(QFrame::Raised);
-    textFrame->setStyleSheet(R"(
-    QFrame#monitoringDescriptionFrame {
-    background-color:rgba(21, 22, 25, 0.80) ;
-    border: 1px solid #3b3b45;
-    border-radius: 8px;
-    padding: 12px;
-    }
-    )");
-
-    m_summaryLabel = new QLabel(
+    // ── Status label (shown while waiting for first sample) ──────────────────
+    m_statusLabel = new QLabel(
         u"Monitoring: waiting for telemetry. Use the connection bar to connect a serial port."_s,
-        textFrame);
-    m_summaryLabel->setWordWrap(true);
-    m_summaryLabel->setStyleSheet(u"color: #e8e8e8; font-size: 14px;"_s);
+        this);
+    m_statusLabel->setWordWrap(true);
+    m_statusLabel->setStyleSheet(uR"(
+        QLabel {
+            background-color: rgba(21, 22, 25, 0.80);
+            border: 1px solid #3b3b45;
+            border-radius: 8px;
+            padding: 14px 16px;
+            color: #e8e8e8;
+            font-size: 13px;
+        }
+    )"_s);
+    root->addWidget(m_statusLabel);
 
-    auto *frameLayout = new QVBoxLayout(textFrame);
-    frameLayout->addWidget(m_summaryLabel);
+    // ── Stat tile grid ───────────────────────────────────────────────────────
+    auto *tilesFrame = new QFrame(this);
+    tilesFrame->setObjectName(u"monitoringTilesFrame"_s);
+    tilesFrame->setStyleSheet(uR"(
+        QFrame#monitoringTilesFrame {
+            background: transparent;
+            border: none;
+        }
+    )"_s);
 
-    layout->addWidget(textFrame);
-    layout->addStretch(1);
+    auto *grid = new QGridLayout(tilesFrame);
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setSpacing(10);
+
+    constexpr int kCols = 3;
+    for (int i = 0; i < kTileCount; ++i) {
+        auto *tile = new StatTileWidget(metricTraceShortName(i), {}, this);
+        m_tiles[static_cast<std::size_t>(i)] = tile;
+        grid->addWidget(tile, i / kCols, i % kCols);
+    }
+
+    root->addWidget(tilesFrame);
+    root->addStretch(1);
 
     if (m_model) {
         connect(m_model, &FlightDataModel::sampleUpdated, this, &MonitoringPage::onSampleUpdated);
     }
 }
 
-void MonitoringPage::onSampleUpdated(const FlightSample &sample) {
-    if (!m_summaryLabel) {
-        return;
+void MonitoringPage::onSampleUpdated(const FlightSample &sample)
+{
+    if (m_statusLabel && m_statusLabel->isVisible())
+        m_statusLabel->hide();
+
+    for (int i = 0; i < kTileCount; ++i) {
+        if (!m_tiles[static_cast<std::size_t>(i)]) continue;
+        const double v = sampleValueForMetric(sample, i);
+        const QString text = formatMetricValuePretty(i, v)
+                             + (metricAxisUnitShort(i).isEmpty()
+                                    ? QString{}
+                                    : u" "_s + metricAxisUnitShort(i));
+        m_tiles[static_cast<std::size_t>(i)]->setValue(text);
     }
-    m_summaryLabel->setText(
-        QStringLiteral(
-            "Last sample — Alt: %1 m, Temp: %2 °C, Press: %3, Batt: %4 V")
-            .arg(sample.altitude, 0, 'f', 1)
-            .arg(sample.temperature, 0, 'f', 1)
-            .arg(sample.pressure, 0, 'f', 1)
-            .arg(sample.batteryVoltage, 0, 'f', 2));
 }
 
-void MonitoringPage::paintEvent(QPaintEvent *event) {
+void MonitoringPage::paintEvent(QPaintEvent *event)
+{
     QPainter painter(this);
     painter.setClipRegion(event->region());
 
-    const QColor backgroundColor(47, 47, 47);
-    painter.fillRect(rect(), backgroundColor);
+    painter.fillRect(rect(), QColor(47, 47, 47));
 
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(255, 255, 255, 50));
 
-    constexpr int dotSpacing = 28;
-    constexpr qreal dotDiameter = 3.0;
-    const qreal dotRadius = dotDiameter / 2.0;
-    const int offset = dotSpacing / 2;
+    constexpr int dotSpacing  = 28;
+    constexpr qreal dotRadius = 1.5;
+    const int offset          = dotSpacing / 2;
 
-    const int widthLimit = width();
-    const int heightLimit = height();
-
-    for (int y = offset; y < heightLimit; y += dotSpacing) {
-        for (int x = offset; x < widthLimit; x += dotSpacing) {
+    for (int y = offset; y < height(); y += dotSpacing)
+        for (int x = offset; x < width(); x += dotSpacing)
             painter.drawEllipse(QPointF(x, y), dotRadius, dotRadius);
-        }
-    }
 }
