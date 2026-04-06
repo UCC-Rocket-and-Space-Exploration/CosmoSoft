@@ -6,7 +6,8 @@
  *
  * Public interface:
  *  - enabledMetrics()         → current bool array (at least one entry is true)
- *  - setMetricDataStates()    → tells the panel which metrics have chart data
+ *  - setMetricsOffered()      → hide rows for metrics not present in the loaded source
+ *  - setMetricDataStates()    → dims rows that have no points in the current chart build
  *  - updateLiveValues(sample) → refreshes the right-aligned readout labels
  *
  * The panel emits enabledMetricsChanged whenever a checkbox changes so that
@@ -36,7 +37,13 @@ public:
     [[nodiscard]] std::array<bool, kMetricCount> enabledMetrics() const;
 
     /**
-     * Updates the dim / undim state of each trace row.
+     * Shows or hides each trace row (e.g. CSV columns missing from the file).
+     * Hidden metrics are unchecked and omitted from ALL/NONE.
+     */
+    void setMetricsOffered(const std::array<bool, kMetricCount> &offered);
+
+    /**
+     * Updates the dim / undim state of each visible trace row.
      * Pass true for each metric that currently has data points on the chart.
      */
     void setMetricDataStates(const std::array<bool, kMetricCount> &hasData);
@@ -58,10 +65,14 @@ private:
     void syncCheckboxStatesFromFlags();
     void ensureAtLeastOneMetricEnabled();
     void refreshSwatchStates();
+    void updateSecondaryGroupSeparatorVisibility();
 
     std::array<QCheckBox *, kMetricCount> m_metricChecks{};
     std::array<QLabel *,    kMetricCount> m_traceValueLabels{};
     std::array<QLabel *,    kMetricCount> m_traceSwatches{};
     std::array<QFrame *,    kMetricCount> m_traceRows{};
     std::array<bool,        kMetricCount> m_metricEnabled{};
+    QFrame *m_secondaryGroupSeparator = nullptr;
+    /** Row index where the secondary group starts (after separator). */
+    static constexpr int kSecondaryGroupFirst = 6;
 };

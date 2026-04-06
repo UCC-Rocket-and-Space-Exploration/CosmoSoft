@@ -177,6 +177,18 @@ std::optional<std::string> SampleFileLoader::loadTheseusCsv(const std::string &p
     }
 
     out.samples = std::move(samples);
+    // Trace panel rows only for columns that exist in this file (see FlightSession::metricsInSource order).
+    out.metricsInSource = {
+        true,               // 0 altitude — required column
+        iTemp >= 0,         // 1 temperature
+        iPress >= 0,        // 2 pressure
+        iAccel >= 0,        // 3 |acceleration| (single-axis column in CSV)
+        iBatt >= 0,         // 4 battery
+        iRssi >= 0,         // 5 RSSI
+        false,              // 6 gyro — not in Theseus CSV schema
+        false,              // 7 latitude
+        false,              // 8 longitude
+    };
     return std::nullopt;
 }
 

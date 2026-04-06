@@ -5,3 +5,6 @@
 #include "TY4TLIRS3Q/moc_DashboardPage.cpp"
 #include "TY4TLIRS3Q/moc_MonitoringPage.cpp"
 #include "TY4TLIRS3Q/moc_SettingsPage.cpp"
+#include "E6TNPSBEZS/moc_ReplayBar.cpp"
+#include "E6TNPSBEZS/moc_StatTileWidget.cpp"
+#include "E6TNPSBEZS/moc_TracesPanel.cpp"

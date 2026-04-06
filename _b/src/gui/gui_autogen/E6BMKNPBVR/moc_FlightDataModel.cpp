@@ -46,6 +46,8 @@ template <> constexpr inline auto FlightDataModel::qt_create_metaobjectdata<qt_m
         "bytesReceivedChanged",
         "totalBytes",
         "sessionReset",
+        "replayModeChanged",
+        "replay",
         "appendSample",
         "addBytesReceived",
         "byteCount"
@@ -62,13 +64,17 @@ template <> constexpr inline auto FlightDataModel::qt_create_metaobjectdata<qt_m
         }}),
         // Signal 'sessionReset'
         QtMocHelpers::SignalData<void()>(7, 2, QMC::AccessPublic, QMetaType::Void),
+        // Signal 'replayModeChanged'
+        QtMocHelpers::SignalData<void(bool)>(8, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 9 },
+        }}),
         // Slot 'appendSample'
-        QtMocHelpers::SlotData<void(FlightSample)>(8, 2, QMC::AccessPublic, QMetaType::Void, {{
+        QtMocHelpers::SlotData<void(FlightSample)>(10, 2, QMC::AccessPublic, QMetaType::Void, {{
             { 0x80000000 | 3, 4 },
         }}),
         // Slot 'addBytesReceived'
-        QtMocHelpers::SlotData<void(qint64)>(9, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::LongLong, 10 },
+        QtMocHelpers::SlotData<void(qint64)>(11, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::LongLong, 12 },
         }}),
     };
     QtMocHelpers::UintData qt_properties {
@@ -96,8 +102,9 @@ void FlightDataModel::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int 
         case 0: _t->sampleUpdated((*reinterpret_cast<std::add_pointer_t<FlightSample>>(_a[1]))); break;
         case 1: _t->bytesReceivedChanged((*reinterpret_cast<std::add_pointer_t<qint64>>(_a[1]))); break;
         case 2: _t->sessionReset(); break;
-        case 3: _t->appendSample((*reinterpret_cast<std::add_pointer_t<FlightSample>>(_a[1]))); break;
-        case 4: _t->addBytesReceived((*reinterpret_cast<std::add_pointer_t<qint64>>(_a[1]))); break;
+        case 3: _t->replayModeChanged((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 4: _t->appendSample((*reinterpret_cast<std::add_pointer_t<FlightSample>>(_a[1]))); break;
+        case 5: _t->addBytesReceived((*reinterpret_cast<std::add_pointer_t<qint64>>(_a[1]))); break;
         default: ;
         }
     }
@@ -107,6 +114,8 @@ void FlightDataModel::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int 
         if (QtMocHelpers::indexOfMethod<void (FlightDataModel::*)(qint64 )>(_a, &FlightDataModel::bytesReceivedChanged, 1))
             return;
         if (QtMocHelpers::indexOfMethod<void (FlightDataModel::*)()>(_a, &FlightDataModel::sessionReset, 2))
+            return;
+        if (QtMocHelpers::indexOfMethod<void (FlightDataModel::*)(bool )>(_a, &FlightDataModel::replayModeChanged, 3))
             return;
     }
 }
@@ -130,14 +139,14 @@ int FlightDataModel::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 5)
+        if (_id < 6)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 5;
+        _id -= 6;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 5)
+        if (_id < 6)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 5;
+        _id -= 6;
     }
     return _id;
 }
@@ -158,5 +167,11 @@ void FlightDataModel::bytesReceivedChanged(qint64 _t1)
 void FlightDataModel::sessionReset()
 {
     QMetaObject::activate(this, &staticMetaObject, 2, nullptr);
+}
+
+// SIGNAL 3
+void FlightDataModel::replayModeChanged(bool _t1)
+{
+    QMetaObject::activate<void>(this, &staticMetaObject, 3, nullptr, _t1);
 }
 QT_WARNING_POP

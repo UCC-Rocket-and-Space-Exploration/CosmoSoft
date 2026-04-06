@@ -3,7 +3,6 @@
 #include "gui/widgets/MetricDefs.h"
 
 #include <QCheckBox>
-#include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -19,27 +18,30 @@ using namespace Qt::StringLiterals;
 
 namespace {
 
-/** Forwards mouse-button clicks on any row child to the row's checkbox. */
-class TraceRowClickFilter : public QObject {
-    QCheckBox *m_cb;
-public:
-    explicit TraceRowClickFilter(QObject *parent, QCheckBox *cb)
-        : QObject(parent), m_cb(cb) {}
+/**
+ * Row frame: swatch and value labels use WA_TransparentForMouseEvents so clicks
+ * land here; toggles the checkbox unless the click is on the checkbox itself.
+ */
+class TraceRowFrame : public QFrame {
+    QCheckBox *m_cb = nullptr;
 
-    bool eventFilter(QObject *obj, QEvent *event) override
+public:
+    explicit TraceRowFrame(QWidget *parent = nullptr)
+        : QFrame(parent)
     {
-        if (event->type() == QEvent::MouseButtonRelease && m_cb) {
-            const auto *me = static_cast<const QMouseEvent *>(event);
-            if (me->button() == Qt::LeftButton) {
-                if (const auto *w = qobject_cast<const QWidget *>(obj)) {
-                    if (w == m_cb->parentWidget() && m_cb->geometry().contains(me->pos()))
-                        return false;
-                }
+    }
+
+    void setToggleCheckBox(QCheckBox *cb) { m_cb = cb; }
+
+protected:
+    void mouseReleaseEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::LeftButton && m_cb && m_cb->isVisible() && m_cb->isEnabled()) {
+            const QPoint inCb = m_cb->mapFrom(this, event->pos());
+            if (!m_cb->rect().contains(inCb))
                 m_cb->toggle();
-                return true;
-            }
         }
-        return false;
+        QFrame::mouseReleaseEvent(event);
     }
 };
 
@@ -89,15 +91,15 @@ TracesPanel::TracesPanel(QWidget *parent)
             font-size: 11px;
             font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
             color: #c8d4e0;
-            spacing: 5px;
+            spacing: 0px;
         }
         QCheckBox#traceCheck::indicator {
-            width: 14px;
-            height: 14px;
-            border: 1px solid #5a6070;
-            border-radius: 3px;
+            width: 0px;
+            height: 0px;
+            border: none;
+            margin: 0px;
+            padding: 0px;
         }
-        QCheckBox#traceCheck::indicator:unchecked { background-color: rgba(30,32,38,0.9); }
         QLabel#traceValueLabel {
             font-size: 10px;
             font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
@@ -120,8 +122,9 @@ TracesPanel::TracesPanel(QWidget *parent)
     title->setObjectName(u"tracesPanelTitle"_s);
     title->setToolTip(
         u"Toggle which metrics appear on the chart.\n"
+        u"When replaying a log, only fields present in that file are listed.\n"
         u"2+ traces: Y axis is normalized (0–1).\n"
-        u"Hover over chart to see SI values for all visible traces."_s);
+        u"Click the row (not only the box) to toggle."_s);
     headerRow->addWidget(title, 1, Qt::AlignVCenter);
 
     auto *allBtn = new QPushButton(u"ALL"_s, this);
@@ -154,20 +157,18 @@ TracesPanel::TracesPanel(QWidget *parent)
     listLay->setContentsMargins(0, 0, 2, 0);
     listLay->setSpacing(2);
 
-    // Flight-critical group: indices 0-5; secondary group: 6-8.
-    constexpr int kGroupSplit = 6;
-
     for (int i = 0; i < kMetricCount; ++i) {
-        if (i == kGroupSplit) {
+        if (i == kSecondaryGroupFirst) {
             auto *sep = new QFrame(inner);
             sep->setObjectName(u"traceSeparator"_s);
             sep->setFrameShape(QFrame::HLine);
             sep->setFixedHeight(1);
             listLay->addWidget(sep);
             listLay->addSpacing(2);
+            m_secondaryGroupSeparator = sep;
         }
 
-        auto *row = new QFrame(inner);
+        auto *row = new TraceRowFrame(inner);
         row->setObjectName(u"traceRow"_s);
         row->setProperty("noData", false);
         auto *rowLay = new QHBoxLayout(row);
@@ -176,15 +177,16 @@ TracesPanel::TracesPanel(QWidget *parent)
 
         const QColor col = MetricDefs::metricColor(i);
         auto *swatch = new QLabel(row);
-        swatch->setFixedSize(6, 14);
+        swatch->setFixedSize(20, 20);
+        swatch->setAttribute(Qt::WA_TransparentForMouseEvents);
         swatch->setStyleSheet(
-            QStringLiteral("QLabel { background-color: %1; border-radius: 2px; min-width:6px; min-height:14px; }")
+            QStringLiteral("QLabel { background-color: %1; border-radius: 2px; min-width:14px; min-height:14px; }")
                 .arg(col.name(QColor::HexRgb)));
         m_traceSwatches[static_cast<std::size_t>(i)] = swatch;
 
         auto *cb = new QCheckBox(MetricDefs::metricTraceShortName(i), row);
         cb->setObjectName(u"traceCheck"_s);
-        cb->setToolTip(QStringLiteral("%1  ·  click row to toggle")
+        cb->setToolTip(QStringLiteral("%1 — click anywhere on the row to toggle")
                            .arg(MetricDefs::metricTitle(i)));
         m_metricChecks[static_cast<std::size_t>(i)] = cb;
 
@@ -192,6 +194,7 @@ TracesPanel::TracesPanel(QWidget *parent)
         valLabel->setObjectName(u"traceValueLabel"_s);
         valLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         valLabel->setMinimumWidth(52);
+        valLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
         m_traceValueLabels[static_cast<std::size_t>(i)] = valLabel;
 
         rowLay->addWidget(swatch,   0, Qt::AlignVCenter);
@@ -200,9 +203,9 @@ TracesPanel::TracesPanel(QWidget *parent)
         listLay->addWidget(row);
         m_traceRows[static_cast<std::size_t>(i)] = row;
 
+        static_cast<TraceRowFrame *>(row)->setToggleCheckBox(cb);
         row->setCursor(Qt::PointingHandCursor);
         row->setAttribute(Qt::WA_Hover);
-        row->installEventFilter(new TraceRowClickFilter(row, cb));
 
         connect(cb, &QCheckBox::toggled, this, &TracesPanel::onAnyMetricToggled);
     }
@@ -220,11 +223,48 @@ std::array<bool, TracesPanel::kMetricCount> TracesPanel::enabledMetrics() const
     return m_metricEnabled;
 }
 
+void TracesPanel::setMetricsOffered(const std::array<bool, kMetricCount> &offered)
+{
+    for (int i = 0; i < kMetricCount; ++i) {
+        if (m_metricChecks[static_cast<std::size_t>(i)]) {
+            m_metricEnabled[static_cast<std::size_t>(i)] =
+                m_metricChecks[static_cast<std::size_t>(i)]->isChecked();
+        }
+    }
+    const std::array<bool, kMetricCount> before = m_metricEnabled;
+
+    for (int i = 0; i < kMetricCount; ++i) {
+        auto *row = m_traceRows[static_cast<std::size_t>(i)];
+        if (!row) {
+            continue;
+        }
+        const bool show = offered[static_cast<std::size_t>(i)];
+        row->setVisible(show);
+        if (!show) {
+            if (auto *cb = m_metricChecks[static_cast<std::size_t>(i)]) {
+                const QSignalBlocker b(cb);
+                cb->setChecked(false);
+            }
+            m_metricEnabled[static_cast<std::size_t>(i)] = false;
+        }
+    }
+
+    updateSecondaryGroupSeparatorVisibility();
+    ensureAtLeastOneMetricEnabled();
+    refreshSwatchStates();
+
+    if (before != m_metricEnabled) {
+        emit enabledMetricsChanged(m_metricEnabled);
+    }
+}
+
 void TracesPanel::setMetricDataStates(const std::array<bool, kMetricCount> &hasData)
 {
     for (int i = 0; i < kMetricCount; ++i) {
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
-        if (!row) continue;
+        if (!row || !row->isVisible()) {
+            continue;
+        }
         const bool noData = !hasData[static_cast<std::size_t>(i)];
         if (row->property("noData").toBool() != noData) {
             row->setProperty("noData", noData);
@@ -267,20 +307,42 @@ void TracesPanel::onAnyMetricToggled()
 void TracesPanel::onSelectAllTraces()
 {
     for (int i = 0; i < kMetricCount; ++i) {
-        if (m_metricChecks[static_cast<std::size_t>(i)])
-            m_metricChecks[static_cast<std::size_t>(i)]->setChecked(true);
+        auto *row = m_traceRows[static_cast<std::size_t>(i)];
+        auto *cb = m_metricChecks[static_cast<std::size_t>(i)];
+        if (cb && row && row->isVisible()) {
+            cb->setChecked(true);
+        }
     }
 }
 
 void TracesPanel::onSelectNoneTraces()
 {
-    int firstEnabled = -1;
+    int keeper = -1;
     for (int i = 0; i < kMetricCount; ++i) {
-        if (m_metricEnabled[static_cast<std::size_t>(i)]) { firstEnabled = i; break; }
+        auto *row = m_traceRows[static_cast<std::size_t>(i)];
+        if (!row || !row->isVisible()) {
+            continue;
+        }
+        if (m_metricEnabled[static_cast<std::size_t>(i)]) {
+            keeper = i;
+            break;
+        }
+    }
+    if (keeper < 0) {
+        for (int i = 0; i < kMetricCount; ++i) {
+            auto *row = m_traceRows[static_cast<std::size_t>(i)];
+            if (row && row->isVisible()) {
+                keeper = i;
+                break;
+            }
+        }
     }
     for (int i = 0; i < kMetricCount; ++i) {
-        if (m_metricChecks[static_cast<std::size_t>(i)])
-            m_metricChecks[static_cast<std::size_t>(i)]->setChecked(i == firstEnabled);
+        auto *row = m_traceRows[static_cast<std::size_t>(i)];
+        auto *cb = m_metricChecks[static_cast<std::size_t>(i)];
+        if (cb && row && row->isVisible()) {
+            cb->setChecked(i == keeper);
+        }
     }
 }
 
@@ -300,12 +362,47 @@ void TracesPanel::syncCheckboxStatesFromFlags()
 void TracesPanel::ensureAtLeastOneMetricEnabled()
 {
     int n = 0;
-    for (int i = 0; i < kMetricCount; ++i)
-        if (m_metricEnabled[static_cast<std::size_t>(i)]) ++n;
-    if (n == 0) {
-        m_metricEnabled[0] = true;
+    int firstVisible = -1;
+    for (int i = 0; i < kMetricCount; ++i) {
+        auto *row = m_traceRows[static_cast<std::size_t>(i)];
+        if (!row || !row->isVisible()) {
+            continue;
+        }
+        if (firstVisible < 0) {
+            firstVisible = i;
+        }
+        if (m_metricEnabled[static_cast<std::size_t>(i)]) {
+            ++n;
+        }
+    }
+    if (n == 0 && firstVisible >= 0) {
+        m_metricEnabled[static_cast<std::size_t>(firstVisible)] = true;
         syncCheckboxStatesFromFlags();
     }
+}
+
+void TracesPanel::updateSecondaryGroupSeparatorVisibility()
+{
+    if (!m_secondaryGroupSeparator) {
+        return;
+    }
+    bool anyPrimary = false;
+    bool anySecondary = false;
+    for (int i = 0; i < kSecondaryGroupFirst; ++i) {
+        auto *row = m_traceRows[static_cast<std::size_t>(i)];
+        if (row && row->isVisible()) {
+            anyPrimary = true;
+            break;
+        }
+    }
+    for (int i = kSecondaryGroupFirst; i < kMetricCount; ++i) {
+        auto *row = m_traceRows[static_cast<std::size_t>(i)];
+        if (row && row->isVisible()) {
+            anySecondary = true;
+            break;
+        }
+    }
+    m_secondaryGroupSeparator->setVisible(anyPrimary && anySecondary);
 }
 
 void TracesPanel::refreshSwatchStates()

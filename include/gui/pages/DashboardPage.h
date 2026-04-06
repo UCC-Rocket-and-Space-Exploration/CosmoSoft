@@ -142,6 +142,7 @@ private:
     QPushButton  *m_zoomResetBtn          = nullptr;
     QToolButton  *m_showMarkersToggle     = nullptr;
     QToolButton  *m_showPointValuesToggle = nullptr;
+    QToolButton  *m_followToggle          = nullptr;
     QLabel       *m_chartStatsLabel       = nullptr;
 
     // ── Chart update coalescing ───────────────────────────────────────────────

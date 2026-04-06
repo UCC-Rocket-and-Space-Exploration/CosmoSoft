@@ -8,5 +8,5 @@ set(__QT_DEPLOY_TARGET_import_FILE /Users/hslyusar/Desktop/CosmoSoft/_b/src/serv
 set(__QT_DEPLOY_TARGET_import_TYPE STATIC_LIBRARY)
 set(__QT_DEPLOY_TARGET_gui_FILE /Users/hslyusar/Desktop/CosmoSoft/_b/src/gui/libgui.a)
 set(__QT_DEPLOY_TARGET_gui_TYPE STATIC_LIBRARY)
-set(__QT_DEPLOY_TARGET_cosmo-soft-bin_FILE /Users/hslyusar/Desktop/CosmoSoft/_b/src/cosmo-soft)
+set(__QT_DEPLOY_TARGET_cosmo-soft-bin_FILE /Users/hslyusar/Desktop/CosmoSoft/_b/cosmo-soft)
 set(__QT_DEPLOY_TARGET_cosmo-soft-bin_TYPE EXECUTABLE)

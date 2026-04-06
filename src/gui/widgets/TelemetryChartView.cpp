@@ -29,6 +29,9 @@ namespace {
 class ChartCrosshairOverlay : public QWidget {
 public:
     int crosshairX = -1;
+    int crosshairY = -1;
+    int snapX = -1, snapY = -1;
+    QColor snapColor;
 
     explicit ChartCrosshairOverlay(QWidget *parent) : QWidget(parent)
     {
@@ -40,11 +43,21 @@ public:
 protected:
     void paintEvent(QPaintEvent *) override
     {
-        if (crosshairX < 0) return;
+        if (crosshairX < 0 && crosshairY < 0) return;
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, false);
         p.setPen(QPen(QColor(255, 255, 255, 100), 1));
-        p.drawLine(crosshairX, 0, crosshairX, height());
+        if (crosshairX >= 0)
+            p.drawLine(crosshairX, 0, crosshairX, height());
+        if (crosshairY >= 0)
+            p.drawLine(0, crosshairY, width(), crosshairY);
+
+        if (snapX >= 0 && snapY >= 0 && snapColor.isValid()) {
+            p.setRenderHint(QPainter::Antialiasing, true);
+            p.setPen(QPen(snapColor.darker(130), 2));
+            p.setBrush(snapColor);
+            p.drawEllipse(QPoint(snapX, snapY), 5, 5);
+        }
     }
 };
 
@@ -186,20 +199,32 @@ void TelemetryChartView::wheelEvent(QWheelEvent *event)
     if (!plot.contains(ep)) { QChartView::wheelEvent(event); return; }
 
     auto *axX = qobject_cast<QValueAxis *>(m_chartPtr->axes(Qt::Horizontal).value(0));
-    auto *axY = qobject_cast<QValueAxis *>(m_chartPtr->axes(Qt::Vertical).value(0));
-    if (!axX || !axY) { QChartView::wheelEvent(event); return; }
+    if (!axX) { QChartView::wheelEvent(event); return; }
+
+    QList<QValueAxis *> yAxes;
+    for (auto *a : m_chartPtr->axes(Qt::Vertical)) {
+        auto *ya = qobject_cast<QValueAxis *>(a);
+        if (ya && ya->max() - ya->min() > 0.0) yAxes.append(ya);
+    }
+    if (yAxes.isEmpty()) { QChartView::wheelEvent(event); return; }
 
     const double spanX = axX->max() - axX->min();
-    const double spanY = axY->max() - axY->min();
-    if (spanX <= 0.0 || spanY <= 0.0) { event->accept(); return; }
+    if (spanX <= 0.0) { event->accept(); return; }
 
     double ax = axX->min() + std::clamp((ep.x() - plot.left()) / plot.width(), 0.0, 1.0) * spanX;
-    double ay = axY->min() + std::clamp((plot.bottom() - ep.y()) / plot.height(), 0.0, 1.0) * spanY;
-
     if (QLineSeries *ref = firstVisibleNonEmptyLineSeries(m_chartPtr)) {
         const QPointF v = m_chartPtr->mapToValue(m_chartPtr->mapFromScene(mapToScene(ep.toPoint())), ref);
-        ax = v.x(); ay = v.y();
+        ax = v.x();
     }
+    const double yFrac = std::clamp((plot.bottom() - ep.y()) / plot.height(), 0.0, 1.0);
+
+    auto zoomAllAtFocal = [&](double spanScale) {
+        zoomAxisAtFocal(axX, ax, spanScale);
+        for (auto *ya : yAxes) {
+            const double focal = ya->min() + yFrac * (ya->max() - ya->min());
+            zoomAxisAtFocal(ya, focal, spanScale);
+        }
+    };
 
     const QPoint pixelDelta = event->pixelDelta();
     const bool hasPixel     = (pixelDelta.x() != 0 || pixelDelta.y() != 0);
@@ -211,7 +236,7 @@ void TelemetryChartView::wheelEvent(QWheelEvent *event)
         double f = 1.0;
         for (int i = 0; i < std::abs(steps); ++i)
             f *= (steps > 0) ? 0.88 : (1.0 / 0.88);
-        zoomValueAxesAtFocal(axX, axY, ax, ay, f);
+        zoomAllAtFocal(f);
         if (onUserAdjustedAxes) onUserAdjustedAxes();
         event->accept();
     };
@@ -220,7 +245,7 @@ void TelemetryChartView::wheelEvent(QWheelEvent *event)
         if (pixelDelta.y() != 0) {
             double s = std::exp(-static_cast<double>(pixelDelta.y()) * 0.0021);
             s = std::clamp(s, 0.9, 1.11);
-            zoomValueAxesAtFocal(axX, axY, ax, ay, s);
+            zoomAllAtFocal(s);
             if (onUserAdjustedAxes) onUserAdjustedAxes();
             event->accept(); return;
         }
@@ -268,8 +293,12 @@ void TelemetryChartView::hideHoverOverlays()
 {
     if (m_hoverOverlay) m_hoverOverlay->hide();
     if (m_crosshairOverlay) {
-        static_cast<ChartCrosshairOverlay *>(m_crosshairOverlay)->crosshairX = -1;
-        m_crosshairOverlay->update();
+        auto *co = static_cast<ChartCrosshairOverlay *>(m_crosshairOverlay);
+        co->crosshairX = -1;
+        co->crosshairY = -1;
+        co->snapX = -1;
+        co->snapY = -1;
+        co->update();
     }
 }
 
@@ -288,38 +317,81 @@ void TelemetryChartView::panAxesByPixels(const QPoint &delta)
     const QRectF plot = m_chartPtr->plotArea();
     if (plot.width() <= 1.0 || plot.height() <= 1.0) return;
     auto *axX = qobject_cast<QValueAxis *>(m_chartPtr->axes(Qt::Horizontal).value(0));
-    auto *axY = qobject_cast<QValueAxis *>(m_chartPtr->axes(Qt::Vertical).value(0));
-    if (!axX || !axY) return;
+    if (!axX) return;
     const double dValX = static_cast<double>(delta.x()) * (axX->max() - axX->min()) / plot.width();
-    const double dValY = static_cast<double>(delta.y()) * (axY->max() - axY->min()) / plot.height();
     axX->setRange(axX->min() - dValX, axX->max() - dValX);
-    axY->setRange(axY->min() + dValY, axY->max() + dValY);
+    for (auto *a : m_chartPtr->axes(Qt::Vertical)) {
+        auto *ay = qobject_cast<QValueAxis *>(a);
+        if (!ay) continue;
+        const double dValY = static_cast<double>(delta.y()) * (ay->max() - ay->min()) / plot.height();
+        ay->setRange(ay->min() + dValY, ay->max() + dValY);
+    }
 }
 
-void TelemetryChartView::zoomValueAxesAtFocal(QValueAxis *axX, QValueAxis *axY,
-                                              double ax, double ay, double spanScale)
+void TelemetryChartView::zoomAxisAtFocal(QValueAxis *ax, double focal, double spanScale)
 {
-    axX->setRange(ax - (ax - axX->min()) * spanScale, ax + (axX->max() - ax) * spanScale);
-    axY->setRange(ay - (ay - axY->min()) * spanScale, ay + (axY->max() - ay) * spanScale);
+    ax->setRange(focal - (focal - ax->min()) * spanScale, focal + (ax->max() - focal) * spanScale);
 }
 
 void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
 {
     if (!m_chartPtr) return;
-    QLineSeries *ref = firstVisibleNonEmptyLineSeries(m_chartPtr);
-    if (!ref) {
+
+    QList<QLineSeries *> visibleSeries;
+    for (QAbstractSeries *s : m_chartPtr->series()) {
+        auto *ls = qobject_cast<QLineSeries *>(s);
+        if (ls && ls->isVisible() && !ls->points().isEmpty())
+            visibleSeries.append(ls);
+    }
+    if (visibleSeries.isEmpty()) {
         hideHoverOverlays();
         if (hoverReadout) hoverReadout(u"—"_s);
         return;
     }
+
+    QLineSeries *ref = visibleSeries.first();
     const QList<QPointF> pts = ref->points();
-    const QPointF scenePos   = mapToScene(widgetPos);
-    const QPointF chartPos   = m_chartPtr->mapFromScene(scenePos);
-    const QPointF plotVals   = m_chartPtr->mapToValue(chartPos, ref);
+    const QPointF scenePos = mapToScene(widgetPos);
+    const QPointF chartPos = m_chartPtr->mapFromScene(scenePos);
+    const QPointF plotVals = m_chartPtr->mapToValue(chartPos, ref);
     const int idx = nearestIndexByX(pts, plotVals.x());
     if (idx < 0) return;
 
     const QPointF &p = pts[idx];
+
+    // Find the visible series whose Y value is closest to the cursor at this X
+    QLineSeries *closestSeries = nullptr;
+    double closestDistSq = -1.0;
+    for (QLineSeries *ls : visibleSeries) {
+        const QList<QPointF> &sp = ls->points();
+        if (idx >= sp.size()) continue;
+        const QPointF cPt  = m_chartPtr->mapToPosition(sp[idx], ls);
+        const QPointF sPt  = m_chartPtr->mapToScene(cPt);
+        const QPointF vPt  = mapFromScene(sPt);
+        const double dx = vPt.x() - widgetPos.x();
+        const double dy = vPt.y() - widgetPos.y();
+        const double d  = dx * dx + dy * dy;
+        if (closestDistSq < 0.0 || d < closestDistSq) {
+            closestDistSq = d;
+            closestSeries = ls;
+        }
+    }
+    if (!closestSeries) closestSeries = ref;
+
+    int snapWidgetX = -1, snapWidgetY = -1;
+    QColor snapCol;
+    {
+        const QList<QPointF> &sp = closestSeries->points();
+        if (idx < sp.size()) {
+            const QPointF cPt = m_chartPtr->mapToPosition(sp[idx], closestSeries);
+            const QPointF sPt = m_chartPtr->mapToScene(cPt);
+            const QPointF vPt = mapFromScene(sPt);
+            snapWidgetX = static_cast<int>(std::round(vPt.x()));
+            snapWidgetY = static_cast<int>(std::round(vPt.y()));
+            snapCol = closestSeries->color();
+        }
+    }
+
     QString text;
     if (hoverDetail)
         text = hoverDetail(p.x(), idx + 1, pts.size());
@@ -329,8 +401,13 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
     if (hoverReadout) hoverReadout(text);
 
     if (m_crosshairOverlay) {
-        static_cast<ChartCrosshairOverlay *>(m_crosshairOverlay)->crosshairX = widgetPos.x();
-        m_crosshairOverlay->update();
+        auto *co = static_cast<ChartCrosshairOverlay *>(m_crosshairOverlay);
+        co->crosshairX = widgetPos.x();
+        co->crosshairY = snapWidgetY;
+        co->snapX = snapWidgetX;
+        co->snapY = snapWidgetY;
+        co->snapColor = snapCol;
+        co->update();
     }
 
     if (m_hoverOverlay && !text.isEmpty()) {

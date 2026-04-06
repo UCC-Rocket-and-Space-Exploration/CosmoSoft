@@ -55,12 +55,19 @@ inline QString metricTraceShortName(int idx)
 /** Accent color for metric @p idx. */
 inline QColor metricColor(int idx)
 {
-    static const QColor colors[] = {
-        QColor("#5b9bd5"), QColor("#70c1a5"), QColor("#f0b429"), QColor("#c084fc"),
-        QColor("#7dd36f"), QColor("#67b8ff"), QColor("#ff9f6b"), QColor("#8ec5ff"),
-        QColor("#f5a3b8"),
+    static const QColor colors[kMetricCount] = {
+        QColor("#5b9bd5"), // 0 Alt   – steel blue
+        QColor("#70c1a5"), // 1 Temp  – teal green
+        QColor("#f0b429"), // 2 Press – amber
+        QColor("#c084fc"), // 3 |a|   – purple
+        QColor("#e05252"), // 4 Batt  – red
+        QColor("#ff9f6b"), // 5 RSSI  – orange
+        QColor("#f472b6"), // 6 |ω|   – pink
+        QColor("#a3e635"), // 7 Lat   – lime green
+        QColor("#F8DE22"), // 8 Lon   – yellow
     };
-    return colors[(idx + kMetricCount * 10) % kMetricCount];
+    if (idx < 0 || idx >= kMetricCount) return {};
+    return colors[idx];
 }
 
 /** Extracts the scalar value for metric @p idx from a sample. */
