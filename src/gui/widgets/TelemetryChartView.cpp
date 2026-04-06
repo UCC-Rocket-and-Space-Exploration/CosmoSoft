@@ -116,7 +116,7 @@ TelemetryChartView::TelemetryChartView(QChart *c, QWidget *parent)
     // Floating text overlay — positioned near cursor, hidden by default.
     m_hoverOverlay = new QLabel(viewport());
     m_hoverOverlay->setWordWrap(true);
-    m_hoverOverlay->setMaximumWidth(300);
+    m_hoverOverlay->setMaximumWidth(420);
     m_hoverOverlay->setStyleSheet(
         u"background-color: rgba(10,11,14,220);"
         u"color: #c8d4e0;"
