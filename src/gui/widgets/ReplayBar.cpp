@@ -279,8 +279,9 @@ void ReplayBar::buildUi()
             background: #282a30;
             border: 1px solid #3b3b45;
             border-radius: 4px;
-            padding: 2px 4px;
-            min-width: 22px; min-height: 22px;
+            padding: 2px;
+            min-width: 26px; max-width: 26px;
+            min-height: 26px; max-height: 26px;
             color: #c8d4e0;
         }
         QToolButton#replayTransportBtn:hover, QToolButton#replaySkipBtn:hover {
@@ -293,8 +294,9 @@ void ReplayBar::buildUi()
             background: #2a3545;
             border: 1px solid #3b5070;
             border-radius: 4px;
-            padding: 2px 6px;
-            min-width: 26px; min-height: 26px;
+            padding: 2px;
+            min-width: 28px; max-width: 28px;
+            min-height: 28px; max-height: 28px;
             color: #c8d4e0;
         }
         QToolButton#replayPlayPauseBtn:hover { background: #344060; border-color: #5b7090; }
@@ -330,12 +332,12 @@ void ReplayBar::buildUi()
     };
 
     m_jumpStartBtn = new QToolButton(this);
-    setupBtn(m_jumpStartBtn, u"replaySkipBtn"_s, QSize(14, 14));
+    setupBtn(m_jumpStartBtn, u"replaySkipBtn"_s, QSize(16, 16));
     m_jumpStartBtn->setToolTip(u"Jump to start  [Home key]"_s);
     m_jumpStartBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipBackward));
 
     m_stepBackBtn = new QToolButton(this);
-    setupBtn(m_stepBackBtn, u"replaySkipBtn"_s, QSize(14, 14));
+    setupBtn(m_stepBackBtn, u"replaySkipBtn"_s, QSize(16, 16));
     m_stepBackBtn->setToolTip(u"Step back one sample  [← key]"_s);
     m_stepBackBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSeekBackward));
 
@@ -349,17 +351,17 @@ void ReplayBar::buildUi()
     m_playPauseBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
 
     m_stepFwdBtn = new QToolButton(this);
-    setupBtn(m_stepFwdBtn, u"replaySkipBtn"_s, QSize(14, 14));
+    setupBtn(m_stepFwdBtn, u"replaySkipBtn"_s, QSize(16, 16));
     m_stepFwdBtn->setToolTip(u"Step forward one sample  [→ key]"_s);
     m_stepFwdBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSeekForward));
 
     m_jumpEndBtn = new QToolButton(this);
-    setupBtn(m_jumpEndBtn, u"replaySkipBtn"_s, QSize(14, 14));
+    setupBtn(m_jumpEndBtn, u"replaySkipBtn"_s, QSize(16, 16));
     m_jumpEndBtn->setToolTip(u"Jump to end  [End key]"_s);
     m_jumpEndBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
 
     m_stopBtn = new QToolButton(this);
-    setupBtn(m_stopBtn, u"replayTransportBtn"_s, QSize(14, 14));
+    setupBtn(m_stopBtn, u"replayTransportBtn"_s, QSize(16, 16));
     m_stopBtn->setToolTip(u"Stop replay and reset position"_s);
     m_stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
 

@@ -263,7 +263,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         QToolButton#chartToggleBtn {
             border: 1px solid #5a5d68;
             border-radius: 4px;
-            padding: 5px 12px;
+            padding: 4px 10px;
+            min-height: 28px;
             background-color: #2a2d34;
             color: #b8c4d0;
             font-size: 11px;
@@ -283,8 +284,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             border-color: #6a9ad0;
         }
         QPushButton#chartZoomBtn {
-            min-width: 30px;
-            max-width: 30px;
+            min-width: 28px;
+            max-width: 28px;
             min-height: 28px;
             max-height: 28px;
             padding: 0px;
@@ -325,19 +326,28 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         QPushButton#chartToolbarBtn {
             border: 1px solid #6a6a6a;
             border-radius: 4px;
-            padding: 6px 12px;
+            padding: 4px 10px;
+            min-height: 28px;
             background-color: #3d3f47;
             color: #f0f0f0;
+            font-size: 11px;
+        }
+        QPushButton#chartToolbarBtn:hover {
+            background-color: #4a4d56;
+            border-color: #7a7a82;
+        }
+        QPushButton#chartToolbarBtn:pressed {
+            background-color: #2e3038;
         }
         QToolButton#chartHelpBtn {
             font-weight: 700;
             font-size: 13px;
-            min-width: 22px;
-            max-width: 22px;
-            min-height: 22px;
-            max-height: 22px;
+            min-width: 28px;
+            max-width: 28px;
+            min-height: 28px;
+            max-height: 28px;
             border: 1px solid #5a5d68;
-            border-radius: 11px;
+            border-radius: 14px;
             background: #2a2d34;
             color: #7a8796;
             padding: 0px;

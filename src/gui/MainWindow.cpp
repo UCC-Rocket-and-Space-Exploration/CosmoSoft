@@ -499,11 +499,12 @@ void MainWindow::setupConnectionBar() {
         QWidget#connectionStrip QPushButton {
             border: 1px solid #6a6a6a;
             border-radius: 4px;
-            padding: 5px 12px;
+            padding: 4px 10px;
+            min-height: 28px;
             background-color: #3d3f47;
             color: #f0f0f0;
             font-family: "Red Hat Mono", "Courier New", monospace;
-            font-size: 12px;
+            font-size: 11px;
         }
         QWidget#connectionStrip QPushButton:hover { background-color: #4d4f57; }
         QWidget#connectionStrip QPushButton:pressed { background-color: #2d2f37; }

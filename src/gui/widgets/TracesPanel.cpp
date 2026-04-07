@@ -69,15 +69,16 @@ TracesPanel::TracesPanel(QWidget *parent)
             letter-spacing: 1.5px;
         }
         QPushButton#tracesAllNoneBtn {
-            font-size: 9px;
+            font-size: 10px;
             font-family: "Red Hat Mono", "Courier New", monospace;
             color: #7a8898;
             background: transparent;
             border: 1px solid #3b3b45;
-            border-radius: 3px;
-            padding: 1px 4px;
+            border-radius: 4px;
+            padding: 3px 8px;
+            min-height: 22px;
         }
-        QPushButton#tracesAllNoneBtn:hover { color: #c8d4e0; border-color: #6a7080; }
+        QPushButton#tracesAllNoneBtn:hover { color: #c8d4e0; border-color: #6a7080; background: rgba(255,255,255,0.04); }
         QFrame#traceSeparator { background-color: #3b3b45; border: none; }
         QFrame#traceRow {
             background-color: transparent;

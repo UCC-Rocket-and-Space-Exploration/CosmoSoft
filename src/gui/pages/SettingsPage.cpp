@@ -150,17 +150,19 @@ void SettingsPage::buildUi() {
             height: 18px;
         }
         QPushButton {
-            border: 2px solid #cfcfcf;
+            border: 1px solid #6a6a6a;
             border-radius: 4px;
-            padding: 6px 14px;
-            background-color: #4d4f57;
+            padding: 4px 10px;
+            min-height: 28px;
+            background-color: #3d3f47;
             color: #f0f0f0;
+            font-size: 11px;
         }
         QPushButton:hover {
-            background-color: #5c5e66;
+            background-color: #4d4f57;
         }
         QPushButton:pressed {
-            background-color: #3d3f47;
+            background-color: #2d2f37;
         }
         QScrollBar:vertical {
             background: #2a2a2a;
