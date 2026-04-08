@@ -13,6 +13,7 @@ add_subdirectory(services/flight)
 add_subdirectory(services/persistence)
 add_subdirectory(services/telemetry)
 add_subdirectory(gui)
+#add_subdirectory(tests)
 
 add_executable(cosmo-soft-bin
     main.cpp

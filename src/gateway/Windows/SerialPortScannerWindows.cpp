@@ -11,7 +11,7 @@ std::vector<std::string> SerialPortScannerWindows::enumeratePorts() {
     const char* subKey = "HARDWARE\\DEVICEMAP\\SERIALCOMM";
 
     if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, subKey, 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
-        throw "Failed to open key";
+        throw "Failed to open key SERIALCOMM";
     }
     DWORD index = 0;
     char valueName[256];
@@ -31,13 +31,10 @@ std::vector<std::string> SerialPortScannerWindows::enumeratePorts() {
             data,
             &dataSize
         );
-        if (result == ERROR_NO_MORE_ITEMS)
-            break;
         if (result == ERROR_SUCCESS) {
             ports.push_back((char*)data);
         }
         else {
-            RegCloseKey(hKey);
             break;
         }
         index++;

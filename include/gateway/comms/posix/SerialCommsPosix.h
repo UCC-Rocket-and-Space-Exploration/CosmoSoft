@@ -30,3 +30,8 @@ private:
 
 #endif //POSIX CHECK
 #endif //COSMO_SOFT_SERIALCOMMSPOSIX_H
+
+//storage on flight comp filled up
+//Telemetry loss on launch
+//Avionix bay missized
+
