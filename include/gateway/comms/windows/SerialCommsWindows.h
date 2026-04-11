@@ -21,7 +21,7 @@ public:
     [[nodiscard]] std::string getDeviceName() const override;
     SerialCommsWindows(std::string& device, int baud);
 private:
-    HANDLE m_config_handle;
+    HANDLE m_handle;
     const std::string& m_device;
     int m_baud;
 };
