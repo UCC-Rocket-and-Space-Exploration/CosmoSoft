@@ -1,20 +1,43 @@
 #include "gui/MainWindow.h"
-#include "gui/pages/MonitoringPage.h"   // Live telemetry overview.
-#include "gui/pages/SettingsPage.h"       // Settings dialog decoupled from the stacked widget.
+
+#include "domain/FlightSample.h"
+#include "domain/FlightSession.h"
+#include "gateway/comms/CommsFactory.h"
+#include "gateway/comms/ISerialPortScanner.h"
+#include "gateway/comms/SerialPortScannerFactory.h"
+#include "gui/FlightDataModel.h"
+#include "gui/FlightReplayController.h"
+#include "gui/pages/DashboardPage.h"
+#include "gui/pages/MonitoringPage.h"
+#include "gui/pages/SettingsPage.h"
+#include "services/comms/SerialWorker.h"
+#include "services/import/SampleFileLoader.h"
+#include "services/telemetry/Framer.h"
+#include "services/telemetry/Parser.h"
+#include "services/telemetry/ParserWorker.h"
+
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QComboBox>
 #include <QDateTime>
+#include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QFutureWatcher>
+#include <QMessageBox>
 #include <QFont>
+#include <QProgressDialog>
+#include <QPushButton>
+#include <QSettings>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
-#include <QSize>
+#include <QMetaObject>
 #include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStatusBar>
-#include <QtGlobal>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
@@ -22,18 +45,83 @@
 #include <QVariant>
 #include <QWidget>
 
-class QString;
+#include <QtConcurrent/QtConcurrentRun>
+
+#include <optional>
+
 using namespace Qt::StringLiterals;
 
-// Entry point for the GUI shell; constructs the basic chrome and loads placeholder pages.
-MainWindow::MainWindow(QWidget *parent): QMainWindow(parent) {
-    setWindowTitle(u"CosmoSoft"_s);                                        // Title bar text so the window is identifiable.
-    setWindowIcon(QIcon(":/images/Logo_rounded.png"));                            // Use the rounded logo bundled in resources.qrc.
-    setupActions();                                                               // Prepare navigation commands first.
-    setupToolbar();                                          // Install the toolbar directly under the title bar.
-    setupDataBar();                                         // Build the telemetry strip that sits under the toolbar.
-    setupPages();                                            // Fill the central widget with placeholder pages.
-    statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s); // Friendly status message on boot.
+namespace {
+
+struct FlightLogLoadResult {
+    std::optional<std::string> error;
+    FlightSession session;
+};
+
+[[nodiscard]] FlightLogLoadResult loadFlightLogAtPath(const QString &path) {
+    FlightLogLoadResult r;
+    if (path.endsWith(u".telem", Qt::CaseInsensitive)) {
+        Framer framer;
+        Parser parser;
+        r.error = SampleFileLoader::loadTelemFile(path.toStdString(), r.session, framer, parser);
+    } else {
+        r.error = SampleFileLoader::loadTheseusCsv(path.toStdString(), r.session);
+    }
+    return r;
+}
+
+} // namespace
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent),
+      m_flightModel(std::make_unique<FlightDataModel>(this)),
+      m_replay(std::make_unique<FlightReplayController>(this)) {
+    setWindowTitle(u"CosmoSoft"_s);
+    setWindowIcon(QIcon(u":/images/Logo_rounded.png"_s));
+
+    setupActions();
+    setupToolbar();
+    setupDataBar();
+    setupPages();
+    refreshSerialPorts();
+
+    connect(m_replay.get(), &FlightReplayController::positionChanged, this, &MainWindow::onReplayPositionChanged);
+
+    m_replayTelemetryCoalesceTimer = new QTimer(this);
+    m_replayTelemetryCoalesceTimer->setSingleShot(true);
+    m_replayTelemetryCoalesceTimer->setInterval(50);
+    connect(m_replayTelemetryCoalesceTimer, &QTimer::timeout, this, &MainWindow::applyPendingReplayTelemetryStrip);
+
+    const auto flushReplayTelemetryStrip = [this]() {
+        if (m_replayTelemetryCoalesceTimer) {
+            m_replayTelemetryCoalesceTimer->stop();
+        }
+        const int idx = m_replay ? m_replay->index() : 0;
+        if (idx <= 0) {
+            m_flightModel->setDisplayedSample(FlightSample{});
+            syncTelemetryStrip();
+        } else {
+            applyReplayTelemetrySample(idx);
+        }
+    };
+    connect(m_replay.get(), &FlightReplayController::playbackPaused, this, flushReplayTelemetryStrip);
+    connect(m_replay.get(), &FlightReplayController::playbackStopped, this, flushReplayTelemetryStrip);
+    connect(m_replay.get(), &FlightReplayController::playbackFinished, this, flushReplayTelemetryStrip);
+
+    m_dataRateTimer = new QTimer(this);
+    m_dataRateTimer->setInterval(1000);
+    connect(m_dataRateTimer, &QTimer::timeout, this, &MainWindow::updateDataRateLabel);
+    m_dataRateTimer->start();
+
+    statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s);
+
+    if (const auto geom = QSettings{}.value(u"window/mainGeometry"_s).toByteArray(); !geom.isEmpty())
+        restoreGeometry(geom);
+}
+
+MainWindow::~MainWindow() {
+    QSettings{}.setValue(u"window/mainGeometry"_s, saveGeometry());
+    stopSerial();
 }
 
 void MainWindow::showStatusMessage(const QString &message, int timeout) {
@@ -42,11 +130,16 @@ void MainWindow::showStatusMessage(const QString &message, int timeout) {
     }
 }
 
-void MainWindow::setupActions() {
+void MainWindow::onParserError(const QString &message) {
+    showStatusMessage(message, 5000);
+}
 
-    // Actions encapsulate the intent behind toolbar/menu buttons.
+void MainWindow::setupActions() {
     m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
     m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
+
+    m_showFlightDataAction = new QAction(u"Flight data"_s, this);
+    m_showFlightDataAction->setToolTip(u"Switch to flight data and charts."_s);
 
     QIcon settingsIcon;
     settingsIcon.addFile(u":/icons/settings_button.png"_s, QSize(), QIcon::Normal, QIcon::Off);
@@ -55,20 +148,22 @@ void MainWindow::setupActions() {
     m_openSettingsAction->setToolTip(u"Open the settings window."_s);
     m_openSettingsAction->setCheckable(true);
 
-    // Each action simply points the stacked widget at the matching page.
     connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_monitoringPage);
+        updateTopBarsForCurrentPage();
         statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
     });
 
-    connect(m_openSettingsAction, &QAction::triggered, this, [this]() {
-        openSettingsWindow();
+    connect(m_showFlightDataAction, &QAction::triggered, this, [this]() {
+        m_pages->setCurrentWidget(m_flightDataPage);
+        updateTopBarsForCurrentPage();
+        statusBar()->showMessage(u"Flight data page selected."_s, 2000);
     });
+
+    connect(m_openSettingsAction, &QAction::triggered, this, [this]() { openSettingsWindow(); });
 }
 
 void MainWindow::setupToolbar() {
-    // QToolBar integrates directly with QMainWindow, so new users get docking,
-    // layout management, and keyboard shortcuts “for free” without manual layout work.
     auto *toolbar = new QToolBar(u"Mission Toolbar"_s, this);
     toolbar->setObjectName(u"missionToolbar"_s);
     toolbar->setMovable(false);
@@ -97,6 +192,14 @@ void MainWindow::setupToolbar() {
         QWidget#brandBlock QLabel#missionMeta {
             font-size: 14px;
             color: #dadada;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+        }
+
+        QLabel#missionPageTitle {
+            font-size: 15px;
+            font-weight: 600;
+            color: #c8c8c8;
+            letter-spacing: 2px;
             font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
         }
 
@@ -145,8 +248,7 @@ void MainWindow::setupToolbar() {
     )"_s);
     addToolBar(Qt::TopToolBarArea, toolbar);
 
-    // TEXT SHADOWS.
-    QGraphicsDropShadowEffect* text_shadow = new QGraphicsDropShadowEffect(this);
+    auto *text_shadow = new QGraphicsDropShadowEffect(this);
     text_shadow->setBlurRadius(5);
     text_shadow->setColor(QColor(0, 0, 0, 160));
     text_shadow->setOffset(1, 1);
@@ -157,7 +259,6 @@ void MainWindow::setupToolbar() {
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(24);
 
-    // Group the logo/mission labels inside their own QWidget so the stylesheet can target them easily.
     auto *brandBlock = new QWidget(content);
     brandBlock->setObjectName(u"brandBlock"_s);
     brandBlock->setGraphicsEffect(text_shadow);
@@ -167,7 +268,6 @@ void MainWindow::setupToolbar() {
     auto *brandLabel = new QLabel(u"Cosmo<span style=\"color:#000000\">Soft</span>"_s, brandBlock);
     brandLabel->setObjectName(u"brandLabel"_s);
     brandLabel->setTextFormat(Qt::RichText);
-    // Fonts are registered in main.cpp; expose the resolved family via qApp so we don’t need global singletons.
     const QVariant workbenchFamily = qApp->property("workbenchFontFamily");
     if (workbenchFamily.isValid()) {
         QFont brandFont = brandLabel->font();
@@ -178,36 +278,40 @@ void MainWindow::setupToolbar() {
     }
     brandLayout->addWidget(brandLabel);
 
-    // Mission meta line: show the live UTC clock so UI feels tethered to ground ops.
     m_missionMetaLabel = new QLabel(u"GMT: --:--:-- | -- --- ----"_s, brandBlock);
     m_missionMetaLabel->setObjectName(u"missionMeta"_s);
     m_missionMetaLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     brandLayout->addWidget(m_missionMetaLabel);
     contentLayout->addWidget(brandBlock);
 
-    updateMissionClock();  // Seed immediately so the label never shows placeholder data.
+    m_toolbarPageLabel = new QLabel(u"Monitoring"_s, content);
+    m_toolbarPageLabel->setObjectName(u"missionPageTitle"_s);
+    contentLayout->addWidget(m_toolbarPageLabel);
+    contentLayout->addSpacing(8);
+
+    updateMissionClock();
     if (!m_missionClockTimer) {
         m_missionClockTimer = new QTimer(this);
-        m_missionClockTimer->setInterval(1000);  // Update every second to keep HH:mm:ss accurate.
+        m_missionClockTimer->setInterval(1000);
         connect(m_missionClockTimer, &QTimer::timeout, this, &MainWindow::updateMissionClock);
         m_missionClockTimer->start();
     }
 
     contentLayout->addStretch(1);
 
-    // QActionGroup locks the nav buttons into a radio-group so only one destination can be “checked” at a time.
     auto *navGroup = new QActionGroup(this);
     navGroup->setExclusive(true);
     m_showMonitoringAction->setCheckable(true);
+    m_showFlightDataAction->setCheckable(true);
     navGroup->addAction(m_showMonitoringAction);
+    navGroup->addAction(m_showFlightDataAction);
     m_showMonitoringAction->setChecked(true);
 
-    // Helper to wrap each QAction inside a QToolButton; QMainWindow handles shortcuts/enable state automatically.
     auto makeNavButton = [](QAction *action,
-            QWidget *parent,
-            Qt::ToolButtonStyle style = Qt::ToolButtonTextOnly,
-            QString kind = u"navButton"_s,
-            QSize iconSize = QSize()) {
+                          QWidget *parent,
+                          Qt::ToolButtonStyle style = Qt::ToolButtonTextOnly,
+                          const QString &kind = u"navButton"_s,
+                          const QSize &iconSize = QSize()) {
         auto *button = new QToolButton(parent);
         button->setProperty("kind", kind);
         button->setAutoRaise(false);
@@ -226,6 +330,7 @@ void MainWindow::setupToolbar() {
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(12);
     navLayout->addWidget(makeNavButton(m_showMonitoringAction, navContainer));
+    navLayout->addWidget(makeNavButton(m_showFlightDataAction, navContainer));
     navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
 
     contentLayout->addWidget(navContainer);
@@ -235,7 +340,7 @@ void MainWindow::setupToolbar() {
 
 void MainWindow::setupDataBar() {
     if (m_dataBar) {
-        return; // Nothing to do if we've already built it.
+        return;
     }
 
     m_dataBar = new QWidget(this);
@@ -254,7 +359,11 @@ void MainWindow::setupDataBar() {
         return label;
     };
 
-    m_dataLinkStatusLabel = buildBadgeLabel(u"DATA BAR. MAYBE... in future"_s, m_dataBar);
+    m_dataStripPageLabel = buildBadgeLabel(u"Monitoring"_s, m_dataBar);
+    m_dataStripPageLabel->setObjectName(u"telemetryStripPage"_s);
+    m_dataLinkStatusLabel = buildBadgeLabel(u"LINK: idle"_s, m_dataBar);
+    m_dataRateLabel = buildBadgeLabel(u"RATE: -- B/s"_s, m_dataBar);
+    dataLayout->addWidget(m_dataStripPageLabel);
     dataLayout->addWidget(m_dataLinkStatusLabel);
     dataLayout->addWidget(m_dataRateLabel);
     dataLayout->addStretch(1);
@@ -267,6 +376,14 @@ void MainWindow::setupDataBar() {
             border-bottom: 1px solid rgba(0, 0, 0, 0.7);
         }
 
+        QWidget#telemetryStrip QLabel#telemetryStripPage {
+            font-size: 11px;
+            color: #8fa0b0;
+            letter-spacing: 3px;
+            font-weight: 600;
+            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+        }
+
         QWidget#telemetryStrip QLabel#telemetryBadge {
             font-size: 12px;
             color: #f7f7f7;
@@ -276,28 +393,248 @@ void MainWindow::setupDataBar() {
     )"_s);
 }
 
+void MainWindow::setupConnectionBar() {
+    if (m_connectionBar) {
+        return;
+    }
+
+    m_connectionBar = new QWidget(this);
+    m_connectionBar->setObjectName(u"connectionStrip"_s);
+    m_connectionBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    auto *row = new QHBoxLayout(m_connectionBar);
+    row->setContentsMargins(16, 8, 16, 8);
+    row->setSpacing(12);
+
+    m_connectionPageLabel = new QLabel(m_connectionBar);
+    m_connectionPageLabel->setObjectName(u"connectionStripContext"_s);
+    m_connectionPageLabel->setWordWrap(false);
+    m_connectionPageLabel->setMinimumWidth(200);
+    m_connectionPageLabel->setStyleSheet(
+        u"color: #9aa7b8; font-size: 12px; font-family: \"Red Hat Mono\", monospace;"_s);
+
+    m_serialControlBlock = new QWidget(m_connectionBar);
+    auto *serialRow = new QHBoxLayout(m_serialControlBlock);
+    serialRow->setContentsMargins(0, 0, 0, 0);
+    serialRow->setSpacing(12);
+
+    auto *portLabel = new QLabel(u"Port"_s, m_serialControlBlock);
+    portLabel->setStyleSheet(u"color: #c8c8c8; font-family: \"Red Hat Mono\", monospace;"_s);
+    m_portCombo = new QComboBox(m_serialControlBlock);
+    m_portCombo->setEditable(true);
+    m_portCombo->setMinimumWidth(200);
+    m_portCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+
+    auto *baudLabel = new QLabel(u"Baud"_s, m_serialControlBlock);
+    baudLabel->setStyleSheet(portLabel->styleSheet());
+    m_baudCombo = new QComboBox(m_serialControlBlock);
+    const QList<int> bauds = {9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
+    for (int b : bauds) {
+        m_baudCombo->addItem(QString::number(b), b);
+    }
+    m_baudCombo->setCurrentIndex(4);
+
+    auto *refreshBtn = new QPushButton(u"Refresh"_s, m_serialControlBlock);
+    auto *connectBtn = new QPushButton(u"Connect"_s, m_serialControlBlock);
+    auto *disconnectBtn = new QPushButton(u"Disconnect"_s, m_serialControlBlock);
+    serialRow->addWidget(portLabel);
+    serialRow->addWidget(m_portCombo);
+    serialRow->addWidget(baudLabel);
+    serialRow->addWidget(m_baudCombo);
+    serialRow->addWidget(refreshBtn);
+    serialRow->addWidget(connectBtn);
+    serialRow->addWidget(disconnectBtn);
+
+    auto *openLogBtn = new QPushButton(u"Open log…"_s, m_connectionBar);
+    auto *clearFlightBtn = new QPushButton(u"Clear flight"_s, m_connectionBar);
+
+    row->addWidget(m_connectionPageLabel);
+    row->addWidget(m_serialControlBlock);
+    row->addSpacing(12);
+    row->addWidget(openLogBtn);
+    row->addWidget(clearFlightBtn);
+    row->addStretch(1);
+
+    connect(refreshBtn, &QPushButton::clicked, this, &MainWindow::refreshSerialPorts);
+    connect(connectBtn, &QPushButton::clicked, this, [this]() {
+        persistSerialPrefs();
+        const QString port = m_portCombo ? m_portCombo->currentText().trimmed() : QString{};
+        int baud = 115200;
+        if (m_baudCombo) {
+            baud = m_baudCombo->currentData().toInt();
+            if (baud <= 0) {
+                baud = m_baudCombo->currentText().toInt();
+            }
+            if (baud <= 0) {
+                baud = 115200;
+            }
+        }
+        startSerial(port, baud);
+    });
+    connect(disconnectBtn, &QPushButton::clicked, this, &MainWindow::stopSerial);
+    connect(openLogBtn, &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
+    connect(clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
+
+    m_connectionBar->setStyleSheet(uR"(
+        QWidget#connectionStrip {
+            background: rgba(34, 34, 34, 0.98);
+            color: #f0f0f0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        QWidget#connectionStrip QComboBox {
+            background-color: #1a1a1a;
+            color: #f5f5f5;
+            border: 1px solid #4d4d4d;
+            border-radius: 4px;
+            padding: 4px 8px;
+            min-height: 22px;
+            font-family: "Red Hat Mono", "Courier New", monospace;
+        }
+        QWidget#connectionStrip QComboBox::drop-down { border: none; width: 22px; }
+        QWidget#connectionStrip QComboBox QAbstractItemView {
+            background-color: #2b2d33;
+            color: #f5f5f5;
+            selection-background-color: #4b4b4b;
+        }
+        QWidget#connectionStrip QPushButton {
+            border: 1px solid #6a6a6a;
+            border-radius: 4px;
+            padding: 4px 10px;
+            min-height: 28px;
+            background-color: #3d3f47;
+            color: #f0f0f0;
+            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-size: 11px;
+        }
+        QWidget#connectionStrip QPushButton:hover { background-color: #4d4f57; }
+        QWidget#connectionStrip QPushButton:pressed { background-color: #2d2f37; }
+    )"_s);
+
+    loadSerialPrefsToUi();
+}
+
+void MainWindow::loadSerialPrefsToUi() {
+    QSettings s(u"CosmoSoft"_s, u"cosmo-soft"_s);
+    const QString port = s.value(u"serial/port"_s).toString();
+    if (m_portCombo && !port.isEmpty()) {
+        const int idx = m_portCombo->findText(port);
+        if (idx >= 0) {
+            m_portCombo->setCurrentIndex(idx);
+        } else {
+            m_portCombo->setCurrentText(port);
+        }
+    }
+    if (m_baudCombo) {
+        const QString baudStr = s.value(u"serial/baud"_s, u"115200"_s).toString();
+        const int idx = m_baudCombo->findText(baudStr);
+        if (idx >= 0) {
+            m_baudCombo->setCurrentIndex(idx);
+        } else {
+            m_baudCombo->setCurrentText(baudStr);
+        }
+    }
+}
+
+void MainWindow::persistSerialPrefs() {
+    if (!m_portCombo || !m_baudCombo) {
+        return;
+    }
+    QSettings s(u"CosmoSoft"_s, u"cosmo-soft"_s);
+    s.setValue(u"serial/port"_s, m_portCombo->currentText().trimmed());
+    s.setValue(u"serial/baud"_s, m_baudCombo->currentText());
+}
+
 void MainWindow::setupPages() {
-    // QStackedWidget is the Qt6 “page router”: we add each QWidget once and flip between them with setCurrentWidget().
     auto *central = new QWidget(this);
     auto *centralLayout = new QVBoxLayout(central);
     centralLayout->setContentsMargins(0, 0, 0, 0);
     centralLayout->setSpacing(0);
 
+    setupConnectionBar();
+    if (m_connectionBar) {
+        centralLayout->addWidget(m_connectionBar);
+    }
+
     if (!m_dataBar) {
-        setupDataBar();  // Ensure strip exists before wiring layout.
+        setupDataBar();
     }
     if (m_dataBar) {
         centralLayout->addWidget(m_dataBar);
     }
 
-    m_pages = new QStackedWidget(central);                 // Central stacked widget lives inside MainWindow.
-    centralLayout->addWidget(m_pages, /*stretch=*/1);
+    m_pages = new QStackedWidget(central);
+    centralLayout->addWidget(m_pages, 1);
     setCentralWidget(central);
 
-    // Each page lives in its own QWidget subclass so logic stays modular.
-    m_monitoringPage = new MonitoringPage(this);
+    m_monitoringPage = new MonitoringPage(this, m_flightModel.get());
+    m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_monitoringPage);
-    m_pages->setCurrentWidget(m_monitoringPage);          // Default landing page.
+    m_pages->addWidget(m_flightDataPage);
+    m_pages->setCurrentWidget(m_monitoringPage);
+
+    connect(m_pages, &QStackedWidget::currentChanged, this, [this](int) {
+        updateTopBarsForCurrentPage();
+    });
+    connect(m_flightModel.get(), &FlightDataModel::replayModeChanged, this, [this](bool) {
+        syncTelemetryStrip();
+    });
+
+    updateTopBarsForCurrentPage();
+}
+
+bool MainWindow::isMonitoringPageActive() const {
+    return m_pages && m_pages->currentWidget() == m_monitoringPage;
+}
+
+void MainWindow::updateTopBarsForCurrentPage() {
+    const bool monitoring = isMonitoringPageActive();
+    if (m_toolbarPageLabel) {
+        m_toolbarPageLabel->setText(monitoring ? u"Monitoring"_s : u"Flight data"_s);
+    }
+    if (m_connectionPageLabel) {
+        m_connectionPageLabel->setText(
+            monitoring ? u"Serial — port, baud, Connect. Flight logs — Open log…"_s
+                       : u"Replay — Open log… or Clear flight. Serial controls are on Monitoring."_s);
+    }
+    if (m_serialControlBlock) {
+        m_serialControlBlock->setVisible(monitoring);
+    }
+    if (m_flightModel) {
+        m_prevBytesForRate = m_flightModel->totalBytesReceived();
+    }
+    syncTelemetryStrip();
+    updateDataRateLabel();
+}
+
+void MainWindow::syncTelemetryStrip() {
+    if (!m_dataStripPageLabel || !m_dataLinkStatusLabel || !m_dataRateLabel || !m_flightModel) {
+        return;
+    }
+    if (isMonitoringPageActive()) {
+        m_dataStripPageLabel->setText(u"MONITORING"_s);
+        if (m_serialPortSummary.isEmpty()) {
+            m_dataLinkStatusLabel->setText(u"LINK: idle"_s);
+        } else {
+            m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1").arg(m_serialPortSummary));
+        }
+        return;
+    }
+
+    m_dataStripPageLabel->setText(u"FLIGHT DATA"_s);
+    const bool replay = m_flightModel->replayMode();
+    const int n = m_replay ? m_replay->sampleCount() : 0;
+    const int pos = m_replay ? m_replay->index() : 0;
+    if (replay && n > 0) {
+        m_dataLinkStatusLabel->setText(
+            QStringLiteral("SESSION: replay · %1 / %2 samples").arg(pos).arg(n));
+        m_dataRateLabel->setText(u"HINT: Play / slider on Flight data page"_s);
+    } else if (replay && n == 0) {
+        m_dataLinkStatusLabel->setText(u"SESSION: replay (empty)"_s);
+        m_dataRateLabel->setText(u"Open a log to load samples"_s);
+    } else {
+        const QString link = m_serialPortSummary.isEmpty() ? u"idle"_s : m_serialPortSummary;
+        m_dataLinkStatusLabel->setText(QStringLiteral("SESSION: live · %1").arg(link));
+    }
 }
 
 void MainWindow::openSettingsWindow() {
@@ -327,10 +664,9 @@ void MainWindow::openSettingsWindow() {
     statusBar()->showMessage(u"Settings window opened."_s, 2000);
 }
 
-// Compute and inject the current local timestamp plus GMT offset into the mission meta label.
 void MainWindow::updateMissionClock() {
     if (!m_missionMetaLabel) {
-        return;  // Toolbar was not built yet; nothing to update.
+        return;
     }
 
     const QDateTime localNow = QDateTime::currentDateTime();
@@ -339,15 +675,248 @@ void MainWindow::updateMissionClock() {
     const int offsetHours = absOffsetSeconds / 3600;
     const int offsetMinutes = (absOffsetSeconds % 3600) / 60;
 
-    // Format GMT±HH[:MM] so even half-hour zones look correct.
     QString offsetString = QStringLiteral("GMT%1%2")
-            .arg(offsetSeconds >= 0 ? u'+' : u'-')
-            .arg(offsetHours, 2, 10, QLatin1Char('0'));
+                               .arg(offsetSeconds >= 0 ? u'+' : u'-')
+                               .arg(offsetHours, 2, 10, QLatin1Char('0'));
     if (offsetMinutes > 0) {
         offsetString += QStringLiteral(":%1").arg(offsetMinutes, 2, 10, QLatin1Char('0'));
     }
 
     const QString timestamp = QStringLiteral("%1 | %2")
-            .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
+                                  .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
     m_missionMetaLabel->setText(timestamp);
+}
+
+void MainWindow::updateDataRateLabel() {
+    if (!m_dataRateLabel || !m_flightModel) {
+        return;
+    }
+    const qint64 total = m_flightModel->totalBytesReceived();
+    const qint64 delta = total - m_prevBytesForRate;
+    m_prevBytesForRate = total;
+    if (isMonitoringPageActive()) {
+        m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
+        return;
+    }
+    if (m_flightModel->replayMode()) {
+        return;
+    }
+    m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
+}
+
+void MainWindow::refreshSerialPorts() {
+    std::unique_ptr<ISerialPortScanner> scanner(SerialPortScannerFactory::createSerialPortScanner());
+    if (!scanner || !m_portCombo) {
+        return;
+    }
+    const QString prev = m_portCombo->currentText().trimmed();
+    QStringList ports;
+    for (const auto &p : scanner->enumeratePorts()) {
+        ports.append(QString::fromStdString(p));
+    }
+    m_portCombo->blockSignals(true);
+    m_portCombo->clear();
+    m_portCombo->addItems(ports);
+    if (!prev.isEmpty()) {
+        const int idx = m_portCombo->findText(prev);
+        if (idx >= 0) {
+            m_portCombo->setCurrentIndex(idx);
+        } else {
+            m_portCombo->setCurrentText(prev);
+        }
+    } else {
+        loadSerialPrefsToUi();
+    }
+    m_portCombo->blockSignals(false);
+}
+
+void MainWindow::onReplayPositionChanged(int trailLength) {
+    if (trailLength <= 0) {
+        if (m_replayTelemetryCoalesceTimer) {
+            m_replayTelemetryCoalesceTimer->stop();
+        }
+        m_flightModel->setDisplayedSample(FlightSample{});
+        syncTelemetryStrip();
+        return;
+    }
+    if (trailLength > static_cast<int>(m_loadedSession.samples.size())) {
+        return;
+    }
+    m_pendingReplayTelemetryTrail = trailLength;
+    if (m_replay && m_replay->isPlaying()) {
+        if (m_replayTelemetryCoalesceTimer) {
+            m_replayTelemetryCoalesceTimer->start();
+        }
+        return;
+    }
+    applyReplayTelemetrySample(trailLength);
+}
+
+void MainWindow::applyReplayTelemetrySample(int trailLength) {
+    if (trailLength <= 0 || trailLength > static_cast<int>(m_loadedSession.samples.size())) {
+        return;
+    }
+    m_flightModel->setDisplayedSample(m_loadedSession.samples[static_cast<std::size_t>(trailLength - 1)]);
+    syncTelemetryStrip();
+}
+
+void MainWindow::applyPendingReplayTelemetryStrip() {
+    applyReplayTelemetrySample(m_pendingReplayTelemetryTrail);
+}
+
+void MainWindow::onOpenReplayFile() {
+    QSettings s(u"CosmoSoft"_s, u"cosmo-soft"_s);
+    QString startDir = s.value(u"paths/replayDir"_s, QDir::homePath()).toString();
+    if (startDir.isEmpty()) {
+        startDir = QDir::homePath();
+    }
+
+    const QString path = QFileDialog::getOpenFileName(
+        this,
+        u"Open flight log"_s,
+        startDir,
+        u"Flight logs (*.csv *.telem);;CSV (*.csv);;TELEM (*.telem);;All files (*)"_s);
+    if (path.isEmpty()) {
+        return;
+    }
+
+    s.setValue(u"paths/replayDir"_s, QFileInfo(path).absolutePath());
+
+    stopSerial();
+
+    auto *progress = new QProgressDialog(u"Loading flight log…"_s, QString(), 0, 0, this);
+    progress->setWindowModality(Qt::WindowModal);
+    progress->setMinimumDuration(0);
+    progress->setCancelButton(nullptr);
+    progress->show();
+
+    auto *watcher = new QFutureWatcher<FlightLogLoadResult>(this);
+    connect(watcher, &QFutureWatcher<FlightLogLoadResult>::finished, this, [this, watcher, path, progress]() {
+        progress->close();
+        progress->deleteLater();
+        FlightLogLoadResult r = watcher->result();
+        watcher->deleteLater();
+        if (r.error) {
+            QMessageBox::warning(
+                this,
+                u"Could not load log"_s,
+                QString::fromStdString(*r.error));
+            return;
+        }
+        m_loadedSession = std::move(r.session);
+        m_flightModel->resetSession();
+        m_flightModel->setReplayMode(true);
+        m_replay->setSession(m_loadedSession);
+        if (m_flightDataPage) {
+            m_flightDataPage->setReplaySession(&m_loadedSession);
+        }
+        syncTelemetryStrip();
+        showStatusMessage(QStringLiteral("Loaded flight: %1").arg(path), 4000);
+    });
+    const QFuture<FlightLogLoadResult> future = QtConcurrent::run([path]() {
+        return loadFlightLogAtPath(path);
+    });
+    watcher->setFuture(future);
+}
+
+void MainWindow::onClearFlightData() {
+    m_replay->stop();
+    m_loadedSession.samples.clear();
+    m_replay->setSession({});
+    m_flightModel->setReplayMode(false);
+    m_flightModel->resetSession();
+    if (m_flightDataPage) {
+        m_flightDataPage->setReplaySession(nullptr);
+    }
+    syncTelemetryStrip();
+    showStatusMessage(u"Cleared flight replay data."_s, 2000);
+}
+
+void MainWindow::startSerial(const QString &portName, int baud) {
+    stopSerial();
+    if (portName.isEmpty()) {
+        showStatusMessage(u"Select a serial port first."_s, 3000);
+        return;
+    }
+
+    m_comms = CommsFactory::createSerialComms(portName.toStdString(), baud);
+    if (!m_comms || !m_comms->open()) {
+        showStatusMessage(u"Failed to open serial port."_s, 5000);
+        m_comms.reset();
+        return;
+    }
+
+    m_prevBytesForRate = m_flightModel->totalBytesReceived();
+
+    m_parserWorker = std::make_unique<ParserWorker>(
+        m_rawQueue,
+        [this](FlightSample &&s) {
+            FlightDataModel *model = m_flightModel.get();
+            QMetaObject::invokeMethod(
+                model,
+                "appendSample",
+                Qt::QueuedConnection,
+                Q_ARG(FlightSample, s));
+        },
+        [this](std::string_view err) {
+            const QString msg = QString::fromUtf8(err.data(), static_cast<int>(err.size()));
+            QMetaObject::invokeMethod(this, "onParserError", Qt::QueuedConnection, Q_ARG(QString, msg));
+        });
+
+    if (!m_parserWorker->start()) {
+        showStatusMessage(u"Parser thread failed to start."_s, 5000);
+        m_parserWorker.reset();
+        m_comms.reset();
+        return;
+    }
+
+    m_serialWorker = std::make_unique<SerialWorker>(
+        m_comms.get(),
+        [this](std::vector<uint8_t> chunk) {
+            const qint64 n = static_cast<qint64>(chunk.size());
+            m_rawQueue.push(std::move(chunk));
+            FlightDataModel *model = m_flightModel.get();
+            QMetaObject::invokeMethod(
+                model,
+                "addBytesReceived",
+                Qt::QueuedConnection,
+                Q_ARG(qint64, n));
+        },
+        [this](const std::string &err) {
+            const QString msg = QString::fromStdString(err);
+            QMetaObject::invokeMethod(this, "onParserError", Qt::QueuedConnection, Q_ARG(QString, msg));
+        });
+
+    if (!m_serialWorker->start()) {
+        showStatusMessage(u"Serial reader failed to start."_s, 5000);
+        m_serialWorker.reset();
+        m_parserWorker.reset();
+        m_comms.reset();
+        return;
+    }
+
+    m_serialPortSummary = QStringLiteral("%1 @ %2").arg(portName).arg(baud);
+    m_flightModel->setReplayMode(false);
+    if (m_flightDataPage) {
+        m_flightDataPage->setReplaySession(nullptr);
+    }
+    syncTelemetryStrip();
+    showStatusMessage(QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud), 3000);
+}
+
+void MainWindow::stopSerial() {
+    if (m_serialWorker) {
+        m_serialWorker->stop();
+        m_serialWorker.reset();
+    }
+    if (m_parserWorker) {
+        m_parserWorker->stop();
+        m_parserWorker.reset();
+    }
+    if (m_comms) {
+        m_comms->close();
+        m_comms.reset();
+    }
+    m_serialPortSummary.clear();
+    syncTelemetryStrip();
 }

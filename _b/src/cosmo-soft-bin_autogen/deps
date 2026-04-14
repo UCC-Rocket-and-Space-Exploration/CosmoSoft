@@ -1,0 +1,5 @@
+cosmo-soft-bin_autogen/timestamp: \
+	/Users/hslyusar/Desktop/CosmoSoft/assets/resources.qrc \
+	/Users/hslyusar/Desktop/CosmoSoft/src/CMakeLists.txt \
+	/Users/hslyusar/Desktop/CosmoSoft/src/main.cpp \
+	/opt/homebrew/bin/cmake

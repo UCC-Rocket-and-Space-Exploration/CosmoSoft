@@ -14,9 +14,4 @@
    ```
    rm -rf build
    ```
-
-## Plans for UI
-- Add an app icon
-- Implement Graphs(Mark)
-- Add sounds
- 
+   
