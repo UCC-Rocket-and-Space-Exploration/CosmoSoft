@@ -1,2 +1,2 @@
-#include "gateway/windows/SerialCommsWindows.h"
+#include "gateway/comms/Windows/SerialCommsWindows.h"
 

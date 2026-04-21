@@ -1,6 +1,0 @@
-comms_autogen/timestamp: \
-	/Users/hslyusar/Desktop/CosmoSoft/src/gateway/comms/CMakeLists.txt \
-	/Users/hslyusar/Desktop/CosmoSoft/src/gateway/comms/CommsFactory.cpp \
-	/Users/hslyusar/Desktop/CosmoSoft/src/gateway/comms/SerialPortScannerFactory.cpp \
-	/Users/hslyusar/Desktop/CosmoSoft/src/gateway/comms/SerialWorker.cpp \
-	/opt/homebrew/bin/cmake

@@ -1,3 +1,3 @@
-#include "gateway/windows/SerialPortScannerWindows.h"
+#include "gateway/comms/Windows/SerialPortScannerWindows.h"
 
 

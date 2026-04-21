@@ -10,7 +10,7 @@
 #include "gui/pages/DashboardPage.h"
 #include "gui/pages/MonitoringPage.h"
 #include "gui/pages/SettingsPage.h"
-#include "services/comms/SerialWorker.h"
+#include "gateway/comms/SerialWorker.h"
 #include "services/import/SampleFileLoader.h"
 #include "services/telemetry/Framer.h"
 #include "services/telemetry/Parser.h"

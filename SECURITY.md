@@ -13,7 +13,7 @@
 
 If you discover a security issue in CosmoSoft — for example, a vulnerability in the serial communication layer, the binary telemetry parser, or any other component — please report it privately:
 
-1. Open a [GitHub Security Advisory](../../security/advisories/new) in this repository, **or**
+1. Open a [GitHub Security Advisory](https://github.com/UCC-Rocket-and-Space-Exploration/CosmoSoft/security/advisories) in this repository, **or**
 2. Email the maintainers directly (add contact here before making the repository public)
 
 ### What to include

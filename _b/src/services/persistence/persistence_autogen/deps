@@ -1,5 +1,0 @@
-persistence_autogen/timestamp: \
-	/Users/hslyusar/Desktop/CosmoSoft/src/services/RingBuffer.cpp \
-	/Users/hslyusar/Desktop/CosmoSoft/src/services/persistence/CMakeLists.txt \
-	/Users/hslyusar/Desktop/CosmoSoft/src/services/persistence/FlightLogManager.cpp \
-	/opt/homebrew/bin/cmake

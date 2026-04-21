@@ -1,5 +1,6 @@
 # Core build directories
 /build/
+/_b/
 /cmake-build-*/
 /out/
 /bin/
@@ -70,3 +71,10 @@ Desktop.ini
 # Generated documentation or artifacts
 /docs/_build/
 *.user
+
+# Cursor internal state
+.cursor/plans/
+
+# Internal strategy and project management documents
+plan.md
+Project Management.md

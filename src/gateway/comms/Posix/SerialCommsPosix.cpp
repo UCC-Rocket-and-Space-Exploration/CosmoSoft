@@ -1,4 +1,4 @@
-#include "gateway/comms/posix/SerialCommsPosix.h"
+#include "gateway/comms/Posix/SerialCommsPosix.h"
 
 #include <fcntl.h>
 #include <poll.h>

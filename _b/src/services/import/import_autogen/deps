@@ -1,4 +1,0 @@
-import_autogen/timestamp: \
-	/Users/hslyusar/Desktop/CosmoSoft/src/services/import/CMakeLists.txt \
-	/Users/hslyusar/Desktop/CosmoSoft/src/services/import/SampleFileLoader.cpp \
-	/opt/homebrew/bin/cmake
