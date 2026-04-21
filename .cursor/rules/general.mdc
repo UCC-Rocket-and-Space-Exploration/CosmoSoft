@@ -1,0 +1,34 @@
+---
+description: C++20 coding standards for all CosmoSoft source files
+alwaysApply: true
+---
+
+# General C++20 Standards
+
+## Naming
+- Variables and functions: `snake_case`
+- Classes and structs: `PascalCase`
+- Constants and macros: `UPPER_SNAKE_CASE`
+- Private members: `m_` prefix (e.g. `m_baud`, `m_device`)
+
+## Memory and Ownership
+- No raw owning pointers — use `std::unique_ptr` or `std::shared_ptr`
+- No raw `new` / `delete` — prefer factory functions or `std::make_unique`
+- RAII for all resources (file descriptors, serial ports, Qt objects)
+
+```cpp
+// ❌ BAD
+IComms* comms = new SerialCommsPosix(device, baud);
+
+// ✅ GOOD
+auto comms = std::make_unique<SerialCommsPosix>(device, baud);
+```
+
+## Documentation
+- All public functions and classes must have a Doxygen `/** @brief */` comment
+- Comments explain *why*, not *what* — do not narrate the code
+
+## Commit hygiene
+- No `TODO` or `FIXME` in committed code — open a GitHub Issue instead
+- No secrets, hard-coded device paths, or credentials
+- Match `#include` ordering and paths from neighboring files before adding new ones

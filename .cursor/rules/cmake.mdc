@@ -1,0 +1,35 @@
+---
+description: CMake conventions for CosmoSoft build files
+globs: CMakeLists.txt,*.cmake
+alwaysApply: false
+---
+
+# CMake Conventions
+
+## Source lists
+Never use `file(GLOB ...)` — list source files explicitly so additions are visible in diffs.
+
+```cmake
+# ❌ BAD
+file(GLOB SOURCES "*.cpp")
+
+# ✅ GOOD
+add_library(telemetry
+    Framer.cpp
+    Parser.cpp
+    ParserWorker.cpp
+)
+```
+
+## Library types
+Follow the existing pattern in `src/CMakeLists.txt`:
+- `INTERFACE` — header-only aggregates (e.g. `cosmo-backend`)
+- `STATIC` — self-contained, no Qt dependency (e.g. `import`)
+- `OBJECT` — lightweight internal modules (e.g. `flight`, `persistence`)
+
+## Dependencies
+- Every new `find_package` or `target_link_libraries` entry must have an inline comment explaining why it is needed
+- Do not add new third-party libraries without updating this file and `README.md`
+
+## Platform guards
+Wrap platform-specific subdirectories with `if(UNIX)` / `if(WIN32)` — never assume a platform silently.

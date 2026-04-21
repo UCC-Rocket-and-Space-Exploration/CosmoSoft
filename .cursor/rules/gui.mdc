@@ -1,0 +1,38 @@
+---
+description: Qt GUI rules for pages, widgets, and MainWindow
+globs: src/gui/**,include/gui/**
+alwaysApply: false
+---
+
+# Qt GUI Rules
+
+## Separation of concerns
+Page and widget classes (`MonitoringPage`, `DashboardPage`, `SettingsPage`, all widgets) must contain **only** presentation logic.
+Business logic belongs in service classes under `src/services/`.
+
+## Cross-thread signals
+All signals that cross from a worker thread to the GUI thread must use `Qt::QueuedConnection`:
+
+```cpp
+// ❌ BAD — default connection from non-Qt thread is unsafe
+connect(worker, &Worker::done, this, &Widget::onDone);
+
+// ✅ GOOD
+connect(worker, &Worker::done, this, &Widget::onDone, Qt::QueuedConnection);
+```
+
+## QSettings keys
+Declare all `QSettings` keys as `constexpr` string literals in a dedicated constants header, never as inline string literals scattered through the code:
+
+```cpp
+// ❌ BAD
+settings.setValue("serialPort", port);
+
+// ✅ GOOD
+constexpr auto kSettingsSerialPort = "serialPort";
+settings.setValue(kSettingsSerialPort, port);
+```
+
+## Qt resource paths
+Never construct Qt resource paths (`:/...`) as runtime-built strings.
+Use compile-time string literals or `Q_INIT_RESOURCE` only.

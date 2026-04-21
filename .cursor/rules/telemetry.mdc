@@ -1,0 +1,37 @@
+---
+description: Telemetry pipeline rules — Framer, Parser, ParserWorker, FlightSample
+globs: src/services/telemetry/**,include/services/telemetry/**,include/domain/**
+alwaysApply: false
+---
+
+# Telemetry Pipeline Rules
+
+## Byte boundary
+`Framer` and `Parser` are the **only** places that touch raw `uint8_t` buffers.
+No other class may inspect or manipulate raw byte sequences.
+
+## Threading
+`ParserWorker` runs on a `std::jthread` — it must **never** call Qt UI methods directly.
+All results must reach the main thread via a queued signal/slot:
+
+```cpp
+// ❌ BAD — direct call from worker thread
+m_model->appendSample(sample);
+
+// ✅ GOOD — queued invocation crosses thread boundary safely
+QMetaObject::invokeMethod(m_model, [=, s = std::move(sample)]() mutable {
+    m_model->appendSample(std::move(s));
+}, Qt::QueuedConnection);
+```
+
+## FlightSample changes
+Adding a new telemetry field requires changes **in this order**:
+1. `include/domain/FlightSample.h` — add the field
+2. `src/services/telemetry/Parser.cpp` — populate it during decode
+3. `include/gui/FlightDataModel.h` + `src/gui/FlightDataModel.cpp` — expose via signal/accessor
+4. UI pages / widgets — consume the new field
+
+Never skip steps or wire a field directly from `Parser` to a widget.
+
+## Public API stability
+Do not change `Framer`, `Parser`, or `ParserWorker` public method signatures without opening a GitHub Issue and getting maintainer approval first.

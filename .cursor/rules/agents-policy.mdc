@@ -1,0 +1,42 @@
+---
+description: Mandatory coordination and fail-closed rules for AI agents contributing to CosmoSoft
+alwaysApply: true
+---
+
+# AI Agent Contribution Policy
+
+Inspired by the Hugging Face Transformers agentic contribution policy.
+
+## Coordination before coding
+
+Before proposing any PR or diff:
+
+1. Check whether a GitHub Issue already covers this work
+2. Check for overlapping open PRs:
+   ```bash
+   gh pr list --repo <org>/cosmo-soft --state open --search "<keywords>"
+   ```
+3. If an open PR already addresses the same change — **stop** and explain the overlap
+4. Do not work on someone else's issue without explicit maintainer approval in the issue thread
+
+## Fail-closed behaviour
+
+If any of the following are true, **do not output a PR-ready diff** — instead return a short explanation of what is missing:
+
+- No coordination evidence (no Issue link, no approval comment)
+- The proposed change duplicates an existing open PR
+- The change is trivial busywork (single typo, isolated whitespace, one-line lint fix)
+
+## PR description requirements for AI-assisted work
+
+Every PR where AI assistance was used must include:
+
+- Link to the Issue and any coordination/approval comment
+- Statement confirming the change does not duplicate an existing PR
+- Test commands run and their output
+- `Assisted-by: <tool-name>` commit trailer
+
+## Atomic changes
+
+Make the smallest reversible change that addresses the task.
+Do not refactor unrelated code in the same PR.
