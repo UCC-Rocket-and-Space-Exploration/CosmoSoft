@@ -1,3 +1,12 @@
+/**
+ * @file MonitoringPage.h
+ * @brief Live-telemetry monitoring page displaying a 3×3 grid of stat tiles.
+ *
+ * MonitoringPage subscribes to FlightDataModel::sampleUpdated() and updates
+ * each StatTileWidget with the corresponding metric value on every sample.
+ * A status label is shown until the first sample arrives.
+ */
+
 #ifndef COSMO_SOFT_MONITORINGPAGE_H
 #define COSMO_SOFT_MONITORINGPAGE_H
 
@@ -9,15 +18,26 @@
 
 class QPaintEvent;
 class QLabel;
-class MainWindow;
 class FlightDataModel;
 class StatTileWidget;
 
+/**
+ * @class MonitoringPage
+ * @brief Shows nine real-time metric tiles (altitude, temperature, pressure, etc.).
+ *
+ * The page paints a dark dotted background in paintEvent() and overlays a 3×3
+ * grid of StatTileWidget instances whose content is driven by MetricDefs.
+ */
 class MonitoringPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit MonitoringPage(MainWindow *hostWindow, FlightDataModel *model, QWidget *parent = nullptr);
+    /**
+     * @brief Constructs the page and connects it to @p model.
+     * @param model Non-owning pointer to the shared flight data model.
+     * @param parent Optional parent widget.
+     */
+    explicit MonitoringPage(FlightDataModel *model, QWidget *parent = nullptr);
     ~MonitoringPage() override = default;
 
 protected:
@@ -29,7 +49,6 @@ private slots:
 private:
     static constexpr int kTileCount = 9;
 
-    MainWindow      *m_hostWindow  = nullptr;
     FlightDataModel *m_model       = nullptr;
     QLabel          *m_statusLabel = nullptr;
 

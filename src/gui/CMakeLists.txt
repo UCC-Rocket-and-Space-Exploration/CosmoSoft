@@ -7,9 +7,12 @@ set(GUI_MOC_HEADERS
         "${CMAKE_SOURCE_DIR}/include/gui/MainWindow.h"
         "${CMAKE_SOURCE_DIR}/include/gui/FlightDataModel.h"
         "${CMAKE_SOURCE_DIR}/include/gui/FlightReplayController.h"
+        "${CMAKE_SOURCE_DIR}/include/gui/AboutDialog.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/MonitoringPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/SettingsPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/DashboardPage.h"
+        "${CMAKE_SOURCE_DIR}/include/gui/pages/EventLogPage.h"
+        "${CMAKE_SOURCE_DIR}/include/gui/pages/MapPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/StatTileWidget.h"
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/TracesPanel.h"
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/ReplayBar.h"
@@ -26,6 +29,7 @@ target_link_libraries(gui
         Qt6::Charts
         Qt6::Concurrent
         import
+        persistence
 )
 
 target_link_libraries(cosmo-backend INTERFACE gui)

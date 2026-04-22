@@ -1,7 +1,6 @@
 #include "gui/pages/MonitoringPage.h"
 
 #include "gui/FlightDataModel.h"
-#include "gui/MainWindow.h"
 #include "gui/widgets/MetricDefs.h"
 #include "gui/widgets/StatTileWidget.h"
 
@@ -18,12 +17,10 @@
 using namespace Qt::StringLiterals;
 using namespace MetricDefs;
 
-MonitoringPage::MonitoringPage(MainWindow *hostWindow, FlightDataModel *model, QWidget *parent)
+MonitoringPage::MonitoringPage(FlightDataModel *model, QWidget *parent)
     : QWidget(parent),
-      m_hostWindow(hostWindow),
       m_model(model)
 {
-    Q_UNUSED(hostWindow);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAutoFillBackground(false);
 

@@ -30,6 +30,7 @@ Before building, make sure you have:
   - `Gui`
   - `Widgets`
   - `Charts`
+  - `Concurrent`
 
 If CMake cannot find your Qt installation automatically, set `CMAKE_PREFIX_PATH` or `Qt6_DIR` to the Qt install location.
 
@@ -89,17 +90,22 @@ The `sample_data/` folder contains example logs:
 | File | Use |
 |------|-----|
 | `theseus_flight_data.csv` | Replay in the app (connection bar → Open log…) |
-| `*.telem` | Altos-style hex lines; needs Framer/Parser implementation to decode |
+| `altos_sample_data.telem`, `altos_sample_data2.telem` | Altos-style hex lines; needs Framer/Parser implementation to decode |
+| `TELEM_FORMAT_EXPLAINED.md` | Documentation of the `.telem` hex packet format |
+| `parse_telem.py` | Python script to convert `.telem` hex lines to human-readable output |
+| `parse_telem_detailed.py` | Python script to decode individual sensor fields from `.telem` files |
 
 ## Project structure
 
-- `src/gui` — Qt UI (`MainWindow`, `MonitoringPage`, `DashboardPage`, `SettingsPage`, replay controller, `FlightDataModel`)
+- `src/gui` — Qt UI (`MainWindow`, `MonitoringPage`, `DashboardPage`, `SettingsPage`, replay controller, `FlightDataModel`, widgets)
 - `src/services/import` — `SampleFileLoader` (CSV and `.telem` ingestion)
-- `src/gateway/comms` — serial communication and port scanning
 - `src/services/telemetry` — framing and parsing pipeline (worker thread)
-- `src/services/persistence` — flight log helper, `RingBuffer`
+- `src/services/persistence` — `FlightLogManager`
 - `src/services/flight` — flight module placeholder
-- `include/` — public headers (domain models, GUI, services)
+- `src/services/RingBuffer.cpp` — lock-free ring buffer utility
+- `src/gateway/comms` — serial communication and port scanning
+- `include/domain/` — core data models (`FlightSample`, `FlightSession`)
+- `include/` — public headers (GUI, services, gateway)
 - `assets` — fonts, icons, and images bundled through Qt resources
 
 ## Notes

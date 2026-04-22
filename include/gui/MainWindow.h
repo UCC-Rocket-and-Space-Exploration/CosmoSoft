@@ -1,3 +1,21 @@
+/**
+ * @file MainWindow.h
+ * @brief Top-level application window for CosmoSoft.
+ *
+ * MainWindow owns the mission toolbar, connection bar, telemetry strip, and the
+ * page stack (MonitoringPage, DashboardPage, EventLogPage, MapPage).  It also
+ * owns the live-telemetry pipeline (SerialWorker → BlockingQueue → ParserWorker
+ * → FlightDataModel) and the replay pipeline (FlightReplayController).
+ *
+ * Responsibilities:
+ *  - Serial port management: scan, connect, disconnect.
+ *  - Flight-log loading (CSV / .telem) via QtConcurrent and QProgressDialog.
+ *  - Session recording and export via FlightLogManager.
+ *  - Routing parsed samples and errors to the data model and event log.
+ *  - Keeping the toolbar, connection bar, and telemetry strip in sync with the
+ *    active page and connection/replay state.
+ */
+
 #ifndef COSMO_SOFT_MAINWINDOW_H
 #define COSMO_SOFT_MAINWINDOW_H
 
@@ -16,13 +34,17 @@ class QStackedWidget;
 class QTimer;
 class MonitoringPage;
 class DashboardPage;
+class EventLogPage;
+class MapPage;
 class SettingsPage;
 class FlightDataModel;
 class FlightReplayController;
+class FlightLogManager;
 class ParserWorker;
 class SerialWorker;
 class IComms;
 
+/** @brief Top-level application window. */
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -30,9 +52,15 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
 
+    /**
+     * @brief Display a transient message in the status bar.
+     * @param message Text to show.
+     * @param timeout Duration in milliseconds; 0 = persistent until next message.
+     */
     void showStatusMessage(const QString &message, int timeout = 0);
 
 public slots:
+    /** @brief Receives parser and serial error strings and shows them in the status bar. */
     void onParserError(const QString &message);
 
 private slots:
@@ -44,7 +72,9 @@ private slots:
     void stopSerial();
     void onReplayPositionChanged(int trailLength);
     void onOpenReplayFile();
+    void onExportSession();
     void onClearFlightData();
+    void onShowAbout();
 
 private:
     void setupActions();
@@ -59,44 +89,63 @@ private:
     void syncTelemetryStrip();
     void applyReplayTelemetrySample(int trailLength);
     [[nodiscard]] bool isMonitoringPageActive() const;
+    [[nodiscard]] bool isEventLogPageActive() const;
+    [[nodiscard]] bool isMapPageActive() const;
 
-    QAction *m_showMonitoringAction = nullptr;
-    QAction *m_showFlightDataAction = nullptr;
-    QAction *m_openSettingsAction = nullptr;
+    // ── Toolbar actions ───────────────────────────────────────────────────────
+    QAction *m_showMonitoringAction  = nullptr;
+    QAction *m_showFlightDataAction  = nullptr;
+    QAction *m_showEventLogAction    = nullptr;
+    QAction *m_showMapAction         = nullptr;
+    QAction *m_openSettingsAction    = nullptr;
 
-    QStackedWidget *m_pages = nullptr;
-    MonitoringPage *m_monitoringPage = nullptr;
-    DashboardPage *m_flightDataPage = nullptr;
-    SettingsPage *m_settingsWindow = nullptr;
+    // ── Page stack ────────────────────────────────────────────────────────────
+    QStackedWidget *m_pages           = nullptr;
+    MonitoringPage *m_monitoringPage  = nullptr;
+    DashboardPage  *m_flightDataPage  = nullptr;
+    EventLogPage   *m_eventLogPage    = nullptr;
+    MapPage        *m_mapPage         = nullptr;
+    SettingsPage   *m_settingsWindow  = nullptr;
 
-    QLabel *m_missionMetaLabel = nullptr;
-    QLabel *m_toolbarPageLabel = nullptr;
+    // ── Toolbar labels ────────────────────────────────────────────────────────
+    QLabel *m_missionMetaLabel  = nullptr;
+    QLabel *m_toolbarPageLabel  = nullptr;
     QTimer *m_missionClockTimer = nullptr;
 
-    QWidget *m_connectionBar = nullptr;
-    QLabel *m_connectionPageLabel = nullptr;
-    QWidget *m_serialControlBlock = nullptr;
-    QComboBox *m_portCombo = nullptr;
-    QComboBox *m_baudCombo = nullptr;
+    // ── Connection bar ────────────────────────────────────────────────────────
+    QWidget  *m_connectionBar       = nullptr;
+    QLabel   *m_connectionPageLabel = nullptr;
+    QWidget  *m_serialControlBlock  = nullptr;
+    QComboBox *m_portCombo          = nullptr;
+    QComboBox *m_baudCombo          = nullptr;
 
-    QWidget *m_dataBar = nullptr;
-    QLabel *m_dataStripPageLabel = nullptr;
-    QLabel *m_dataLinkStatusLabel = nullptr;
-    QLabel *m_dataRateLabel = nullptr;
+    // ── Telemetry strip ───────────────────────────────────────────────────────
+    QWidget *m_dataBar             = nullptr;
+    QLabel  *m_dataStripPageLabel  = nullptr;
+    QLabel  *m_dataLinkStatusLabel = nullptr;
+    QLabel  *m_dataRateLabel       = nullptr;
+    QLabel  *m_droppedBadgeLabel   = nullptr;
 
-    std::unique_ptr<FlightDataModel> m_flightModel;
+    // ── Data model and replay ─────────────────────────────────────────────────
+    std::unique_ptr<FlightDataModel>       m_flightModel;
     std::unique_ptr<FlightReplayController> m_replay;
+    std::unique_ptr<FlightLogManager>       m_logManager;
     FlightSession m_loadedSession;
 
+    // ── Live-telemetry pipeline ───────────────────────────────────────────────
     BlockingQueue<std::vector<uint8_t>> m_rawQueue{512};
-    std::unique_ptr<ParserWorker> m_parserWorker;
-    std::unique_ptr<SerialWorker> m_serialWorker;
-    std::unique_ptr<IComms> m_comms;
+    std::unique_ptr<ParserWorker>  m_parserWorker;
+    std::unique_ptr<SerialWorker>  m_serialWorker;
+    std::unique_ptr<IComms>        m_comms;
 
-    QTimer *m_dataRateTimer = nullptr;
+    // ── Timers and rate tracking ──────────────────────────────────────────────
+    QTimer *m_dataRateTimer                = nullptr;
     QTimer *m_replayTelemetryCoalesceTimer = nullptr;
-    int m_pendingReplayTelemetryTrail = 0;
-    qint64 m_prevBytesForRate = 0;
+    int     m_pendingReplayTelemetryTrail  = 0;
+    qint64  m_prevBytesForRate             = 0;
+
+    /** Last dropped-packet count seen; used to suppress redundant badge updates. */
+    std::size_t m_lastDroppedCount = 0;
 
     QString m_serialPortSummary;
 };

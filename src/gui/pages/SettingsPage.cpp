@@ -1,5 +1,7 @@
 #include "gui/pages/SettingsPage.h"
 
+#include "gui/SettingsKeys.h"
+
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCheckBox>
@@ -16,11 +18,6 @@
 #include <QVBoxLayout>
 
 using namespace Qt::StringLiterals;
-
-namespace {
-constexpr auto kOrg = "CosmoSoft";
-constexpr auto kApp = "cosmo-soft";
-} // namespace
 
 SettingsPage::SettingsPage(QWidget *parent)
     : QWidget(parent) {
@@ -196,14 +193,14 @@ void SettingsPage::onFontSizeChanged(int index) {
     const int pt = m_fontSizeCombo->itemData(index).toInt();
     if (pt > 0) {
         applyFontPointSize(pt);
-        QSettings s(kOrg, kApp);
-        s.setValue(u"ui/fontPointSize"_s, pt);
+        QSettings s(kSettingsOrg, kSettingsApp);
+        s.setValue(kSettingsFontSize, pt);
     }
 }
 
 void SettingsPage::onSoundsToggled(bool enabled) {
-    QSettings s(kOrg, kApp);
-    s.setValue(u"ui/soundsEnabled"_s, enabled);
+    QSettings s(kSettingsOrg, kSettingsApp);
+    s.setValue(kSettingsSoundsEnabled, enabled);
 }
 
 void SettingsPage::showEvent(QShowEvent *event) {
@@ -217,8 +214,8 @@ void SettingsPage::closeEvent(QCloseEvent *event) {
 }
 
 void SettingsPage::loadFromSettings() {
-    QSettings s(kOrg, kApp);
-    const int pt = s.value(u"ui/fontPointSize"_s, 12).toInt();
+    QSettings s(kSettingsOrg, kSettingsApp);
+    const int pt = s.value(kSettingsFontSize, 12).toInt();
     if (m_fontSizeCombo) {
         const int idx = m_fontSizeCombo->findData(pt);
         if (idx >= 0) {
@@ -229,25 +226,25 @@ void SettingsPage::loadFromSettings() {
         applyFontPointSize(pt);
     }
     if (m_uiSoundsCheck) {
-        m_uiSoundsCheck->setChecked(s.value(u"ui/soundsEnabled"_s, true).toBool());
+        m_uiSoundsCheck->setChecked(s.value(kSettingsSoundsEnabled, true).toBool());
     }
 
-    const QByteArray geo = s.value(u"window/settingsGeometry"_s).toByteArray();
+    const QByteArray geo = s.value(kSettingsWindowSettingsGeo).toByteArray();
     if (!geo.isEmpty()) {
         restoreGeometry(geo);
     }
 }
 
 void SettingsPage::saveToSettings() {
-    QSettings s(kOrg, kApp);
+    QSettings s(kSettingsOrg, kSettingsApp);
     if (m_fontSizeCombo) {
         const int pt = m_fontSizeCombo->currentData().toInt();
         if (pt > 0) {
-            s.setValue(u"ui/fontPointSize"_s, pt);
+            s.setValue(kSettingsFontSize, pt);
         }
     }
     if (m_uiSoundsCheck) {
-        s.setValue(u"ui/soundsEnabled"_s, m_uiSoundsCheck->isChecked());
+        s.setValue(kSettingsSoundsEnabled, m_uiSoundsCheck->isChecked());
     }
-    s.setValue(u"window/settingsGeometry"_s, saveGeometry());
+    s.setValue(kSettingsWindowSettingsGeo, saveGeometry());
 }

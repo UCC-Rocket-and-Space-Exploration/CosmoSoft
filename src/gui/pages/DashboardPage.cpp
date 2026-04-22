@@ -60,6 +60,8 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSettings>
+
+#include "gui/SettingsKeys.h"
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QSizePolicy>
@@ -666,8 +668,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     dashSplitter->setStretchFactor(0, 0);
     dashSplitter->setStretchFactor(1, 1);
     {
-        QSettings dashSettings(u"CosmoSoft"_s, u"cosmo-soft"_s);
-        const QByteArray st = dashSettings.value(u"ui/dashboardSplitterState"_s).toByteArray();
+        QSettings dashSettings(kSettingsOrg, kSettingsApp);
+        const QByteArray st = dashSettings.value(kSettingsDashSplitter).toByteArray();
         if (!st.isEmpty()) {
             dashSplitter->restoreState(st);
         } else {
@@ -675,8 +677,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
     }
     connect(dashSplitter, &QSplitter::splitterMoved, this, [dashSplitter]() {
-        QSettings s(u"CosmoSoft"_s, u"cosmo-soft"_s);
-        s.setValue(u"ui/dashboardSplitterState"_s, dashSplitter->saveState());
+        QSettings s(kSettingsOrg, kSettingsApp);
+        s.setValue(kSettingsDashSplitter, dashSplitter->saveState());
     });
     rootLayout->addWidget(dashSplitter, 1);
     rootLayout->addWidget(m_replayBar);
