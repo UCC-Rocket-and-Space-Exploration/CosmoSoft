@@ -1,6 +1,7 @@
 #include "gui/pages/SettingsPage.h"
 
 #include "gui/SettingsKeys.h"
+#include "gui/pages/EventLogPage.h"
 
 #include <QApplication>
 #include <QCloseEvent>
@@ -15,6 +16,7 @@
 #include <QScrollArea>
 #include <QSettings>
 #include <QShowEvent>
+#include <QSplitter>
 #include <QVBoxLayout>
 
 using namespace Qt::StringLiterals;
@@ -26,6 +28,7 @@ SettingsPage::SettingsPage(QWidget *parent)
 }
 
 void SettingsPage::buildUi() {
+    // ── Settings controls (scrollable) ───────────────────────────────────────
     auto *scroll = new QScrollArea(this);
     scroll->setObjectName(u"settingsScroll"_s);
     scroll->setWidgetResizable(true);
@@ -42,7 +45,7 @@ void SettingsPage::buildUi() {
     layout->addWidget(heading);
 
     auto *intro = new QLabel(
-        u"Appearance and audio preferences. On the main window, use the connection bar (under the toolbar) for serial and flight logs."_s,
+        u"Appearance and audio preferences. Use the connection bar on the main window for serial and flight logs."_s,
         inner);
     intro->setWordWrap(true);
     intro->setObjectName(u"settingsMutedLabel"_s);
@@ -56,7 +59,8 @@ void SettingsPage::buildUi() {
         m_fontSizeCombo->addItem(QString::number(pt), pt);
     }
     m_fontSizeCombo->setCurrentIndex(3);
-    connect(m_fontSizeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &SettingsPage::onFontSizeChanged);
+    connect(m_fontSizeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsPage::onFontSizeChanged);
     fontForm->addRow(u"UI font size (pt):"_s, m_fontSizeCombo);
     layout->addWidget(m_fontGroup);
 
@@ -75,12 +79,23 @@ void SettingsPage::buildUi() {
     layout->addWidget(m_soundGroup);
 
     layout->addStretch(1);
-
     scroll->setWidget(inner);
+
+    // ── Event log ─────────────────────────────────────────────────────────────
+    m_eventLog = new EventLogPage(this);
+
+    // ── Vertical splitter: settings controls | event log ─────────────────────
+    auto *splitter = new QSplitter(Qt::Vertical, this);
+    splitter->setObjectName(u"settingsSplitter"_s);
+    splitter->setChildrenCollapsible(false);
+    splitter->addWidget(scroll);
+    splitter->addWidget(m_eventLog);
+    splitter->setSizes({320, 280});
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
-    root->addWidget(scroll);
+    root->setSpacing(0);
+    root->addWidget(splitter);
 
     setStyleSheet(uR"(
         #settingsPage {
@@ -94,6 +109,10 @@ void SettingsPage::buildUi() {
         }
         #settingsInner {
             background-color: #1f1f1f;
+        }
+        QSplitter#settingsSplitter::handle {
+            background: #3a3a3a;
+            height: 3px;
         }
         QLabel#settingsHeading {
             font-size: 22px;
@@ -155,12 +174,8 @@ void SettingsPage::buildUi() {
             color: #f0f0f0;
             font-size: 11px;
         }
-        QPushButton:hover {
-            background-color: #4d4f57;
-        }
-        QPushButton:pressed {
-            background-color: #2d2f37;
-        }
+        QPushButton:hover  { background-color: #4d4f57; }
+        QPushButton:pressed { background-color: #2d2f37; }
         QScrollBar:vertical {
             background: #2a2a2a;
             width: 12px;
@@ -175,6 +190,18 @@ void SettingsPage::buildUi() {
             height: 0;
         }
     )"_s);
+}
+
+void SettingsPage::appendLogEntry(const QString &text) {
+    if (m_eventLog) {
+        m_eventLog->appendEntry(text);
+    }
+}
+
+void SettingsPage::appendLogError(const QString &text) {
+    if (m_eventLog) {
+        m_eventLog->appendError(text);
+    }
 }
 
 void SettingsPage::applyFontPointSize(int pt) {

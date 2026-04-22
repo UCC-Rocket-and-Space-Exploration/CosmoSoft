@@ -3,15 +3,16 @@
  * @brief Top-level application window for CosmoSoft.
  *
  * MainWindow owns the mission toolbar, connection bar, telemetry strip, and the
- * page stack (MonitoringPage, DashboardPage, EventLogPage, MapPage).  It also
- * owns the live-telemetry pipeline (SerialWorker → BlockingQueue → ParserWorker
- * → FlightDataModel) and the replay pipeline (FlightReplayController).
+ * page stack (MonitoringPage, DashboardPage, MapPage).  It also owns the
+ * live-telemetry pipeline (SerialWorker → BlockingQueue → ParserWorker →
+ * FlightDataModel) and the replay pipeline (FlightReplayController).
  *
  * Responsibilities:
  *  - Serial port management: scan, connect, disconnect.
  *  - Flight-log loading (CSV / .telem) via QtConcurrent and QProgressDialog.
  *  - Session recording and export via FlightLogManager.
- *  - Routing parsed samples and errors to the data model and event log.
+ *  - Routing parsed samples and errors to the data model and the event log
+ *    embedded inside the settings window.
  *  - Keeping the toolbar, connection bar, and telemetry strip in sync with the
  *    active page and connection/replay state.
  */
@@ -23,6 +24,8 @@
 #include <QString>
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "domain/FlightSession.h"
 #include "services/BlockingQueue.h"
@@ -34,7 +37,6 @@ class QStackedWidget;
 class QTimer;
 class MonitoringPage;
 class DashboardPage;
-class EventLogPage;
 class MapPage;
 class SettingsPage;
 class FlightDataModel;
@@ -88,14 +90,21 @@ private:
     void updateTopBarsForCurrentPage();
     void syncTelemetryStrip();
     void applyReplayTelemetrySample(int trailLength);
+
+    /**
+     * @brief Appends a log entry to the persistent buffer and forwards it to
+     *        the settings window (if open).
+     * @param isError When true the entry is rendered as an error (red).
+     * @param text    Human-readable message.
+     */
+    void appendToLog(bool isError, const QString &text);
+
     [[nodiscard]] bool isMonitoringPageActive() const;
-    [[nodiscard]] bool isEventLogPageActive() const;
     [[nodiscard]] bool isMapPageActive() const;
 
     // ── Toolbar actions ───────────────────────────────────────────────────────
     QAction *m_showMonitoringAction  = nullptr;
     QAction *m_showFlightDataAction  = nullptr;
-    QAction *m_showEventLogAction    = nullptr;
     QAction *m_showMapAction         = nullptr;
     QAction *m_openSettingsAction    = nullptr;
 
@@ -103,7 +112,6 @@ private:
     QStackedWidget *m_pages           = nullptr;
     MonitoringPage *m_monitoringPage  = nullptr;
     DashboardPage  *m_flightDataPage  = nullptr;
-    EventLogPage   *m_eventLogPage    = nullptr;
     MapPage        *m_mapPage         = nullptr;
     SettingsPage   *m_settingsWindow  = nullptr;
 
@@ -127,7 +135,7 @@ private:
     QLabel  *m_droppedBadgeLabel   = nullptr;
 
     // ── Data model and replay ─────────────────────────────────────────────────
-    std::unique_ptr<FlightDataModel>       m_flightModel;
+    std::unique_ptr<FlightDataModel>        m_flightModel;
     std::unique_ptr<FlightReplayController> m_replay;
     std::unique_ptr<FlightLogManager>       m_logManager;
     FlightSession m_loadedSession;
@@ -146,6 +154,13 @@ private:
 
     /** Last dropped-packet count seen; used to suppress redundant badge updates. */
     std::size_t m_lastDroppedCount = 0;
+
+    /**
+     * Persistent log buffer.  Every entry is stored here so that the settings
+     * window can be closed and reopened without losing history.  The bool is
+     * true for errors, false for informational entries.
+     */
+    std::vector<std::pair<bool, QString>> m_logEntries;
 
     QString m_serialPortSummary;
 };

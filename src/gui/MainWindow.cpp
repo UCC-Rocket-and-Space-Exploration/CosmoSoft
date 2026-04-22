@@ -12,7 +12,6 @@
 #include "gui/pages/DashboardPage.h"
 #include "gui/pages/MonitoringPage.h"
 #include "gui/AboutDialog.h"
-#include "gui/pages/EventLogPage.h"
 #include "gui/pages/MapPage.h"
 #include "gui/pages/SettingsPage.h"
 #include "gateway/comms/SerialWorker.h"
@@ -138,8 +137,22 @@ void MainWindow::showStatusMessage(const QString &message, int timeout) {
 
 void MainWindow::onParserError(const QString &message) {
     showStatusMessage(message, 5000);
-    if (m_eventLogPage) {
-        m_eventLogPage->appendError(message);
+    appendToLog(true, message);
+}
+
+void MainWindow::appendToLog(bool isError, const QString &text) {
+    constexpr std::size_t kMaxLogEntries = 2000;
+    if (m_logEntries.size() >= kMaxLogEntries) {
+        m_logEntries.erase(m_logEntries.begin());
+    }
+    m_logEntries.emplace_back(isError, text);
+
+    if (m_settingsWindow) {
+        if (isError) {
+            m_settingsWindow->appendLogError(text);
+        } else {
+            m_settingsWindow->appendLogEntry(text);
+        }
     }
 }
 
@@ -149,9 +162,6 @@ void MainWindow::setupActions() {
 
     m_showFlightDataAction = new QAction(u"Flight data"_s, this);
     m_showFlightDataAction->setToolTip(u"Switch to flight data and charts."_s);
-
-    m_showEventLogAction = new QAction(u"Event log"_s, this);
-    m_showEventLogAction->setToolTip(u"Switch to the event and error log."_s);
 
     m_showMapAction = new QAction(u"Map"_s, this);
     m_showMapAction->setToolTip(u"Switch to the lat/lon map page."_s);
@@ -173,12 +183,6 @@ void MainWindow::setupActions() {
         m_pages->setCurrentWidget(m_flightDataPage);
         updateTopBarsForCurrentPage();
         statusBar()->showMessage(u"Flight data page selected."_s, 2000);
-    });
-
-    connect(m_showEventLogAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_eventLogPage);
-        updateTopBarsForCurrentPage();
-        statusBar()->showMessage(u"Event log page selected."_s, 2000);
     });
 
     connect(m_showMapAction, &QAction::triggered, this, [this]() {
@@ -330,11 +334,9 @@ void MainWindow::setupToolbar() {
     navGroup->setExclusive(true);
     m_showMonitoringAction->setCheckable(true);
     m_showFlightDataAction->setCheckable(true);
-    m_showEventLogAction->setCheckable(true);
     m_showMapAction->setCheckable(true);
     navGroup->addAction(m_showMonitoringAction);
     navGroup->addAction(m_showFlightDataAction);
-    navGroup->addAction(m_showEventLogAction);
     navGroup->addAction(m_showMapAction);
     m_showMonitoringAction->setChecked(true);
 
@@ -362,7 +364,6 @@ void MainWindow::setupToolbar() {
     navLayout->setSpacing(12);
     navLayout->addWidget(makeNavButton(m_showMonitoringAction, navContainer));
     navLayout->addWidget(makeNavButton(m_showFlightDataAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_showEventLogAction, navContainer));
     navLayout->addWidget(makeNavButton(m_showMapAction, navContainer));
 
     auto *aboutAction = new QAction(u"About"_s, this);
@@ -625,11 +626,9 @@ void MainWindow::setupPages() {
 
     m_monitoringPage = new MonitoringPage(m_flightModel.get());
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
-    m_eventLogPage   = new EventLogPage();
     m_mapPage        = new MapPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_monitoringPage);
     m_pages->addWidget(m_flightDataPage);
-    m_pages->addWidget(m_eventLogPage);
     m_pages->addWidget(m_mapPage);
     m_pages->setCurrentWidget(m_monitoringPage);
 
@@ -647,24 +646,17 @@ bool MainWindow::isMonitoringPageActive() const {
     return m_pages && m_pages->currentWidget() == m_monitoringPage;
 }
 
-bool MainWindow::isEventLogPageActive() const {
-    return m_pages && m_pages->currentWidget() == m_eventLogPage;
-}
-
 bool MainWindow::isMapPageActive() const {
     return m_pages && m_pages->currentWidget() == m_mapPage;
 }
 
 void MainWindow::updateTopBarsForCurrentPage() {
     const bool monitoring = isMonitoringPageActive();
-    const bool eventLog   = isEventLogPageActive();
     const bool map        = isMapPageActive();
 
     if (m_toolbarPageLabel) {
         if (monitoring) {
             m_toolbarPageLabel->setText(u"Monitoring"_s);
-        } else if (eventLog) {
-            m_toolbarPageLabel->setText(u"Event log"_s);
         } else if (map) {
             m_toolbarPageLabel->setText(u"Map"_s);
         } else {
@@ -676,9 +668,6 @@ void MainWindow::updateTopBarsForCurrentPage() {
         if (monitoring) {
             m_connectionPageLabel->setText(
                 u"Serial — port, baud, Connect. Flight logs — Open log…"_s);
-        } else if (eventLog) {
-            m_connectionPageLabel->setText(
-                u"Event log — parser errors and session events."_s);
         } else if (map) {
             m_connectionPageLabel->setText(
                 u"Map — lat/lon flight path. Load a log or connect for live tracking."_s);
@@ -710,12 +699,6 @@ void MainWindow::syncTelemetryStrip() {
         } else {
             m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1").arg(m_serialPortSummary));
         }
-        return;
-    }
-
-    if (isEventLogPageActive()) {
-        m_dataStripPageLabel->setText(u"EVENT LOG"_s);
-        m_dataLinkStatusLabel->setText(u"LINK: see log entries"_s);
         return;
     }
 
@@ -753,7 +736,7 @@ void MainWindow::openSettingsWindow() {
         m_settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
         m_settingsWindow->setWindowTitle(u"CosmoSoft Settings"_s);
         m_settingsWindow->setWindowIcon(QIcon(u":/icons/settings_button.png"_s));
-        m_settingsWindow->resize(520, 600);
+        m_settingsWindow->resize(520, 750);
 
         connect(m_settingsWindow, &QObject::destroyed, this, [this]() {
             m_settingsWindow = nullptr;
@@ -761,6 +744,14 @@ void MainWindow::openSettingsWindow() {
                 m_openSettingsAction->setChecked(false);
             }
         });
+
+        for (const auto &[isError, text] : m_logEntries) {
+            if (isError) {
+                m_settingsWindow->appendLogError(text);
+            } else {
+                m_settingsWindow->appendLogEntry(text);
+            }
+        }
     }
 
     m_settingsWindow->show();
@@ -937,9 +928,7 @@ void MainWindow::onOpenReplayFile() {
         syncTelemetryStrip();
         const QString loadMsg = QStringLiteral("Loaded flight: %1").arg(path);
         showStatusMessage(loadMsg, 4000);
-        if (m_eventLogPage) {
-            m_eventLogPage->appendEntry(loadMsg);
-        }
+        appendToLog(false, loadMsg);
     });
     const QFuture<FlightLogLoadResult> future = QtConcurrent::run([path]() {
         return loadFlightLogAtPath(path);
@@ -962,9 +951,7 @@ void MainWindow::onClearFlightData() {
     }
     syncTelemetryStrip();
     showStatusMessage(u"Cleared flight replay data."_s, 2000);
-    if (m_eventLogPage) {
-        m_eventLogPage->appendEntry(u"Flight data cleared."_s);
-    }
+    appendToLog(false, u"Flight data cleared."_s);
 }
 
 void MainWindow::onShowAbout() {
@@ -992,15 +979,11 @@ void MainWindow::onExportSession() {
     if (m_logManager->exportSessionToTextFile()) {
         const QString exportMsg = QStringLiteral("Session exported to %1").arg(path);
         showStatusMessage(exportMsg, 4000);
-        if (m_eventLogPage) {
-            m_eventLogPage->appendEntry(exportMsg);
-        }
+        appendToLog(false, exportMsg);
     } else {
         const QString exportErrMsg = QStringLiteral("Export failed — could not write to %1").arg(path);
         showStatusMessage(exportErrMsg, 5000);
-        if (m_eventLogPage) {
-            m_eventLogPage->appendError(exportErrMsg);
-        }
+        appendToLog(true, exportErrMsg);
     }
 }
 
@@ -1079,9 +1062,7 @@ void MainWindow::startSerial(const QString &portName, int baud) {
     syncTelemetryStrip();
     const QString connectMsg = QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud);
     showStatusMessage(connectMsg, 3000);
-    if (m_eventLogPage) {
-        m_eventLogPage->appendEntry(connectMsg);
-    }
+    appendToLog(false, connectMsg);
 }
 
 void MainWindow::stopSerial() {
@@ -1100,7 +1081,7 @@ void MainWindow::stopSerial() {
     const bool wasConnected = !m_serialPortSummary.isEmpty();
     m_serialPortSummary.clear();
     syncTelemetryStrip();
-    if (wasConnected && m_eventLogPage) {
-        m_eventLogPage->appendEntry(u"Serial port disconnected."_s);
+    if (wasConnected) {
+        appendToLog(false, u"Serial port disconnected."_s);
     }
 }
