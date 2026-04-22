@@ -1,14 +1,17 @@
 # TELEM File Format Explanation
 
 ## Overview
+
 The `.telem` file format contains telemetry data in hexadecimal encoding. Each line represents a single telemetry packet with sensor readings or device information.
 
 ## File Structure
 
 ### Line Format
+
 ```
 TELEM <hexadecimal_data>
 ```
+
 - Each line starts with the keyword "TELEM"
 - Followed by a space and hexadecimal encoded binary data
 - Each packet is exactly 36 bytes (72 hex characters)
@@ -16,6 +19,7 @@ TELEM <hexadecimal_data>
 ## Binary Packet Structure (36 bytes)
 
 ### Common Header (Bytes 0-5)
+
 ```
 Offset  Size  Type        Description
 ------  ----  ----------  ---------------------------
@@ -27,6 +31,7 @@ Offset  Size  Type        Description
 ### Message Types
 
 #### 1. TELEMETRY (Type 0x11)
+
 Contains sensor readings and operational data:
 
 ```
@@ -50,6 +55,7 @@ Offset  Size  Type        Description
 ```
 
 **Fields Explanation:**
+
 - **Temperature**: Raw ADC reading (interpretation depends on sensor calibration)
 - **Status flags**: Bit flags for device state
 - **Counters**: Increment with each reading, useful for detecting dropped packets
@@ -57,6 +63,7 @@ Offset  Size  Type        Description
 - **Checksum**: CRC-16 for error detection
 
 #### 2. DEVICE_INFO (Type 0x04)
+
 Contains device identification and firmware version:
 
 ```
@@ -72,12 +79,14 @@ Offset  Size  Type        Description
 ```
 
 **Example Values:**
+
 - Device Name: "IGNIS"
 - Firmware Version: "1.9.18"
 
 ## Example Decoded Packets
 
 ### Telemetry Packet
+
 ```
 Raw Hex: 22983066081102b90c0100030009880100510a0000000000000a88010031380000ec86c7
 
@@ -94,6 +103,7 @@ Decoded:
 ```
 
 ### Device Info Packet
+
 ```
 Raw Hex: 229830660804270100011a0000f401400049474e4953000000312e392e31380000ee9235
 
@@ -118,11 +128,13 @@ Decoded:
 ### Using the Python Parser
 
 **View detailed output:**
+
 ```bash
 python parse_telem_detailed.py altos_sample_data2.telem
 ```
 
 **Export to CSV:**
+
 ```bash
 python parse_telem_detailed.py altos_sample_data2.telem --csv output.csv
 ```
@@ -135,19 +147,19 @@ The CSV output includes all decoded fields in a spreadsheet-friendly format.
   - Raw ADC values requiring calibration formula
   - Encoded in an unknown unit (Kelvin * 10, etc.)
   - Require manufacturer-specific conversion
-
 - **Sensor values** (sensor_1, sensor_2, sensor_3) may represent:
   - Accelerometer X, Y, Z axes
   - Gyroscope readings
   - Magnetometer data
   - Or other mission-specific sensors
-
 - **Status flags** encode multiple boolean states in bit fields
 
 ## Application
 
 This appears to be telemetry from an aerospace or rocket flight computer:
+
 - Device name "IGNIS" suggests a propulsion or ignition system
 - Regular sampling rate (appears to be ~1Hz based on sequence)
 - Multiple sensors tracking orientation, temperature, and system state
 - Suitable for flight data logging and post-flight analysis
+

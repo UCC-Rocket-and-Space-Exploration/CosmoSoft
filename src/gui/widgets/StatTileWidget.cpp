@@ -1,5 +1,7 @@
 #include "gui/widgets/StatTileWidget.h"
 
+#include "gui/Theme.h"
+
 #include <QLabel>
 #include <QVBoxLayout>
 
@@ -11,16 +13,17 @@ StatTileWidget::StatTileWidget(const QString &label,
     : QFrame(parent)
 {
     // Self-contained stylesheet so the tile looks correct on any parent.
-    setStyleSheet(uR"(
+    setStyleSheet(
+        QString(uR"(
         StatTileWidget {
             background-color: rgba(21, 22, 25, 0.88);
-            border: 1px solid #3b3b45;
-            border-radius: 8px;
+            border: 1px solid %1;
+            border-radius: %2px;
         }
         StatTileWidget QLabel[kind="statLabel"] {
-            font-size: 12px;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
-            color: #9aa7b8;
+            font-size: %3px;
+            font-family: %4;
+            color: %5;
             letter-spacing: 1px;
             background: transparent;
             border: none;
@@ -28,12 +31,18 @@ StatTileWidget::StatTileWidget(const QString &label,
         StatTileWidget QLabel[kind="statValue"] {
             font-size: 20px;
             font-weight: 700;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
-            color: #f0f0f0;
+            font-family: %4;
+            color: %6;
             background: transparent;
             border: none;
         }
-    )"_s);
+    )"_s)
+            .arg(Theme::kBorderPanel)
+            .arg(Theme::kRadiusMd)
+            .arg(Theme::kFontSizeBase)
+            .arg(Theme::kFontMono)
+            .arg(Theme::kTextMuted)
+            .arg(Theme::kTextPrimary));
 
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(10, 6, 10, 6);

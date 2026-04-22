@@ -1,6 +1,7 @@
 #include "gui/pages/MonitoringPage.h"
 
 #include "gui/FlightDataModel.h"
+#include "gui/Theme.h"
 #include "gui/widgets/MetricDefs.h"
 #include "gui/widgets/StatTileWidget.h"
 
@@ -33,16 +34,20 @@ MonitoringPage::MonitoringPage(FlightDataModel *model, QWidget *parent)
         u"Monitoring: waiting for telemetry. Use the connection bar to connect a serial port."_s,
         this);
     m_statusLabel->setWordWrap(true);
-    m_statusLabel->setStyleSheet(uR"(
+    m_statusLabel->setStyleSheet(
+        QString(uR"(
         QLabel {
             background-color: rgba(21, 22, 25, 0.80);
-            border: 1px solid #3b3b45;
-            border-radius: 8px;
+            border: 1px solid %1;
+            border-radius: %2px;
             padding: 14px 16px;
             color: #e8e8e8;
-            font-size: 13px;
+            font-size: %3px;
         }
-    )"_s);
+    )"_s)
+            .arg(Theme::kBorderPanel)
+            .arg(Theme::kRadiusMd)
+            .arg(Theme::kFontSizeMd));
     root->addWidget(m_statusLabel);
 
     // ── Stat tile grid ───────────────────────────────────────────────────────

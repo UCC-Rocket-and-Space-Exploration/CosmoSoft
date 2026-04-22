@@ -7,6 +7,7 @@
 #include "gateway/comms/SerialPortScannerFactory.h"
 #include "gui/FlightDataModel.h"
 #include "gui/SettingsKeys.h"
+#include "gui/Theme.h"
 #include "services/persistence/FlightLogManager.h"
 #include "gui/FlightReplayController.h"
 #include "gui/pages/DashboardPage.h"
@@ -201,7 +202,8 @@ void MainWindow::setupToolbar() {
     toolbar->setFloatable(false);
     toolbar->setToolButtonStyle(Qt::ToolButtonTextOnly);
     toolbar->setAllowedAreas(Qt::TopToolBarArea);
-    toolbar->setStyleSheet(uR"(
+    toolbar->setStyleSheet(
+        QString(uR"(
         QToolBar#missionToolbar {
             background: rgba(73, 73, 73, 0.95);
             padding: 10px 10px;
@@ -216,26 +218,26 @@ void MainWindow::setupToolbar() {
         QWidget#brandBlock QLabel#brandLabel {
             font-size: 26px;
             font-weight: 400;
-            font-family: "Workbench","Courier New", "Roboto Mono", monospace;
+            font-family: %1;
             letter-spacing: 3px;
             color: #f4f4f4;
         }
         QWidget#brandBlock QLabel#missionMeta {
             font-size: 14px;
             color: #dadada;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-family: %2;
         }
 
         QLabel#missionPageTitle {
             font-size: 15px;
             font-weight: 600;
-            color: #c8c8c8;
+            color: %3;
             letter-spacing: 2px;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-family: %2;
         }
 
         QToolButton[kind="navButton"] {
-            font-size: 12px;
+            font-size: %4px;
             min-width: 150px;
             padding: 5px 8px;
             border: 2px solid #cfcfcf;
@@ -243,7 +245,7 @@ void MainWindow::setupToolbar() {
             background-color: #4b4b4b;
             color: #f7f7f7;
             letter-spacing: 1px;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-family: %2;
         }
 
         QToolButton[kind="navButton"]:hover {
@@ -276,7 +278,11 @@ void MainWindow::setupToolbar() {
         QToolButton[kind="iconButton"]:checked {
             background-color: rgba(255, 255, 255, 0.15);
         }
-    )"_s);
+    )"_s)
+        .arg(Theme::kFontDisplay)
+        .arg(Theme::kFontMono)
+        .arg(Theme::kTextMid)
+        .arg(Theme::kFontSizeBase));
     addToolBar(Qt::TopToolBarArea, toolbar);
 
     auto *text_shadow = new QGraphicsDropShadowEffect(this);
@@ -366,13 +372,6 @@ void MainWindow::setupToolbar() {
     navLayout->addWidget(makeNavButton(m_showFlightDataAction, navContainer));
     navLayout->addWidget(makeNavButton(m_showMapAction, navContainer));
 
-    auto *aboutAction = new QAction(u"About"_s, this);
-    aboutAction->setToolTip(u"About CosmoSoft"_s);
-    connect(aboutAction, &QAction::triggered, this, &MainWindow::onShowAbout);
-    auto *aboutBtn = makeNavButton(aboutAction, navContainer, Qt::ToolButtonTextOnly, u"navButton"_s);
-    aboutBtn->setCheckable(false);
-    navLayout->addWidget(aboutBtn);
-
     navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
 
     contentLayout->addWidget(navContainer);
@@ -416,36 +415,43 @@ void MainWindow::setupDataBar() {
     dataLayout->addWidget(m_droppedBadgeLabel);
     dataLayout->addStretch(1);
 
-    m_dataBar->setStyleSheet(uR"(
+    m_dataBar->setStyleSheet(
+        QString(uR"(
         QWidget#telemetryStrip {
             background: rgba(26, 26, 26, 0.95);
-            color: #f0f0f0;
+            color: %1;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
             border-bottom: 1px solid rgba(0, 0, 0, 0.7);
         }
 
         QWidget#telemetryStrip QLabel#telemetryStripPage {
-            font-size: 11px;
-            color: #8fa0b0;
+            font-size: %2px;
+            color: %3;
             letter-spacing: 3px;
             font-weight: 600;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-family: %4;
         }
 
         QWidget#telemetryStrip QLabel#telemetryBadge {
-            font-size: 12px;
+            font-size: %5px;
             color: #f7f7f7;
             letter-spacing: 1px;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-family: %4;
         }
 
         QWidget#telemetryStrip QLabel#telemetryDropBadge {
-            font-size: 12px;
-            color: #ff6b6b;
+            font-size: %5px;
+            color: %6;
             letter-spacing: 1px;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-family: %4;
         }
-    )"_s);
+    )"_s)
+        .arg(Theme::kTextPrimary)
+        .arg(Theme::kFontSizeSm)
+        .arg(Theme::kTextDim)
+        .arg(Theme::kFontMono)
+        .arg(Theme::kFontSizeBase)
+        .arg(Theme::kDanger));
 }
 
 void MainWindow::setupConnectionBar() {
@@ -466,7 +472,10 @@ void MainWindow::setupConnectionBar() {
     m_connectionPageLabel->setWordWrap(false);
     m_connectionPageLabel->setMinimumWidth(200);
     m_connectionPageLabel->setStyleSheet(
-        u"color: #9aa7b8; font-size: 12px; font-family: \"Red Hat Mono\", monospace;"_s);
+        QString(u"color: %1; font-size: %2px; font-family: %3;"_s)
+            .arg(Theme::kTextMuted)
+            .arg(Theme::kFontSizeBase)
+            .arg(Theme::kFontMono));
 
     m_serialControlBlock = new QWidget(m_connectionBar);
     auto *serialRow = new QHBoxLayout(m_serialControlBlock);
@@ -474,7 +483,10 @@ void MainWindow::setupConnectionBar() {
     serialRow->setSpacing(12);
 
     auto *portLabel = new QLabel(u"Port"_s, m_serialControlBlock);
-    portLabel->setStyleSheet(u"color: #c8c8c8; font-family: \"Red Hat Mono\", monospace;"_s);
+    portLabel->setStyleSheet(
+        QString(u"color: %1; font-family: %2;"_s)
+            .arg(Theme::kTextMid)
+            .arg(Theme::kFontMono));
     m_portCombo = new QComboBox(m_serialControlBlock);
     m_portCombo->setEditable(true);
     m_portCombo->setMinimumWidth(200);
@@ -533,40 +545,9 @@ void MainWindow::setupConnectionBar() {
     connect(clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
     connect(exportBtn,     &QPushButton::clicked, this, &MainWindow::onExportSession);
 
-    m_connectionBar->setStyleSheet(uR"(
-        QWidget#connectionStrip {
-            background: rgba(34, 34, 34, 0.98);
-            color: #f0f0f0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        QWidget#connectionStrip QComboBox {
-            background-color: #1a1a1a;
-            color: #f5f5f5;
-            border: 1px solid #4d4d4d;
-            border-radius: 4px;
-            padding: 4px 8px;
-            min-height: 22px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
-        }
-        QWidget#connectionStrip QComboBox::drop-down { border: none; width: 22px; }
-        QWidget#connectionStrip QComboBox QAbstractItemView {
-            background-color: #2b2d33;
-            color: #f5f5f5;
-            selection-background-color: #4b4b4b;
-        }
-        QWidget#connectionStrip QPushButton {
-            border: 1px solid #6a6a6a;
-            border-radius: 4px;
-            padding: 4px 10px;
-            min-height: 28px;
-            background-color: #3d3f47;
-            color: #f0f0f0;
-            font-family: "Red Hat Mono", "Courier New", monospace;
-            font-size: 11px;
-        }
-        QWidget#connectionStrip QPushButton:hover { background-color: #4d4f57; }
-        QWidget#connectionStrip QPushButton:pressed { background-color: #2d2f37; }
-    )"_s);
+    m_connectionBar->setStyleSheet(
+        QString(u"QWidget#connectionStrip { background: rgba(34, 34, 34, 0.98); color: %1; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }"_s)
+            .arg(Theme::kTextPrimary));
 
     loadSerialPrefsToUi();
 }

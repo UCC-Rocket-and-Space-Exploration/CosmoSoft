@@ -58,4 +58,10 @@ constexpr auto kSettingsFontSize = "ui/fontPointSize";
 /** @brief Whether UI sounds are enabled (reserved for future audio engine). */
 constexpr auto kSettingsSoundsEnabled = "ui/soundsEnabled";
 
+/** @brief Whether the developer debug mode is active. */
+constexpr auto kSettingsDebugMode = "ui/debugMode";
+
+/** @brief Last active settings tab index. */
+constexpr auto kSettingsActiveTab = "ui/settingsActiveTab";
+
 #endif // COSMO_SOFT_SETTINGSKEYS_H

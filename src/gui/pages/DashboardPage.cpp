@@ -33,6 +33,7 @@
 #include "domain/FlightSession.h"
 #include "gui/FlightDataModel.h"
 #include "gui/FlightReplayController.h"
+#include "gui/Theme.h"
 #include "gui/widgets/MetricDefs.h"
 #include "gui/widgets/ReplayBar.h"
 #include "gui/widgets/StatTileWidget.h"
@@ -241,19 +242,20 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     setObjectName(u"dashboardPage"_s);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAutoFillBackground(false);
-    setStyleSheet(uR"(
+    setStyleSheet(
+        QString(uR"(
         #dashboardPage {
             background-color: transparent;
             color: #e8e8e8;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-family: %1;
         }
         #dashboardPage QWidget {
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-family: %1;
         }
         QFrame#chartFrame {
             background-color: rgba(21, 22, 25, 0.80);
-            border: 1px solid #3b3b45;
-            border-radius: 8px;
+            border: 1px solid %2;
+            border-radius: %3px;
             padding: 0px;
         }
         #telemetryChartView {
@@ -264,12 +266,12 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
         QToolButton#chartToggleBtn {
             border: 1px solid #5a5d68;
-            border-radius: 4px;
+            border-radius: %4px;
             padding: 4px 10px;
             min-height: 28px;
             background-color: #2a2d34;
             color: #b8c4d0;
-            font-size: 11px;
+            font-size: %5px;
         }
         QToolButton#chartToggleBtn:hover {
             background-color: #343842;
@@ -293,10 +295,10 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             padding: 0px;
             font-weight: 700;
             font-size: 16px;
-            border: 1px solid #6a6a6a;
-            border-radius: 4px;
-            background-color: #3d3f47;
-            color: #f0f0f0;
+            border: 1px solid %6;
+            border-radius: %4px;
+            background-color: %7;
+            color: %8;
         }
         QPushButton#chartZoomBtn:hover {
             background-color: #4a4d56;
@@ -306,10 +308,10 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             background-color: #2e3038;
         }
         QDoubleSpinBox {
-            background-color: #1a1a1a;
+            background-color: %9;
             color: #f5f5f5;
-            border: 1px solid #4d4d4d;
-            border-radius: 4px;
+            border: 1px solid %10;
+            border-radius: %4px;
             padding: 4px 8px;
             min-height: 22px;
         }
@@ -323,16 +325,16 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             margin: -5px 0;
             background: #6a6e78;
             border: 1px solid #8a8e98;
-            border-radius: 4px;
+            border-radius: %4px;
         }
         QPushButton#chartToolbarBtn {
-            border: 1px solid #6a6a6a;
-            border-radius: 4px;
+            border: 1px solid %6;
+            border-radius: %4px;
             padding: 4px 10px;
             min-height: 28px;
-            background-color: #3d3f47;
-            color: #f0f0f0;
-            font-size: 11px;
+            background-color: %7;
+            color: %8;
+            font-size: %5px;
         }
         QPushButton#chartToolbarBtn:hover {
             background-color: #4a4d56;
@@ -343,7 +345,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
         QToolButton#chartHelpBtn {
             font-weight: 700;
-            font-size: 13px;
+            font-size: %11px;
             min-width: 28px;
             max-width: 28px;
             min-height: 28px;
@@ -361,16 +363,16 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
         QLabel#chartHoverReadout {
             color: #c8d4e0;
-            font-size: 11px;
+            font-size: %5px;
             padding: 4px 6px;
             margin: 0px;
             background-color: rgba(8, 9, 12, 0.92);
-            border: 1px solid #3b3b45;
-            border-radius: 4px;
+            border: 1px solid %2;
+            border-radius: %4px;
         }
         QLabel#chartStatsLabel {
-            color: #8fa0b0;
-            font-size: 11px;
+            color: %12;
+            font-size: %5px;
             margin: 0px;
             padding: 0px;
         }
@@ -380,7 +382,19 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             margin: 0px;
             padding: 0px 2px;
         }
-    )"_s);
+    )"_s)
+            .arg(Theme::kFontMono)          // %1
+            .arg(Theme::kBorderPanel)       // %2
+            .arg(Theme::kRadiusMd)          // %3
+            .arg(Theme::kRadiusSm)          // %4
+            .arg(Theme::kFontSizeSm)        // %5
+            .arg(Theme::kBorderLight)       // %6
+            .arg(Theme::kBgButton)          // %7
+            .arg(Theme::kTextPrimary)       // %8
+            .arg(Theme::kBgInput)           // %9
+            .arg(Theme::kBorderDefault)     // %10
+            .arg(Theme::kFontSizeMd)        // %11
+            .arg(Theme::kTextDim));         // %12
 
     // ── Root layout ───────────────────────────────────────────────────────────
     // The page has two rows: the splitter (traces + chart, stretchy) and the

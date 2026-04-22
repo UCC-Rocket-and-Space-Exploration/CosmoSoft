@@ -1,5 +1,6 @@
 #include "gui/widgets/TracesPanel.h"
 
+#include "gui/Theme.h"
 #include "gui/widgets/MetricDefs.h"
 
 #include <QCheckBox>
@@ -56,41 +57,42 @@ TracesPanel::TracesPanel(QWidget *parent)
     setMinimumWidth(130);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
 
-    setStyleSheet(uR"(
+    setStyleSheet(
+        QString(uR"(
         QFrame#tracesPanel {
             background-color: rgba(21, 22, 25, 0.88);
-            border: 1px solid #3b3b45;
-            border-radius: 8px;
+            border: 1px solid %1;
+            border-radius: %2px;
         }
         QLabel#tracesPanelTitle {
             font-size: 10px;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-family: %3;
             color: #7a8898;
             letter-spacing: 1.5px;
         }
         QPushButton#tracesAllNoneBtn {
             font-size: 10px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-family: %3;
             color: #7a8898;
             background: transparent;
-            border: 1px solid #3b3b45;
-            border-radius: 4px;
+            border: 1px solid %1;
+            border-radius: %4px;
             padding: 3px 8px;
             min-height: 22px;
         }
         QPushButton#tracesAllNoneBtn:hover { color: #c8d4e0; border-color: #6a7080; background: rgba(255,255,255,0.04); }
-        QFrame#traceSeparator { background-color: #3b3b45; border: none; }
+        QFrame#traceSeparator { background-color: %1; border: none; }
         QFrame#traceRow {
             background-color: transparent;
             border: none;
-            border-radius: 4px;
+            border-radius: %4px;
         }
         QFrame#traceRow:hover { background-color: rgba(255,255,255,0.04); }
         QFrame#traceRow[noData="true"] QCheckBox#traceCheck { color: #555a66; }
         QFrame#traceRow[noData="true"] QLabel#traceValueLabel { color: #555a66; }
         QCheckBox#traceCheck {
-            font-size: 11px;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+            font-size: %5px;
+            font-family: %3;
             color: #c8d4e0;
             spacing: 0px;
         }
@@ -103,12 +105,18 @@ TracesPanel::TracesPanel(QWidget *parent)
         }
         QLabel#traceValueLabel {
             font-size: 10px;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
-            color: #9aa7b8;
+            font-family: %3;
+            color: %6;
         }
         QScrollArea#traceScroll { background: transparent; border: none; }
         QWidget#traceScrollInner { background: transparent; }
-    )"_s);
+    )"_s)
+            .arg(Theme::kBorderPanel)
+            .arg(Theme::kRadiusMd)
+            .arg(Theme::kFontMono)
+            .arg(Theme::kRadiusSm)
+            .arg(Theme::kFontSizeSm)
+            .arg(Theme::kTextMuted));
 
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(6, 6, 6, 6);

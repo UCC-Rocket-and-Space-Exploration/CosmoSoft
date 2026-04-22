@@ -1,11 +1,12 @@
 #include "gui/pages/SettingsPage.h"
 
 #include "gui/SettingsKeys.h"
+#include "gui/Theme.h"
 #include "gui/pages/EventLogPage.h"
 
 #include <QApplication>
-#include <QCloseEvent>
 #include <QCheckBox>
+#include <QCloseEvent>
 #include <QComboBox>
 #include <QFont>
 #include <QFormLayout>
@@ -13,13 +14,111 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPlainTextEdit>
+#include <QPushButton>
 #include <QScrollArea>
 #include <QSettings>
 #include <QShowEvent>
-#include <QSplitter>
+#include <QSysInfo>
+#include <QTabWidget>
 #include <QVBoxLayout>
 
 using namespace Qt::StringLiterals;
+
+namespace {
+
+/** @brief Page-specific stylesheet for SettingsPage (ID-targeted rules only).
+ *  Global widget defaults (QPushButton, QComboBox, QScrollBar, QCheckBox,
+ *  QGroupBox, QTabWidget) are provided by assets/theme.qss. */
+const QString kPageStyleSheet = QString(uR"(
+    QWidget {
+        background-color: %11;
+    }
+    QLabel#settingsHeading {
+        font-size: 18px;
+        font-weight: bold;
+        color: %1;
+        letter-spacing: 1px;
+    }
+    QLabel#settingsMutedLabel {
+        color: %2;
+        font-size: %3px;
+    }
+    QLabel#aboutAppName {
+        font-size: 26px;
+        font-weight: bold;
+        color: %1;
+        letter-spacing: 2px;
+    }
+    QLabel#aboutVersion {
+        color: #7ab8d4;
+        font-size: %4px;
+    }
+    QLabel#aboutDesc {
+        color: %5;
+        font-size: %3px;
+    }
+    QLabel#aboutLink {
+        color: %6;
+        font-size: %3px;
+    }
+    QLabel#devSectionTitle {
+        font-size: %4px;
+        font-weight: bold;
+        color: #d0d0d0;
+        letter-spacing: 1px;
+    }
+    QLabel#sysInfoLabel {
+        color: #a0c8a0;
+        font-size: %3px;
+        background-color: %7;
+        padding: 12px 16px;
+        border-radius: %8px;
+    }
+    QCheckBox#debugModeCheck {
+        font-size: %4px;
+        font-weight: bold;
+        color: #f0c060;
+        spacing: 10px;
+    }
+    QCheckBox#debugModeCheck::indicator {
+        width: 18px;
+        height: 18px;
+        border: 1px solid #a08040;
+        border-radius: 3px;
+        background-color: %9;
+    }
+    QCheckBox#debugModeCheck::indicator:checked {
+        background-color: #c08820;
+        border-color: #f0c060;
+    }
+    QFrame#divider {
+        color: %10;
+    }
+)"_s)
+    .arg(Theme::kTextPrimary)
+    .arg(Theme::kTextMuted)
+    .arg(Theme::kFontSizeBase)
+    .arg(Theme::kFontSizeMd)
+    .arg(Theme::kTextMid)
+    .arg(Theme::kAccentLink)
+    .arg(Theme::kBgDark)
+    .arg(Theme::kRadiusSm)
+    .arg(Theme::kBgInput)
+    .arg(Theme::kBorderSubtle)
+    .arg(Theme::kBgBase);
+
+QWidget *makeScrollWrapper(QWidget *inner, QWidget *parent) {
+    auto *scroll = new QScrollArea(parent);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidget(inner);
+    return scroll;
+}
+
+} // namespace
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 SettingsPage::SettingsPage(QWidget *parent)
     : QWidget(parent) {
@@ -27,33 +126,56 @@ SettingsPage::SettingsPage(QWidget *parent)
     buildUi();
 }
 
-void SettingsPage::buildUi() {
-    // ── Settings controls (scrollable) ───────────────────────────────────────
-    auto *scroll = new QScrollArea(this);
-    scroll->setObjectName(u"settingsScroll"_s);
-    scroll->setWidgetResizable(true);
-    scroll->setFrameShape(QFrame::NoFrame);
+bool SettingsPage::debugModeEnabled() const {
+    return m_debugModeCheck && m_debugModeCheck->isChecked();
+}
 
-    auto *inner = new QWidget(scroll);
-    inner->setObjectName(u"settingsInner"_s);
+void SettingsPage::buildUi() {
+    auto *root = new QVBoxLayout(this);
+    root->setContentsMargins(16, 16, 16, 16);
+    root->setSpacing(0);
+
+    m_tabs = new QTabWidget(this);
+    m_tabs->setObjectName(u"settingsTabs"_s);
+    m_tabs->addTab(buildGeneralTab(),   u"General"_s);
+    m_tabs->addTab(buildAboutTab(),     u"About"_s);
+    m_tabs->addTab(buildDeveloperTab(), u"Developer"_s);
+
+    root->addWidget(m_tabs);
+
+    setStyleSheet(kPageStyleSheet);
+}
+
+// ── General tab ───────────────────────────────────────────────────────────────
+
+QWidget *SettingsPage::buildGeneralTab() {
+    auto *inner = new QWidget();
     auto *layout = new QVBoxLayout(inner);
     layout->setContentsMargins(24, 24, 24, 24);
     layout->setSpacing(20);
 
-    auto *heading = new QLabel(u"Settings"_s, inner);
+    auto *heading = new QLabel(u"General"_s, inner);
     heading->setObjectName(u"settingsHeading"_s);
     layout->addWidget(heading);
 
     auto *intro = new QLabel(
-        u"Appearance and audio preferences. Use the connection bar on the main window for serial and flight logs."_s,
+        u"Appearance and audio preferences.\n"
+        u"Use the connection bar on the main window for serial and flight logs."_s,
         inner);
     intro->setWordWrap(true);
     intro->setObjectName(u"settingsMutedLabel"_s);
     layout->addWidget(intro);
 
+    auto *divider = new QFrame(inner);
+    divider->setObjectName(u"divider"_s);
+    divider->setFrameShape(QFrame::HLine);
+    layout->addWidget(divider);
+
+    // Font group
     m_fontGroup = new QGroupBox(u"Font"_s, inner);
     auto *fontForm = new QFormLayout(m_fontGroup);
     fontForm->setSpacing(10);
+    fontForm->setContentsMargins(16, 20, 16, 16);
     m_fontSizeCombo = new QComboBox(m_fontGroup);
     for (int pt = 9; pt <= 18; ++pt) {
         m_fontSizeCombo->addItem(QString::number(pt), pt);
@@ -64,133 +186,240 @@ void SettingsPage::buildUi() {
     fontForm->addRow(u"UI font size (pt):"_s, m_fontSizeCombo);
     layout->addWidget(m_fontGroup);
 
+    // Sound group
     m_soundGroup = new QGroupBox(u"Sound"_s, inner);
     auto *soundLayout = new QVBoxLayout(m_soundGroup);
-    m_uiSoundsCheck = new QCheckBox(u"Enable UI sounds (when available)"_s, m_soundGroup);
+    soundLayout->setContentsMargins(16, 20, 16, 16);
+    soundLayout->setSpacing(8);
+    m_uiSoundsCheck = new QCheckBox(u"Enable UI sounds"_s, m_soundGroup);
     m_uiSoundsCheck->setChecked(true);
     connect(m_uiSoundsCheck, &QCheckBox::toggled, this, &SettingsPage::onSoundsToggled);
     soundLayout->addWidget(m_uiSoundsCheck);
-    auto *soundHint = new QLabel(
-        u"Reserved for future alerts and feedback tones."_s,
-        m_soundGroup);
+    auto *soundHint = new QLabel(u"Reserved for future alerts and feedback tones."_s, m_soundGroup);
     soundHint->setWordWrap(true);
     soundHint->setObjectName(u"settingsMutedLabel"_s);
     soundLayout->addWidget(soundHint);
     layout->addWidget(m_soundGroup);
 
     layout->addStretch(1);
-    scroll->setWidget(inner);
-
-    // ── Event log ─────────────────────────────────────────────────────────────
-    m_eventLog = new EventLogPage(this);
-
-    // ── Vertical splitter: settings controls | event log ─────────────────────
-    auto *splitter = new QSplitter(Qt::Vertical, this);
-    splitter->setObjectName(u"settingsSplitter"_s);
-    splitter->setChildrenCollapsible(false);
-    splitter->addWidget(scroll);
-    splitter->addWidget(m_eventLog);
-    splitter->setSizes({320, 280});
-
-    auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(0, 0, 0, 0);
-    root->setSpacing(0);
-    root->addWidget(splitter);
-
-    setStyleSheet(uR"(
-        #settingsPage {
-            background-color: #1f1f1f;
-            color: #f8f8f8;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
-        }
-        #settingsScroll {
-            border: none;
-            background-color: #1f1f1f;
-        }
-        #settingsInner {
-            background-color: #1f1f1f;
-        }
-        QSplitter#settingsSplitter::handle {
-            background: #3a3a3a;
-            height: 3px;
-        }
-        QLabel#settingsHeading {
-            font-size: 22px;
-            font-weight: bold;
-            color: #f8f8f8;
-        }
-        QLabel#settingsMutedLabel {
-            color: #9aa7b8;
-        }
-        QGroupBox {
-            font-weight: 600;
-            color: #f8f8f8;
-            border: 1px solid #4d4d4d;
-            border-radius: 8px;
-            margin-top: 12px;
-            padding-top: 12px;
-            background-color: #2b2d33;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 12px;
-            padding: 0 6px;
-            color: #f8f8f8;
-        }
-        QLabel {
-            color: #f8f8f8;
-        }
-        QComboBox, QLineEdit {
-            background-color: #1a1a1a;
-            color: #f5f5f5;
-            border: 2px solid #4d4d4d;
-            border-radius: 4px;
-            padding: 4px 8px;
-        }
-        QComboBox::drop-down {
-            border: none;
-            width: 24px;
-        }
-        QComboBox QAbstractItemView {
-            background-color: #2b2d33;
-            color: #f5f5f5;
-            selection-background-color: #4b4b4b;
-            border: 1px solid #4d4d4d;
-        }
-        QCheckBox {
-            color: #f8f8f8;
-            spacing: 8px;
-        }
-        QCheckBox::indicator {
-            width: 18px;
-            height: 18px;
-        }
-        QPushButton {
-            border: 1px solid #6a6a6a;
-            border-radius: 4px;
-            padding: 4px 10px;
-            min-height: 28px;
-            background-color: #3d3f47;
-            color: #f0f0f0;
-            font-size: 11px;
-        }
-        QPushButton:hover  { background-color: #4d4f57; }
-        QPushButton:pressed { background-color: #2d2f37; }
-        QScrollBar:vertical {
-            background: #2a2a2a;
-            width: 12px;
-            margin: 0;
-        }
-        QScrollBar::handle:vertical {
-            background: #5a5a5a;
-            min-height: 24px;
-            border-radius: 4px;
-        }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-            height: 0;
-        }
-    )"_s);
+    return makeScrollWrapper(inner, nullptr);
 }
+
+// ── About tab ─────────────────────────────────────────────────────────────────
+
+QWidget *SettingsPage::buildAboutTab() {
+    auto *inner = new QWidget();
+    auto *layout = new QVBoxLayout(inner);
+    layout->setContentsMargins(32, 32, 32, 32);
+    layout->setSpacing(12);
+
+    auto *appName = new QLabel(u"CosmoSoft"_s, inner);
+    appName->setObjectName(u"aboutAppName"_s);
+    layout->addWidget(appName);
+
+    auto *version = new QLabel(u"Version 0.1.0 — development build"_s, inner);
+    version->setObjectName(u"aboutVersion"_s);
+    layout->addWidget(version);
+
+    auto *divider = new QFrame(inner);
+    divider->setObjectName(u"divider"_s);
+    divider->setFrameShape(QFrame::HLine);
+    layout->addSpacing(8);
+    layout->addWidget(divider);
+    layout->addSpacing(8);
+
+    auto *desc = new QLabel(
+        u"Open-source ground-station software for rocket telemetry.\n"
+        u"Written in C++20 with Qt 6."_s,
+        inner);
+    desc->setWordWrap(true);
+    desc->setObjectName(u"aboutDesc"_s);
+    layout->addWidget(desc);
+
+    auto *license = new QLabel(u"Licensed under the Apache License 2.0."_s, inner);
+    license->setObjectName(u"aboutDesc"_s);
+    layout->addWidget(license);
+
+    layout->addSpacing(4);
+
+    auto *repoLabel = new QLabel(
+        u"<a href=\"https://github.com/UCC-Rocket-and-Space-Exploration/CosmoSoft\">"
+        u"github.com/UCC-Rocket-and-Space-Exploration/CosmoSoft</a>"_s,
+        inner);
+    repoLabel->setObjectName(u"aboutLink"_s);
+    repoLabel->setOpenExternalLinks(true);
+    repoLabel->setTextFormat(Qt::RichText);
+    layout->addWidget(repoLabel);
+
+    layout->addSpacing(24);
+
+    auto *creditsHeading = new QLabel(u"Built with"_s, inner);
+    creditsHeading->setObjectName(u"settingsHeading"_s);
+    layout->addWidget(creditsHeading);
+
+    const QString qtLine = QStringLiteral("Qt %1  ·  C++20").arg(QLatin1StringView(QT_VERSION_STR));
+    auto *techLabel = new QLabel(qtLine, inner);
+    techLabel->setObjectName(u"aboutDesc"_s);
+    layout->addWidget(techLabel);
+
+    layout->addStretch(1);
+    return makeScrollWrapper(inner, nullptr);
+}
+
+// ── Developer tab ─────────────────────────────────────────────────────────────
+
+QWidget *SettingsPage::buildDeveloperTab() {
+    auto *outer = new QWidget();
+    auto *outerLayout = new QVBoxLayout(outer);
+    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->setSpacing(0);
+
+    // ── Header bar with debug toggle ──────────────────────────────────────────
+    auto *header = new QWidget(outer);
+    header->setObjectName(u"devHeader"_s);
+    header->setStyleSheet(
+        QString(u"QWidget#devHeader { background-color: #252528; border-bottom: 1px solid %1; }"_s)
+            .arg(Theme::kBorderSubtle));
+    auto *headerLayout = new QHBoxLayout(header);
+    headerLayout->setContentsMargins(20, 14, 20, 14);
+    headerLayout->setSpacing(16);
+
+    m_debugModeCheck = new QCheckBox(u"Debug mode"_s, header);
+    m_debugModeCheck->setObjectName(u"debugModeCheck"_s);
+    m_debugModeCheck->setToolTip(
+        u"Enable debug mode to expose verbose system information and developer tools."_s);
+    connect(m_debugModeCheck, &QCheckBox::toggled, this, &SettingsPage::onDebugModeToggled);
+    headerLayout->addWidget(m_debugModeCheck);
+
+    auto *headerHint = new QLabel(u"Enable to unlock verbose info and developer tools."_s, header);
+    headerHint->setObjectName(u"settingsMutedLabel"_s);
+    headerLayout->addWidget(headerHint);
+    headerLayout->addStretch(1);
+
+    outerLayout->addWidget(header);
+
+    // ── Scrollable content below the header ───────────────────────────────────
+    auto *inner = new QWidget(outer);
+    auto *innerLayout = new QVBoxLayout(inner);
+    innerLayout->setContentsMargins(20, 20, 20, 20);
+    innerLayout->setSpacing(20);
+
+    // System information group
+    m_sysInfoGroup = new QGroupBox(u"System Information"_s, inner);
+    auto *sysLayout = new QVBoxLayout(m_sysInfoGroup);
+    sysLayout->setContentsMargins(16, 20, 16, 16);
+
+    const QString sysText = QStringLiteral(
+        "App version   :  0.1.0 (development)\n"
+        "Qt version    :  %1\n"
+        "OS            :  %2 %3\n"
+        "Architecture  :  %4\n"
+        "Build type    :  %5\n"
+        "Settings org  :  CosmoSoft\n"
+        "Settings app  :  cosmo-soft"
+    ).arg(
+        QLatin1StringView(QT_VERSION_STR),
+        QSysInfo::productType(),
+        QSysInfo::productVersion(),
+        QSysInfo::currentCpuArchitecture(),
+#ifdef QT_DEBUG
+        u"Debug"_s
+#else
+        u"Release"_s
+#endif
+    );
+
+    m_sysInfoLabel = new QLabel(sysText, m_sysInfoGroup);
+    m_sysInfoLabel->setObjectName(u"sysInfoLabel"_s);
+    m_sysInfoLabel->setWordWrap(false);
+    m_sysInfoLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    sysLayout->addWidget(m_sysInfoLabel);
+    innerLayout->addWidget(m_sysInfoGroup);
+
+    // Developer helper / cheat-sheet group
+    auto *helperGroup = new QGroupBox(u"Developer Reference"_s, inner);
+    auto *helperLayout = new QVBoxLayout(helperGroup);
+    helperLayout->setContentsMargins(16, 20, 16, 16);
+    helperLayout->setSpacing(6);
+
+    auto *helperText = new QPlainTextEdit(helperGroup);
+    helperText->setReadOnly(true);
+    helperText->setMinimumHeight(200);
+    helperText->setStyleSheet(
+        QString(u"QPlainTextEdit { background-color: %1; color: #b0c4b0; font-family: %2; font-size: %3px; border: none; padding: 12px; }"_s)
+            .arg(Theme::kBgDark)
+            .arg(Theme::kFontMono)
+            .arg(Theme::kFontSizeBase));
+    helperText->setPlainText(
+        u"─── Workflow ───────────────────────────────────────────────\n"
+        u"  1. Select serial port + baud on the Monitoring connection bar.\n"
+        u"  2. Click Connect to start the live telemetry pipeline.\n"
+        u"  3. Or click Open log… to load a .telem / .csv flight log.\n"
+        u"  4. Switch to Flight data for charts and replay.\n"
+        u"  5. Click Export session… to write a timestamped text log.\n"
+        u"\n"
+        u"─── File formats ───────────────────────────────────────────\n"
+        u"  .telem   AltOS binary framed telemetry (Framer + Parser)\n"
+        u"  .csv     Theseus CSV: time_s, lat, lon, alt_m, ...\n"
+        u"\n"
+        u"─── Architecture overview ──────────────────────────────────\n"
+        u"  SerialWorker  → BlockingQueue → ParserWorker\n"
+        u"                                   ↓\n"
+        u"  FlightDataModel ← appendSample (Qt::QueuedConnection)\n"
+        u"  FlightLogManager ← appendSample (for export)\n"
+        u"\n"
+        u"─── QSettings location (macOS) ─────────────────────────────\n"
+        u"  ~/Library/Preferences/CosmoSoft.cosmo-soft.plist\n"
+        u"\n"
+        u"─── QSettings keys ─────────────────────────────────────────\n"
+        u"  window/mainGeometry         Main window geometry\n"
+        u"  window/settingsGeometry     Settings window geometry\n"
+        u"  serial/port                 Last serial device path\n"
+        u"  serial/baud                 Last baud rate\n"
+        u"  paths/replayDir             Last replay directory\n"
+        u"  ui/dashboardSplitterState   Dashboard splitter\n"
+        u"  ui/fontPointSize            App font pt size\n"
+        u"  ui/soundsEnabled            Sounds toggle\n"
+        u"  ui/debugMode                Debug mode toggle\n"
+        u"  ui/settingsActiveTab        Last active settings tab\n"
+        u"\n"
+        u"─── Useful build commands ──────────────────────────────────\n"
+        u"  cmake --preset debug\n"
+        u"  cmake --build build/debug --target CosmoSoft -j\n"
+        u"  cmake --preset release\n"
+        u"  cmake --build build/release --target CosmoSoft -j\n"_s);
+    helperLayout->addWidget(helperText);
+    innerLayout->addWidget(helperGroup);
+
+    innerLayout->addStretch(1);
+
+    auto *scroll = new QScrollArea(outer);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidget(inner);
+    outerLayout->addWidget(scroll, 1);
+
+    // ── Event log pinned at bottom ────────────────────────────────────────────
+    auto *logHeader = new QWidget(outer);
+    logHeader->setStyleSheet(
+        QString(u"background-color: #252528; border-top: 1px solid %1; border-bottom: none;"_s)
+            .arg(Theme::kBorderSubtle));
+    auto *logHeaderRow = new QHBoxLayout(logHeader);
+    logHeaderRow->setContentsMargins(20, 8, 20, 8);
+    auto *logTitle = new QLabel(u"Event Log"_s, logHeader);
+    logTitle->setObjectName(u"devSectionTitle"_s);
+    logHeaderRow->addWidget(logTitle);
+    logHeaderRow->addStretch(1);
+    outerLayout->addWidget(logHeader);
+
+    m_eventLog = new EventLogPage(outer);
+    m_eventLog->setMinimumHeight(200);
+    outerLayout->addWidget(m_eventLog);
+
+    return outer;
+}
+
+// ── Slot implementations ──────────────────────────────────────────────────────
 
 void SettingsPage::appendLogEntry(const QString &text) {
     if (m_eventLog) {
@@ -230,6 +459,15 @@ void SettingsPage::onSoundsToggled(bool enabled) {
     s.setValue(kSettingsSoundsEnabled, enabled);
 }
 
+void SettingsPage::onDebugModeToggled(bool enabled) {
+    if (m_sysInfoGroup) {
+        m_sysInfoGroup->setVisible(enabled);
+    }
+    QSettings s(kSettingsOrg, kSettingsApp);
+    s.setValue(kSettingsDebugMode, enabled);
+    emit debugModeChanged(enabled);
+}
+
 void SettingsPage::showEvent(QShowEvent *event) {
     QWidget::showEvent(event);
     loadFromSettings();
@@ -242,6 +480,7 @@ void SettingsPage::closeEvent(QCloseEvent *event) {
 
 void SettingsPage::loadFromSettings() {
     QSettings s(kSettingsOrg, kSettingsApp);
+
     const int pt = s.value(kSettingsFontSize, 12).toInt();
     if (m_fontSizeCombo) {
         const int idx = m_fontSizeCombo->findData(pt);
@@ -254,6 +493,21 @@ void SettingsPage::loadFromSettings() {
     }
     if (m_uiSoundsCheck) {
         m_uiSoundsCheck->setChecked(s.value(kSettingsSoundsEnabled, true).toBool());
+    }
+
+    const bool debugOn = s.value(kSettingsDebugMode, false).toBool();
+    if (m_debugModeCheck) {
+        m_debugModeCheck->blockSignals(true);
+        m_debugModeCheck->setChecked(debugOn);
+        m_debugModeCheck->blockSignals(false);
+    }
+    if (m_sysInfoGroup) {
+        m_sysInfoGroup->setVisible(debugOn);
+    }
+
+    const int activeTab = s.value(kSettingsActiveTab, 0).toInt();
+    if (m_tabs && activeTab >= 0 && activeTab < m_tabs->count()) {
+        m_tabs->setCurrentIndex(activeTab);
     }
 
     const QByteArray geo = s.value(kSettingsWindowSettingsGeo).toByteArray();
@@ -272,6 +526,12 @@ void SettingsPage::saveToSettings() {
     }
     if (m_uiSoundsCheck) {
         s.setValue(kSettingsSoundsEnabled, m_uiSoundsCheck->isChecked());
+    }
+    if (m_debugModeCheck) {
+        s.setValue(kSettingsDebugMode, m_debugModeCheck->isChecked());
+    }
+    if (m_tabs) {
+        s.setValue(kSettingsActiveTab, m_tabs->currentIndex());
     }
     s.setValue(kSettingsWindowSettingsGeo, saveGeometry());
 }

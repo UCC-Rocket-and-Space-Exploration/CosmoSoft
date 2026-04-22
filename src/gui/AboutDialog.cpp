@@ -1,5 +1,7 @@
 #include "gui/AboutDialog.h"
 
+#include "gui/Theme.h"
+
 #include <QApplication>
 #include <QDialogButtonBox>
 #include <QLabel>
@@ -36,7 +38,7 @@ AboutDialog::AboutDialog(QWidget *parent)
     descLabel->setWordWrap(true);
     descLabel->setAlignment(Qt::AlignLeft);
 
-    auto *licenseLabel = new QLabel(u"Licensed under the Apache License 2.0."_s, this);
+    auto *licenseLabel = new QLabel(u"Licensed under the MIT License."_s, this);
     licenseLabel->setAlignment(Qt::AlignLeft);
 
     auto *repoLabel = new QLabel(
@@ -59,28 +61,22 @@ AboutDialog::AboutDialog(QWidget *parent)
     root->addStretch(1);
     root->addWidget(buttons);
 
-    setStyleSheet(uR"(
+    setStyleSheet(
+        QString(uR"(
         QDialog {
-            background-color: #1f1f1f;
-            color: #f0f0f0;
+            background-color: %1;
+            color: %2;
         }
         QLabel {
-            color: #f0f0f0;
-            font-family: "Red Hat Mono", "Courier New", monospace;
+            color: %2;
+            font-family: %3;
         }
         QLabel a {
-            color: #6ab0de;
+            color: %4;
         }
-        QPushButton {
-            border: 1px solid #6a6a6a;
-            border-radius: 4px;
-            padding: 4px 16px;
-            min-height: 28px;
-            background-color: #3d3f47;
-            color: #f0f0f0;
-            font-family: "Red Hat Mono", "Courier New", monospace;
-        }
-        QPushButton:hover  { background-color: #4d4f57; }
-        QPushButton:pressed { background-color: #2d2f37; }
-    )"_s);
+    )"_s)
+            .arg(Theme::kBgBase)
+            .arg(Theme::kTextPrimary)
+            .arg(Theme::kFontMono)
+            .arg(Theme::kAccentLink));
 }

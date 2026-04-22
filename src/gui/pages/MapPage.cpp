@@ -2,6 +2,7 @@
 
 #include "gui/FlightDataModel.h"
 #include "gui/FlightReplayController.h"
+#include "gui/Theme.h"
 
 #include <QChart>
 #include <QChartView>
@@ -95,7 +96,8 @@ MapPage::MapPage(FlightDataModel *model,
     root->addWidget(toolbar);
     root->addWidget(m_chartView, 1);
 
-    setStyleSheet(uR"(
+    setStyleSheet(
+        QString(uR"(
         #mapPage {
             background-color: #1e1e20;
         }
@@ -105,22 +107,25 @@ MapPage::MapPage(FlightDataModel *model,
         }
         #mapHintLabel {
             color: #8a9ab0;
-            font-size: 11px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-size: %1px;
+            font-family: %2;
         }
         QPushButton {
             border: 1px solid #5a5a5a;
-            border-radius: 4px;
+            border-radius: %3px;
             padding: 3px 10px;
             min-height: 24px;
             background-color: #2e2e32;
             color: #d8d8d8;
-            font-size: 11px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-size: %1px;
+            font-family: %2;
         }
         QPushButton:hover  { background-color: #3a3a3e; }
         QPushButton:pressed { background-color: #222224; }
-    )"_s);
+    )"_s)
+            .arg(Theme::kFontSizeSm)
+            .arg(Theme::kFontMono)
+            .arg(Theme::kRadiusSm));
 
     if (m_model) {
         connect(m_model, &FlightDataModel::sampleUpdated,

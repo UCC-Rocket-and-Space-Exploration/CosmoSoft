@@ -1,5 +1,7 @@
 #include "gui/pages/EventLogPage.h"
 
+#include "gui/Theme.h"
+
 #include <QDateTime>
 #include <QHBoxLayout>
 #include <QPlainTextEdit>
@@ -37,15 +39,16 @@ EventLogPage::EventLogPage(QWidget *parent)
 
     connect(m_clearBtn, &QPushButton::clicked, this, &EventLogPage::onClearLog);
 
-    setStyleSheet(uR"(
+    setStyleSheet(
+        QString(uR"(
         #eventLogPage {
-            background-color: #161618;
+            background-color: %1;
         }
         #eventLogEdit {
-            background-color: #161618;
+            background-color: %1;
             color: #d0d0d0;
-            font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
-            font-size: 12px;
+            font-family: %2;
+            font-size: %3px;
             border: none;
             padding: 12px 16px;
         }
@@ -55,17 +58,22 @@ EventLogPage::EventLogPage(QWidget *parent)
         }
         #eventLogClearBtn {
             border: 1px solid #5a5a5a;
-            border-radius: 4px;
+            border-radius: %4px;
             padding: 4px 12px;
             min-height: 26px;
             background-color: #2e2e32;
             color: #c0c0c0;
-            font-size: 11px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-size: %5px;
+            font-family: %2;
         }
         #eventLogClearBtn:hover  { background-color: #3a3a3e; }
         #eventLogClearBtn:pressed { background-color: #222224; }
-    )"_s);
+    )"_s)
+            .arg(Theme::kBgDark)
+            .arg(Theme::kFontMono)
+            .arg(Theme::kFontSizeBase)
+            .arg(Theme::kRadiusSm)
+            .arg(Theme::kFontSizeSm));
 
     appendEntry(u"Event log started."_s);
 }

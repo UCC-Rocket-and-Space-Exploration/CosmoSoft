@@ -2,6 +2,7 @@
 
 #include "gui/FlightDataModel.h"
 #include "gui/FlightReplayController.h"
+#include "gui/Theme.h"
 #include "gui/widgets/MetricDefs.h"
 
 #include "domain/FlightSession.h"
@@ -234,51 +235,52 @@ void ReplayBar::buildUi()
         u"Replay controls · Space: play/pause · Left/Right: step frame · "
         u"Click here first to capture keys"_s);
 
-    setStyleSheet(uR"(
+    setStyleSheet(
+        QString(uR"(
         QFrame#replayBar {
             background-color: rgba(21, 22, 25, 0.92);
-            border: 1px solid #3b3b45;
-            border-radius: 8px;
+            border: 1px solid %1;
+            border-radius: %2px;
         }
         QLabel#replayBarTitle {
             font-size: 10px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-family: %3;
             color: #5b9bd5;
             letter-spacing: 1.5px;
             font-weight: 700;
         }
         QLabel#replayRateLabel {
             font-size: 10px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-family: %3;
             color: #7a8898;
             letter-spacing: 0.5px;
         }
         QLabel#replaySampleCaption {
             font-size: 10px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
-            color: #8fa0b0;
+            font-family: %3;
+            color: %4;
         }
         QLabel#replayClockLabel {
-            font-size: 11px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-size: %5px;
+            font-family: %3;
             color: #c8d4e0;
             letter-spacing: 0.5px;
             min-width: 36px;
         }
         QFrame#replayVDiv { background-color: #4a4d56; border: none; }
         QSlider#replayScrubSlider::groove:horizontal {
-            height: 4px; background: #3b3b45; border-radius: 2px;
+            height: 4px; background: %1; border-radius: 2px;
         }
         QSlider#replayScrubSlider::handle:horizontal {
             background: #5b9bd5; width: 10px; height: 10px;
             margin: -3px 0; border-radius: 5px;
         }
         QSlider#replayScrubSlider::sub-page:horizontal { background: #5b9bd5; border-radius: 2px; }
-        QSlider#replayScrubSlider:disabled::handle:horizontal { background: #3b3b45; }
+        QSlider#replayScrubSlider:disabled::handle:horizontal { background: %1; }
         QToolButton#replayTransportBtn, QToolButton#replaySkipBtn {
             background: #282a30;
-            border: 1px solid #3b3b45;
-            border-radius: 4px;
+            border: 1px solid %1;
+            border-radius: %6px;
             padding: 2px;
             min-width: 26px; max-width: 26px;
             min-height: 26px; max-height: 26px;
@@ -293,7 +295,7 @@ void ReplayBar::buildUi()
         QToolButton#replayPlayPauseBtn {
             background: #2a3545;
             border: 1px solid #3b5070;
-            border-radius: 4px;
+            border-radius: %6px;
             padding: 2px;
             min-width: 28px; max-width: 28px;
             min-height: 28px; max-height: 28px;
@@ -303,16 +305,22 @@ void ReplayBar::buildUi()
         QToolButton#replayPlayPauseBtn:disabled { background: #282a30; border-color: #2e3138; color: #555a66; }
         QComboBox#replaySpeedCombo {
             font-size: 10px;
-            font-family: "Red Hat Mono", "Courier New", monospace;
+            font-family: %3;
             background: #282a30;
-            border: 1px solid #3b3b45;
-            border-radius: 4px;
+            border: 1px solid %1;
+            border-radius: %6px;
             padding: 1px 4px;
             color: #c8d4e0;
             min-width: 48px;
         }
         QComboBox#replaySpeedCombo:disabled { color: #555a66; }
-    )"_s);
+    )"_s)
+            .arg(Theme::kBorderPanel)
+            .arg(Theme::kRadiusMd)
+            .arg(Theme::kFontMono)
+            .arg(Theme::kTextDim)
+            .arg(Theme::kFontSizeSm)
+            .arg(Theme::kRadiusSm));
 
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(8, 6, 8, 6);

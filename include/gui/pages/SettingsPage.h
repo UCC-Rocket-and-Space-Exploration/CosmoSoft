@@ -1,15 +1,14 @@
 /**
  * @file SettingsPage.h
- * @brief Floating settings window for appearance, audio preferences, and the event log.
+ * @brief Floating settings window with General, About, and Developer tabs.
  *
- * SettingsPage is opened as a top-level window (not a stacked page) from the
- * toolbar settings button.  Settings are persisted to QSettings on close and
- * restored on show via SettingsKeys.h constants.
+ * SettingsPage is opened as a top-level window from the toolbar settings button.
+ * Settings are persisted to QSettings on close and restored on show via SettingsKeys.h.
  *
- * Current options:
- *  - UI font size (9–18 pt), applied immediately via qApp->setFont().
- *  - UI sounds toggle (reserved; no audio engine is wired yet).
- *  - Event log — timestamped session events and errors forwarded from MainWindow.
+ * Tabs:
+ *  - General  — UI font size, UI sounds toggle.
+ *  - About    — Application version, description, license, repository link.
+ *  - Developer — Debug mode toggle, system info, event log, developer helper.
  */
 
 #ifndef COSMO_SOFT_SETTINGSPAGE_H
@@ -17,16 +16,18 @@
 
 #include <QWidget>
 
-class QCloseEvent;
 class QCheckBox;
+class QCloseEvent;
 class QComboBox;
 class QGroupBox;
+class QLabel;
 class QShowEvent;
+class QTabWidget;
 class EventLogPage;
 
 /**
  * @class SettingsPage
- * @brief Scrollable settings window for CosmoSoft appearance, audio options, and event log.
+ * @brief Tabbed settings window for CosmoSoft appearance, about info, and developer tools.
  */
 class SettingsPage : public QWidget {
     Q_OBJECT
@@ -34,6 +35,9 @@ class SettingsPage : public QWidget {
 public:
     explicit SettingsPage(QWidget *parent = nullptr);
     ~SettingsPage() override = default;
+
+    /** @brief Returns true when the developer debug mode toggle is checked. */
+    [[nodiscard]] bool debugModeEnabled() const;
 
 public slots:
     /**
@@ -48,6 +52,13 @@ public slots:
      */
     void appendLogError(const QString &text);
 
+signals:
+    /**
+     * @brief Emitted when the debug mode toggle changes.
+     * @param enabled New debug mode state.
+     */
+    void debugModeChanged(bool enabled);
+
 protected:
     /** @brief Loads persisted settings and restores window geometry on show. */
     void showEvent(QShowEvent *event) override;
@@ -58,22 +69,35 @@ protected:
 private slots:
     void onFontSizeChanged(int index);
     void onSoundsToggled(bool enabled);
+    void onDebugModeToggled(bool enabled);
 
 private:
     void buildUi();
+    QWidget *buildGeneralTab();
+    QWidget *buildAboutTab();
+    QWidget *buildDeveloperTab();
+
     void loadFromSettings();
     void saveToSettings();
 
     /** @brief Applies @p pt as the application-wide font point size. */
     void applyFontPointSize(int pt);
 
-    QGroupBox  *m_fontGroup     = nullptr;
-    QComboBox  *m_fontSizeCombo = nullptr;
+    // ── Tab container ─────────────────────────────────────────────────────────
+    QTabWidget *m_tabs = nullptr;
 
-    QGroupBox  *m_soundGroup    = nullptr;
-    QCheckBox  *m_uiSoundsCheck = nullptr;
+    // ── General tab ───────────────────────────────────────────────────────────
+    QGroupBox *m_fontGroup      = nullptr;
+    QComboBox *m_fontSizeCombo  = nullptr;
 
-    EventLogPage *m_eventLog    = nullptr;
+    QGroupBox *m_soundGroup     = nullptr;
+    QCheckBox *m_uiSoundsCheck  = nullptr;
+
+    // ── Developer tab ─────────────────────────────────────────────────────────
+    QCheckBox    *m_debugModeCheck = nullptr;
+    QLabel       *m_sysInfoLabel   = nullptr;
+    QGroupBox    *m_sysInfoGroup   = nullptr;
+    EventLogPage *m_eventLog       = nullptr;
 };
 
 #endif // COSMO_SOFT_SETTINGSPAGE_H

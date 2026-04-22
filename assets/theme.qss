@@ -1,0 +1,203 @@
+/*
+ * theme.qss — CosmoSoft global dark-theme stylesheet
+ *
+ * Loaded once in main.cpp via qApp->setStyleSheet().
+ * Defines default rules for every shared Qt widget type so that
+ * individual pages only need to declare page-specific overrides.
+ *
+ * Design token reference: include/gui/Theme.h
+ * Values here must be kept in sync with the constexpr entries in that header.
+ */
+
+/* ── Base widget ──────────────────────────────────────────────────────────── */
+
+QWidget {
+    color: #f8f8f8;
+    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+}
+
+/* ── Push buttons ─────────────────────────────────────────────────────────── */
+
+QPushButton {
+    border: 1px solid #6a6a6a;
+    border-radius: 4px;
+    padding: 5px 16px;
+    min-height: 28px;
+    min-width: 0px;
+    background-color: #3d3f47;
+    color: #f0f0f0;
+    font-size: 11px;
+    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+}
+
+QPushButton:hover   { background-color: #4d4f57; }
+QPushButton:pressed { background-color: #2d2f37; }
+
+QPushButton:disabled {
+    color: rgba(255, 255, 255, 80);
+    border-color: rgba(255, 255, 255, 40);
+    background-color: rgba(61, 63, 71, 80);
+}
+
+/* ── Combo boxes ──────────────────────────────────────────────────────────── */
+
+QComboBox {
+    background-color: #1a1a1a;
+    color: #f5f5f5;
+    border: 1px solid #4d4d4d;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #2b2d33;
+    color: #f5f5f5;
+    selection-background-color: #4b4b4b;
+    border: 1px solid #4d4d4d;
+}
+
+/* ── Line edits ───────────────────────────────────────────────────────────── */
+
+QLineEdit {
+    background-color: #1a1a1a;
+    color: #f5f5f5;
+    border: 1px solid #4d4d4d;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+}
+
+/* ── Scroll bars ──────────────────────────────────────────────────────────── */
+
+QScrollBar:vertical {
+    background: #2a2a2a;
+    width: 10px;
+    margin: 0;
+    border: none;
+}
+
+QScrollBar::handle:vertical {
+    background: #4a4a4a;
+    min-height: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background: #2a2a2a;
+    height: 10px;
+    margin: 0;
+    border: none;
+}
+
+QScrollBar::handle:horizontal {
+    background: #4a4a4a;
+    min-width: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+
+/* ── Check boxes ──────────────────────────────────────────────────────────── */
+
+QCheckBox {
+    color: #f8f8f8;
+    spacing: 8px;
+    font-size: 12px;
+    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+}
+
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #5a5a5a;
+    border-radius: 3px;
+    background-color: #1a1a1a;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #4a7fb5;
+    border-color: #5a9fd5;
+}
+
+/* ── Group boxes ──────────────────────────────────────────────────────────── */
+
+QGroupBox {
+    font-weight: 600;
+    color: #f8f8f8;
+    border: 1px solid #4d4d4d;
+    border-radius: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    background-color: #2b2d33;
+    font-size: 12px;
+    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 12px;
+    padding: 0 6px;
+    color: #c8c8c8;
+}
+
+/* ── Tab widget ───────────────────────────────────────────────────────────── */
+
+QTabWidget::pane {
+    border: 1px solid #3a3a3a;
+    background-color: #1f1f1f;
+    border-radius: 0 4px 4px 4px;
+}
+
+QTabBar::tab {
+    background-color: #2a2a2a;
+    color: #9aa7b8;
+    border: 1px solid #3a3a3a;
+    border-bottom: none;
+    padding: 8px 24px;
+    margin-right: 2px;
+    border-radius: 4px 4px 0 0;
+    font-size: 12px;
+    letter-spacing: 1px;
+    min-width: 100px;
+    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+}
+
+QTabBar::tab:selected {
+    background-color: #1f1f1f;
+    color: #f8f8f8;
+    border-color: #5a5a5a;
+    border-bottom-color: #1f1f1f;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #333336;
+    color: #d0d0d0;
+}
+
+/* ── Tool tips ────────────────────────────────────────────────────────────── */
+
+QToolTip {
+    background-color: #2b2d33;
+    color: #f8f8f8;
+    border: 1px solid #4d4d4d;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+}

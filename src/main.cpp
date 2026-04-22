@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QFile>
 #include <QFont>
 #include <QFontDatabase>
 #include <QSettings>
@@ -40,6 +41,13 @@ int main(int argc, char *argv[]) {
     const QString workbenchFamily = loadFontFamily(QStringLiteral(":/fonts/Workbench-Regular.ttf"), QStringLiteral("Workbench"));
     if (!workbenchFamily.isEmpty()) {
         app.setProperty("workbenchFontFamily", workbenchFamily);
+    }
+
+    QFile qssFile(QStringLiteral(":/styles/theme.qss"));
+    if (qssFile.open(QFile::ReadOnly)) {
+        app.setStyleSheet(QString::fromUtf8(qssFile.readAll()));
+    } else {
+        qWarning() << "Failed to load global stylesheet :/styles/theme.qss";
     }
 
     MainWindow window;
