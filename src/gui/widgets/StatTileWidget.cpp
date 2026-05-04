@@ -2,6 +2,7 @@
 
 #include "gui/Theme.h"
 
+#include <QAccessible>
 #include <QLabel>
 #include <QVBoxLayout>
 
@@ -55,11 +56,16 @@ StatTileWidget::StatTileWidget(const QString &label,
     m_valueLabel = new QLabel(initialValue, this);
     m_valueLabel->setProperty("kind", u"statValue"_s);
     layout->addWidget(m_valueLabel);
+
+    setAccessibleName(QStringLiteral("%1: %2").arg(label, initialValue));
 }
 
 void StatTileWidget::setValue(const QString &text)
 {
     if (m_valueLabel) m_valueLabel->setText(text);
+    if (m_titleLabel) {
+        setAccessibleName(QStringLiteral("%1: %2").arg(m_titleLabel->text(), text));
+    }
 }
 
 void StatTileWidget::setLabel(const QString &text)

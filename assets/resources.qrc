@@ -13,6 +13,8 @@
     </qresource>
     <qresource prefix="/map">
         <file alias="map3d.html">map/map3d.html</file>
+        <file alias="leaflet.js">map/leaflet.js</file>
+        <file alias="leaflet.css">map/leaflet.css</file>
     </qresource>
     <qresource prefix="/icons">
         <file alias="settings_button.png">icons/settings_button.png</file>

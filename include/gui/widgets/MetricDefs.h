@@ -185,4 +185,29 @@ inline QString formatReplayClockHms(double sec)
     return QStringLiteral("%1:%2").arg(m).arg(s, 2, 10, QLatin1Char('0'));
 }
 
+// ── Unit conversion helpers ────────────────────────────────────────────────
+
+/** @brief Converts a metric value to imperial for display. */
+inline double convertToImperial(int metricIdx, double value)
+{
+    switch (metricIdx) {
+    case 0: return value * 3.28084;     // m → ft
+    case 1: return value * 9.0/5.0 + 32.0; // °C → °F
+    case 2: return value * 0.000145038; // Pa → psi
+    default: return value;
+    }
+}
+
+/** @brief Returns the SI unit string for imperial mode. */
+inline QString metricAxisUnitImperial(int idx)
+{
+    using namespace Qt::StringLiterals;
+    static const QString units[] = {
+        u"ft"_s, u"°F"_s, u"psi"_s, u"m/s²"_s,
+        u"V"_s, u"dBm"_s, u"rad/s"_s, u"°"_s, u"°"_s,
+    };
+    if (idx < 0 || idx >= kMetricCount) return {};
+    return units[idx];
+}
+
 } // namespace MetricDefs

@@ -184,7 +184,28 @@ QWidget *SettingsPage::buildGeneralTab() {
     connect(m_fontSizeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &SettingsPage::onFontSizeChanged);
     fontForm->addRow(u"UI font size (pt):"_s, m_fontSizeCombo);
+    m_fontPreview = new QLabel(u"Preview: Alt 1234.5 m  ·  Temp 22.3 °C  ·  RSSI −60 dBm"_s, m_fontGroup);
+    m_fontPreview->setStyleSheet(
+        QString(u"color: %1; background-color: %2; padding: 8px 12px; border-radius: %3px; margin-top: 6px;"_s)
+            .arg(Theme::kTextPrimary)
+            .arg(Theme::kBgDark)
+            .arg(Theme::kRadiusSm));
+    fontForm->addRow(u""_s, m_fontPreview);
     layout->addWidget(m_fontGroup);
+
+    // Units group
+    m_unitsGroup = new QGroupBox(u"Units"_s, inner);
+    auto *unitsForm = new QFormLayout(m_unitsGroup);
+    unitsForm->setSpacing(10);
+    unitsForm->setContentsMargins(16, 20, 16, 16);
+    m_unitSystemCombo = new QComboBox(m_unitsGroup);
+    m_unitSystemCombo->addItem(u"Metric (m, °C, Pa)"_s, u"metric"_s);
+    m_unitSystemCombo->addItem(u"Imperial (ft, °F, psi)"_s, u"imperial"_s);
+    m_unitSystemCombo->setCurrentIndex(0);
+    connect(m_unitSystemCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsPage::onUnitSystemChanged);
+    unitsForm->addRow(u"Unit system:"_s, m_unitSystemCombo);
+    layout->addWidget(m_unitsGroup);
 
     // Sound group
     m_soundGroup = new QGroupBox(u"Sound"_s, inner);
@@ -451,7 +472,22 @@ void SettingsPage::onFontSizeChanged(int index) {
         applyFontPointSize(pt);
         QSettings s(kSettingsOrg, kSettingsApp);
         s.setValue(kSettingsFontSize, pt);
+        if (m_fontPreview) {
+            QFont previewFont = m_fontPreview->font();
+            previewFont.setPointSize(pt);
+            m_fontPreview->setFont(previewFont);
+        }
     }
+}
+
+void SettingsPage::onUnitSystemChanged(int index) {
+    if (!m_unitSystemCombo || index < 0) {
+        return;
+    }
+    const QString system = m_unitSystemCombo->itemData(index).toString();
+    QSettings s(kSettingsOrg, kSettingsApp);
+    s.setValue(kSettingsUnitSystem, system);
+    emit unitSystemChanged(system);
 }
 
 void SettingsPage::onSoundsToggled(bool enabled) {
@@ -491,6 +527,15 @@ void SettingsPage::loadFromSettings() {
         }
         applyFontPointSize(pt);
     }
+    if (m_unitSystemCombo) {
+        const QString system = s.value(kSettingsUnitSystem, u"metric"_s).toString();
+        const int unitIdx = m_unitSystemCombo->findData(system);
+        if (unitIdx >= 0) {
+            m_unitSystemCombo->blockSignals(true);
+            m_unitSystemCombo->setCurrentIndex(unitIdx);
+            m_unitSystemCombo->blockSignals(false);
+        }
+    }
     if (m_uiSoundsCheck) {
         m_uiSoundsCheck->setChecked(s.value(kSettingsSoundsEnabled, true).toBool());
     }
@@ -523,6 +568,9 @@ void SettingsPage::saveToSettings() {
         if (pt > 0) {
             s.setValue(kSettingsFontSize, pt);
         }
+    }
+    if (m_unitSystemCombo) {
+        s.setValue(kSettingsUnitSystem, m_unitSystemCombo->currentData().toString());
     }
     if (m_uiSoundsCheck) {
         s.setValue(kSettingsSoundsEnabled, m_uiSoundsCheck->isChecked());

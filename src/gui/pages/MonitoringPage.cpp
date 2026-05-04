@@ -31,7 +31,9 @@ MonitoringPage::MonitoringPage(FlightDataModel *model, QWidget *parent)
 
     // ── Status label (shown while waiting for first sample) ──────────────────
     m_statusLabel = new QLabel(
-        u"Monitoring: waiting for telemetry. Use the connection bar to connect a serial port."_s,
+        u"Waiting for telemetry data.\n\n"
+        u"Connect a serial port using the controls above, or open a flight log via "
+        u"File → Open log… to get started."_s,
         this);
     m_statusLabel->setWordWrap(true);
     m_statusLabel->setStyleSheet(

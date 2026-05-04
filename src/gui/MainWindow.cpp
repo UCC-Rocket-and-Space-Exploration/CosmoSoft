@@ -29,6 +29,8 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFutureWatcher>
+#include <QMenu>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QFont>
 #include <QProgressDialog>
@@ -85,6 +87,7 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowIcon(QIcon(u":/images/Logo_rounded.png"_s));
 
     setupActions();
+    setupMenuBar();
     setupToolbar();
     setupDataBar();
     setupPages();
@@ -183,6 +186,105 @@ void MainWindow::setupActions() {
     });
 
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() { openSettingsWindow(); });
+}
+
+void MainWindow::setupMenuBar() {
+    auto *mb = menuBar();
+
+    auto *fileMenu = mb->addMenu(u"&File"_s);
+    fileMenu->addAction(u"&Open log…"_s, QKeySequence::Open, this, &MainWindow::onOpenReplayFile);
+    m_recentFilesMenu = fileMenu->addMenu(u"Open &Recent"_s);
+    rebuildRecentFilesMenu();
+    fileMenu->addSeparator();
+    fileMenu->addAction(u"&Export session…"_s, QKeySequence(u"Ctrl+Shift+E"_s), this, &MainWindow::onExportSession);
+    fileMenu->addSeparator();
+    fileMenu->addAction(u"&Clear flight"_s, this, &MainWindow::onClearFlightData);
+    fileMenu->addSeparator();
+    fileMenu->addAction(u"&Quit"_s, QKeySequence::Quit, qApp, &QApplication::quit);
+
+    auto *viewMenu = mb->addMenu(u"&View"_s);
+    viewMenu->addAction(m_showMonitoringAction);
+    viewMenu->addAction(m_showFlightDataAction);
+    viewMenu->addSeparator();
+    viewMenu->addAction(m_openSettingsAction);
+
+    auto *helpMenu = mb->addMenu(u"&Help"_s);
+    helpMenu->addAction(u"&About CosmoSoft…"_s, this, &MainWindow::onShowAbout);
+}
+
+void MainWindow::addRecentFile(const QString &path) {
+    QSettings s(kSettingsOrg, kSettingsApp);
+    QStringList recent = s.value(kSettingsRecentFiles).toStringList();
+    recent.removeAll(path);
+    recent.prepend(path);
+    constexpr int kMaxRecentFiles = 10;
+    while (recent.size() > kMaxRecentFiles) {
+        recent.removeLast();
+    }
+    s.setValue(kSettingsRecentFiles, recent);
+    rebuildRecentFilesMenu();
+}
+
+void MainWindow::rebuildRecentFilesMenu() {
+    if (!m_recentFilesMenu) {
+        return;
+    }
+    m_recentFilesMenu->clear();
+    QSettings s(kSettingsOrg, kSettingsApp);
+    const QStringList recent = s.value(kSettingsRecentFiles).toStringList();
+    if (recent.isEmpty()) {
+        m_recentFilesMenu->addAction(u"(no recent files)"_s)->setEnabled(false);
+        return;
+    }
+    for (const QString &filePath : recent) {
+        const QString display = QFileInfo(filePath).fileName();
+        m_recentFilesMenu->addAction(display, this, [this, filePath]() {
+            if (!QFileInfo::exists(filePath)) {
+                showStatusMessage(QStringLiteral("File not found: %1").arg(filePath), 4000);
+                return;
+            }
+            QSettings rs(kSettingsOrg, kSettingsApp);
+            rs.setValue(kSettingsReplayDir, QFileInfo(filePath).absolutePath());
+            stopSerial();
+            auto *progress = new QProgressDialog(u"Loading flight log…"_s, QString(), 0, 0, this);
+            progress->setWindowModality(Qt::WindowModal);
+            progress->setMinimumDuration(0);
+            progress->setCancelButton(nullptr);
+            progress->show();
+            auto *watcher = new QFutureWatcher<FlightLogLoadResult>(this);
+            connect(watcher, &QFutureWatcher<FlightLogLoadResult>::finished, this, [this, watcher, filePath, progress]() {
+                progress->close();
+                progress->deleteLater();
+                FlightLogLoadResult r = watcher->result();
+                watcher->deleteLater();
+                if (r.error) {
+                    QMessageBox::warning(this, u"Could not load log"_s, QString::fromStdString(*r.error));
+                    return;
+                }
+                m_loadedSession = std::move(r.session);
+                m_logManager->setSession(m_loadedSession);
+                m_flightModel->resetSession();
+                m_flightModel->setReplayMode(true);
+                m_replay->setSession(m_loadedSession);
+                if (m_flightDataPage) {
+                    m_flightDataPage->setReplaySession(&m_loadedSession);
+                }
+                syncTelemetryStrip();
+                showStatusMessage(QStringLiteral("Loaded flight: %1").arg(filePath), 4000);
+                appendToLog(false, QStringLiteral("Loaded flight: %1").arg(filePath));
+            });
+            const QFuture<FlightLogLoadResult> future = QtConcurrent::run([filePath]() {
+                return loadFlightLogAtPath(filePath);
+            });
+            watcher->setFuture(future);
+        });
+    }
+    m_recentFilesMenu->addSeparator();
+    m_recentFilesMenu->addAction(u"Clear Recent"_s, this, [this]() {
+        QSettings cs(kSettingsOrg, kSettingsApp);
+        cs.remove(kSettingsRecentFiles);
+        rebuildRecentFilesMenu();
+    });
 }
 
 void MainWindow::setupToolbar() {
@@ -489,8 +591,11 @@ void MainWindow::setupConnectionBar() {
     m_baudCombo->setCurrentIndex(4);
 
     auto *refreshBtn = new QPushButton(u"Refresh"_s, m_serialControlBlock);
+    refreshBtn->setAccessibleName(u"Refresh serial ports"_s);
     auto *connectBtn = new QPushButton(u"Connect"_s, m_serialControlBlock);
+    connectBtn->setAccessibleName(u"Connect to serial port"_s);
     auto *disconnectBtn = new QPushButton(u"Disconnect"_s, m_serialControlBlock);
+    disconnectBtn->setAccessibleName(u"Disconnect serial port"_s);
     serialRow->addWidget(portLabel);
     serialRow->addWidget(m_portCombo);
     serialRow->addWidget(baudLabel);
@@ -500,8 +605,11 @@ void MainWindow::setupConnectionBar() {
     serialRow->addWidget(disconnectBtn);
 
     auto *openLogBtn    = new QPushButton(u"Open log…"_s, m_connectionBar);
+    openLogBtn->setAccessibleName(u"Open flight log file"_s);
     auto *clearFlightBtn = new QPushButton(u"Clear flight"_s, m_connectionBar);
+    clearFlightBtn->setAccessibleName(u"Clear all flight data"_s);
     auto *exportBtn     = new QPushButton(u"Export session…"_s, m_connectionBar);
+    exportBtn->setAccessibleName(u"Export session to CSV"_s);
 
     row->addWidget(m_connectionPageLabel);
     row->addWidget(m_serialControlBlock);
@@ -527,7 +635,20 @@ void MainWindow::setupConnectionBar() {
         }
         startSerial(port, baud);
     });
-    connect(disconnectBtn, &QPushButton::clicked, this, &MainWindow::stopSerial);
+    connect(disconnectBtn, &QPushButton::clicked, this, [this]() {
+        if (m_comms && m_comms->isOpen() && !m_logManager->session().samples.empty()) {
+            const auto reply = QMessageBox::question(
+                this,
+                u"Disconnect"_s,
+                u"A telemetry session is active. Disconnect anyway?"_s,
+                QMessageBox::Yes | QMessageBox::No,
+                QMessageBox::No);
+            if (reply != QMessageBox::Yes) {
+                return;
+            }
+        }
+        stopSerial();
+    });
     connect(openLogBtn,    &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
     connect(clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
     connect(exportBtn,     &QPushButton::clicked, this, &MainWindow::onExportSession);
@@ -869,6 +990,7 @@ void MainWindow::onOpenReplayFile() {
             m_flightDataPage->setReplaySession(&m_loadedSession);
         }
         syncTelemetryStrip();
+        addRecentFile(path);
         const QString loadMsg = QStringLiteral("Loaded flight: %1").arg(path);
         showStatusMessage(loadMsg, 4000);
         appendToLog(false, loadMsg);
@@ -880,6 +1002,19 @@ void MainWindow::onOpenReplayFile() {
 }
 
 void MainWindow::onClearFlightData() {
+    const bool hasData = !m_logManager->session().samples.empty()
+                      || !m_loadedSession.samples.empty();
+    if (hasData) {
+        const auto reply = QMessageBox::question(
+            this,
+            u"Clear flight data"_s,
+            u"All loaded and recorded flight data will be lost.\n\nContinue?"_s,
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+        if (reply != QMessageBox::Yes) {
+            return;
+        }
+    }
     m_logManager->clear();
     m_replay->stop();
     m_loadedSession.samples.clear();
@@ -910,13 +1045,13 @@ void MainWindow::onExportSession() {
         this,
         u"Export session"_s,
         QDir::homePath(),
-        u"Text log (*.txt);;All files (*)"_s);
+        u"CSV (*.csv);;All files (*)"_s);
     if (path.isEmpty()) {
         return;
     }
 
     m_logManager->setOutputPath(path.toStdString());
-    if (m_logManager->exportSessionToTextFile()) {
+    if (m_logManager->exportSessionToCsv()) {
         const QString exportMsg = QStringLiteral("Session exported to %1").arg(path);
         showStatusMessage(exportMsg, 4000);
         appendToLog(false, exportMsg);

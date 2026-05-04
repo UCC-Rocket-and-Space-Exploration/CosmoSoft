@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CosmoSoft Flight Map</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="qrc:///map/leaflet.css" />
+<script src="qrc:///map/leaflet.js"></script>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 <style>
@@ -107,6 +107,33 @@
     color: #c8dcf0;
   }
   .vt-sep { width: 1px; background: rgba(255,255,255,0.10); }
+
+  /* ── Layer switcher (Map / Terrain / Satellite) ──────────────────── */
+  #layerSwitcher {
+    position: absolute;
+    bottom: 92px; left: 10px;
+    z-index: 1001;
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(8px);
+  }
+  .ls-btn {
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: rgba(16, 18, 24, 0.92);
+    color: #7a8796;
+    transition: background 0.15s, color 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .ls-btn:hover { background: rgba(40, 44, 56, 0.95); color: #c8d4e0; }
+  .ls-btn.active { background: rgba(30, 58, 82, 0.95); color: #c8dcf0; }
+  .ls-sep { width: 1px; background: rgba(255,255,255,0.10); }
 
   /* ── Stats overlay ─────────────────────────────────────────────── */
   #statsOverlay {

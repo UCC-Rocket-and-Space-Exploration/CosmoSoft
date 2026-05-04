@@ -52,7 +52,9 @@
 #include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QList>
 #include <QMouseEvent>
 #include <QPainter>
@@ -60,6 +62,7 @@
 #include <QPen>
 #include <QPointF>
 #include <QPushButton>
+#include <QProgressBar>
 #include <QScrollArea>
 #include <QSettings>
 #include <QStackedWidget>
@@ -455,6 +458,14 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     statsLayout->addWidget(m_pressTile, 1);
     rootLayout->addWidget(statsRowWidget);
 
+    m_sessionInfoLabel = new QLabel(this);
+    m_sessionInfoLabel->setWordWrap(true);
+    m_sessionInfoLabel->setVisible(false);
+    m_sessionInfoLabel->setStyleSheet(
+        u"color: #b0bcc8; font-size: 11px; background: rgba(21,22,25,0.7); "
+        u"border: 1px solid #3b3b45; border-radius: 6px; padding: 6px 12px;"_s);
+    rootLayout->addWidget(m_sessionInfoLabel);
+
     // ── Traces panel (left side of splitter) ─────────────────────────────────
     m_tracesPanel = new TracesPanel(this);
     m_metricEnabled = m_tracesPanel->enabledMetrics();
@@ -576,6 +587,29 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
     });
 
+    auto *addMarkerBtn = new QPushButton(u"Marker"_s, chartHeader);
+    addMarkerBtn->setObjectName(u"chartToolbarBtn"_s);
+    addMarkerBtn->setToolTip(u"Add a named event marker at the chart center time"_s);
+    chartToolbar->addWidget(addMarkerBtn);
+    connect(addMarkerBtn, &QPushButton::clicked, this, [this]() {
+        if (!m_axisX) return;
+        const double centerT = (m_axisX->min() + m_axisX->max()) * 0.5;
+        bool ok = false;
+        QString name = QInputDialog::getText(
+            this, u"Add Event Marker"_s,
+            QStringLiteral("Name for marker at t = %1 s:").arg(centerT, 0, 'f', 2),
+            QLineEdit::Normal, {}, &ok);
+        if (ok && !name.isEmpty()) {
+            addEventMarker(centerT, name);
+        }
+    });
+
+    auto *clearMarkersBtn = new QPushButton(u"Clear Markers"_s, chartHeader);
+    clearMarkersBtn->setObjectName(u"chartToolbarBtn"_s);
+    clearMarkersBtn->setToolTip(u"Remove all event markers"_s);
+    chartToolbar->addWidget(clearMarkersBtn);
+    connect(clearMarkersBtn, &QPushButton::clicked, this, &DashboardPage::clearEventMarkers);
+
     auto *copyChartBtn = new QPushButton(u"Copy"_s, chartHeader);
     copyChartBtn->setObjectName(u"chartToolbarBtn"_s);
     copyChartBtn->setToolTip(u"Copy chart image to clipboard"_s);
@@ -609,6 +643,16 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     chartFrameLayout->addWidget(chartHeader, 0);
 
+    m_emptyStateLabel = new QLabel(
+        u"No flight data loaded.\n\n"
+        u"Open a flight log via File → Open log…\n"
+        u"or connect a serial port on the Monitoring page."_s,
+        chartFrame);
+    m_emptyStateLabel->setAlignment(Qt::AlignCenter);
+    m_emptyStateLabel->setWordWrap(true);
+    m_emptyStateLabel->setStyleSheet(
+        u"color: #7a8796; font-size: 13px; padding: 40px; background: transparent; border: none;"_s);
+
     m_chart = new QChart();
     m_chart->setBackgroundRoundness(0);
 
@@ -634,6 +678,13 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_axisY->setTickCount(6);
     m_axisY->setLabelFormat(u"%.3g"_s);
     m_chart->addAxis(m_axisY, Qt::AlignLeft);
+
+    m_axisY2 = new QValueAxis();
+    m_axisY2->setRange(-1, 1);
+    m_axisY2->setTickCount(6);
+    m_axisY2->setLabelFormat(u"%.3g"_s);
+    m_axisY2->setVisible(false);
+    m_chart->addAxis(m_axisY2, Qt::AlignRight);
 
     for (int i = 0; i < kMetricCount; ++i) {
         m_lineSeries[static_cast<std::size_t>(i)]->attachAxis(m_axisX);
@@ -680,6 +731,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     connect(m_liveChartCoalesceTimer, &QTimer::timeout, this, [this]() {
         rebuildLiveSeriesFromHistory();
         updateChartStatsLabel();
+        hideChartLoadingIndicator();
     });
 
     // Replay coalesce timer: scrubbing the timeline fires setReplayTrailLength()
@@ -693,10 +745,13 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         if (m_model && m_model->replayMode() && m_session && !m_session->samples.empty()) {
             rebuildReplayCharts(m_lastReplayTrailLength);
         }
+        hideChartLoadingIndicator();
     });
 
     auto *tcv = new TelemetryChartView(m_chart, chartFrame);
     tcv->setObjectName(u"telemetryChartView"_s);
+    tcv->setAccessibleName(u"Telemetry chart"_s);
+    tcv->setAccessibleDescription(u"Interactive chart displaying flight telemetry data over time"_s);
     tcv->onUserAdjustedAxes = [this]() {
         m_preserveChartAxes = true;
         if (m_followToggle) m_followToggle->setChecked(false);
@@ -710,14 +765,28 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     // no secondary label is needed in DashboardPage.
     tcv->hoverReadout = nullptr;
 
-    // ── View stack (Graph / Map switcher) ─────────────────────────────────────
+    // ── View stack (Graph / Map / Empty state switcher) ──────────────────────
     m_viewStack = new QStackedWidget(chartFrame);
     m_viewStack->addWidget(m_chartView);   // index 0 — telemetry chart
 
     m_mapWidget = new Map3DWidget(m_viewStack);
+    m_mapWidget->setAccessibleName(u"Flight path map"_s);
+    m_mapWidget->setAccessibleDescription(u"Interactive map showing the flight path and GPS coordinates"_s);
     m_viewStack->addWidget(m_mapWidget);   // index 1 — 3D flight path map
+    m_viewStack->addWidget(m_emptyStateLabel); // index 2 — empty state
+    m_viewStack->setCurrentIndex(2);
 
     chartFrameLayout->addWidget(m_viewStack, 1);
+
+    m_chartLoadingBar = new QProgressBar(chartFrame);
+    m_chartLoadingBar->setRange(0, 0);
+    m_chartLoadingBar->setTextVisible(false);
+    m_chartLoadingBar->setFixedHeight(3);
+    m_chartLoadingBar->setStyleSheet(
+        u"QProgressBar { background: transparent; border: none; }"
+        u"QProgressBar::chunk { background: #4a88c0; }"_s);
+    m_chartLoadingBar->setVisible(false);
+    chartFrameLayout->addWidget(m_chartLoadingBar, 0);
 
     connect(m_graphViewBtn, &QPushButton::clicked, this, [this]() {
         m_viewStack->setCurrentIndex(0);
@@ -729,6 +798,17 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         m_graphViewBtn->setChecked(false);
         m_mapViewBtn->setChecked(true);
     });
+
+    auto showDataView = [this]() {
+        if (m_viewStack && m_viewStack->currentIndex() == 2) {
+            m_viewStack->setCurrentIndex(0);
+            if (m_graphViewBtn) m_graphViewBtn->setChecked(true);
+            if (m_mapViewBtn) m_mapViewBtn->setChecked(false);
+        }
+    };
+    if (m_model) {
+        connect(m_model, &FlightDataModel::sampleUpdated, this, showDataView);
+    }
 
     chartColumn->addWidget(chartFrame, 1);
 
@@ -793,7 +873,9 @@ void DashboardPage::applyChartTheme() {
     m_chart->setTitleFont(titleFont);
     m_chart->setTitleBrush(labelCol);
 
-    for (auto *ax : {m_axisX, m_axisY}) {
+    QList<QValueAxis *> axes = {m_axisX, m_axisY};
+    if (m_axisY2) axes.append(m_axisY2);
+    for (auto *ax : axes) {
         ax->setLabelsFont(axisFont);
         ax->setTitleFont(axisFont);
         ax->setLabelsColor(labelCol);
@@ -874,7 +956,7 @@ void DashboardPage::updateChartStatsLabel() {
         }
     }
     const QString mode = (m_model && m_model->replayMode()) ? u"Replay"_s : u"Live"_s;
-    const QString norm = (nTr > 1) ? u" · normalized Y overlay"_s : u""_s;
+    const QString norm = (nTr == 2) ? u" · dual Y-axis"_s : (nTr > 2) ? u" · normalized Y overlay"_s : u""_s;
     QString opts;
     if (m_showMarkersToggle) {
         opts += m_showMarkersToggle->isChecked() ? u" · markers ≤400"_s : u" · markers off"_s;
@@ -959,6 +1041,33 @@ void DashboardPage::setReplaySession(const FlightSession *session) {
 
     if (m_mapWidget) m_mapWidget->setReplaySession(session);
 
+    if (n > 0 && m_viewStack && m_viewStack->currentIndex() == 2) {
+        m_viewStack->setCurrentIndex(0);
+        if (m_graphViewBtn) m_graphViewBtn->setChecked(true);
+        if (m_mapViewBtn) m_mapViewBtn->setChecked(false);
+    }
+
+    if (m_sessionInfoLabel) {
+        if (session && n > 0) {
+            double maxAlt = -1e30, minAlt = 1e30;
+            for (const auto &s : session->samples) {
+                maxAlt = std::max(maxAlt, s.altitude);
+                minAlt = std::min(minAlt, s.altitude);
+            }
+            const double durationSec = static_cast<double>(
+                session->samples.back().timestamp - session->samples.front().timestamp) / 1000.0;
+            m_sessionInfoLabel->setText(
+                QStringLiteral("Session: %1 samples · %2 s · peak alt %3 m · min alt %4 m")
+                    .arg(n)
+                    .arg(durationSec, 0, 'f', 1)
+                    .arg(maxAlt, 0, 'f', 1)
+                    .arg(minAlt, 0, 'f', 1));
+            m_sessionInfoLabel->setVisible(true);
+        } else {
+            m_sessionInfoLabel->setVisible(false);
+        }
+    }
+
     if (n > 0) {
         m_lastReplayTrailLength = n;
         rebuildReplayCharts(n);
@@ -997,6 +1106,7 @@ void DashboardPage::applyReplayControllerPosition(int trailLength) {
 
 /** Restarts the 33 ms coalesce timer; the chart rebuilds once it fires. */
 void DashboardPage::scheduleReplayChartRebuild() {
+    showChartLoadingIndicator();
     if (m_replayChartCoalesceTimer) {
         m_replayChartCoalesceTimer->start();
     }
@@ -1122,11 +1232,19 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
     }
 
     int onlyMi = -1;
+    int dualMi[2] = {-1, -1};
     if (nEn == 1) {
         for (int mi = 0; mi < kMetricCount; ++mi) {
             if (m_metricEnabled[static_cast<std::size_t>(mi)]) {
                 onlyMi = mi;
                 break;
+            }
+        }
+    } else if (nEn == 2) {
+        int idx = 0;
+        for (int mi = 0; mi < kMetricCount && idx < 2; ++mi) {
+            if (m_metricEnabled[static_cast<std::size_t>(mi)]) {
+                dualMi[idx++] = mi;
             }
         }
     }
@@ -1144,7 +1262,7 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
             const FlightSample &s = samples[static_cast<std::size_t>(si)];
             const double x = chartXSeconds(tRef, s.timestamp, sessionElapsed);
             double y = sampleValueForMetric(s, mi);
-            if (nEn > 1) {
+            if (nEn > 2) {
                 y = (y - lo) / span;
             }
             pts.append(QPointF(x, y));
@@ -1154,11 +1272,32 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         series->setVisible(en);
         if (en) {
             applySeriesPointDisplay(series, pts.size(), nEn);
-            if (nEn > 1) {
-                series->setName(metricTitle(mi) + u" (norm)"_s);
-            } else {
-                series->setName(metricTitle(mi));
-            }
+            series->setName(metricTitle(mi));
+        }
+    }
+
+    if (m_axisY2) m_axisY2->setVisible(false);
+
+    if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
+        auto *s1 = m_lineSeries[static_cast<std::size_t>(dualMi[1])];
+        if (s1) {
+            const auto attached = s1->attachedAxes();
+            if (attached.contains(m_axisY)) s1->detachAxis(m_axisY);
+            if (!attached.contains(m_axisY2)) s1->attachAxis(m_axisY2);
+        }
+        if (m_axisY2) m_axisY2->setVisible(true);
+    }
+    for (int mi = 0; mi < kMetricCount; ++mi) {
+        auto *s = m_lineSeries[static_cast<std::size_t>(mi)];
+        if (!s) continue;
+        bool isSecondDual = (nEn == 2 && mi == dualMi[1]);
+        const auto attached = s->attachedAxes();
+        if (isSecondDual) {
+            if (attached.contains(m_axisY)) s->detachAxis(m_axisY);
+            if (!attached.contains(m_axisY2)) s->attachAxis(m_axisY2);
+        } else {
+            if (attached.contains(m_axisY2)) s->detachAxis(m_axisY2);
+            if (!attached.contains(m_axisY)) s->attachAxis(m_axisY);
         }
     }
 
@@ -1174,6 +1313,21 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
             const double span = std::max(hi - lo, 1e-9);
             const double p = span * 0.08 + std::max(std::abs(hi) * 1e-6, 1e-3);
             m_axisY->setRange(lo - p, hi + p);
+        }
+    } else if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
+        m_axisY->setTitleText(metricAxisUnitShort(dualMi[0]));
+        if (m_axisY2) m_axisY2->setTitleText(metricAxisUnitShort(dualMi[1]));
+        m_chart->setTitle(QStringLiteral("%1 vs %2").arg(metricTitle(dualMi[0]), metricTitle(dualMi[1])));
+        if (!m_preserveChartAxes) {
+            for (int d = 0; d < 2; ++d) {
+                auto *ax = (d == 0) ? m_axisY : m_axisY2;
+                if (!ax) continue;
+                const double lo = yMin[static_cast<std::size_t>(dualMi[d])];
+                const double hi = yMax[static_cast<std::size_t>(dualMi[d])];
+                const double span = std::max(hi - lo, 1e-9);
+                const double p = span * 0.08 + std::max(std::abs(hi) * 1e-6, 1e-3);
+                ax->setRange(lo - p, hi + p);
+            }
         }
     } else {
         m_axisY->setTitleText(u"Normalized"_s);
@@ -1227,6 +1381,9 @@ void DashboardPage::onSessionReset() {
     if (m_replayBar) m_replayBar->setLiveSampleCount(0);
     if (m_model && !m_model->replayMode()) {
         rebuildLiveSeriesFromHistory();
+    }
+    if (m_viewStack && m_liveSamples.empty() && (!m_session || m_session->samples.empty())) {
+        m_viewStack->setCurrentIndex(2);
     }
     updateChartStatsLabel();
 }
@@ -1300,11 +1457,19 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
     }
 
     int onlyMi = -1;
+    int dualMi[2] = {-1, -1};
     if (nEn == 1) {
         for (int mi = 0; mi < kMetricCount; ++mi) {
             if (m_metricEnabled[static_cast<std::size_t>(mi)]) {
                 onlyMi = mi;
                 break;
+            }
+        }
+    } else if (nEn == 2) {
+        int idx = 0;
+        for (int mi = 0; mi < kMetricCount && idx < 2; ++mi) {
+            if (m_metricEnabled[static_cast<std::size_t>(mi)]) {
+                dualMi[idx++] = mi;
             }
         }
     }
@@ -1322,7 +1487,7 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
             const FlightSample &s = m_liveSamples[static_cast<std::size_t>(si)];
             const double x = chartXSeconds(tRef, s.timestamp, sessionElapsed);
             double y = sampleValueForMetric(s, mi);
-            if (nEn > 1) {
+            if (nEn > 2) {
                 y = (y - lo) / span;
             }
             pts.append(QPointF(x, y));
@@ -1332,11 +1497,26 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         series->setVisible(en);
         if (en) {
             applySeriesPointDisplay(series, pts.size(), nEn);
-            if (nEn > 1) {
-                series->setName(metricTitle(mi) + u" (norm)"_s);
-            } else {
-                series->setName(metricTitle(mi));
-            }
+            series->setName(metricTitle(mi));
+        }
+    }
+
+    if (m_axisY2) m_axisY2->setVisible(false);
+
+    if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
+        if (m_axisY2) m_axisY2->setVisible(true);
+    }
+    for (int mi = 0; mi < kMetricCount; ++mi) {
+        auto *s = m_lineSeries[static_cast<std::size_t>(mi)];
+        if (!s) continue;
+        bool isSecondDual = (nEn == 2 && mi == dualMi[1]);
+        const auto attached = s->attachedAxes();
+        if (isSecondDual) {
+            if (attached.contains(m_axisY)) s->detachAxis(m_axisY);
+            if (!attached.contains(m_axisY2)) s->attachAxis(m_axisY2);
+        } else {
+            if (attached.contains(m_axisY2)) s->detachAxis(m_axisY2);
+            if (!attached.contains(m_axisY)) s->attachAxis(m_axisY);
         }
     }
 
@@ -1352,6 +1532,21 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
             const double span = std::max(hi - lo, 1e-9);
             const double p = span * 0.08 + std::max(std::abs(hi) * 1e-6, 1e-3);
             m_axisY->setRange(lo - p, hi + p);
+        }
+    } else if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
+        m_axisY->setTitleText(metricAxisUnitShort(dualMi[0]));
+        if (m_axisY2) m_axisY2->setTitleText(metricAxisUnitShort(dualMi[1]));
+        m_chart->setTitle(QStringLiteral("%1 vs %2").arg(metricTitle(dualMi[0]), metricTitle(dualMi[1])));
+        if (!m_preserveChartAxes) {
+            for (int d = 0; d < 2; ++d) {
+                auto *ax = (d == 0) ? m_axisY : m_axisY2;
+                if (!ax) continue;
+                const double lo = yMin[static_cast<std::size_t>(dualMi[d])];
+                const double hi = yMax[static_cast<std::size_t>(dualMi[d])];
+                const double span = std::max(hi - lo, 1e-9);
+                const double p = span * 0.08 + std::max(std::abs(hi) * 1e-6, 1e-3);
+                ax->setRange(lo - p, hi + p);
+            }
         }
     } else {
         m_axisY->setTitleText(u"Normalized"_s);
@@ -1376,6 +1571,7 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
 }
 
 void DashboardPage::scheduleLiveChartRebuild() {
+    showChartLoadingIndicator();
     if (m_liveChartCoalesceTimer) {
         m_liveChartCoalesceTimer->start(50);
     } else {
@@ -1421,6 +1617,50 @@ void DashboardPage::onSampleUpdated(const FlightSample &sample) {
     }
     if (m_replayBar) m_replayBar->setLiveSampleCount(static_cast<int>(m_liveSamples.size()));
     scheduleLiveChartRebuild();
+}
+
+void DashboardPage::showChartLoadingIndicator() {
+    if (m_chartLoadingBar) m_chartLoadingBar->setVisible(true);
+}
+
+void DashboardPage::hideChartLoadingIndicator() {
+    if (m_chartLoadingBar) m_chartLoadingBar->setVisible(false);
+}
+
+void DashboardPage::addEventMarker(double timeSec, const QString &name) {
+    m_eventMarkers.push_back({timeSec, name});
+    redrawEventMarkers();
+}
+
+void DashboardPage::clearEventMarkers() {
+    for (auto *s : m_markerSeries) {
+        if (m_chart) m_chart->removeSeries(s);
+        delete s;
+    }
+    m_markerSeries.clear();
+    m_eventMarkers.clear();
+}
+
+void DashboardPage::redrawEventMarkers() {
+    for (auto *s : m_markerSeries) {
+        if (m_chart) m_chart->removeSeries(s);
+        delete s;
+    }
+    m_markerSeries.clear();
+
+    if (!m_chart || !m_axisX || !m_axisY) return;
+
+    for (const auto &marker : m_eventMarkers) {
+        auto *line = new QLineSeries();
+        line->setName(marker.name);
+        line->setPen(QPen(QColor(255, 160, 60, 180), 2, Qt::DashLine));
+        line->append(marker.timeSec, m_axisY->min());
+        line->append(marker.timeSec, m_axisY->max());
+        m_chart->addSeries(line);
+        line->attachAxis(m_axisX);
+        line->attachAxis(m_axisY);
+        m_markerSeries.push_back(line);
+    }
 }
 
 void DashboardPage::paintEvent(QPaintEvent *event) {

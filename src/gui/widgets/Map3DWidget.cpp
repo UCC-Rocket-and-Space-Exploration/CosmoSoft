@@ -48,7 +48,11 @@ public:
     }
 
     void interceptRequest(QWebEngineUrlRequestInfo &info) override {
-        Q_UNUSED(info);
+        const QUrl url = info.requestUrl();
+        if (url.host().contains(QStringLiteral("basemaps.cartocdn.com"))
+            || url.host().contains(QStringLiteral("tile"))) {
+            info.setHttpHeader("Cache-Control", "max-age=604800");
+        }
     }
 
     /** @brief Returns the path to the tile cache directory. */

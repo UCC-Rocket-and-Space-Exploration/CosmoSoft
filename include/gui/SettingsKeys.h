@@ -64,4 +64,14 @@ constexpr auto kSettingsDebugMode = "ui/debugMode";
 /** @brief Last active settings tab index. */
 constexpr auto kSettingsActiveTab = "ui/settingsActiveTab";
 
+// ── Recent files ──────────────────────────────────────────────────────────────
+
+/** @brief Ordered list of recently opened flight-log file paths. */
+constexpr auto kSettingsRecentFiles = "paths/recentFiles";
+
+// ── Units ─────────────────────────────────────────────────────────────────────
+
+/** @brief Unit system preference: "metric" or "imperial". */
+constexpr auto kSettingsUnitSystem = "ui/unitSystem";
+
 #endif // COSMO_SOFT_SETTINGSKEYS_H

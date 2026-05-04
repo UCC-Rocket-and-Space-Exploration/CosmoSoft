@@ -50,8 +50,9 @@ constexpr auto kTextPrimary = "#f8f8f8";
 /** @brief Mid-weight text: page titles, group-box titles. */
 constexpr auto kTextMid     = "#c8c8c8";
 
-/** @brief Muted secondary labels (tab text, setting descriptions). */
-constexpr auto kTextMuted   = "#9aa7b8";
+/** @brief Muted secondary labels (tab text, setting descriptions).
+ *  Raised from #9aa7b8 to meet WCAG AA 4.5:1 contrast on dark backgrounds. */
+constexpr auto kTextMuted   = "#b0bcc8";
 
 /** @brief Dim captions: telemetry strip page label, replay captions. */
 constexpr auto kTextDim     = "#8fa0b0";

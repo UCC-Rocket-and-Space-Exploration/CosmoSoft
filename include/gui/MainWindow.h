@@ -33,6 +33,7 @@
 class QAction;
 class QComboBox;
 class QLabel;
+class QMenu;
 class QStackedWidget;
 class QTimer;
 class MonitoringPage;
@@ -79,6 +80,7 @@ private slots:
 
 private:
     void setupActions();
+    void setupMenuBar();
     void setupToolbar();
     void setupDataBar();
     void setupConnectionBar();
@@ -99,6 +101,12 @@ private:
     void appendToLog(bool isError, const QString &text);
 
     [[nodiscard]] bool isMonitoringPageActive() const;
+
+    void addRecentFile(const QString &path);
+    void rebuildRecentFilesMenu();
+
+    // ── Menu bar ─────────────────────────────────────────────────────────────
+    QMenu *m_recentFilesMenu = nullptr;
 
     // ── Toolbar actions ───────────────────────────────────────────────────────
     QAction *m_showMonitoringAction  = nullptr;
