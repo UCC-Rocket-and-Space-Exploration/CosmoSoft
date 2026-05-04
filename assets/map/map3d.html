@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CosmoSoft Flight Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #0c0e14;
+    font-family: "Red Hat Mono", "Courier New", monospace;
+    color: #c8d4e0;
+  }
+  #mapContainer {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    bottom: 80px;
+  }
+  #map { width: 100%; height: 100%; background: #0c0e14; }
+  #view3d {
+    width: 100%; height: 100%;
+    background: #080a10;
+    display: none;
+    position: relative;
+  }
+  #view3d canvas { display: block; width: 100%; height: 100%; }
+
+  /* ── Altitude profile bar ──────────────────────────────────────── */
+  #altProfile {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 80px;
+    background: rgba(12, 14, 20, 0.95);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 0;
+    cursor: crosshair;
+  }
+  #altCanvas { width: 100%; height: 100%; display: block; }
+
+  /* ── Floating controls ─────────────────────────────────────────── */
+  .map-btn {
+    position: absolute;
+    z-index: 1000;
+    height: 36px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(16, 18, 24, 0.92);
+    color: #c8d4e0;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: background 0.15s, border-color 0.15s;
+    line-height: 1;
+    padding: 0;
+  }
+  .map-btn { width: 36px; }
+  .map-btn:hover {
+    background: rgba(40, 44, 56, 0.95);
+    border-color: rgba(255,255,255,0.22);
+  }
+  .map-btn.active {
+    background: rgba(30, 58, 82, 0.95);
+    border-color: #4a88c0;
+    color: #c8dcf0;
+  }
+  #btnLocate    { top: 10px; right: 10px; }
+  #btnFit       { top: 52px; right: 10px; font-size: 13px; font-weight: 600; }
+  #btnFollow    { top: 94px; right: 10px; font-size: 11px; font-weight: 600; }
+  #btnZoomIn    { bottom: 100px; right: 10px; font-weight: 700; }
+  #btnZoomOut   { bottom: 100px; right: 52px; font-weight: 700; }
+
+  /* ── 2D/3D toggle pill ─────────────────────────────────────────── */
+  #viewToggle {
+    position: absolute;
+    top: 10px; left: 50%; transform: translateX(-50%);
+    z-index: 1001;
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(8px);
+  }
+  .vt-btn {
+    padding: 6px 18px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: rgba(16, 18, 24, 0.92);
+    color: #7a8796;
+    transition: background 0.15s, color 0.15s;
+    letter-spacing: 1px;
+  }
+  .vt-btn:hover { background: rgba(40, 44, 56, 0.95); color: #c8d4e0; }
+  .vt-btn.active {
+    background: rgba(30, 58, 82, 0.95);
+    color: #c8dcf0;
+  }
+  .vt-sep { width: 1px; background: rgba(255,255,255,0.10); }
+
+  /* ── Stats overlay ─────────────────────────────────────────────── */
+  #statsOverlay {
+    position: absolute;
+    top: 10px; left: 10px;
+    z-index: 1000;
+    background: rgba(8, 10, 16, 0.90);
+    backdrop-filter: blur(10px);
+    font-size: 11px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    pointer-events: none;
+    line-height: 1.55;
+    min-width: 200px;
+    display: none;
+  }
+  #statsOverlay .st { color: #6a7a8a; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; margin-top: 5px; }
+  #statsOverlay .st:first-child { margin-top: 0; }
+  #statsOverlay .sv { color: #e8ecf0; }
+  #statsOverlay .sd { border-top: 1px solid rgba(255,255,255,0.06); margin-top: 5px; padding-top: 5px; }
+
+  /* ── 3D view labels ────────────────────────────────────────────── */
+  #info3d {
+    position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+    z-index: 1000; color: #6a7a8a; font-size: 10px; pointer-events: none;
+    text-align: center; white-space: nowrap;
+  }
+
+  .leaflet-tile-pane { filter: brightness(0.7) contrast(1.1) saturate(0.5); }
+  .leaflet-control-zoom { display: none; }
+  .leaflet-control-attribution { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="mapContainer">
+  <div id="map"></div>
+  <div id="view3d"></div>
+</div>
+<div id="altProfile"><canvas id="altCanvas"></canvas></div>
+
+<div id="viewToggle">
+  <button class="vt-btn active" id="btn2D">2D</button>
+  <div class="vt-sep"></div>
+  <button class="vt-btn" id="btn3D">3D</button>
+</div>
+
+<button id="btnLocate" class="map-btn" title="Center on rocket">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+    <circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
+    <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
+  </svg>
+</button>
+<button id="btnFit" class="map-btn" title="Fit to full path">Fit</button>
+<button id="btnFollow" class="map-btn" title="Auto-follow rocket">F</button>
+<button id="btnZoomIn" class="map-btn" title="Zoom in">+</button>
+<button id="btnZoomOut" class="map-btn" title="Zoom out">&minus;</button>
+
+<div id="statsOverlay"></div>
+<div id="info3d"></div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const THREE_LOADED = !!THREE;
+const ORBIT_LOADED = !!OrbitControls;
+
+const EARTH_R = 6371000, D2R = Math.PI/180, R2D = 180/Math.PI;
+let map = null, bridge = null;
+let pathLine = null, trailLine = null, launchMarker = null, rocketMarker = null;
+let allPos = [], allAlt = [], allTs = [], trailLen = 0, following = false;
+let activeView = "2d";
+
+// ── 3D state ───────────────────────────────────────────────────────
+let scene3d, camera3d, renderer3d, controls3d, animId3d = null;
+let pathLine3d, trailLine3d, ghostLine3d;
+let launchSphere3d, rocketSphere3d, rocketGlow3d;
+let groundGrid3d;
+let needsUpdate3d = true;
+const ALT_EXAGGERATION = 3.0;
+
+function hDist(a1,o1,a2,o2) {
+  const dl=(a2-a1)*D2R*0.5, doo=(o2-o1)*D2R*0.5;
+  const a=Math.sin(dl)*Math.sin(dl)+Math.cos(a1*D2R)*Math.cos(a2*D2R)*Math.sin(doo)*Math.sin(doo);
+  return 2*EARTH_R*Math.asin(Math.sqrt(a));
+}
+function fBearing(a1,o1,a2,o2) {
+  const la1=a1*D2R,la2=a2*D2R,dL=(o2-o1)*D2R;
+  let b=Math.atan2(Math.sin(dL)*Math.cos(la2),Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(dL))*R2D;
+  return b<0?b+360:b;
+}
+function validC(lat,lon){return isFinite(lat)&&isFinite(lon)&&!(Math.abs(lat)<1e-9&&Math.abs(lon)<1e-9);}
+function fmtAlt(m){return m>=1000?(m/1000).toFixed(1)+" km":m.toFixed(0)+" m";}
+function fmtDist(m){return m>=1000?(m/1000).toFixed(2)+" km":m.toFixed(0)+" m";}
+
+/* ── Convert lat/lon/alt to local XYZ for the 3D scene ───────────── */
+function toLocal3D(positions, altitudes, refLat, refLon) {
+  const pts = [];
+  const cosRef = Math.cos(refLat * D2R);
+  for (let i = 0; i < positions.length; i++) {
+    const p = positions[i];
+    if (!validC(p.lat, p.lon)) continue;
+    const x = (p.lon - refLon) * D2R * EARTH_R * cosRef;
+    const z = -(p.lat - refLat) * D2R * EARTH_R;
+    const y = altitudes[i] * ALT_EXAGGERATION;
+    pts.push(new THREE.Vector3(x, y, z));
+  }
+  return pts;
+}
+
+/* ── Leaflet 2D ──────────────────────────────────────────────────── */
+function initMap() {
+  map = L.map("map", {
+    center: [51.049,-1.398], zoom: 15,
+    zoomControl: false, attributionControl: false, preferCanvas: true
+  });
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{
+    maxZoom:19, subdomains:"abcd"
+  }).addTo(map);
+
+  pathLine = L.polyline([],{color:"rgba(60,100,140,0.35)",weight:5,lineCap:"round",lineJoin:"round",interactive:false}).addTo(map);
+  trailLine = L.polyline([],{color:"#4fa5de",weight:4,lineCap:"round",lineJoin:"round",interactive:false}).addTo(map);
+
+  const pulseIcon = L.divIcon({className:"",
+    html:'<div style="width:32px;height:32px;position:relative;">'+
+    '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(255,122,48,0.18);animation:pulse 1.5s ease-out infinite;"></div>'+
+    '<div style="position:absolute;top:8px;left:8px;width:16px;height:16px;border-radius:50%;background:#ff7a30;border:2px solid #ffaa55;box-shadow:0 0 10px rgba(255,122,48,0.5);"></div></div>',
+    iconSize:[32,32],iconAnchor:[16,16]});
+  const launchIcon = L.divIcon({className:"",
+    html:'<div style="width:14px;height:14px;border-radius:50%;background:#44cc77;border:2px solid #22aa55;box-shadow:0 0 6px rgba(68,204,119,0.4);"></div>',
+    iconSize:[14,14],iconAnchor:[7,7]});
+
+  launchMarker = L.marker([0,0],{icon:launchIcon,interactive:false}).addTo(map);
+  rocketMarker = L.marker([0,0],{icon:pulseIcon,interactive:false,zIndexOffset:1000}).addTo(map);
+  launchMarker.setOpacity(0);
+  rocketMarker.setOpacity(0);
+
+  const st = document.createElement("style");
+  st.textContent = "@keyframes pulse{0%{transform:scale(0.5);opacity:0.8;}100%{transform:scale(2.2);opacity:0;}}";
+  document.head.appendChild(st);
+
+  map.on("dragstart",()=>{if(following){following=false;document.getElementById("btnFollow").classList.remove("active");}});
+}
+
+/* ── Three.js 3D ─────────────────────────────────────────────────── */
+function init3D() {
+  if (!THREE_LOADED || !ORBIT_LOADED) {
+    document.getElementById("info3d").textContent = "3D unavailable: Three.js libraries failed to load";
+    return;
+  }
+  const container = document.getElementById("view3d");
+  scene3d = new THREE.Scene();
+  scene3d.background = new THREE.Color(0x080a10);
+  scene3d.fog = new THREE.FogExp2(0x080a10, 0.00015);
+
+  camera3d = new THREE.PerspectiveCamera(55, 1, 1, 100000);
+  camera3d.position.set(200, 400, 500);
+
+  renderer3d = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer3d.setPixelRatio(window.devicePixelRatio);
+  container.appendChild(renderer3d.domElement);
+
+  controls3d = new OrbitControls(camera3d, renderer3d.domElement);
+  controls3d.enableDamping = true;
+  controls3d.dampingFactor = 0.08;
+  controls3d.minDistance = 20;
+  controls3d.maxDistance = 8000;
+  controls3d.maxPolarAngle = Math.PI * 0.48;
+
+  // ground plane grid
+  groundGrid3d = new THREE.GridHelper(4000, 80, 0x1a2030, 0x111822);
+  scene3d.add(groundGrid3d);
+
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(6000, 6000),
+    new THREE.MeshBasicMaterial({ color: 0x0a0e16, side: THREE.DoubleSide })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.5;
+  scene3d.add(ground);
+
+  // ambient + directional light
+  scene3d.add(new THREE.AmbientLight(0x445566, 1.5));
+  const dLight = new THREE.DirectionalLight(0xddeeff, 0.8);
+  dLight.position.set(200, 600, 300);
+  scene3d.add(dLight);
+
+  // ghost line (full path, dimmed)
+  ghostLine3d = new THREE.Line(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0x2a4060, transparent: true, opacity: 0.4, linewidth: 1 })
+  );
+  scene3d.add(ghostLine3d);
+
+  // trail line (active, bright)
+  trailLine3d = new THREE.Line(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0x4fa5de, linewidth: 2 })
+  );
+  scene3d.add(trailLine3d);
+
+  // vertical drop lines from trail to ground
+  pathLine3d = new THREE.LineSegments(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0x4fa5de, transparent: true, opacity: 0.12 })
+  );
+  scene3d.add(pathLine3d);
+
+  // launch sphere
+  launchSphere3d = new THREE.Mesh(
+    new THREE.SphereGeometry(4, 16, 16),
+    new THREE.MeshPhongMaterial({ color: 0x44cc77, emissive: 0x226633 })
+  );
+  launchSphere3d.visible = false;
+  scene3d.add(launchSphere3d);
+
+  // rocket sphere + glow
+  rocketSphere3d = new THREE.Mesh(
+    new THREE.SphereGeometry(6, 16, 16),
+    new THREE.MeshPhongMaterial({ color: 0xff7a30, emissive: 0x993300 })
+  );
+  rocketSphere3d.visible = false;
+  scene3d.add(rocketSphere3d);
+
+  rocketGlow3d = new THREE.Mesh(
+    new THREE.SphereGeometry(14, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xff7a30, transparent: true, opacity: 0.12 })
+  );
+  rocketGlow3d.visible = false;
+  scene3d.add(rocketGlow3d);
+
+  resize3D();
+}
+
+function resize3D() {
+  const c = document.getElementById("view3d");
+  const w = c.clientWidth, h = c.clientHeight;
+  if (w === 0 || h === 0) return;
+  camera3d.aspect = w / h;
+  camera3d.updateProjectionMatrix();
+  renderer3d.setSize(w, h);
+  needsUpdate3d = true;
+}
+
+function animate3D() {
+  animId3d = requestAnimationFrame(animate3D);
+  controls3d.update();
+
+  // pulse the rocket glow
+  if (rocketGlow3d && rocketGlow3d.visible) {
+    const t = performance.now() * 0.002;
+    const s = 1.0 + 0.3 * Math.sin(t);
+    rocketGlow3d.scale.setScalar(s);
+    rocketGlow3d.material.opacity = 0.08 + 0.06 * Math.sin(t);
+  }
+
+  renderer3d.render(scene3d, camera3d);
+}
+
+function update3DEntities() {
+  if (!scene3d) return;
+
+  const allValid = [], allValidAlt = [];
+  for (let i = 0; i < allPos.length; i++) {
+    if (validC(allPos[i].lat, allPos[i].lon)) { allValid.push(allPos[i]); allValidAlt.push(allAlt[i]); }
+  }
+  if (allValid.length === 0) {
+    ghostLine3d.geometry.setFromPoints([]);
+    trailLine3d.geometry.setFromPoints([]);
+    pathLine3d.geometry.setFromPoints([]);
+    launchSphere3d.visible = false;
+    rocketSphere3d.visible = false;
+    rocketGlow3d.visible = false;
+    document.getElementById("info3d").textContent = "";
+    return;
+  }
+
+  const refLat = allValid[0].lat, refLon = allValid[0].lon;
+
+  // ghost (full path)
+  const ghostPts = toLocal3D(allValid, allValidAlt, refLat, refLon);
+  ghostLine3d.geometry.dispose();
+  ghostLine3d.geometry = new THREE.BufferGeometry().setFromPoints(ghostPts);
+
+  // trail (active)
+  const trailValid = [], trailAlt = [];
+  const n = Math.min(trailLen, allPos.length);
+  for (let i = 0; i < n; i++) {
+    if (validC(allPos[i].lat, allPos[i].lon)) { trailValid.push(allPos[i]); trailAlt.push(allAlt[i]); }
+  }
+
+  if (trailValid.length > 0) {
+    const trailPts = toLocal3D(trailValid, trailAlt, refLat, refLon);
+    trailLine3d.geometry.dispose();
+    trailLine3d.geometry = new THREE.BufferGeometry().setFromPoints(trailPts);
+
+    // vertical drop lines (every 3rd point)
+    const dropVerts = [];
+    for (let i = 0; i < trailPts.length; i += 3) {
+      dropVerts.push(trailPts[i].clone());
+      dropVerts.push(new THREE.Vector3(trailPts[i].x, 0, trailPts[i].z));
+    }
+    pathLine3d.geometry.dispose();
+    pathLine3d.geometry = new THREE.BufferGeometry().setFromPoints(dropVerts);
+
+    // launch
+    launchSphere3d.position.copy(trailPts[0]);
+    launchSphere3d.visible = true;
+
+    // rocket
+    const rp = trailPts[trailPts.length - 1];
+    rocketSphere3d.position.copy(rp);
+    rocketSphere3d.visible = true;
+    rocketGlow3d.position.copy(rp);
+    rocketGlow3d.visible = true;
+
+    // info label
+    const lastA = trailAlt[trailAlt.length - 1];
+    document.getElementById("info3d").textContent =
+      "Alt: " + fmtAlt(lastA) + "  ·  Vertical scale: " + ALT_EXAGGERATION + "x" +
+      "  ·  Drag to orbit  ·  Scroll to zoom";
+  } else {
+    trailLine3d.geometry.setFromPoints([]);
+    pathLine3d.geometry.setFromPoints([]);
+    launchSphere3d.visible = false;
+    rocketSphere3d.visible = false;
+    rocketGlow3d.visible = false;
+  }
+}
+
+function fit3DCamera() {
+  if (!scene3d) return;
+  const allValid = [], allValidAlt = [];
+  for (let i = 0; i < allPos.length; i++) {
+    if (validC(allPos[i].lat, allPos[i].lon)) { allValid.push(allPos[i]); allValidAlt.push(allAlt[i]); }
+  }
+  if (allValid.length === 0) return;
+  const refLat = allValid[0].lat, refLon = allValid[0].lon;
+  const pts = toLocal3D(allValid, allValidAlt, refLat, refLon);
+
+  const box = new THREE.Box3();
+  for (const p of pts) box.expandByPoint(p);
+  const center = new THREE.Vector3();
+  box.getCenter(center);
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z, 100);
+
+  controls3d.target.copy(center);
+  camera3d.position.set(center.x + maxDim * 0.8, center.y + maxDim * 1.2, center.z + maxDim * 0.8);
+  controls3d.update();
+}
+
+/* ── View switching ──────────────────────────────────────────────── */
+function switchView(mode) {
+  activeView = mode;
+  const mapEl = document.getElementById("map");
+  const v3El = document.getElementById("view3d");
+  const btn2 = document.getElementById("btn2D");
+  const btn3 = document.getElementById("btn3D");
+
+  if (mode === "3d") {
+    mapEl.style.display = "none";
+    v3El.style.display = "block";
+    btn2.classList.remove("active");
+    btn3.classList.add("active");
+    if (!scene3d) init3D();
+    resize3D();
+    update3DEntities();
+    fit3DCamera();
+    if (!animId3d) animate3D();
+  } else {
+    mapEl.style.display = "block";
+    v3El.style.display = "none";
+    btn2.classList.add("active");
+    btn3.classList.remove("active");
+    if (animId3d) { cancelAnimationFrame(animId3d); animId3d = null; }
+    setTimeout(() => map.invalidateSize(), 50);
+  }
+}
+
+/* ── Altitude profile ────────────────────────────────────────────── */
+function drawAltProfile() {
+  const canvas = document.getElementById("altCanvas");
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  if (W === 0 || H === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W+"px"; canvas.style.height = H+"px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,W,H);
+
+  if (allAlt.length < 2) return;
+  const n = allAlt.length;
+  let minA=Infinity, maxA=-Infinity;
+  for (let i=0;i<n;i++){minA=Math.min(minA,allAlt[i]);maxA=Math.max(maxA,allAlt[i]);}
+  const range=Math.max(maxA-minA,1), pad=6;
+
+  ctx.beginPath(); ctx.moveTo(0,H);
+  for (let i=0;i<n;i++){ctx.lineTo((i/(n-1))*W, H-pad-((allAlt[i]-minA)/range)*(H-pad*2));}
+  ctx.lineTo(W,H); ctx.closePath();
+  ctx.fillStyle="rgba(60,100,140,0.15)"; ctx.fill();
+
+  const aN=Math.min(trailLen,n);
+  if (aN>0) {
+    ctx.beginPath(); ctx.moveTo(0,H);
+    for(let i=0;i<aN;i++){ctx.lineTo((i/(n-1))*W, H-pad-((allAlt[i]-minA)/range)*(H-pad*2));}
+    ctx.lineTo(((aN-1)/(n-1))*W, H); ctx.closePath();
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,"rgba(79,165,222,0.45)");g.addColorStop(1,"rgba(79,165,222,0.05)");
+    ctx.fillStyle=g; ctx.fill();
+
+    ctx.beginPath();
+    for(let i=0;i<aN;i++){const x=(i/(n-1))*W,y=H-pad-((allAlt[i]-minA)/range)*(H-pad*2);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+    ctx.strokeStyle="#4fa5de"; ctx.lineWidth=2; ctx.stroke();
+
+    const cx=((aN-1)/(n-1))*W, cy=H-pad-((allAlt[aN-1]-minA)/range)*(H-pad*2);
+    ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2);
+    ctx.fillStyle="#ff7a30"; ctx.fill();
+    ctx.strokeStyle="#ffaa55"; ctx.lineWidth=1.5; ctx.stroke();
+  }
+
+  ctx.fillStyle="#6a7a8a"; ctx.font="9px monospace"; ctx.textAlign="left";
+  ctx.fillText(fmtAlt(maxA),4,12); ctx.fillText(fmtAlt(minA),4,H-3);
+  if(aN>0){ctx.fillStyle="#e8ecf0";ctx.font="bold 10px monospace";ctx.textAlign="right";ctx.fillText("Alt: "+fmtAlt(allAlt[aN-1]),W-6,14);}
+}
+
+/* ── Update 2D entities ──────────────────────────────────────────── */
+function updateEntities(tLen) {
+  const vp=[], va=[];
+  const n=Math.min(tLen,allPos.length);
+  for(let i=0;i<n;i++){const p=allPos[i];if(validC(p.lat,p.lon)){vp.push(p);va.push(allAlt[i]);}}
+
+  const allValid=[];
+  for(let i=0;i<allPos.length;i++){if(validC(allPos[i].lat,allPos[i].lon))allValid.push([allPos[i].lat,allPos[i].lon]);}
+  pathLine.setLatLngs(allValid);
+
+  if(vp.length===0){
+    trailLine.setLatLngs([]);launchMarker.setOpacity(0);rocketMarker.setOpacity(0);
+    sendStats([],[],n);drawAltProfile();
+    if(activeView==="3d")update3DEntities();
+    return;
+  }
+
+  trailLine.setLatLngs(vp.map(p=>[p.lat,p.lon]));
+  launchMarker.setLatLng([vp[0].lat,vp[0].lon]);launchMarker.setOpacity(1);
+  const last=vp[vp.length-1];
+  rocketMarker.setLatLng([last.lat,last.lon]);rocketMarker.setOpacity(1);
+
+  if(following && activeView==="2d") map.panTo([last.lat,last.lon],{animate:true,duration:0.3});
+
+  sendStats(vp,va,n);
+  updateStatsOverlay(vp,va,n);
+  drawAltProfile();
+  if(activeView==="3d")update3DEntities();
+}
+
+function sendStats(vp,va,total){
+  if(!bridge)return;
+  if(vp.length===0){bridge.onStatsUpdated(0,0,0,-1,-1,0,total,0,0,0);return;}
+  const f=vp[0],l=vp[vp.length-1],la=va[va.length-1];
+  let pL=0;for(let i=1;i<vp.length;i++)pL+=hDist(vp[i-1].lat,vp[i-1].lon,vp[i].lat,vp[i].lon);
+  bridge.onStatsUpdated(l.lat,l.lon,la,hDist(f.lat,f.lon,l.lat,l.lon),fBearing(f.lat,f.lon,l.lat,l.lon),pL,total,vp.length,f.lat,f.lon);
+}
+
+function updateStatsOverlay(vp,va,total){
+  const el=document.getElementById("statsOverlay");
+  if(vp.length===0){el.style.display="none";return;}
+  const f=vp[0],l=vp[vp.length-1],la=va[va.length-1];
+  let pL=0;for(let i=1;i<vp.length;i++)pL+=hDist(vp[i-1].lat,vp[i-1].lon,vp[i].lat,vp[i].lon);
+  el.innerHTML=
+    '<div class="st">POSITION</div><div class="sv">'+l.lat.toFixed(6)+', '+l.lon.toFixed(6)+'</div>'+
+    '<div class="sv">Alt '+fmtAlt(la)+'</div>'+
+    '<div class="sd"><div class="st">RANGE</div><div class="sv">'+fmtDist(hDist(f.lat,f.lon,l.lat,l.lon))+' · '+fBearing(f.lat,f.lon,l.lat,l.lon).toFixed(0)+'°</div></div>'+
+    '<div class="sd"><div class="st">PATH</div><div class="sv">'+fmtDist(pL)+' · '+vp.length+'/'+total+' pts</div></div>';
+  el.style.display="block";
+}
+
+/* ── API from C++ ────────────────────────────────────────────────── */
+window.addPoint = function(lat,lon,alt,ts){
+  allPos.push({lat,lon});allAlt.push(alt);allTs.push(ts);
+  trailLen=allPos.length;
+  updateEntities(trailLen);
+};
+window.loadSession = function(jsonStr){
+  // #region agent log — H1: loadSession called
+  let parseOk=false, count=0, firstR=null, validGps=0;
+  try {
+    const s=JSON.parse(jsonStr);
+    parseOk=true; count=s.length;
+    allPos=[];allAlt=[];allTs=[];
+    for(const r of s){allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);}
+    if(s.length>0) firstR=s[0];
+    for(let i=0;i<allPos.length;i++){if(validC(allPos[i].lat,allPos[i].lon))validGps++;}
+    trailLen=allPos.length;
+    updateEntities(trailLen);
+    fitCamera();
+  } catch(e) {
+    fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:loadSession',message:'loadSession-PARSE-ERROR',data:{err:String(e),jsonLen:jsonStr?jsonStr.length:0,first200:jsonStr?jsonStr.substring(0,200):''},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    return;
+  }
+  fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:loadSession',message:'loadSession-ok',data:{count,validGps,firstR,trailLen,allPosLen:allPos.length},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+  // #endregion
+};
+window.setTrailLength = function(nn){
+  trailLen=Math.max(0,Math.min(nn,allPos.length));
+  updateEntities(trailLen);
+};
+window.fitCamera = function(){
+  if(activeView==="3d"){fit3DCamera();return;}
+  const pts=[];
+  for(let i=0;i<allPos.length;i++){if(validC(allPos[i].lat,allPos[i].lon))pts.push([allPos[i].lat,allPos[i].lon]);}
+  if(pts.length===0)return;
+  map.fitBounds(L.latLngBounds(pts).pad(0.15),{animate:true,duration:0.6});
+};
+window.centerOnCurrent = function(){
+  if(activeView==="3d"){/* 3D orbit stays user-controlled */return;}
+  const nn=Math.min(trailLen,allPos.length);
+  for(let i=nn-1;i>=0;i--){
+    if(validC(allPos[i].lat,allPos[i].lon)){
+      map.setView([allPos[i].lat,allPos[i].lon],Math.max(map.getZoom(),16),{animate:true,duration:0.5});return;
+    }
+  }
+};
+window.followRocket = function(en){
+  following=en;
+  document.getElementById("btnFollow").classList.toggle("active",en);
+  if(en)window.centerOnCurrent();
+};
+window.clearAll = function(){
+  allPos=[];allAlt=[];allTs=[];trailLen=0;
+  pathLine.setLatLngs([]);trailLine.setLatLngs([]);
+  launchMarker.setOpacity(0);rocketMarker.setOpacity(0);
+  document.getElementById("statsOverlay").style.display="none";
+  drawAltProfile();
+  if(scene3d)update3DEntities();
+  if(bridge)bridge.onStatsUpdated(0,0,0,-1,-1,0,0,0,0,0);
+};
+
+/* ── Init ────────────────────────────────────────────────────────── */
+function init() {
+  // #region agent log — H3: init called, check Leaflet
+  fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:init',message:'init-called',data:{hasL:typeof L!=='undefined',hasQWC:typeof QWebChannel!=='undefined',threeOk:THREE_LOADED,orbitOk:ORBIT_LOADED},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+  // #endregion
+  initMap();
+  window.addEventListener("resize",()=>{drawAltProfile();if(activeView==="3d"&&renderer3d)resize3D();});
+
+  document.getElementById("btnLocate").onclick = window.centerOnCurrent;
+  document.getElementById("btnFit").onclick = window.fitCamera;
+  document.getElementById("btnFollow").onclick = function(){
+    following=!following;
+    this.classList.toggle("active",following);
+    if(following)window.centerOnCurrent();
+    if(bridge)bridge.onFollowChanged(following);
+  };
+  document.getElementById("btnZoomIn").onclick = function(){if(activeView==="2d")map.zoomIn();};
+  document.getElementById("btnZoomOut").onclick = function(){if(activeView==="2d")map.zoomOut();};
+  document.getElementById("btn2D").onclick = function(){switchView("2d");};
+  document.getElementById("btn3D").onclick = function(){switchView("3d");};
+
+  if(typeof QWebChannel!=="undefined"){
+    new QWebChannel(qt.webChannelTransport,function(ch){
+      bridge=ch.objects.map3dBridge;
+      // #region agent log — H4: QWebChannel bridge
+      fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:QWC',message:'webchannel-connected',data:{hasBridge:!!bridge},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+      // #endregion
+      if(bridge)bridge.mapReady();
+    });
+  } else {
+    // #region agent log — H4: QWebChannel missing
+    fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:QWC',message:'QWebChannel-NOT-DEFINED',data:{},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+    // #endregion
+  }
+}
+
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);
+else init();
+</script>
+</body>
+</html>

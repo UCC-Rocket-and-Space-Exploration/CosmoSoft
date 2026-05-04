@@ -12,7 +12,7 @@ set(GUI_MOC_HEADERS
         "${CMAKE_SOURCE_DIR}/include/gui/pages/SettingsPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/DashboardPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/EventLogPage.h"
-        "${CMAKE_SOURCE_DIR}/include/gui/pages/MapPage.h"
+        "${CMAKE_SOURCE_DIR}/include/gui/widgets/Map3DWidget.h"
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/StatTileWidget.h"
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/TracesPanel.h"
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/ReplayBar.h"
@@ -28,6 +28,8 @@ target_link_libraries(gui
         Qt6::Widgets
         Qt6::Charts
         Qt6::Concurrent
+        Qt6::WebEngineWidgets  # 3D map globe (CesiumJS inside QWebEngineView)
+        Qt6::WebChannel        # C++ ↔ JS bridge for the 3D map
         import
         persistence
 )

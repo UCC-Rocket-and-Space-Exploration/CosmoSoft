@@ -13,7 +13,6 @@
 #include "gui/pages/DashboardPage.h"
 #include "gui/pages/MonitoringPage.h"
 #include "gui/AboutDialog.h"
-#include "gui/pages/MapPage.h"
 #include "gui/pages/SettingsPage.h"
 #include "gateway/comms/SerialWorker.h"
 #include "services/import/SampleFileLoader.h"
@@ -164,9 +163,6 @@ void MainWindow::setupActions() {
     m_showFlightDataAction = new QAction(u"Flight data"_s, this);
     m_showFlightDataAction->setToolTip(u"Switch to flight data and charts."_s);
 
-    m_showMapAction = new QAction(u"Map"_s, this);
-    m_showMapAction->setToolTip(u"Switch to the lat/lon map page."_s);
-
     QIcon settingsIcon;
     settingsIcon.addFile(u":/icons/settings_button.png"_s, QSize(), QIcon::Normal, QIcon::Off);
     settingsIcon.addFile(u":/icons/settings_button_black.png"_s, QSize(), QIcon::Normal, QIcon::On);
@@ -184,12 +180,6 @@ void MainWindow::setupActions() {
         m_pages->setCurrentWidget(m_flightDataPage);
         updateTopBarsForCurrentPage();
         statusBar()->showMessage(u"Flight data page selected."_s, 2000);
-    });
-
-    connect(m_showMapAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_mapPage);
-        updateTopBarsForCurrentPage();
-        statusBar()->showMessage(u"Map page selected."_s, 2000);
     });
 
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() { openSettingsWindow(); });
@@ -340,10 +330,8 @@ void MainWindow::setupToolbar() {
     navGroup->setExclusive(true);
     m_showMonitoringAction->setCheckable(true);
     m_showFlightDataAction->setCheckable(true);
-    m_showMapAction->setCheckable(true);
     navGroup->addAction(m_showMonitoringAction);
     navGroup->addAction(m_showFlightDataAction);
-    navGroup->addAction(m_showMapAction);
     m_showMonitoringAction->setChecked(true);
 
     auto makeNavButton = [](QAction *action,
@@ -370,7 +358,6 @@ void MainWindow::setupToolbar() {
     navLayout->setSpacing(12);
     navLayout->addWidget(makeNavButton(m_showMonitoringAction, navContainer));
     navLayout->addWidget(makeNavButton(m_showFlightDataAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_showMapAction, navContainer));
 
     navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
 
@@ -607,10 +594,8 @@ void MainWindow::setupPages() {
 
     m_monitoringPage = new MonitoringPage(m_flightModel.get());
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
-    m_mapPage        = new MapPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_monitoringPage);
     m_pages->addWidget(m_flightDataPage);
-    m_pages->addWidget(m_mapPage);
     m_pages->setCurrentWidget(m_monitoringPage);
 
     connect(m_pages, &QStackedWidget::currentChanged, this, [this](int) {
@@ -627,19 +612,12 @@ bool MainWindow::isMonitoringPageActive() const {
     return m_pages && m_pages->currentWidget() == m_monitoringPage;
 }
 
-bool MainWindow::isMapPageActive() const {
-    return m_pages && m_pages->currentWidget() == m_mapPage;
-}
-
 void MainWindow::updateTopBarsForCurrentPage() {
     const bool monitoring = isMonitoringPageActive();
-    const bool map        = isMapPageActive();
 
     if (m_toolbarPageLabel) {
         if (monitoring) {
             m_toolbarPageLabel->setText(u"Monitoring"_s);
-        } else if (map) {
-            m_toolbarPageLabel->setText(u"Map"_s);
         } else {
             m_toolbarPageLabel->setText(u"Flight data"_s);
         }
@@ -649,9 +627,6 @@ void MainWindow::updateTopBarsForCurrentPage() {
         if (monitoring) {
             m_connectionPageLabel->setText(
                 u"Serial — port, baud, Connect. Flight logs — Open log…"_s);
-        } else if (map) {
-            m_connectionPageLabel->setText(
-                u"Map — lat/lon flight path. Load a log or connect for live tracking."_s);
         } else {
             m_connectionPageLabel->setText(
                 u"Replay — Open log… or Clear flight. Serial controls are on Monitoring."_s);
@@ -680,13 +655,6 @@ void MainWindow::syncTelemetryStrip() {
         } else {
             m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1").arg(m_serialPortSummary));
         }
-        return;
-    }
-
-    if (isMapPageActive()) {
-        m_dataStripPageLabel->setText(u"MAP"_s);
-        const QString link = m_serialPortSummary.isEmpty() ? u"idle"_s : m_serialPortSummary;
-        m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1").arg(link));
         return;
     }
 
@@ -820,10 +788,6 @@ void MainWindow::refreshSerialPorts() {
 }
 
 void MainWindow::onReplayPositionChanged(int trailLength) {
-    if (m_mapPage) {
-        m_mapPage->setReplayTrailLength(trailLength);
-    }
-
     if (trailLength <= 0) {
         if (m_replayTelemetryCoalesceTimer) {
             m_replayTelemetryCoalesceTimer->stop();
@@ -903,9 +867,6 @@ void MainWindow::onOpenReplayFile() {
         if (m_flightDataPage) {
             m_flightDataPage->setReplaySession(&m_loadedSession);
         }
-        if (m_mapPage) {
-            m_mapPage->setReplaySession(&m_loadedSession);
-        }
         syncTelemetryStrip();
         const QString loadMsg = QStringLiteral("Loaded flight: %1").arg(path);
         showStatusMessage(loadMsg, 4000);
@@ -926,9 +887,6 @@ void MainWindow::onClearFlightData() {
     m_flightModel->resetSession();
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
-    }
-    if (m_mapPage) {
-        m_mapPage->setReplaySession(nullptr);
     }
     syncTelemetryStrip();
     showStatusMessage(u"Cleared flight replay data."_s, 2000);
@@ -1036,9 +994,6 @@ void MainWindow::startSerial(const QString &portName, int baud) {
     m_flightModel->setReplayMode(false);
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
-    }
-    if (m_mapPage) {
-        m_mapPage->setReplaySession(nullptr);
     }
     syncTelemetryStrip();
     const QString connectMsg = QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud);

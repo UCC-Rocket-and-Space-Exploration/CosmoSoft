@@ -16,12 +16,14 @@ class QLabel;
 class QLineSeries;
 class QPaintEvent;
 class QPushButton;
+class QStackedWidget;
 class QTimer;
 class QToolButton;
 class QValueAxis;
 
 class FlightDataModel;
 class FlightReplayController;
+class Map3DWidget;
 class ReplayBar;
 class StatTileWidget;
 class TracesPanel;
@@ -135,6 +137,12 @@ private:
     std::array<QLineSeries *, kMetricCount> m_lineSeries{};
     QValueAxis *m_axisX = nullptr;
     QValueAxis *m_axisY = nullptr;
+
+    // ── View switcher (Graph / Map) ───────────────────────────────────────────
+    QStackedWidget *m_viewStack    = nullptr;
+    Map3DWidget    *m_mapWidget    = nullptr;
+    QPushButton    *m_graphViewBtn = nullptr;
+    QPushButton    *m_mapViewBtn   = nullptr;
 
     // ── Chart toolbar buttons ─────────────────────────────────────────────────
     QPushButton  *m_zoomOutBtn            = nullptr;

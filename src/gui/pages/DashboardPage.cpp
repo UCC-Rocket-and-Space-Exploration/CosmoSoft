@@ -37,6 +37,7 @@
 #include "gui/widgets/MetricDefs.h"
 #include "gui/widgets/ReplayBar.h"
 #include "gui/widgets/StatTileWidget.h"
+#include "gui/widgets/Map3DWidget.h"
 #include "gui/widgets/TelemetryChartView.h"
 #include "gui/widgets/TracesPanel.h"
 
@@ -61,6 +62,7 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSettings>
+#include <QStackedWidget>
 
 #include "gui/SettingsKeys.h"
 #include <QSignalBlocker>
@@ -382,6 +384,27 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             margin: 0px;
             padding: 0px 2px;
         }
+        QPushButton#viewSwitchBtn {
+            border: 1px solid %6;
+            border-radius: %4px;
+            padding: 4px 14px;
+            min-height: 28px;
+            background-color: %7;
+            color: #7a8796;
+            font-size: %5px;
+        }
+        QPushButton#viewSwitchBtn:checked {
+            background-color: #1e3a52;
+            border-color: #4a88c0;
+            color: #c8dcf0;
+        }
+        QPushButton#viewSwitchBtn:hover {
+            background-color: #343842;
+            color: #c8d0dc;
+        }
+        QPushButton#viewSwitchBtn:checked:hover {
+            background-color: #254660;
+        }
     )"_s)
             .arg(Theme::kFontMono)          // %1
             .arg(Theme::kBorderPanel)       // %2
@@ -466,6 +489,26 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     auto *chartToolbar = new QHBoxLayout();
     chartToolbar->setSpacing(6);
+
+    // ── View toggle: Graph / Map ──────────────────────────────────────────────
+    m_graphViewBtn = new QPushButton(u"Graph"_s, chartHeader);
+    m_graphViewBtn->setObjectName(u"viewSwitchBtn"_s);
+    m_graphViewBtn->setCheckable(true);
+    m_graphViewBtn->setChecked(true);
+    m_graphViewBtn->setToolTip(u"Show telemetry chart"_s);
+    chartToolbar->addWidget(m_graphViewBtn);
+
+    m_mapViewBtn = new QPushButton(u"Map"_s, chartHeader);
+    m_mapViewBtn->setObjectName(u"viewSwitchBtn"_s);
+    m_mapViewBtn->setCheckable(true);
+    m_mapViewBtn->setChecked(false);
+    m_mapViewBtn->setToolTip(u"Show flight path map"_s);
+    chartToolbar->addWidget(m_mapViewBtn);
+
+    auto *viewSep = new QFrame(chartHeader);
+    viewSep->setFixedSize(1, 22);
+    viewSep->setStyleSheet(u"background-color: #4a4d56; border: none;"_s);
+    chartToolbar->addWidget(viewSep);
 
     m_zoomOutBtn = new QPushButton(u"−"_s, chartHeader);
     m_zoomOutBtn->setObjectName(u"chartZoomBtn"_s);
@@ -667,7 +710,25 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     // no secondary label is needed in DashboardPage.
     tcv->hoverReadout = nullptr;
 
-    chartFrameLayout->addWidget(m_chartView, 1);
+    // ── View stack (Graph / Map switcher) ─────────────────────────────────────
+    m_viewStack = new QStackedWidget(chartFrame);
+    m_viewStack->addWidget(m_chartView);   // index 0 — telemetry chart
+
+    m_mapWidget = new Map3DWidget(m_viewStack);
+    m_viewStack->addWidget(m_mapWidget);   // index 1 — 3D flight path map
+
+    chartFrameLayout->addWidget(m_viewStack, 1);
+
+    connect(m_graphViewBtn, &QPushButton::clicked, this, [this]() {
+        m_viewStack->setCurrentIndex(0);
+        m_graphViewBtn->setChecked(true);
+        m_mapViewBtn->setChecked(false);
+    });
+    connect(m_mapViewBtn, &QPushButton::clicked, this, [this]() {
+        m_viewStack->setCurrentIndex(1);
+        m_graphViewBtn->setChecked(false);
+        m_mapViewBtn->setChecked(true);
+    });
 
     chartColumn->addWidget(chartFrame, 1);
 
@@ -699,7 +760,11 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     if (m_model) {
         connect(m_model, &FlightDataModel::sampleUpdated, this, &DashboardPage::onSampleUpdated);
-        connect(m_model, &FlightDataModel::sessionReset, this, &DashboardPage::onSessionReset);
+        connect(m_model, &FlightDataModel::sessionReset,  this, &DashboardPage::onSessionReset);
+        connect(m_model, &FlightDataModel::sampleUpdated,
+                m_mapWidget, &Map3DWidget::onSampleUpdated);
+        connect(m_model, &FlightDataModel::sessionReset,
+                m_mapWidget, &Map3DWidget::onSessionReset);
     }
 
     refreshAllSeriesFromData();
@@ -892,6 +957,8 @@ void DashboardPage::setReplaySession(const FlightSession *session) {
 
     if (m_replayBar) m_replayBar->setSession(session);
 
+    if (m_mapWidget) m_mapWidget->setReplaySession(session);
+
     if (n > 0) {
         m_lastReplayTrailLength = n;
         rebuildReplayCharts(n);
@@ -917,6 +984,7 @@ void DashboardPage::applyReplayControllerPosition(int trailLength) {
         m_preserveChartAxes = false;
     m_lastReplayTrailLength = trailLength;
     if (m_replayBar) m_replayBar->setTrailLength(trailLength);
+    if (m_mapWidget) m_mapWidget->setReplayTrailLength(trailLength);
     if (m_replay && m_replay->isPlaying()) {
         scheduleReplayChartRebuild();
         return;

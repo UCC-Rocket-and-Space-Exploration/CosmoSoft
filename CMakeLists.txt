@@ -20,5 +20,5 @@ set(CMAKE_AUTORCC ON)
 
 set(HEADERS "${CMAKE_SOURCE_DIR}/include")
 
-find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts Concurrent)
+find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts Concurrent WebEngineWidgets WebChannel)
 add_subdirectory(src)
