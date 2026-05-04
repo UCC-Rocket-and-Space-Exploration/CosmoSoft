@@ -2,6 +2,12 @@
     <qresource prefix="/styles">
         <file alias="theme.qss">theme.qss</file>
     </qresource>
+    <qresource prefix="/skins/dark">
+        <file alias="theme.json">skins/dark/theme.json</file>
+    </qresource>
+    <qresource prefix="/skins/light">
+        <file alias="theme.json">skins/light/theme.json</file>
+    </qresource>
     <qresource prefix="/images">
         <file alias="Logo_rounded.png">images/Logo_rounded.png</file>
         <file alias="Logo_nb.png">images/Logo_nb.png</file>

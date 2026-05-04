@@ -64,6 +64,9 @@ constexpr auto kSettingsDebugMode = "ui/debugMode";
 /** @brief Last active settings tab index. */
 constexpr auto kSettingsActiveTab = "ui/settingsActiveTab";
 
+/** @brief Active skin identifier: "builtin:dark", "builtin:light", or "custom:<name>". */
+constexpr auto kSettingsActiveSkin = "ui/activeSkin";
+
 // ── Recent files ──────────────────────────────────────────────────────────────
 
 /** @brief Ordered list of recently opened flight-log file paths. */

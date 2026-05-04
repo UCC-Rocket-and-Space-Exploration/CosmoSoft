@@ -20,8 +20,9 @@ using namespace Qt::StringLiterals;
 namespace {
 
 /**
- * Row frame: swatch and value labels use WA_TransparentForMouseEvents so clicks
- * land here; toggles the checkbox unless the click is on the checkbox itself.
+ * Row frame: the entire row is a single click target that toggles the checkbox.
+ * Swatch and value labels use WA_TransparentForMouseEvents so all clicks land
+ * here and are forwarded to the checkbox uniformly.
  */
 class TraceRowFrame : public QFrame {
     QCheckBox *m_cb = nullptr;
@@ -35,14 +36,12 @@ public:
     void setToggleCheckBox(QCheckBox *cb) { m_cb = cb; }
 
 protected:
-    void mouseReleaseEvent(QMouseEvent *event) override
+    void mousePressEvent(QMouseEvent *event) override
     {
         if (event->button() == Qt::LeftButton && m_cb && m_cb->isVisible() && m_cb->isEnabled()) {
-            const QPoint inCb = m_cb->mapFrom(this, event->pos());
-            if (!m_cb->rect().contains(inCb))
-                m_cb->toggle();
+            m_cb->toggle();
         }
-        QFrame::mouseReleaseEvent(event);
+        QFrame::mousePressEvent(event);
     }
 };
 
@@ -54,46 +53,57 @@ TracesPanel::TracesPanel(QWidget *parent)
     : QFrame(parent)
 {
     setObjectName(u"tracesPanel"_s);
-    setMinimumWidth(130);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+
+    const auto borderPanel = Theme::kBorderPanel();
+    const auto fontMono = QString::fromUtf8(Theme::kFontMono);
+    const auto textMuted = Theme::kTextMuted();
+    const auto textPrimary = Theme::kTextPrimary();
+    const auto bgPanel = Theme::kBgPanel();
+    const auto borderLight = Theme::kBorderLight();
 
     setStyleSheet(
         QString(uR"(
         QFrame#tracesPanel {
-            background-color: rgba(21, 22, 25, 0.88);
-            border: 1px solid %1;
-            border-radius: %2px;
+            background-color: %1;
+            border: 1px solid %2;
+            border-radius: %3px;
         }
         QLabel#tracesPanelTitle {
-            font-size: 10px;
-            font-family: %3;
-            color: #7a8898;
-            letter-spacing: 1.5px;
+            font-size: %4px;
+            font-family: %5;
+            color: %6;
+            letter-spacing: 2px;
+            padding-bottom: 2px;
         }
         QPushButton#tracesAllNoneBtn {
-            font-size: 10px;
-            font-family: %3;
-            color: #7a8898;
+            font-size: %4px;
+            font-family: %5;
+            color: %6;
             background: transparent;
-            border: 1px solid %1;
-            border-radius: %4px;
-            padding: 3px 8px;
-            min-height: 22px;
+            border: 1px solid %2;
+            border-radius: 12px;
+            padding: 5px 14px;
+            min-height: 28px;
         }
-        QPushButton#tracesAllNoneBtn:hover { color: #c8d4e0; border-color: #6a7080; background: rgba(255,255,255,0.04); }
-        QFrame#traceSeparator { background-color: %1; border: none; }
+        QPushButton#tracesAllNoneBtn:hover {
+            color: %7;
+            border-color: %8;
+            background: rgba(128,128,128,0.08);
+        }
+        QFrame#traceSeparator { background-color: %2; border: none; }
         QFrame#traceRow {
             background-color: transparent;
             border: none;
-            border-radius: %4px;
+            border-radius: 6px;
         }
-        QFrame#traceRow:hover { background-color: rgba(255,255,255,0.04); }
-        QFrame#traceRow[noData="true"] QCheckBox#traceCheck { color: #555a66; }
-        QFrame#traceRow[noData="true"] QLabel#traceValueLabel { color: #555a66; }
+        QFrame#traceRow:hover { background-color: rgba(128,128,128,0.06); }
+        QFrame#traceRow[noData="true"] QCheckBox#traceCheck { color: %6; }
+        QFrame#traceRow[noData="true"] QLabel#traceValueLabel { color: %6; }
         QCheckBox#traceCheck {
-            font-size: %5px;
-            font-family: %3;
-            color: #c8d4e0;
+            font-size: %4px;
+            font-family: %5;
+            color: %7;
             spacing: 0px;
         }
         QCheckBox#traceCheck::indicator {
@@ -104,28 +114,31 @@ TracesPanel::TracesPanel(QWidget *parent)
             padding: 0px;
         }
         QLabel#traceValueLabel {
-            font-size: 10px;
-            font-family: %3;
+            font-size: %9px;
+            font-family: %5;
             color: %6;
         }
         QScrollArea#traceScroll { background: transparent; border: none; }
         QWidget#traceScrollInner { background: transparent; }
     )"_s)
-            .arg(Theme::kBorderPanel)
-            .arg(Theme::kRadiusMd)
-            .arg(Theme::kFontMono)
-            .arg(Theme::kRadiusSm)
-            .arg(Theme::kFontSizeSm)
-            .arg(Theme::kTextMuted));
+            .arg(bgPanel)                   // %1
+            .arg(borderPanel)               // %2
+            .arg(Theme::kRadiusMd)          // %3
+            .arg(Theme::kFontSizeBase)      // %4
+            .arg(fontMono)                  // %5
+            .arg(textMuted)                 // %6
+            .arg(textPrimary)               // %7
+            .arg(borderLight)               // %8
+            .arg(Theme::kFontSizeSm));      // %9
 
     auto *outer = new QVBoxLayout(this);
-    outer->setContentsMargins(6, 6, 6, 6);
-    outer->setSpacing(4);
+    outer->setContentsMargins(8, 8, 8, 8);
+    outer->setSpacing(6);
 
     // ── Header: "TRACES" title + ALL / NONE buttons ──────────────────────────
     auto *headerRow = new QHBoxLayout();
-    headerRow->setContentsMargins(0, 0, 0, 0);
-    headerRow->setSpacing(4);
+    headerRow->setContentsMargins(4, 0, 0, 4);
+    headerRow->setSpacing(6);
 
     auto *title = new QLabel(u"TRACES"_s, this);
     title->setObjectName(u"tracesPanelTitle"_s);
@@ -163,7 +176,7 @@ TracesPanel::TracesPanel(QWidget *parent)
     auto *inner = new QWidget(scroll);
     inner->setObjectName(u"traceScrollInner"_s);
     auto *listLay = new QVBoxLayout(inner);
-    listLay->setContentsMargins(0, 0, 2, 0);
+    listLay->setContentsMargins(0, 2, 2, 2);
     listLay->setSpacing(2);
 
     for (int i = 0; i < kMetricCount; ++i) {
@@ -181,15 +194,15 @@ TracesPanel::TracesPanel(QWidget *parent)
         row->setObjectName(u"traceRow"_s);
         row->setProperty("noData", false);
         auto *rowLay = new QHBoxLayout(row);
-        rowLay->setContentsMargins(0, 1, 0, 1);
-        rowLay->setSpacing(5);
+        rowLay->setContentsMargins(6, 5, 8, 5);
+        rowLay->setSpacing(8);
 
         const QColor col = MetricDefs::metricColor(i);
         auto *swatch = new QLabel(row);
-        swatch->setFixedSize(20, 20);
+        swatch->setFixedSize(14, 14);
         swatch->setAttribute(Qt::WA_TransparentForMouseEvents);
         swatch->setStyleSheet(
-            QStringLiteral("QLabel { background-color: %1; border-radius: 2px; min-width:14px; min-height:14px; }")
+            QStringLiteral("QLabel { background-color: %1; border-radius: 7px; }")
                 .arg(col.name(QColor::HexRgb)));
         m_traceSwatches[static_cast<std::size_t>(i)] = swatch;
 
@@ -419,10 +432,23 @@ void TracesPanel::refreshSwatchStates()
     for (int i = 0; i < kMetricCount; ++i) {
         auto *swatch = m_traceSwatches[static_cast<std::size_t>(i)];
         if (!swatch) continue;
-        const bool enabled = m_metricEnabled[static_cast<std::size_t>(i)];
-        const QColor col = enabled ? MetricDefs::metricColor(i) : QColor(u"#2e3138"_s);
-        swatch->setStyleSheet(
-            QStringLiteral("QLabel { background-color: %1; border-radius: 2px; min-width:6px; min-height:14px; }")
-                .arg(col.name(QColor::HexRgb)));
+        const bool on = m_metricEnabled[static_cast<std::size_t>(i)];
+        const QColor col = MetricDefs::metricColor(i);
+        if (on) {
+            swatch->setStyleSheet(
+                QStringLiteral("QLabel { background-color: %1; border-radius: 7px; }")
+                    .arg(col.name(QColor::HexRgb)));
+        } else {
+            swatch->setStyleSheet(
+                QStringLiteral("QLabel { background-color: transparent; border: 2px solid %1; border-radius: 7px; }")
+                    .arg(col.name(QColor::HexRgb)));
+        }
+
+        auto *cb = m_metricChecks[static_cast<std::size_t>(i)];
+        if (cb) {
+            cb->setStyleSheet(
+                QStringLiteral("QCheckBox#traceCheck { color: %1; }")
+                    .arg(on ? Theme::kTextPrimary() : Theme::kTextMuted()));
+        }
     }
 }

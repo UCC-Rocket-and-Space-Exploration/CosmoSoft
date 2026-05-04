@@ -1,105 +1,104 @@
 /**
  * @file Theme.h
- * @brief Compile-time design tokens for the CosmoSoft GUI.
+ * @brief Runtime design-token accessors for the CosmoSoft GUI.
  *
- * All colours, font families, font sizes, and border radii used in
- * setStyleSheet() calls must be referenced from this header rather than
- * scattered as inline hex literals throughout the source files.  This
- * ensures a single source of truth and makes future restyling trivial.
+ * All colours used in setStyleSheet() calls or QPainter code must be
+ * referenced via this header.  Values are resolved at runtime from the
+ * active CosmoTheme managed by ThemeManager.
  *
  * Usage:
  * @code
  *   #include "gui/Theme.h"
  *   setStyleSheet(QString(u"color: %1; font-size: %2px;"_s)
- *       .arg(Theme::kTextMuted)
+ *       .arg(Theme::kTextMuted())
  *       .arg(Theme::kFontSizeBase));
  * @endcode
  *
- * Global widget defaults (QPushButton, QComboBox, QScrollBar, QCheckBox,
- * QGroupBox) are applied via assets/theme.qss loaded in main.cpp.
- * Per-widget stylesheets should only contain page-specific overrides.
+ * Global widget defaults are generated from the active palette by
+ * ThemeManager::generateQss() and applied via qApp->setStyleSheet().
  */
 
 #ifndef COSMO_SOFT_THEME_H
 #define COSMO_SOFT_THEME_H
+
+#include "gui/ThemeManager.h"
 
 namespace Theme {
 
 // ── Backgrounds ───────────────────────────────────────────────────────────────
 
 /** @brief Base surface: dialogs, settings root, about dialog chrome. */
-constexpr auto kBgBase   = "#1f1f1f";
+inline const QString &kBgBase()   { return cosmo::ThemeManager::instance().palette().bg_base; }
 
 /** @brief Dark surface: console areas, log views, sysinfo label bg. */
-constexpr auto kBgDark   = "#161618";
+inline const QString &kBgDark()   { return cosmo::ThemeManager::instance().palette().bg_dark; }
 
 /** @brief Raised panel: group boxes, combo pop-up views, connection overlay. */
-constexpr auto kBgPanel  = "#2b2d33";
+inline const QString &kBgPanel()  { return cosmo::ThemeManager::instance().palette().bg_panel; }
 
 /** @brief Input background: QComboBox, QLineEdit, checkbox indicator bg. */
-constexpr auto kBgInput  = "#1a1a1a";
+inline const QString &kBgInput()  { return cosmo::ThemeManager::instance().palette().bg_input; }
 
 /** @brief Default button background. */
-constexpr auto kBgButton = "#3d3f47";
+inline const QString &kBgButton() { return cosmo::ThemeManager::instance().palette().bg_button; }
 
 // ── Text ──────────────────────────────────────────────────────────────────────
 
 /** @brief Primary foreground text. */
-constexpr auto kTextPrimary = "#f8f8f8";
+inline const QString &kTextPrimary() { return cosmo::ThemeManager::instance().palette().text_primary; }
 
 /** @brief Mid-weight text: page titles, group-box titles. */
-constexpr auto kTextMid     = "#c8c8c8";
+inline const QString &kTextMid()     { return cosmo::ThemeManager::instance().palette().text_mid; }
 
-/** @brief Muted secondary labels (tab text, setting descriptions).
- *  Raised from #9aa7b8 to meet WCAG AA 4.5:1 contrast on dark backgrounds. */
-constexpr auto kTextMuted   = "#b0bcc8";
+/** @brief Muted secondary labels (tab text, setting descriptions). */
+inline const QString &kTextMuted()   { return cosmo::ThemeManager::instance().palette().text_muted; }
 
 /** @brief Dim captions: telemetry strip page label, replay captions. */
-constexpr auto kTextDim     = "#8fa0b0";
+inline const QString &kTextDim()     { return cosmo::ThemeManager::instance().palette().text_dim; }
 
 // ── Borders ───────────────────────────────────────────────────────────────────
 
 /** @brief Default border for inputs and group boxes. */
-constexpr auto kBorderDefault = "#4d4d4d";
+inline const QString &kBorderDefault() { return cosmo::ThemeManager::instance().palette().border_default; }
 
 /** @brief Lighter border for buttons. */
-constexpr auto kBorderLight   = "#6a6a6a";
+inline const QString &kBorderLight()   { return cosmo::ThemeManager::instance().palette().border_light; }
 
 /** @brief Subtle border for tabs, dividers, scrollbar track. */
-constexpr auto kBorderSubtle  = "#3a3a3a";
+inline const QString &kBorderSubtle()  { return cosmo::ThemeManager::instance().palette().border_subtle; }
 
 /** @brief Panel border for stat tiles, chart frame, monitoring tiles. */
-constexpr auto kBorderPanel   = "#3b3b45";
+inline const QString &kBorderPanel()   { return cosmo::ThemeManager::instance().palette().border_panel; }
 
 // ── Button interaction states ─────────────────────────────────────────────────
 
 /** @brief Button background on hover. */
-constexpr auto kBtnHover   = "#4d4f57";
+inline const QString &kBtnHover()   { return cosmo::ThemeManager::instance().palette().btn_hover; }
 
 /** @brief Button background when pressed. */
-constexpr auto kBtnPressed = "#2d2f37";
+inline const QString &kBtnPressed() { return cosmo::ThemeManager::instance().palette().btn_pressed; }
 
 // ── Accent / semantic ─────────────────────────────────────────────────────────
 
 /** @brief Hyperlink / about-page link colour. */
-constexpr auto kAccentLink     = "#6ab0de";
+inline const QString &kAccentLink()     { return cosmo::ThemeManager::instance().palette().accent_link; }
 
 /** @brief Checked checkbox fill. */
-constexpr auto kAccentCheckbox = "#4a7fb5";
+inline const QString &kAccentCheckbox() { return cosmo::ThemeManager::instance().palette().accent_checkbox; }
 
 /** @brief Checked checkbox border. */
-constexpr auto kAccentCheckboxBorder = "#5a9fd5";
+inline const QString &kAccentCheckboxBorder() { return cosmo::ThemeManager::instance().palette().accent_checkbox_border; }
 
 /** @brief Danger / packet-drop badge text. */
-constexpr auto kDanger = "#ff6b6b";
+inline const QString &kDanger() { return cosmo::ThemeManager::instance().palette().danger; }
 
 /** @brief Error row in the event log. */
-constexpr auto kError = "#e05555";
+inline const QString &kError() { return cosmo::ThemeManager::instance().palette().error; }
 
 /** @brief Selection background in combo pop-up views. */
-constexpr auto kSelectBg = "#4b4b4b";
+inline const QString &kSelectBg() { return cosmo::ThemeManager::instance().palette().select_bg; }
 
-// ── Font families ─────────────────────────────────────────────────────────────
+// ── Font families (unchanged — not palette-dependent) ─────────────────────────
 
 /** @brief Monospace stack used for all data labels and UI controls. */
 constexpr auto kFontMono    = R"("Red Hat Mono","Courier New","Roboto Mono",monospace)";

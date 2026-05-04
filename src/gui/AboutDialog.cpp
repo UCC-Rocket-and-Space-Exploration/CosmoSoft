@@ -75,8 +75,8 @@ AboutDialog::AboutDialog(QWidget *parent)
             color: %4;
         }
     )"_s)
-            .arg(Theme::kBgBase)
-            .arg(Theme::kTextPrimary)
+            .arg(Theme::kBgBase())
+            .arg(Theme::kTextPrimary())
             .arg(Theme::kFontMono)
-            .arg(Theme::kAccentLink));
+            .arg(Theme::kAccentLink()));
 }

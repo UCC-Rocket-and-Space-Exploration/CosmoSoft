@@ -2,6 +2,7 @@
 
 #include "gui/FlightDataModel.h"
 #include "gui/Theme.h"
+#include "gui/ThemePainter.h"
 #include "gui/widgets/MetricDefs.h"
 #include "gui/widgets/StatTileWidget.h"
 
@@ -47,7 +48,7 @@ MonitoringPage::MonitoringPage(FlightDataModel *model, QWidget *parent)
             font-size: %3px;
         }
     )"_s)
-            .arg(Theme::kBorderPanel)
+            .arg(Theme::kBorderPanel())
             .arg(Theme::kRadiusMd)
             .arg(Theme::kFontSizeMd));
     root->addWidget(m_statusLabel);
@@ -102,11 +103,12 @@ void MonitoringPage::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setClipRegion(event->region());
 
-    painter.fillRect(rect(), QColor(47, 47, 47));
+    painter.fillRect(rect(), QColor(Theme::kBgBase()));
+    cosmo::ThemePainter::paintBackground(painter, rect(), QStringLiteral("panel"));
 
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(255, 255, 255, 50));
+    painter.setBrush(QColor(Theme::kBorderDefault()).lighter(120));
 
     constexpr int dotSpacing  = 28;
     constexpr qreal dotRadius = 1.5;

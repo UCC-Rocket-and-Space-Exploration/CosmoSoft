@@ -128,12 +128,12 @@ No network calls or hardware access in unit tests. Hardware-in-the-loop tests go
 
 Before committing, verify:
 
-- [ ] No `system()`, `exec()`, or shell-constructed commands from user input
-- [ ] No hard-coded secrets, credentials, or absolute device paths
-- [ ] Proper exception handling — no bare `catch (...)`
-- [ ] All file handles and socket descriptors are closed in destructors or RAII wrappers
-- [ ] No deprecated crypto (MD5, SHA-1) in any new serialisation or protocol code
-- [ ] Serial input is length-checked before processing — never trust `size` fields from untrusted bytes
+- No `system()`, `exec()`, or shell-constructed commands from user input
+- No hard-coded secrets, credentials, or absolute device paths
+- Proper exception handling — no bare `catch (...)`
+- All file handles and socket descriptors are closed in destructors or RAII wrappers
+- No deprecated crypto (MD5, SHA-1) in any new serialisation or protocol code
+- Serial input is length-checked before processing — never trust `size` fields from untrusted bytes
 
 ### 5. Documentation Standards
 
@@ -189,9 +189,9 @@ Before opening any PR:
 
 1. Check whether a GitHub Issue already covers the work; coordinate on it first
 2. Check for overlapping open PRs:
-   ```bash
+  ```bash
    gh pr list --repo <org>/cosmo-soft --state open --search "<keywords>"
-   ```
+  ```
 3. Do not work on another contributor's issue without explicit approval in the issue thread
 4. Do not open one-off PRs for trivial edits (single typo, isolated lint cleanup)
 
@@ -201,11 +201,14 @@ Before opening any PR:
 
 ## Component Ownership
 
-| Component | Path | Notes |
-|-----------|------|-------|
-| Telemetry pipeline | `src/services/telemetry/` | Protocol-sensitive; changes need Issue discussion |
-| Serial gateway | `src/gateway/comms/` | Platform-specific; test on macOS + Linux |
-| Qt GUI | `src/gui/` | No business logic; delegate to services |
-| Domain types | `include/domain/` | Stable API; changes propagate everywhere |
-| Import / replay | `src/services/import/` | Only CSV is fully implemented for v1 |
-| Persistence | `src/services/persistence/` | `FlightLogManager` not yet wired into `MainWindow` |
+
+| Component          | Path                        | Notes                                              |
+| ------------------ | --------------------------- | -------------------------------------------------- |
+| Telemetry pipeline | `src/services/telemetry/`   | Protocol-sensitive; changes need Issue discussion  |
+| Serial gateway     | `src/gateway/comms/`        | Platform-specific; test on macOS + Linux           |
+| Qt GUI             | `src/gui/`                  | No business logic; delegate to services            |
+| Domain types       | `include/domain/`           | Stable API; changes propagate everywhere           |
+| Import / replay    | `src/services/import/`      | Only CSV is fully implemented for v1               |
+| Persistence        | `src/services/persistence/` | `FlightLogManager` not yet wired into `MainWindow` |
+
+

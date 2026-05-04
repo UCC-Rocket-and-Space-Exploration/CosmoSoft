@@ -1,0 +1,30 @@
+{
+  "name": "Dark",
+  "author": "CosmoSoft",
+  "version": "1.0",
+  "palette": {
+    "bg_base": "#1f1f1f",
+    "bg_dark": "#161618",
+    "bg_panel": "#2b2d33",
+    "bg_input": "#1a1a1a",
+    "bg_button": "#3d3f47",
+    "text_primary": "#f8f8f8",
+    "text_mid": "#c8c8c8",
+    "text_muted": "#b0bcc8",
+    "text_dim": "#8fa0b0",
+    "border_default": "#4d4d4d",
+    "border_light": "#6a6a6a",
+    "border_subtle": "#3a3a3a",
+    "border_panel": "#3b3b45",
+    "btn_hover": "#4d4f57",
+    "btn_pressed": "#2d2f37",
+    "accent_link": "#6ab0de",
+    "accent_checkbox": "#4a7fb5",
+    "accent_checkbox_border": "#5a9fd5",
+    "danger": "#ff6b6b",
+    "error": "#e05555",
+    "select_bg": "#4b4b4b"
+  },
+  "texture_opacity": 0.15,
+  "texture_mode": "tile"
+}

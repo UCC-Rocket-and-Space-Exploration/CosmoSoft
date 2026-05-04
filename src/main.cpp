@@ -9,6 +9,7 @@
 
 #include "domain/FlightSample.h"
 #include "gui/MainWindow.h"
+#include "gui/ThemeManager.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
@@ -43,12 +44,7 @@ int main(int argc, char *argv[]) {
         app.setProperty("workbenchFontFamily", workbenchFamily);
     }
 
-    QFile qssFile(QStringLiteral(":/styles/theme.qss"));
-    if (qssFile.open(QFile::ReadOnly)) {
-        app.setStyleSheet(QString::fromUtf8(qssFile.readAll()));
-    } else {
-        qWarning() << "Failed to load global stylesheet :/styles/theme.qss";
-    }
+    cosmo::ThemeManager::instance().loadPersistedSkin(cosmo::ThemeManager::skinsDirectory());
 
     MainWindow window;
     window.show();

@@ -2,12 +2,15 @@
 
 #include "gui/SettingsKeys.h"
 #include "gui/Theme.h"
+#include "gui/ThemeManager.h"
+#include "gui/SkinLoader.h"
 #include "gui/pages/EventLogPage.h"
 
 #include <QApplication>
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QFileDialog>
 #include <QFont>
 #include <QFormLayout>
 #include <QFrame>
@@ -30,83 +33,83 @@ namespace {
 /** @brief Page-specific stylesheet for SettingsPage (ID-targeted rules only).
  *  Global widget defaults (QPushButton, QComboBox, QScrollBar, QCheckBox,
  *  QGroupBox, QTabWidget) are provided by assets/theme.qss. */
-const QString kPageStyleSheet = QString(uR"(
+QString buildPageStyleSheet() {
+    return QString(uR"(
     QWidget {
-        background-color: %11;
+        background-color: %1;
     }
     QLabel#settingsHeading {
         font-size: 18px;
         font-weight: bold;
-        color: %1;
+        color: %2;
         letter-spacing: 1px;
     }
     QLabel#settingsMutedLabel {
-        color: %2;
-        font-size: %3px;
+        color: %3;
+        font-size: %4px;
     }
     QLabel#aboutAppName {
         font-size: 26px;
         font-weight: bold;
-        color: %1;
+        color: %2;
         letter-spacing: 2px;
     }
     QLabel#aboutVersion {
-        color: #7ab8d4;
-        font-size: %4px;
+        color: %5;
+        font-size: %6px;
     }
     QLabel#aboutDesc {
-        color: %5;
-        font-size: %3px;
+        color: %7;
+        font-size: %4px;
     }
     QLabel#aboutLink {
-        color: %6;
-        font-size: %3px;
+        color: %5;
+        font-size: %4px;
     }
     QLabel#devSectionTitle {
-        font-size: %4px;
+        font-size: %6px;
         font-weight: bold;
-        color: #d0d0d0;
+        color: %2;
         letter-spacing: 1px;
     }
     QLabel#sysInfoLabel {
-        color: #a0c8a0;
-        font-size: %3px;
-        background-color: %7;
+        color: %7;
+        font-size: %4px;
+        background-color: %8;
         padding: 12px 16px;
-        border-radius: %8px;
+        border-radius: %9px;
     }
     QCheckBox#debugModeCheck {
-        font-size: %4px;
+        font-size: %6px;
         font-weight: bold;
-        color: #f0c060;
+        color: %5;
         spacing: 10px;
     }
     QCheckBox#debugModeCheck::indicator {
         width: 18px;
         height: 18px;
-        border: 1px solid #a08040;
+        border: 1px solid %3;
         border-radius: 3px;
-        background-color: %9;
+        background-color: %8;
     }
     QCheckBox#debugModeCheck::indicator:checked {
-        background-color: #c08820;
-        border-color: #f0c060;
+        background-color: %5;
+        border-color: %5;
     }
     QFrame#divider {
-        color: %10;
+        color: %3;
     }
 )"_s)
-    .arg(Theme::kTextPrimary)
-    .arg(Theme::kTextMuted)
-    .arg(Theme::kFontSizeBase)
-    .arg(Theme::kFontSizeMd)
-    .arg(Theme::kTextMid)
-    .arg(Theme::kAccentLink)
-    .arg(Theme::kBgDark)
-    .arg(Theme::kRadiusSm)
-    .arg(Theme::kBgInput)
-    .arg(Theme::kBorderSubtle)
-    .arg(Theme::kBgBase);
+    .arg(Theme::kBgBase())         // %1
+    .arg(Theme::kTextPrimary())    // %2
+    .arg(Theme::kTextMuted())      // %3
+    .arg(Theme::kFontSizeBase)     // %4
+    .arg(Theme::kAccentLink())     // %5
+    .arg(Theme::kFontSizeMd)       // %6
+    .arg(Theme::kTextMid())        // %7
+    .arg(Theme::kBgDark())         // %8
+    .arg(Theme::kRadiusSm);        // %9
+}
 
 QWidget *makeScrollWrapper(QWidget *inner, QWidget *parent) {
     auto *scroll = new QScrollArea(parent);
@@ -143,7 +146,7 @@ void SettingsPage::buildUi() {
 
     root->addWidget(m_tabs);
 
-    setStyleSheet(kPageStyleSheet);
+    setStyleSheet(buildPageStyleSheet());
 }
 
 // ── General tab ───────────────────────────────────────────────────────────────
@@ -171,6 +174,32 @@ QWidget *SettingsPage::buildGeneralTab() {
     divider->setFrameShape(QFrame::HLine);
     layout->addWidget(divider);
 
+    // Skin group
+    m_skinGroup = new QGroupBox(u"Skin"_s, inner);
+    auto *skinForm = new QFormLayout(m_skinGroup);
+    skinForm->setSpacing(10);
+    skinForm->setContentsMargins(16, 20, 16, 16);
+    m_skinCombo = new QComboBox(m_skinGroup);
+    const auto skins = cosmo::SkinLoader::discoverAll(cosmo::ThemeManager::skinsDirectory());
+    for (const auto &skin : skins) {
+        m_skinCombo->addItem(skin.name, skin.id);
+    }
+    const auto &active_id = cosmo::ThemeManager::instance().current().id;
+    for (int i = 0; i < m_skinCombo->count(); ++i) {
+        if (m_skinCombo->itemData(i).toString() == active_id) {
+            m_skinCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    connect(m_skinCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsPage::onSkinChanged);
+    skinForm->addRow(u"Active skin:"_s, m_skinCombo);
+
+    m_importSkinBtn = new QPushButton(u"Import .cosmo skin..."_s, m_skinGroup);
+    connect(m_importSkinBtn, &QPushButton::clicked, this, &SettingsPage::onImportSkin);
+    skinForm->addRow(u""_s, m_importSkinBtn);
+    layout->addWidget(m_skinGroup);
+
     // Font group
     m_fontGroup = new QGroupBox(u"Font"_s, inner);
     auto *fontForm = new QFormLayout(m_fontGroup);
@@ -187,8 +216,8 @@ QWidget *SettingsPage::buildGeneralTab() {
     m_fontPreview = new QLabel(u"Preview: Alt 1234.5 m  ·  Temp 22.3 °C  ·  RSSI −60 dBm"_s, m_fontGroup);
     m_fontPreview->setStyleSheet(
         QString(u"color: %1; background-color: %2; padding: 8px 12px; border-radius: %3px; margin-top: 6px;"_s)
-            .arg(Theme::kTextPrimary)
-            .arg(Theme::kBgDark)
+            .arg(Theme::kTextPrimary())
+            .arg(Theme::kBgDark())
             .arg(Theme::kRadiusSm));
     fontForm->addRow(u""_s, m_fontPreview);
     layout->addWidget(m_fontGroup);
@@ -300,7 +329,7 @@ QWidget *SettingsPage::buildDeveloperTab() {
     header->setObjectName(u"devHeader"_s);
     header->setStyleSheet(
         QString(u"QWidget#devHeader { background-color: #252528; border-bottom: 1px solid %1; }"_s)
-            .arg(Theme::kBorderSubtle));
+            .arg(Theme::kBorderSubtle()));
     auto *headerLayout = new QHBoxLayout(header);
     headerLayout->setContentsMargins(20, 14, 20, 14);
     headerLayout->setSpacing(16);
@@ -368,7 +397,7 @@ QWidget *SettingsPage::buildDeveloperTab() {
     helperText->setMinimumHeight(200);
     helperText->setStyleSheet(
         QString(u"QPlainTextEdit { background-color: %1; color: #b0c4b0; font-family: %2; font-size: %3px; border: none; padding: 12px; }"_s)
-            .arg(Theme::kBgDark)
+            .arg(Theme::kBgDark())
             .arg(Theme::kFontMono)
             .arg(Theme::kFontSizeBase));
     helperText->setPlainText(
@@ -424,7 +453,7 @@ QWidget *SettingsPage::buildDeveloperTab() {
     auto *logHeader = new QWidget(outer);
     logHeader->setStyleSheet(
         QString(u"background-color: #252528; border-top: 1px solid %1; border-bottom: none;"_s)
-            .arg(Theme::kBorderSubtle));
+            .arg(Theme::kBorderSubtle()));
     auto *logHeaderRow = new QHBoxLayout(logHeader);
     logHeaderRow->setContentsMargins(20, 8, 20, 8);
     auto *logTitle = new QLabel(u"Event Log"_s, logHeader);
@@ -502,6 +531,31 @@ void SettingsPage::onDebugModeToggled(bool enabled) {
     QSettings s(kSettingsOrg, kSettingsApp);
     s.setValue(kSettingsDebugMode, enabled);
     emit debugModeChanged(enabled);
+}
+
+void SettingsPage::onSkinChanged(int index) {
+    const auto skin_id = m_skinCombo->itemData(index).toString();
+    const auto skins = cosmo::SkinLoader::discoverAll(cosmo::ThemeManager::skinsDirectory());
+    for (const auto &skin : skins) {
+        if (skin.id == skin_id) {
+            cosmo::ThemeManager::instance().setActiveSkin(skin);
+            break;
+        }
+    }
+}
+
+void SettingsPage::onImportSkin() {
+    const auto path = QFileDialog::getOpenFileName(
+        this, u"Import CosmoSoft Skin"_s, QString(),
+        u"CosmoSoft Skins (*.cosmo);;Zip Archives (*.zip)"_s);
+    if (path.isEmpty()) return;
+
+    const auto dest = cosmo::ThemeManager::skinsDirectory();
+    auto theme = cosmo::SkinLoader::importArchive(path, dest);
+    if (!theme) return;
+
+    m_skinCombo->addItem(theme->name, theme->id);
+    m_skinCombo->setCurrentIndex(m_skinCombo->count() - 1);
 }
 
 void SettingsPage::showEvent(QShowEvent *event) {

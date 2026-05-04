@@ -8,6 +8,7 @@
 #include "gui/FlightDataModel.h"
 #include "gui/SettingsKeys.h"
 #include "gui/Theme.h"
+#include "gui/ThemeManager.h"
 #include "services/persistence/FlightLogManager.h"
 #include "gui/FlightReplayController.h"
 #include "gui/pages/DashboardPage.h"
@@ -120,6 +121,9 @@ MainWindow::MainWindow(QWidget *parent)
     m_dataRateTimer->setInterval(1000);
     connect(m_dataRateTimer, &QTimer::timeout, this, &MainWindow::updateDataRateLabel);
     m_dataRateTimer->start();
+
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &MainWindow::onThemeChanged);
 
     statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s);
 
@@ -373,7 +377,7 @@ void MainWindow::setupToolbar() {
     )"_s)
         .arg(Theme::kFontDisplay)
         .arg(Theme::kFontMono)
-        .arg(Theme::kTextMid)
+        .arg(Theme::kTextMid())
         .arg(Theme::kFontSizeBase));
     addToolBar(Qt::TopToolBarArea, toolbar);
 
@@ -535,12 +539,12 @@ void MainWindow::setupDataBar() {
             font-family: %4;
         }
     )"_s)
-        .arg(Theme::kTextPrimary)
+        .arg(Theme::kTextPrimary())
         .arg(Theme::kFontSizeSm)
-        .arg(Theme::kTextDim)
+        .arg(Theme::kTextDim())
         .arg(Theme::kFontMono)
         .arg(Theme::kFontSizeBase)
-        .arg(Theme::kDanger));
+        .arg(Theme::kDanger()));
 }
 
 void MainWindow::setupConnectionBar() {
@@ -562,7 +566,7 @@ void MainWindow::setupConnectionBar() {
     m_connectionPageLabel->setMinimumWidth(200);
     m_connectionPageLabel->setStyleSheet(
         QString(u"color: %1; font-size: %2px; font-family: %3;"_s)
-            .arg(Theme::kTextMuted)
+            .arg(Theme::kTextMuted())
             .arg(Theme::kFontSizeBase)
             .arg(Theme::kFontMono));
 
@@ -574,7 +578,7 @@ void MainWindow::setupConnectionBar() {
     auto *portLabel = new QLabel(u"Port"_s, m_serialControlBlock);
     portLabel->setStyleSheet(
         QString(u"color: %1; font-family: %2;"_s)
-            .arg(Theme::kTextMid)
+            .arg(Theme::kTextMid())
             .arg(Theme::kFontMono));
     m_portCombo = new QComboBox(m_serialControlBlock);
     m_portCombo->setEditable(true);
@@ -655,7 +659,7 @@ void MainWindow::setupConnectionBar() {
 
     m_connectionBar->setStyleSheet(
         QString(u"QWidget#connectionStrip { background: rgba(34, 34, 34, 0.98); color: %1; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }"_s)
-            .arg(Theme::kTextPrimary));
+            .arg(Theme::kTextPrimary()));
 
     loadSerialPrefsToUi();
 }
@@ -1032,6 +1036,51 @@ void MainWindow::onClearFlightData() {
 void MainWindow::onShowAbout() {
     AboutDialog dlg(this);
     dlg.exec();
+}
+
+void MainWindow::onThemeChanged() {
+    if (m_dataBar) {
+        m_dataBar->setStyleSheet(
+            QString(uR"(
+            QWidget#telemetryStrip { background: transparent; }
+            QLabel#telemetryBadge {
+                color: %1;
+                font-size: %2px;
+            }
+            QLabel#telemetryBadge[dim="true"] {
+                color: %3;
+                font-family: %4;
+                font-size: %5px;
+            }
+            QLabel#dataRateLabel {
+                color: %6;
+                letter-spacing: 1px;
+                font-family: %4;
+            }
+        )"_s)
+                .arg(Theme::kTextPrimary())
+                .arg(Theme::kFontSizeSm)
+                .arg(Theme::kTextDim())
+                .arg(Theme::kFontMono)
+                .arg(Theme::kFontSizeBase)
+                .arg(Theme::kDanger()));
+    }
+
+    if (m_connectionBar) {
+        m_connectionBar->setStyleSheet(
+            QString(u"QWidget#connectionStrip { background: %1; color: %2; border-bottom: 1px solid %3; }"_s)
+                .arg(Theme::kBgPanel())
+                .arg(Theme::kTextPrimary())
+                .arg(Theme::kBorderSubtle()));
+    }
+
+    if (m_connectionPageLabel) {
+        m_connectionPageLabel->setStyleSheet(
+            QString(u"color: %1; font-size: %2px; font-family: %3;"_s)
+                .arg(Theme::kTextMuted())
+                .arg(Theme::kFontSizeBase)
+                .arg(Theme::kFontMono));
+    }
 }
 
 void MainWindow::onExportSession() {

@@ -26,7 +26,6 @@ class FlightDataModel;
 class FlightReplayController;
 class Map3DWidget;
 class ReplayBar;
-class StatTileWidget;
 class TracesPanel;
 
 /**
@@ -124,11 +123,6 @@ private:
     const FlightSession    *m_session = nullptr;  ///< Non-owning; set by setReplaySession().
 
     // ── Widgets ───────────────────────────────────────────────────────────────
-    StatTileWidget *m_accelTile = nullptr;  ///< |ACCEL| stat tile.
-    StatTileWidget *m_altTile   = nullptr;  ///< ALTITUDE stat tile.
-    StatTileWidget *m_tempTile  = nullptr;  ///< TEMP stat tile.
-    StatTileWidget *m_pressTile = nullptr;  ///< PRESSURE stat tile.
-
     TracesPanel *m_tracesPanel       = nullptr;   ///< Metric toggle + live readout panel.
     ReplayBar   *m_replayBar       = nullptr;   ///< Transport bar (buttons, scrubber, labels).
     QLabel      *m_emptyStateLabel   = nullptr;  ///< Guidance shown when no data is loaded.

@@ -1,4 +1,5 @@
 #include "gui/widgets/Map3DWidget.h"
+#include "gui/ThemeManager.h"
 
 #include <QDir>
 #include <QFile>
@@ -101,6 +102,9 @@ Map3DWidget::Map3DWidget(QWidget *parent)
         const QString html = QString::fromUtf8(htmlFile.readAll());
         page->setHtml(html, QUrl(QStringLiteral("qrc:///map/")));
     }
+
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &Map3DWidget::pushThemeToMap);
 }
 
 void Map3DWidget::runJs(const QString &js) {
@@ -111,6 +115,7 @@ void Map3DWidget::runJs(const QString &js) {
 
 void Map3DWidget::onMapReady() {
     m_mapReady = true;
+    pushThemeToMap();
     if (m_sessionPending) {
         sendPendingSession();
     }
@@ -125,6 +130,16 @@ void Map3DWidget::onMapReady() {
             }
         }
     }
+}
+
+void Map3DWidget::pushThemeToMap() {
+    if (!m_mapReady) return;
+    const auto &p = cosmo::ThemeManager::instance().palette();
+    const auto json = QStringLiteral(
+        R"({"bg_base":"%1","bg_dark":"%2","text_primary":"%3","text_dim":"%4",)"
+        R"("border_subtle":"%5","accent_link":"%6"})")
+        .arg(p.bg_base, p.bg_dark, p.text_primary, p.text_dim, p.border_subtle, p.accent_link);
+    runJs(QStringLiteral("applyTheme(%1)").arg(json));
 }
 
 void Map3DWidget::setReplaySession(const FlightSession *session) {

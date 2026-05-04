@@ -21,6 +21,7 @@ class QCloseEvent;
 class QComboBox;
 class QGroupBox;
 class QLabel;
+class QPushButton;
 class QShowEvent;
 class QTabWidget;
 class EventLogPage;
@@ -74,6 +75,8 @@ private slots:
     void onUnitSystemChanged(int index);
     void onSoundsToggled(bool enabled);
     void onDebugModeToggled(bool enabled);
+    void onSkinChanged(int index);
+    void onImportSkin();
 
 private:
     void buildUi();
@@ -91,6 +94,10 @@ private:
     QTabWidget *m_tabs = nullptr;
 
     // ── General tab ───────────────────────────────────────────────────────────
+    QGroupBox   *m_skinGroup       = nullptr;
+    QComboBox   *m_skinCombo       = nullptr;
+    QPushButton *m_importSkinBtn   = nullptr;
+
     QGroupBox *m_fontGroup        = nullptr;
     QComboBox *m_fontSizeCombo    = nullptr;
     QLabel    *m_fontPreview      = nullptr;

@@ -1,9 +1,13 @@
 #include "gui/widgets/StatTileWidget.h"
 
 #include "gui/Theme.h"
+#include "gui/ThemePainter.h"
 
 #include <QAccessible>
+#include <QColor>
 #include <QLabel>
+#include <QPainter>
+#include <QPaintEvent>
 #include <QVBoxLayout>
 
 using namespace Qt::StringLiterals;
@@ -38,16 +42,16 @@ StatTileWidget::StatTileWidget(const QString &label,
             border: none;
         }
     )"_s)
-            .arg(Theme::kBorderPanel)
+            .arg(Theme::kBorderPanel())
             .arg(Theme::kRadiusMd)
             .arg(Theme::kFontSizeBase)
             .arg(Theme::kFontMono)
-            .arg(Theme::kTextMuted)
-            .arg(Theme::kTextPrimary));
+            .arg(Theme::kTextMuted())
+            .arg(Theme::kTextPrimary()));
 
     auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(10, 6, 10, 6);
-    layout->setSpacing(2);
+    layout->setContentsMargins(12, 8, 12, 8);
+    layout->setSpacing(4);
 
     m_titleLabel = new QLabel(label.toUpper(), this);
     m_titleLabel->setProperty("kind", u"statLabel"_s);
@@ -71,4 +75,47 @@ void StatTileWidget::setValue(const QString &text)
 void StatTileWidget::setLabel(const QString &text)
 {
     if (m_titleLabel) m_titleLabel->setText(text.toUpper());
+}
+
+void StatTileWidget::setAccentColor(const QColor &color)
+{
+    setStyleSheet(
+        QString(uR"(
+        StatTileWidget {
+            background-color: rgba(21, 22, 25, 0.88);
+            border: 1px solid %1;
+            border-top: 2px solid %7;
+            border-radius: %2px;
+        }
+        StatTileWidget QLabel[kind="statLabel"] {
+            font-size: %3px;
+            font-family: %4;
+            color: %5;
+            letter-spacing: 1px;
+            background: transparent;
+            border: none;
+        }
+        StatTileWidget QLabel[kind="statValue"] {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: %4;
+            color: %6;
+            background: transparent;
+            border: none;
+        }
+    )"_s)
+            .arg(Theme::kBorderPanel())
+            .arg(Theme::kRadiusMd)
+            .arg(Theme::kFontSizeBase)
+            .arg(Theme::kFontMono)
+            .arg(Theme::kTextMuted())
+            .arg(Theme::kTextPrimary())
+            .arg(color.name(QColor::HexRgb)));
+}
+
+void StatTileWidget::paintEvent(QPaintEvent *event)
+{
+    QFrame::paintEvent(event);
+    QPainter p(this);
+    cosmo::ThemePainter::paintBackground(p, rect(), QStringLiteral("panel"));
 }

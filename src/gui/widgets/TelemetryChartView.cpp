@@ -69,7 +69,7 @@ QLineSeries *firstVisibleNonEmptyLineSeries(QChart *chart)
     if (!chart) return nullptr;
     for (QAbstractSeries *s : chart->series()) {
         auto *ls = qobject_cast<QLineSeries *>(s);
-        if (ls && ls->isVisible() && !ls->points().isEmpty())
+        if (ls && ls->isVisible() && ls->count() > 0)
             return ls;
     }
     return nullptr;
@@ -169,7 +169,8 @@ void TelemetryChartView::mouseMoveEvent(QMouseEvent *event)
             if (onUserAdjustedAxes) onUserAdjustedAxes();
         }
         event->accept();
-        updateHoverReadoutAt(event->pos());
+        if (++m_hoverThrottleCounter % 3 == 0)
+            updateHoverReadoutAt(event->pos());
         return;
     }
     if (!(event->buttons() & Qt::LeftButton) || (event->modifiers() & Qt::ControlModifier))
@@ -322,13 +323,40 @@ void TelemetryChartView::panAxesByPixels(const QPoint &delta)
     if (plot.width() <= 1.0 || plot.height() <= 1.0) return;
     auto *axX = qobject_cast<QValueAxis *>(m_chartPtr->axes(Qt::Horizontal).value(0));
     if (!axX) return;
-    const double dValX = static_cast<double>(delta.x()) * (axX->max() - axX->min()) / plot.width();
-    axX->setRange(axX->min() - dValX, axX->max() - dValX);
+
+    QList<QValueAxis *> yAxes;
     for (auto *a : m_chartPtr->axes(Qt::Vertical)) {
         auto *ay = qobject_cast<QValueAxis *>(a);
-        if (!ay) continue;
+        if (ay) yAxes.append(ay);
+    }
+
+    const double dValX = static_cast<double>(delta.x()) * (axX->max() - axX->min()) / plot.width();
+
+    // Block signals on all axes except the last one updated so the chart
+    // scene only repaints once instead of once per axis.
+    const bool hadBlockX = axX->signalsBlocked();
+    axX->blockSignals(true);
+    axX->setRange(axX->min() - dValX, axX->max() - dValX);
+
+    for (int i = 0; i < yAxes.size(); ++i) {
+        QValueAxis *ay = yAxes[i];
         const double dValY = static_cast<double>(delta.y()) * (ay->max() - ay->min()) / plot.height();
-        ay->setRange(ay->min() + dValY, ay->max() + dValY);
+        const bool isLast = (i == yAxes.size() - 1);
+        if (!isLast) {
+            const bool had = ay->signalsBlocked();
+            ay->blockSignals(true);
+            ay->setRange(ay->min() + dValY, ay->max() + dValY);
+            ay->blockSignals(had);
+        } else {
+            // Unblock X before the last axis update triggers the repaint
+            axX->blockSignals(hadBlockX);
+            ay->setRange(ay->min() + dValY, ay->max() + dValY);
+        }
+    }
+    if (yAxes.isEmpty()) {
+        axX->blockSignals(hadBlockX);
+        // Re-fire a rangeChanged so the chart repaints once
+        axX->setRange(axX->min(), axX->max());
     }
 }
 
@@ -341,19 +369,21 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
 {
     if (!m_chartPtr) return;
 
+    QLineSeries *ref = nullptr;
     QList<QLineSeries *> visibleSeries;
     for (QAbstractSeries *s : m_chartPtr->series()) {
         auto *ls = qobject_cast<QLineSeries *>(s);
-        if (ls && ls->isVisible() && !ls->points().isEmpty())
+        if (ls && ls->isVisible() && ls->count() > 0) {
             visibleSeries.append(ls);
+            if (!ref) ref = ls;
+        }
     }
-    if (visibleSeries.isEmpty()) {
+    if (!ref) {
         hideHoverOverlays();
         if (hoverReadout) hoverReadout(u"—"_s);
         return;
     }
 
-    QLineSeries *ref = visibleSeries.first();
     const QList<QPointF> pts = ref->points();
     const QPointF scenePos = mapToScene(widgetPos);
     const QPointF chartPos = m_chartPtr->mapFromScene(scenePos);
@@ -363,37 +393,33 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
 
     const QPointF &p = pts[idx];
 
-    // Find the visible series whose Y value is closest to the cursor at this X
-    QLineSeries *closestSeries = nullptr;
-    double closestDistSq = -1.0;
-    for (QLineSeries *ls : visibleSeries) {
-        const QList<QPointF> &sp = ls->points();
-        if (idx >= sp.size()) continue;
-        const QPointF cPt  = m_chartPtr->mapToPosition(sp[idx], ls);
-        const QPointF sPt  = m_chartPtr->mapToScene(cPt);
-        const QPointF vPt  = mapFromScene(sPt);
-        const double dx = vPt.x() - widgetPos.x();
-        const double dy = vPt.y() - widgetPos.y();
-        const double d  = dx * dx + dy * dy;
-        if (closestDistSq < 0.0 || d < closestDistSq) {
-            closestDistSq = d;
-            closestSeries = ls;
+    QLineSeries *closestSeries = ref;
+    if (visibleSeries.size() > 1) {
+        double closestDistSq = -1.0;
+        for (QLineSeries *ls : visibleSeries) {
+            if (idx >= ls->count()) continue;
+            const QPointF cPt  = m_chartPtr->mapToPosition(ls->at(idx), ls);
+            const QPointF sPt  = m_chartPtr->mapToScene(cPt);
+            const QPointF vPt  = mapFromScene(sPt);
+            const double dx = vPt.x() - widgetPos.x();
+            const double dy = vPt.y() - widgetPos.y();
+            const double d  = dx * dx + dy * dy;
+            if (closestDistSq < 0.0 || d < closestDistSq) {
+                closestDistSq = d;
+                closestSeries = ls;
+            }
         }
     }
-    if (!closestSeries) closestSeries = ref;
 
     int snapWidgetX = -1, snapWidgetY = -1;
     QColor snapCol;
-    {
-        const QList<QPointF> &sp = closestSeries->points();
-        if (idx < sp.size()) {
-            const QPointF cPt = m_chartPtr->mapToPosition(sp[idx], closestSeries);
-            const QPointF sPt = m_chartPtr->mapToScene(cPt);
-            const QPointF vPt = mapFromScene(sPt);
-            snapWidgetX = static_cast<int>(std::round(vPt.x()));
-            snapWidgetY = static_cast<int>(std::round(vPt.y()));
-            snapCol = closestSeries->color();
-        }
+    if (idx < closestSeries->count()) {
+        const QPointF cPt = m_chartPtr->mapToPosition(closestSeries->at(idx), closestSeries);
+        const QPointF sPt = m_chartPtr->mapToScene(cPt);
+        const QPointF vPt = mapFromScene(sPt);
+        snapWidgetX = static_cast<int>(std::round(vPt.x()));
+        snapWidgetY = static_cast<int>(std::round(vPt.y()));
+        snapCol = closestSeries->color();
     }
 
     QString text;

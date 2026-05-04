@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <QColor>
 #include <QFrame>
 
 class QLabel;
@@ -27,6 +28,12 @@ public:
 
     /** Replaces the small header label text. */
     void setLabel(const QString &text);
+
+    /** @brief Sets a 2px colored accent stripe on the top border of the tile. */
+    void setAccentColor(const QColor &color);
+
+protected:
+    void paintEvent(QPaintEvent *event) override;
 
 private:
     QLabel *m_titleLabel = nullptr;

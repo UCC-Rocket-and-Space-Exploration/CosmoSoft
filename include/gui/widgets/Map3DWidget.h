@@ -85,6 +85,7 @@ private slots:
                               int totalSamples, int validGpsSamples,
                               double launchLat, double launchLon);
     void onMapReady();
+    void pushThemeToMap();
 
 private:
     void runJs(const QString &js);

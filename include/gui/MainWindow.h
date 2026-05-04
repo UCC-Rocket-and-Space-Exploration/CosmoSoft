@@ -77,6 +77,7 @@ private slots:
     void onExportSession();
     void onClearFlightData();
     void onShowAbout();
+    void onThemeChanged();
 
 private:
     void setupActions();

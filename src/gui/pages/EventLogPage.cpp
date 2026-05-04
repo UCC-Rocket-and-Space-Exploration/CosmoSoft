@@ -69,7 +69,7 @@ EventLogPage::EventLogPage(QWidget *parent)
         #eventLogClearBtn:hover  { background-color: #3a3a3e; }
         #eventLogClearBtn:pressed { background-color: #222224; }
     )"_s)
-            .arg(Theme::kBgDark)
+            .arg(Theme::kBgDark())
             .arg(Theme::kFontMono)
             .arg(Theme::kFontSizeBase)
             .arg(Theme::kRadiusSm)
