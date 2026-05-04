@@ -595,24 +595,12 @@ window.addPoint = function(lat,lon,alt,ts){
   updateEntities(trailLen);
 };
 window.loadSession = function(jsonStr){
-  // #region agent log — H1: loadSession called
-  let parseOk=false, count=0, firstR=null, validGps=0;
-  try {
-    const s=JSON.parse(jsonStr);
-    parseOk=true; count=s.length;
-    allPos=[];allAlt=[];allTs=[];
-    for(const r of s){allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);}
-    if(s.length>0) firstR=s[0];
-    for(let i=0;i<allPos.length;i++){if(validC(allPos[i].lat,allPos[i].lon))validGps++;}
-    trailLen=allPos.length;
-    updateEntities(trailLen);
-    fitCamera();
-  } catch(e) {
-    fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:loadSession',message:'loadSession-PARSE-ERROR',data:{err:String(e),jsonLen:jsonStr?jsonStr.length:0,first200:jsonStr?jsonStr.substring(0,200):''},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-    return;
-  }
-  fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:loadSession',message:'loadSession-ok',data:{count,validGps,firstR,trailLen,allPosLen:allPos.length},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
+  const s=JSON.parse(jsonStr);
+  allPos=[];allAlt=[];allTs=[];
+  for(const r of s){allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);}
+  trailLen=allPos.length;
+  updateEntities(trailLen);
+  fitCamera();
 };
 window.setTrailLength = function(nn){
   trailLen=Math.max(0,Math.min(nn,allPos.length));
@@ -651,9 +639,6 @@ window.clearAll = function(){
 
 /* ── Init ────────────────────────────────────────────────────────── */
 function init() {
-  // #region agent log — H3: init called, check Leaflet
-  fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:init',message:'init-called',data:{hasL:typeof L!=='undefined',hasQWC:typeof QWebChannel!=='undefined',threeOk:THREE_LOADED,orbitOk:ORBIT_LOADED},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-  // #endregion
   initMap();
   window.addEventListener("resize",()=>{drawAltProfile();if(activeView==="3d"&&renderer3d)resize3D();});
 
