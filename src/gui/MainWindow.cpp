@@ -861,6 +861,7 @@ void MainWindow::onOpenReplayFile() {
             return;
         }
         m_loadedSession = std::move(r.session);
+        m_logManager->setSession(m_loadedSession);
         m_flightModel->resetSession();
         m_flightModel->setReplayMode(true);
         m_replay->setSession(m_loadedSession);

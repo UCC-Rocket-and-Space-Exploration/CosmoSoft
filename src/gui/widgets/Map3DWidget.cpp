@@ -17,8 +17,6 @@
 #include <QWebEngineView>
 
 #include <cmath>
-#include <fstream>
-#include <chrono>
 
 namespace {
 
@@ -60,14 +58,6 @@ private:
     QString m_cacheDir;
 };
 
-// #region agent log helper
-static void dbgLog(const char* loc, const char* msg, const std::string& extra = "") {
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    std::ofstream f("/Users/hslyusar/Desktop/CosmoSoft/.cursor/debug-7994bc.log", std::ios::app);
-    f << "{\"sessionId\":\"7994bc\",\"location\":\"" << loc << "\",\"message\":\"" << msg << "\",\"data\":{" << extra << "},\"timestamp\":" << ms << "}\n";
-}
-// #endregion
-
 Map3DWidget::Map3DWidget(QWidget *parent)
     : QWidget(parent)
 {
@@ -83,22 +73,7 @@ Map3DWidget::Map3DWidget(QWidget *parent)
     profile->setHttpCacheMaximumSize(256 * 1024 * 1024);
     profile->setUrlRequestInterceptor(m_tileCache);
 
-    // #region agent log — capture JS console messages
-    class DebugPage : public QWebEnginePage {
-    public:
-        using QWebEnginePage::QWebEnginePage;
-    protected:
-        void javaScriptConsoleMessage(JavaScriptConsoleMessageLevel level, const QString &msg, int line, const QString &src) override {
-            Q_UNUSED(level);
-            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-            std::ofstream f("/Users/hslyusar/Desktop/CosmoSoft/.cursor/debug-7994bc.log", std::ios::app);
-            std::string m = msg.toStdString();
-            for (auto &c : m) { if (c == '"') c = '\''; if (c == '\\') c = '/'; if (c == '\n') c = ' '; }
-            f << "{\"sessionId\":\"7994bc\",\"location\":\"JS-console:" << line << "\",\"message\":\"js-console\",\"data\":{\"msg\":\"" << m << "\",\"src\":\"" << src.toStdString() << "\"},\"timestamp\":" << ms << "}\n";
-        }
-    };
-    // #endregion
-    auto *page = new DebugPage(profile, this);
+    auto *page = new QWebEnginePage(profile, this);
     page->settings()->setAttribute(QWebEngineSettings::WebGLEnabled, true);
     page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
     page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, true);
@@ -118,11 +93,7 @@ Map3DWidget::Map3DWidget(QWidget *parent)
     layout->addWidget(m_webView);
 
     QFile htmlFile(QStringLiteral(":/map/map3d.html"));
-    bool opened = htmlFile.open(QIODevice::ReadOnly);
-    // #region agent log — constructor: HTML resource load
-    dbgLog("Map3DWidget.cpp:ctor", "html-resource-open", "\"opened\":" + std::string(opened ? "true" : "false") + ",\"size\":" + std::to_string(opened ? htmlFile.size() : 0));
-    // #endregion
-    if (opened) {
+    if (htmlFile.open(QIODevice::ReadOnly)) {
         const QString html = QString::fromUtf8(htmlFile.readAll());
         page->setHtml(html, QUrl(QStringLiteral("qrc:///map/")));
     }
@@ -136,9 +107,6 @@ void Map3DWidget::runJs(const QString &js) {
 
 void Map3DWidget::onMapReady() {
     m_mapReady = true;
-    // #region agent log — H4: C++ onMapReady
-    dbgLog("Map3DWidget.cpp:onMapReady", "onMapReady-called", "\"sessionPending\":" + std::string(m_sessionPending ? "true" : "false") + ",\"liveSamples\":" + std::to_string(m_liveSamples.size()));
-    // #endregion
     if (m_sessionPending) {
         sendPendingSession();
     }
@@ -156,12 +124,6 @@ void Map3DWidget::onMapReady() {
 }
 
 void Map3DWidget::setReplaySession(const FlightSession *session) {
-    // #region agent log — setReplaySession entry
-    dbgLog("Map3DWidget.cpp:setReplaySession", "called",
-        "\"hasSession\":" + std::string(session ? "true" : "false") +
-        ",\"sampleCount\":" + std::to_string(session ? session->samples.size() : 0) +
-        ",\"mapReady\":" + std::string(m_mapReady ? "true" : "false"));
-    // #endregion
     m_session = session;
     m_totalLiveSamples = 0;
     m_liveSamples.clear();
@@ -183,12 +145,7 @@ void Map3DWidget::setReplaySession(const FlightSession *session) {
 
 void Map3DWidget::sendPendingSession() {
     m_sessionPending = false;
-    if (!m_session || m_session->samples.empty()) {
-        // #region agent log
-        dbgLog("Map3DWidget.cpp:sendPendingSession", "no-session-or-empty");
-        // #endregion
-        return;
-    }
+    if (!m_session || m_session->samples.empty()) return;
 
     QJsonArray arr;
     for (const auto &s : m_session->samples) {
@@ -206,17 +163,6 @@ void Map3DWidget::sendPendingSession() {
     QString escaped = json;
     escaped.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
     escaped.replace(QLatin1Char('\''), QStringLiteral("\\'"));
-    // #region agent log — H1: C++ sendPendingSession
-    {
-        int validGps = 0;
-        for (const auto &s : m_session->samples)
-            if (isValidCoord(s.coordinates.latitude, s.coordinates.longitude)) ++validGps;
-        dbgLog("Map3DWidget.cpp:sendPendingSession", "sending-loadSession",
-            "\"sampleCount\":" + std::to_string(m_session->samples.size()) +
-            ",\"validGps\":" + std::to_string(validGps) +
-            ",\"jsonLen\":" + std::to_string(escaped.size()));
-    }
-    // #endregion
     runJs(QStringLiteral("loadSession('%1')").arg(escaped));
 }
 

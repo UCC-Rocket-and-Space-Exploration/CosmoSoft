@@ -16,11 +16,14 @@ public:
 
     void appendSample(const FlightSample &sample);
 
+    /** @brief Replaces the internal session with an externally loaded one. */
+    void setSession(const FlightSession &session);
+
     [[nodiscard]] FlightSession &session() { return m_session; }
     [[nodiscard]] const FlightSession &session() const { return m_session; }
 
-    /** Writes samples as simple text lines when outputPath() is non-empty. */
-    [[nodiscard]] bool exportSessionToTextFile() const;
+    /** @brief Exports session samples as CSV with a full header row. */
+    [[nodiscard]] bool exportSessionToCsv() const;
 
 private:
     FlightSession m_session;

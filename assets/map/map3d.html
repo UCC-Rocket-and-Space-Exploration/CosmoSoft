@@ -658,15 +658,8 @@ function init() {
   if(typeof QWebChannel!=="undefined"){
     new QWebChannel(qt.webChannelTransport,function(ch){
       bridge=ch.objects.map3dBridge;
-      // #region agent log — H4: QWebChannel bridge
-      fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:QWC',message:'webchannel-connected',data:{hasBridge:!!bridge},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-      // #endregion
       if(bridge)bridge.mapReady();
     });
-  } else {
-    // #region agent log — H4: QWebChannel missing
-    fetch('http://127.0.0.1:7276/ingest/de5ad135-6b9d-4f88-a670-9f5c19e95a6d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7994bc'},body:JSON.stringify({sessionId:'7994bc',location:'map3d.html:QWC',message:'QWebChannel-NOT-DEFINED',data:{},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-    // #endregion
   }
 }
 
