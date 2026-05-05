@@ -247,169 +247,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     setObjectName(u"dashboardPage"_s);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAutoFillBackground(false);
-    {
-        auto ss = QString(uR"(
-        #dashboardPage {
-            background-color: transparent;
-            color: #e8e8e8;
-            font-family: %1;
-        }
-        #dashboardPage QWidget {
-            font-family: %1;
-        }
-        QFrame#chartFrame {
-            background-color: rgba(21, 22, 25, 0.80);
-            border: 1px solid %2;
-            border-radius: %3px;
-            padding: 0px;
-        }
-        #telemetryChartView {
-            border: none;
-            padding: 0px;
-            margin: 0px;
-            background-color: transparent;
-        }
-        QToolButton#chartToggleBtn {
-            border: 1px solid %2;
-            border-radius: %4px;
-            padding: 5px 12px;
-            min-height: 30px;
-            background-color: #2a2d34;
-            color: #b8c4d0;
-            font-size: %5px;
-        }
-        QToolButton#chartToggleBtn:hover {
-            background-color: #343842;
-            border-color: %6;
-            color: #e8ecf0;
-        }
-        QToolButton#chartToggleBtn:checked {
-            background-color: #2d3d52;
-            border-color: #5a8ac0;
-            color: #f0f4f8;
-        }
-        QToolButton#chartToggleBtn:checked:hover {
-            background-color: #354a62;
-            border-color: #6a9ad0;
-        }
-        QPushButton#chartZoomBtn {
-            min-width: 30px;
-            max-width: 30px;
-            min-height: 30px;
-            max-height: 30px;
-            padding: 0px;
-            font-weight: 700;
-            font-size: 16px;
-            border: 1px solid %2;
-            border-radius: %4px;
-            background-color: %7;
-            color: %8;
-        }
-        QPushButton#chartZoomBtn:hover {
-            background-color: #4a4d56;
-            border-color: %6;
-        }
-        QPushButton#chartZoomBtn:pressed {
-            background-color: #2e3038;
-        }
-        QDoubleSpinBox {
-            background-color: %9;
-            color: #f5f5f5;
-            border-radius: %4px;
-            padding: 4px 8px;
-            min-height: 22px;
-        }
-        QSlider::groove:horizontal {
-            height: 6px;
-            background: #2a2c32;
-            border-radius: 3px;
-        }
-        QSlider::handle:horizontal {
-            width: 14px;
-            margin: -5px 0;
-            background: #6a6e78;
-            border: 1px solid #8a8e98;
-            border-radius: %4px;
-        }
-        QPushButton#chartToolbarBtn {
-            border: 1px solid %2;
-            border-radius: %4px;
-            padding: 5px 12px;
-            min-height: 30px;
-            background-color: %7;
-            color: %8;
-            font-size: %5px;
-        }
-        QPushButton#chartToolbarBtn:hover {
-            background-color: #4a4d56;
-            border-color: %6;
-        }
-        QPushButton#chartToolbarBtn:pressed {
-            background-color: #2e3038;
-        }
-        QPushButton#viewSwitchBtn {
-            border: 1px solid %2;
-            border-radius: %4px;
-            padding: 5px 12px;
-            min-height: 30px;
-            background-color: %7;
-            color: #7a8796;
-            font-size: %5px;
-        }
-        QPushButton#viewSwitchBtn:checked {
-            background-color: #1e3a52;
-            border-color: #4a88c0;
-            color: #c8dcf0;
-        }
-        QPushButton#viewSwitchBtn:hover {
-            background-color: #343842;
-            color: #c8d0dc;
-        }
-        QPushButton#viewSwitchBtn:checked:hover {
-            background-color: #254660;
-        }
-    )"_s)
-            .arg(Theme::kFontMono)          // %1
-            .arg(Theme::kBorderPanel())     // %2
-            .arg(Theme::kRadiusMd)          // %3
-            .arg(Theme::kRadiusSm)          // %4
-            .arg(Theme::kFontSizeSm)        // %5
-            .arg(Theme::kBorderLight())     // %6
-            .arg(Theme::kBgButton())        // %7
-            .arg(Theme::kTextPrimary())     // %8
-            .arg(Theme::kBgInput());        // %9
-
-        ss += QStringLiteral(
-            "QDoubleSpinBox { border: 1px solid %1; }"
-            "QToolButton#chartHelpBtn {"
-            "  font-weight: 700; font-size: %2px;"
-            "  min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px;"
-            "  border: 1px solid %3; border-radius: 15px;"
-            "  background: #2a2d34; color: #7a8796; padding: 0px;"
-            "}"
-            "QToolButton#chartHelpBtn:hover {"
-            "  color: #a8b4c0; border-color: %4; background: #353840;"
-            "}"
-            "QLabel#chartHoverReadout {"
-            "  color: #c8d4e0; font-size: %5px; padding: 4px 6px; margin: 0px;"
-            "  background-color: rgba(8, 9, 12, 0.92); border: 1px solid %3; border-radius: %6px;"
-            "}"
-            "QLabel#chartStatsLabel {"
-            "  color: %7; font-size: %5px; margin: 0px; padding: 0px;"
-            "}"
-            "QLabel#chartInteractionHint {"
-            "  color: #7a8796; font-size: 10px; margin: 0px; padding: 0px 2px;"
-            "}")
-            .arg(Theme::kBorderDefault())   // %1
-            .arg(Theme::kFontSizeMd)        // %2
-            .arg(Theme::kBorderPanel())     // %3
-            .arg(Theme::kBorderLight())     // %4
-            .arg(Theme::kFontSizeSm)        // %5
-            .arg(Theme::kRadiusSm)          // %6
-            .arg(Theme::kTextDim());        // %7
-
-        setStyleSheet(ss);
-    }
+    setStyleSheet(buildDashboardQss());
 
     // ── Root layout ───────────────────────────────────────────────────────────
     // The page has two rows: the splitter (traces + chart, stretchy) and the
@@ -436,15 +274,18 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_sessionInfoLabel->setWordWrap(true);
     m_sessionInfoLabel->setVisible(false);
     m_sessionInfoLabel->setStyleSheet(
-        u"color: #b0bcc8; font-size: 11px; background: rgba(21,22,25,0.7); "
-        u"border: 1px solid #3b3b45; border-radius: 8px; padding: 8px 12px;"_s);
+        QString(u"color: %1; font-size: 11px; background: %2; "
+        u"border: 1px solid %3; border-radius: 8px; padding: 8px 12px;"_s)
+            .arg(Theme::kTextMuted())
+            .arg(Theme::kBgPanel())
+            .arg(Theme::kBorderPanel()));
     rootLayout->addWidget(m_sessionInfoLabel);
 
     // ── Traces panel (left side of splitter) ─────────────────────────────────
     m_tracesPanel = new TracesPanel(this);
     m_metricEnabled = m_tracesPanel->enabledMetrics();
     connect(m_tracesPanel, &TracesPanel::enabledMetricsChanged, this,
-            [this](const std::array<bool, 9> &enabled) {
+            [this](const std::array<bool, kMetricCount> &enabled) {
         m_metricEnabled = enabled;
         m_preserveChartAxes = false;
         refreshAllSeriesFromData();
@@ -472,206 +313,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     chartHeaderLay->setContentsMargins(8, 8, 8, 8);
     chartHeaderLay->setSpacing(4);
 
-    auto *chartToolbar = new QHBoxLayout();
-    chartToolbar->setSpacing(6);
-
-    const auto toolGroupStyle = u"background: rgba(255,255,255,0.03); border-radius: 6px; border: none;"_s;
-
-    auto *tracesToggleBtn = new QPushButton(u"Traces"_s, chartHeader);
-    tracesToggleBtn->setObjectName(u"chartToolbarBtn"_s);
-    tracesToggleBtn->setCheckable(true);
-    tracesToggleBtn->setChecked(true);
-    tracesToggleBtn->setToolTip(u"Show/hide the traces side panel  [T key]"_s);
-    chartToolbar->addWidget(tracesToggleBtn);
-
-    // ── View toggle: Graph / Map ──────────────────────────────────────────────
-    auto *viewGroup = new QWidget(chartHeader);
-    viewGroup->setStyleSheet(toolGroupStyle);
-    auto *viewGroupLay = new QHBoxLayout(viewGroup);
-    viewGroupLay->setContentsMargins(2, 2, 2, 2);
-    viewGroupLay->setSpacing(4);
-
-    m_graphViewBtn = new QPushButton(u"Graph"_s, viewGroup);
-    m_graphViewBtn->setObjectName(u"viewSwitchBtn"_s);
-    m_graphViewBtn->setCheckable(true);
-    m_graphViewBtn->setChecked(true);
-    m_graphViewBtn->setToolTip(u"Show telemetry chart"_s);
-    viewGroupLay->addWidget(m_graphViewBtn);
-
-    m_mapViewBtn = new QPushButton(u"Map"_s, viewGroup);
-    m_mapViewBtn->setObjectName(u"viewSwitchBtn"_s);
-    m_mapViewBtn->setCheckable(true);
-    m_mapViewBtn->setChecked(false);
-    m_mapViewBtn->setToolTip(u"Show flight path map"_s);
-    viewGroupLay->addWidget(m_mapViewBtn);
-    chartToolbar->addWidget(viewGroup);
-
-    // ── Zoom controls group ──────────────────────────────────────────────────
-    auto *zoomGroup = new QWidget(chartHeader);
-    zoomGroup->setStyleSheet(toolGroupStyle);
-    auto *zoomGroupLay = new QHBoxLayout(zoomGroup);
-    zoomGroupLay->setContentsMargins(2, 2, 2, 2);
-    zoomGroupLay->setSpacing(4);
-
-    m_zoomOutBtn = new QPushButton(u"−"_s, zoomGroup);
-    m_zoomOutBtn->setObjectName(u"chartZoomBtn"_s);
-    m_zoomOutBtn->setToolTip(u"Zoom out ×2  [− key · scroll down]"_s);
-    zoomGroupLay->addWidget(m_zoomOutBtn);
-
-    m_zoomInBtn = new QPushButton(u"+"_s, zoomGroup);
-    m_zoomInBtn->setObjectName(u"chartZoomBtn"_s);
-    m_zoomInBtn->setToolTip(u"Zoom in ×2  [+ key · scroll up]"_s);
-    zoomGroupLay->addWidget(m_zoomInBtn);
-
-    m_zoomResetBtn = new QPushButton(u"Fit"_s, zoomGroup);
-    m_zoomResetBtn->setObjectName(u"chartToolbarBtn"_s);
-    m_zoomResetBtn->setToolTip(u"Fit chart to full data range  [F key]"_s);
-    zoomGroupLay->addWidget(m_zoomResetBtn);
-    connect(m_zoomResetBtn, &QPushButton::clicked, this, &DashboardPage::onResetChartZoom);
-    chartToolbar->addWidget(zoomGroup);
-
-    // ── Display toggles group ────────────────────────────────────────────────
-    auto *toggleGroup = new QWidget(chartHeader);
-    toggleGroup->setStyleSheet(toolGroupStyle);
-    auto *toggleGroupLay = new QHBoxLayout(toggleGroup);
-    toggleGroupLay->setContentsMargins(2, 2, 2, 2);
-    toggleGroupLay->setSpacing(4);
-
-    m_showMarkersToggle = new QToolButton(toggleGroup);
-    m_showMarkersToggle->setObjectName(u"chartToggleBtn"_s);
-    m_showMarkersToggle->setText(u"Markers"_s);
-    m_showMarkersToggle->setCheckable(true);
-    m_showMarkersToggle->setChecked(true);
-    m_showMarkersToggle->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    m_showMarkersToggle->setToolTip(
-        u"Draw a dot on each sample — auto-disabled above 400 pts/trace.  [M key]"_s);
-    toggleGroupLay->addWidget(m_showMarkersToggle);
-
-    m_showPointValuesToggle = new QToolButton(toggleGroup);
-    m_showPointValuesToggle->setObjectName(u"chartToggleBtn"_s);
-    m_showPointValuesToggle->setText(u"Values"_s);
-    m_showPointValuesToggle->setCheckable(true);
-    m_showPointValuesToggle->setChecked(false);
-    m_showPointValuesToggle->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    m_showPointValuesToggle->setToolTip(
-        u"Show Y value next to each point — single trace only, max 100 points.  [V key]"_s);
-    toggleGroupLay->addWidget(m_showPointValuesToggle);
-
-    m_followToggle = new QToolButton(toggleGroup);
-    m_followToggle->setObjectName(u"chartToggleBtn"_s);
-    m_followToggle->setText(u"Follow"_s);
-    m_followToggle->setCheckable(true);
-    m_followToggle->setChecked(true);
-    m_followToggle->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    m_followToggle->setToolTip(
-        u"Auto-fit chart axes to data on each update.\n"
-        u"Turn off to preserve your zoom level during replay.\n"
-        u"Pan or zoom the chart to disable automatically."_s);
-    toggleGroupLay->addWidget(m_followToggle);
-    chartToolbar->addWidget(toggleGroup);
-
-    connect(m_showMarkersToggle, &QToolButton::toggled, this, &DashboardPage::onChartVisualOptionsToggled);
-    connect(m_showPointValuesToggle, &QToolButton::toggled, this, &DashboardPage::onChartVisualOptionsToggled);
-    connect(m_followToggle, &QToolButton::toggled, this, [this](bool checked) {
-        if (checked) {
-            m_preserveChartAxes = false;
-            refreshAllSeriesFromData();
-        } else {
-            m_preserveChartAxes = true;
-        }
-    });
-
-    chartToolbar->addStretch(1);
-
-    // ── Action buttons group ─────────────────────────────────────────────────
-    auto *actionGroup = new QWidget(chartHeader);
-    actionGroup->setStyleSheet(toolGroupStyle);
-    auto *actionGroupLay = new QHBoxLayout(actionGroup);
-    actionGroupLay->setContentsMargins(2, 2, 2, 2);
-    actionGroupLay->setSpacing(4);
-
-    auto *addMarkerBtn = new QPushButton(u"Marker"_s, actionGroup);
-    addMarkerBtn->setObjectName(u"chartToolbarBtn"_s);
-    addMarkerBtn->setToolTip(u"Add a named event marker at the chart center time"_s);
-    actionGroupLay->addWidget(addMarkerBtn);
-    connect(addMarkerBtn, &QPushButton::clicked, this, [this]() {
-        if (!m_axisX) return;
-        const double centerT = (m_axisX->min() + m_axisX->max()) * 0.5;
-        bool ok = false;
-        QString name = QInputDialog::getText(
-            this, u"Add Event Marker"_s,
-            QStringLiteral("Name for marker at t = %1 s:").arg(centerT, 0, 'f', 2),
-            QLineEdit::Normal, {}, &ok);
-        if (ok && !name.isEmpty()) {
-            addEventMarker(centerT, name);
-        }
-    });
-
-    auto *clearMarkersBtn = new QPushButton(u"Clear Markers"_s, actionGroup);
-    clearMarkersBtn->setObjectName(u"chartToolbarBtn"_s);
-    clearMarkersBtn->setToolTip(u"Remove all event markers"_s);
-    actionGroupLay->addWidget(clearMarkersBtn);
-    connect(clearMarkersBtn, &QPushButton::clicked, this, &DashboardPage::clearEventMarkers);
-
-    auto *copyChartBtn = new QPushButton(u"Copy"_s, actionGroup);
-    copyChartBtn->setObjectName(u"chartToolbarBtn"_s);
-    copyChartBtn->setToolTip(u"Copy chart image to clipboard"_s);
-    actionGroupLay->addWidget(copyChartBtn);
-    connect(copyChartBtn, &QPushButton::clicked, this, [this]() {
-        if (m_chartView) {
-            QPixmap pixmap = m_chartView->grab();
-            QApplication::clipboard()->setPixmap(pixmap);
-        }
-    });
-
-    auto *copyDataBtn = new QPushButton(u"Copy Data"_s, actionGroup);
-    copyDataBtn->setObjectName(u"chartToolbarBtn"_s);
-    copyDataBtn->setToolTip(u"Copy current sample data as text (time, all metrics, GPS)"_s);
-    actionGroupLay->addWidget(copyDataBtn);
-    connect(copyDataBtn, &QPushButton::clicked, this, [this]() {
-        const FlightSample *sample = nullptr;
-        if (m_session && !m_session->samples.empty()) {
-            int idx = std::min(m_lastReplayTrailLength, static_cast<int>(m_session->samples.size())) - 1;
-            if (idx >= 0) sample = &m_session->samples[static_cast<std::size_t>(idx)];
-        } else if (!m_liveSamples.empty()) {
-            sample = &m_liveSamples.back();
-        }
-        if (!sample) return;
-        QString text;
-        text += QStringLiteral("Time: %1 ms\n").arg(sample->timestamp);
-        text += QStringLiteral("Altitude: %1 m\n").arg(sample->altitude, 0, 'f', 2);
-        text += QStringLiteral("Temperature: %1 °C\n").arg(sample->temperature, 0, 'f', 1);
-        text += QStringLiteral("Pressure: %1 Pa\n").arg(sample->pressure, 0, 'f', 1);
-        const auto &a = sample->acceleration;
-        const double accel = std::sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
-        text += QStringLiteral("Acceleration: %1 m/s²\n").arg(accel, 0, 'f', 2);
-        text += QStringLiteral("Battery: %1 V\n").arg(sample->batteryVoltage, 0, 'f', 2);
-        if (std::isfinite(sample->coordinates.latitude) && std::abs(sample->coordinates.latitude) > 1e-9) {
-            text += QStringLiteral("Latitude: %1\n").arg(sample->coordinates.latitude, 0, 'f', 8);
-            text += QStringLiteral("Longitude: %1\n").arg(sample->coordinates.longitude, 0, 'f', 8);
-        }
-        QApplication::clipboard()->setText(text);
-    });
-    chartToolbar->addWidget(actionGroup);
-
-    auto *chartHelpBtn = new QToolButton(chartHeader);
-    chartHelpBtn->setObjectName(u"chartHelpBtn"_s);
-    chartHelpBtn->setText(u"?"_s);
-    chartHelpBtn->setToolTip(
-        u"Chart controls:\n"
-        u"  Drag: pan  ·  Ctrl+drag: zoom rectangle\n"
-        u"  Scroll wheel / trackpad: zoom at pointer\n"
-        u"  ⌘/Ctrl + two-finger swipe: zoom at pointer\n"
-        u"  − / + keys: zoom out / in  ·  F: fit to data\n"
-        u"  M: toggle markers  ·  V: toggle point values\n"
-        u"  Hover cursor: floating readout + crosshair + snap dot"_s);
-    chartToolbar->addWidget(chartHelpBtn);
-
-    chartHeaderLay->addLayout(chartToolbar);
-
-    m_chartStatsLabel = new QLabel(chartHeader);
-    m_chartStatsLabel->setObjectName(u"chartStatsLabel"_s);
-    chartHeaderLay->addWidget(m_chartStatsLabel);
+    buildChartToolbar(chartHeader, chartHeaderLay);
 
     chartFrameLayout->addWidget(chartHeader, 0);
 
@@ -683,7 +325,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_emptyStateLabel->setAlignment(Qt::AlignCenter);
     m_emptyStateLabel->setWordWrap(true);
     m_emptyStateLabel->setStyleSheet(
-        u"color: #7a8796; font-size: 14px; padding: 40px; background: transparent; border: none;"_s);
+        QString(u"color: %1; font-size: 14px; padding: 40px; background: transparent; border: none;"_s)
+            .arg(Theme::kTextMuted()));
 
     m_chart = new QChart();
     m_chart->setBackgroundRoundness(0);
@@ -740,6 +383,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     auto *scFit     = new QShortcut(QKeySequence(Qt::Key_F),     this);
     auto *scMarkers = new QShortcut(QKeySequence(Qt::Key_M),     this);
     auto *scValues  = new QShortcut(QKeySequence(Qt::Key_V),     this);
+    auto *scTraces  = new QShortcut(QKeySequence(Qt::Key_T),     this);
     connect(scZoomIn,  &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(true); });
     connect(scZoomIn2, &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(true); });
     connect(scZoomOut, &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(false); });
@@ -752,6 +396,11 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     connect(scValues, &QShortcut::activated, this, [this]() {
         if (m_showPointValuesToggle) {
             m_showPointValuesToggle->setChecked(!m_showPointValuesToggle->isChecked());
+        }
+    });
+    connect(scTraces, &QShortcut::activated, this, [this]() {
+        if (m_tracesToggleBtn) {
+            m_tracesToggleBtn->setChecked(!m_tracesToggleBtn->isChecked());
         }
     });
 
@@ -816,20 +465,28 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_chartLoadingBar->setTextVisible(false);
     m_chartLoadingBar->setFixedHeight(3);
     m_chartLoadingBar->setStyleSheet(
-        u"QProgressBar { background: transparent; border: none; }"
-        u"QProgressBar::chunk { background: #4a88c0; }"_s);
+        QString(u"QProgressBar { background: transparent; border: none; }"
+        u"QProgressBar::chunk { background: %1; }"_s).arg(Theme::kAccentLink()));
     m_chartLoadingBar->setVisible(false);
     chartFrameLayout->addWidget(m_chartLoadingBar, 0);
 
-    connect(m_graphViewBtn, &QPushButton::clicked, this, [this]() {
+    connect(m_graphViewBtn, &QPushButton::clicked, this, [this](bool checked) {
+        if (!checked) {
+            m_graphViewBtn->setChecked(true);
+            return;
+        }
         m_viewStack->setCurrentIndex(0);
-        m_graphViewBtn->setChecked(true);
         m_mapViewBtn->setChecked(false);
+        updateToolbarForView();
     });
-    connect(m_mapViewBtn, &QPushButton::clicked, this, [this]() {
+    connect(m_mapViewBtn, &QPushButton::clicked, this, [this](bool checked) {
+        if (!checked) {
+            m_mapViewBtn->setChecked(true);
+            return;
+        }
         m_viewStack->setCurrentIndex(1);
         m_graphViewBtn->setChecked(false);
-        m_mapViewBtn->setChecked(true);
+        updateToolbarForView();
     });
 
     auto showDataView = [this]() {
@@ -837,6 +494,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             m_viewStack->setCurrentIndex(0);
             if (m_graphViewBtn) m_graphViewBtn->setChecked(true);
             if (m_mapViewBtn) m_mapViewBtn->setChecked(false);
+            updateToolbarForView();
         }
     };
     if (m_model) {
@@ -869,8 +527,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         QSettings s(kSettingsOrg, kSettingsApp);
         s.setValue(kSettingsDashSplitter, dashSplitter->saveState());
     });
-    connect(tracesToggleBtn, &QPushButton::toggled, this,
-            [this, dashSplitter, tracesToggleBtn](bool show) {
+    connect(m_tracesToggleBtn, &QToolButton::toggled, this,
+            [this, dashSplitter](bool show) {
         if (show) {
             m_tracesPanel->setVisible(true);
             dashSplitter->setSizes({200, dashSplitter->width() - 200});
@@ -895,6 +553,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
             this, &DashboardPage::applyChartTheme);
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &DashboardPage::refreshPageStyleSheet);
 }
 
 void DashboardPage::applyChartTheme() {
@@ -940,6 +600,321 @@ void DashboardPage::applyChartTheme() {
     m_chart->setMargins(QMargins(2, 2, 2, 6));
 }
 
+void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHeaderLay) {
+    auto *chartToolbar = new QHBoxLayout();
+    chartToolbar->setSpacing(6);
+
+    const auto toolGroupStyle = QString(u"background: %1; border-radius: 6px; border: none;"_s).arg(Theme::kBgPanel());
+
+    m_tracesToggleBtn = new QToolButton(chartHeader);
+    m_tracesToggleBtn->setObjectName(u"chartToggleBtn"_s);
+    m_tracesToggleBtn->setText(u"● Traces"_s);
+    m_tracesToggleBtn->setCheckable(true);
+    m_tracesToggleBtn->setChecked(true);
+    m_tracesToggleBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    m_tracesToggleBtn->setCursor(Qt::PointingHandCursor);
+    m_tracesToggleBtn->setToolTip(u"Show/hide the traces side panel  [T key]"_s);
+    chartToolbar->addWidget(m_tracesToggleBtn);
+    connect(m_tracesToggleBtn, &QToolButton::toggled, this, [this](bool on) {
+        m_tracesToggleBtn->setText(on ? u"● Traces"_s : u"○ Traces"_s);
+    });
+
+    auto *viewGroup = new QWidget(chartHeader);
+    viewGroup->setObjectName(u"viewSwitchGroup"_s);
+    auto *viewGroupLay = new QHBoxLayout(viewGroup);
+    viewGroupLay->setContentsMargins(3, 3, 3, 3);
+    viewGroupLay->setSpacing(2);
+
+    m_graphViewBtn = new QPushButton(u"⊞ Graph"_s, viewGroup);
+    m_graphViewBtn->setObjectName(u"viewSwitchBtn"_s);
+    m_graphViewBtn->setCheckable(true);
+    m_graphViewBtn->setChecked(true);
+    m_graphViewBtn->setCursor(Qt::PointingHandCursor);
+    m_graphViewBtn->setToolTip(u"Show telemetry chart"_s);
+    viewGroupLay->addWidget(m_graphViewBtn);
+
+    m_mapViewBtn = new QPushButton(u"◎ Map"_s, viewGroup);
+    m_mapViewBtn->setObjectName(u"viewSwitchBtn"_s);
+    m_mapViewBtn->setCheckable(true);
+    m_mapViewBtn->setChecked(false);
+    m_mapViewBtn->setCursor(Qt::PointingHandCursor);
+    m_mapViewBtn->setToolTip(u"Show flight path map"_s);
+    viewGroupLay->addWidget(m_mapViewBtn);
+    chartToolbar->addWidget(viewGroup);
+
+    m_zoomGroup = new QWidget(chartHeader);
+    m_zoomGroup->setStyleSheet(toolGroupStyle);
+    auto *zoomGroupLay = new QHBoxLayout(m_zoomGroup);
+    zoomGroupLay->setContentsMargins(2, 2, 2, 2);
+    zoomGroupLay->setSpacing(4);
+
+    m_zoomOutBtn = new QPushButton(u"−"_s, m_zoomGroup);
+    m_zoomOutBtn->setObjectName(u"chartZoomBtn"_s);
+    m_zoomOutBtn->setToolTip(u"Zoom out ×2  [− key · scroll down]"_s);
+    zoomGroupLay->addWidget(m_zoomOutBtn);
+
+    m_zoomInBtn = new QPushButton(u"+"_s, m_zoomGroup);
+    m_zoomInBtn->setObjectName(u"chartZoomBtn"_s);
+    m_zoomInBtn->setToolTip(u"Zoom in ×2  [+ key · scroll up]"_s);
+    zoomGroupLay->addWidget(m_zoomInBtn);
+
+    m_zoomResetBtn = new QPushButton(u"Fit"_s, m_zoomGroup);
+    m_zoomResetBtn->setObjectName(u"chartToolbarBtn"_s);
+    m_zoomResetBtn->setToolTip(u"Fit chart to full data range  [F key]"_s);
+    zoomGroupLay->addWidget(m_zoomResetBtn);
+    connect(m_zoomResetBtn, &QPushButton::clicked, this, &DashboardPage::onResetChartZoom);
+    chartToolbar->addWidget(m_zoomGroup);
+
+    m_toggleGroup = new QWidget(chartHeader);
+    m_toggleGroup->setStyleSheet(toolGroupStyle);
+    auto *toggleGroupLay = new QHBoxLayout(m_toggleGroup);
+    toggleGroupLay->setContentsMargins(2, 2, 2, 2);
+    toggleGroupLay->setSpacing(4);
+
+    m_showMarkersToggle = new QToolButton(m_toggleGroup);
+    m_showMarkersToggle->setObjectName(u"chartToggleBtn"_s);
+    m_showMarkersToggle->setText(u"● Markers"_s);
+    m_showMarkersToggle->setCheckable(true);
+    m_showMarkersToggle->setChecked(true);
+    m_showMarkersToggle->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    m_showMarkersToggle->setCursor(Qt::PointingHandCursor);
+    m_showMarkersToggle->setToolTip(
+        u"Draw a dot on each sample — auto-disabled above 400 pts/trace.  [M key]"_s);
+    toggleGroupLay->addWidget(m_showMarkersToggle);
+    connect(m_showMarkersToggle, &QToolButton::toggled, this, [this](bool on) {
+        m_showMarkersToggle->setText(on ? u"● Markers"_s : u"○ Markers"_s);
+    });
+
+    m_showPointValuesToggle = new QToolButton(m_toggleGroup);
+    m_showPointValuesToggle->setObjectName(u"chartToggleBtn"_s);
+    m_showPointValuesToggle->setText(u"○ Values"_s);
+    m_showPointValuesToggle->setCheckable(true);
+    m_showPointValuesToggle->setChecked(false);
+    m_showPointValuesToggle->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    m_showPointValuesToggle->setCursor(Qt::PointingHandCursor);
+    m_showPointValuesToggle->setToolTip(
+        u"Show Y value next to each point — single trace only, max 100 points.  [V key]"_s);
+    toggleGroupLay->addWidget(m_showPointValuesToggle);
+    connect(m_showPointValuesToggle, &QToolButton::toggled, this, [this](bool on) {
+        m_showPointValuesToggle->setText(on ? u"● Values"_s : u"○ Values"_s);
+    });
+
+    m_followToggle = new QToolButton(m_toggleGroup);
+    m_followToggle->setObjectName(u"chartToggleBtn"_s);
+    m_followToggle->setText(u"● Follow"_s);
+    m_followToggle->setCheckable(true);
+    m_followToggle->setChecked(true);
+    m_followToggle->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    m_followToggle->setCursor(Qt::PointingHandCursor);
+    m_followToggle->setToolTip(
+        u"Auto-fit chart axes to data on each update.\n"
+        u"Turn off to preserve your zoom level during replay.\n"
+        u"Pan or zoom the chart to disable automatically."_s);
+    toggleGroupLay->addWidget(m_followToggle);
+    connect(m_followToggle, &QToolButton::toggled, this, [this](bool on) {
+        m_followToggle->setText(on ? u"● Follow"_s : u"○ Follow"_s);
+    });
+    chartToolbar->addWidget(m_toggleGroup);
+
+    connect(m_showMarkersToggle, &QToolButton::toggled, this, &DashboardPage::onChartVisualOptionsToggled);
+    connect(m_showPointValuesToggle, &QToolButton::toggled, this, &DashboardPage::onChartVisualOptionsToggled);
+    connect(m_followToggle, &QToolButton::toggled, this, [this](bool checked) {
+        if (checked) {
+            m_preserveChartAxes = false;
+            refreshAllSeriesFromData();
+        } else {
+            m_preserveChartAxes = true;
+        }
+    });
+
+    chartToolbar->addStretch(1);
+
+    m_actionGroup = new QWidget(chartHeader);
+    m_actionGroup->setStyleSheet(toolGroupStyle);
+    auto *actionGroupLay = new QHBoxLayout(m_actionGroup);
+    actionGroupLay->setContentsMargins(2, 2, 2, 2);
+    actionGroupLay->setSpacing(4);
+
+    auto *addMarkerBtn = new QPushButton(u"Marker"_s, m_actionGroup);
+    addMarkerBtn->setObjectName(u"chartToolbarBtn"_s);
+    addMarkerBtn->setToolTip(u"Add a named event marker at the chart center time"_s);
+    actionGroupLay->addWidget(addMarkerBtn);
+    connect(addMarkerBtn, &QPushButton::clicked, this, [this]() {
+        if (!m_axisX) return;
+        const double centerT = (m_axisX->min() + m_axisX->max()) * 0.5;
+        bool ok = false;
+        QString name = QInputDialog::getText(
+            this, u"Add Event Marker"_s,
+            QStringLiteral("Name for marker at t = %1 s:").arg(centerT, 0, 'f', 2),
+            QLineEdit::Normal, {}, &ok);
+        if (ok && !name.isEmpty()) {
+            addEventMarker(centerT, name);
+        }
+    });
+
+    auto *clearMarkersBtn = new QPushButton(u"Clear Markers"_s, m_actionGroup);
+    clearMarkersBtn->setObjectName(u"chartToolbarBtn"_s);
+    clearMarkersBtn->setToolTip(u"Remove all event markers"_s);
+    actionGroupLay->addWidget(clearMarkersBtn);
+    connect(clearMarkersBtn, &QPushButton::clicked, this, &DashboardPage::clearEventMarkers);
+
+    auto *copyChartBtn = new QPushButton(u"Copy"_s, m_actionGroup);
+    copyChartBtn->setObjectName(u"chartToolbarBtn"_s);
+    copyChartBtn->setToolTip(u"Copy chart image to clipboard"_s);
+    actionGroupLay->addWidget(copyChartBtn);
+    connect(copyChartBtn, &QPushButton::clicked, this, [this]() {
+        if (m_chartView) {
+            QPixmap pixmap = m_chartView->grab();
+            QApplication::clipboard()->setPixmap(pixmap);
+        }
+    });
+
+    auto *copyDataBtn = new QPushButton(u"Copy Data"_s, m_actionGroup);
+    copyDataBtn->setObjectName(u"chartToolbarBtn"_s);
+    copyDataBtn->setToolTip(u"Copy current sample data as text (time, all metrics, GPS)"_s);
+    actionGroupLay->addWidget(copyDataBtn);
+    connect(copyDataBtn, &QPushButton::clicked, this, [this]() {
+        const FlightSample *sample = nullptr;
+        if (m_session && !m_session->samples.empty()) {
+            int idx = std::min(m_lastReplayTrailLength, static_cast<int>(m_session->samples.size())) - 1;
+            if (idx >= 0) sample = &m_session->samples[static_cast<std::size_t>(idx)];
+        } else if (!m_liveSamples.empty()) {
+            sample = &m_liveSamples.back();
+        }
+        if (!sample) return;
+        QString text;
+        text += QStringLiteral("Time: %1 ms\n").arg(sample->timestamp);
+        text += QStringLiteral("Altitude: %1 m\n").arg(sample->altitude, 0, 'f', 2);
+        text += QStringLiteral("Temperature: %1 °C\n").arg(sample->temperature, 0, 'f', 1);
+        text += QStringLiteral("Pressure: %1 Pa\n").arg(sample->pressure, 0, 'f', 1);
+        const auto &a = sample->acceleration;
+        const double accel = std::sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+        text += QStringLiteral("Acceleration: %1 m/s²\n").arg(accel, 0, 'f', 2);
+        text += QStringLiteral("Battery: %1 V\n").arg(sample->batteryVoltage, 0, 'f', 2);
+        if (std::isfinite(sample->coordinates.latitude) && std::abs(sample->coordinates.latitude) > 1e-9) {
+            text += QStringLiteral("Latitude: %1\n").arg(sample->coordinates.latitude, 0, 'f', 8);
+            text += QStringLiteral("Longitude: %1\n").arg(sample->coordinates.longitude, 0, 'f', 8);
+        }
+        QApplication::clipboard()->setText(text);
+    });
+    chartToolbar->addWidget(m_actionGroup);
+
+    auto *helpBtn = new QToolButton(chartHeader);
+    helpBtn->setObjectName(u"chartHelpBtn"_s);
+    helpBtn->setText(u"?"_s);
+    helpBtn->setToolTip(
+        u"Chart controls:\n"
+        u"  Drag: pan  ·  Ctrl+drag: zoom rectangle\n"
+        u"  Scroll wheel / trackpad: zoom at pointer\n"
+        u"  ⌘/Ctrl + two-finger swipe: zoom at pointer\n"
+        u"  − / + keys: zoom out / in  ·  F: fit to data\n"
+        u"  M: toggle markers  ·  V: toggle point values\n"
+        u"  Hover cursor: floating readout + crosshair + snap dot"_s);
+    m_chartHelpBtn = helpBtn;
+    chartToolbar->addWidget(m_chartHelpBtn);
+
+    chartHeaderLay->addLayout(chartToolbar);
+
+    m_chartStatsLabel = new QLabel(chartHeader);
+    m_chartStatsLabel->setObjectName(u"chartStatsLabel"_s);
+    chartHeaderLay->addWidget(m_chartStatsLabel);
+}
+
+QString DashboardPage::buildDashboardQss() {
+    const auto fontMono    = QString::fromUtf8(Theme::kFontMono);
+    const auto borderPanel = Theme::kBorderPanel();
+    const auto borderLight = Theme::kBorderLight();
+    const auto bgButton    = Theme::kBgButton();
+    const auto textPri     = Theme::kTextPrimary();
+    const auto textMuted   = Theme::kTextMuted();
+    const auto bgPanel     = Theme::kBgPanel();
+    const auto btnHov      = Theme::kBtnHover();
+    const auto btnPressed  = Theme::kBtnPressed();
+    const auto accent      = Theme::kAccentLink();
+    const auto bgInput     = Theme::kBgInput();
+
+    auto ss = QString(uR"(
+        #dashboardPage { background-color: transparent; color: %1; font-family: %2; }
+        #dashboardPage QWidget { font-family: %2; }
+        QFrame#chartFrame { background-color: %3; border: 1px solid %4; border-radius: %5px; padding: 0px; }
+        #telemetryChartView { border: none; padding: 0px; margin: 0px; background-color: transparent; }
+        QToolButton#chartToggleBtn { border: 1px solid %4; border-radius: %6px; padding: 5px 14px; min-height: 32px; background-color: transparent; color: %7; font-size: %8px; font-weight: 500; }
+        QToolButton#chartToggleBtn:hover { background-color: %9; color: %1; border-color: %1; }
+    )"_s)
+        .arg(textPri).arg(fontMono).arg(bgPanel).arg(borderPanel)
+        .arg(Theme::kRadiusMd).arg(Theme::kRadiusSm).arg(textMuted)
+        .arg(Theme::kFontSizeSm).arg(btnHov);
+
+    ss += QString(uR"(
+        QToolButton#chartToggleBtn:checked { background-color: %1; border-color: %1; color: #ffffff; font-weight: 600; }
+        QToolButton#chartToggleBtn:checked:hover { background-color: %1; border-color: %1; color: #ffffff; }
+        QPushButton#chartZoomBtn { min-width: 32px; max-width: 32px; min-height: 32px; max-height: 32px; padding: 0px; font-weight: 700; font-size: 16px; border: 1px solid %2; border-radius: %3px; background-color: %4; color: %5; }
+        QPushButton#chartZoomBtn:hover { background-color: %6; border-color: %7; }
+        QPushButton#chartZoomBtn:pressed { background-color: %8; }
+    )"_s)
+        .arg(accent).arg(borderPanel).arg(Theme::kRadiusSm)
+        .arg(bgButton).arg(textPri).arg(btnHov)
+        .arg(borderLight).arg(btnPressed);
+
+    ss += QString(uR"(
+        QDoubleSpinBox { background-color: %1; color: %2; border: 1px solid %3; border-radius: %4px; padding: 4px 8px; min-height: 22px; }
+        QSlider::groove:horizontal { height: 6px; background: %5; border-radius: 3px; }
+        QSlider::handle:horizontal { width: 14px; margin: -5px 0; background: %6; border: 1px solid %3; border-radius: %4px; }
+        QPushButton#chartToolbarBtn { border: 1px solid %7; border-radius: %4px; padding: 5px 12px; min-height: 30px; background-color: %8; color: %2; font-size: %9px; }
+    )"_s)
+        .arg(bgInput).arg(textPri).arg(Theme::kBorderDefault())
+        .arg(Theme::kRadiusSm).arg(bgPanel).arg(borderLight)
+        .arg(borderPanel).arg(bgButton).arg(Theme::kFontSizeSm);
+
+    ss += QString(uR"(
+        QPushButton#chartToolbarBtn:hover { background-color: %1; border-color: %2; }
+        QPushButton#chartToolbarBtn:pressed { background-color: %3; }
+        QWidget#viewSwitchGroup { background: %4; border: 1px solid %4; border-radius: %5px; }
+        QPushButton#viewSwitchBtn { border: none; border-radius: %5px; padding: 6px 16px; min-height: 32px; background-color: transparent; color: %6; font-size: %7px; font-weight: 500; }
+        QPushButton#viewSwitchBtn:checked { background-color: %8; color: #ffffff; font-weight: 600; }
+        QPushButton#viewSwitchBtn:hover:!checked { background-color: %1; color: %9; }
+        QPushButton#viewSwitchBtn:pressed:!checked { background-color: %3; }
+    )"_s)
+        .arg(btnHov).arg(borderLight).arg(btnPressed)
+        .arg(borderPanel).arg(Theme::kRadiusMd).arg(textMuted)
+        .arg(Theme::kFontSizeSm).arg(accent).arg(textPri);
+
+    ss += QString(uR"(
+        QToolButton#chartHelpBtn { font-weight: 700; font-size: %1px; min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; border: 1px solid %2; border-radius: 15px; background: %3; color: %4; padding: 0px; }
+        QToolButton#chartHelpBtn:hover { color: %5; border-color: %6; background: %7; }
+        QLabel#chartStatsLabel { color: %4; font-size: %8px; margin: 0px; padding: 0px; }
+    )"_s)
+        .arg(Theme::kFontSizeMd).arg(borderPanel).arg(bgButton)
+        .arg(textMuted).arg(textPri).arg(borderLight)
+        .arg(btnHov).arg(Theme::kFontSizeSm);
+
+    return ss;
+}
+
+void DashboardPage::refreshPageStyleSheet() {
+    setStyleSheet(buildDashboardQss());
+
+    if (m_sessionInfoLabel) {
+        const auto textMuted = Theme::kTextMuted();
+        const auto bgPanel = Theme::kBgPanel();
+        const auto borderPanel = Theme::kBorderPanel();
+        m_sessionInfoLabel->setStyleSheet(
+            QString(u"color: %1; font-size: 11px; background: %2; "
+            u"border: 1px solid %3; border-radius: 8px; padding: 8px 12px;"_s)
+                .arg(textMuted).arg(bgPanel).arg(borderPanel));
+    }
+}
+
+void DashboardPage::updateToolbarForView() {
+    const bool graphMode = m_viewStack && m_viewStack->currentIndex() == 0;
+    if (m_zoomGroup)      m_zoomGroup->setVisible(graphMode);
+    if (m_toggleGroup)    m_toggleGroup->setVisible(graphMode);
+    if (m_actionGroup)    m_actionGroup->setVisible(graphMode);
+    if (m_chartHelpBtn)   m_chartHelpBtn->setVisible(graphMode);
+    if (m_chartStatsLabel) m_chartStatsLabel->setVisible(graphMode);
+    if (m_tracesToggleBtn) m_tracesToggleBtn->setVisible(graphMode);
+}
+
 int DashboardPage::countEnabledMetrics() const {
     int n = 0;
     for (int i = 0; i < kMetricCount; ++i) {
@@ -979,7 +954,7 @@ void DashboardPage::applySeriesPointDisplay(QLineSeries *series, int pointCount,
     series->setPointLabelsFormat(showLabels ? u"@yPoint"_s : QString());
     if (showLabels) {
         series->setPointLabelsClipping(true);
-        series->setPointLabelsColor(QColor(210, 218, 230));
+        series->setPointLabelsColor(QColor(Theme::kTextPrimary()));
     }
 
     series->setUseOpenGL(nEnabledMetrics == 1 && pointCount > 800 && !showVertices);
@@ -1239,161 +1214,8 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         return;
     }
 
-    const long tRef = samples.front().timestamp;
-    const bool sessionElapsed = useSessionElapsedTimeAxis(samples.front().timestamp, samples.back().timestamp);
-    m_axisX->setTitleText(sessionElapsed ? u"Session time (s)"_s : u"Flight time (s)"_s);
-    const int nEn = countEnabledMetrics();
-
-    const std::vector<int> plotIdx = lttbIndicesForChartDisplay(
-        samples, end, kMaxChartDisplayPoints, m_metricEnabled, tRef, sessionElapsed);
-    if (plotIdx.empty()) {
-        m_replayChartBuiltTrailLength = end;
-        updateChartStatsLabel();
-        return;
-    }
-    m_hoverSampleIndexMap = plotIdx;
-    m_hoverLogicalSampleCount = end;
     m_replayChartBuiltTrailLength = end;
-    const int iFirst = plotIdx.front();
-    const int iLast = plotIdx.back();
-    double xMin = chartXSeconds(tRef, samples[static_cast<std::size_t>(iFirst)].timestamp, sessionElapsed);
-    double xMax = chartXSeconds(tRef, samples[static_cast<std::size_t>(iLast)].timestamp, sessionElapsed);
-
-    std::array<double, kMetricCount> yMin{};
-    std::array<double, kMetricCount> yMax{};
-    for (int mi = 0; mi < kMetricCount; ++mi) {
-        yMin[static_cast<std::size_t>(mi)] = std::numeric_limits<double>::infinity();
-        yMax[static_cast<std::size_t>(mi)] = -std::numeric_limits<double>::infinity();
-    }
-
-    for (int si : plotIdx) {
-        const FlightSample &s = samples[static_cast<std::size_t>(si)];
-        for (int mi = 0; mi < kMetricCount; ++mi) {
-            const double y = sampleValueForMetric(s, mi);
-            auto &lo = yMin[static_cast<std::size_t>(mi)];
-            auto &hi = yMax[static_cast<std::size_t>(mi)];
-            lo = std::min(lo, y);
-            hi = std::max(hi, y);
-        }
-    }
-
-    int onlyMi = -1;
-    int dualMi[2] = {-1, -1};
-    if (nEn == 1) {
-        for (int mi = 0; mi < kMetricCount; ++mi) {
-            if (m_metricEnabled[static_cast<std::size_t>(mi)]) {
-                onlyMi = mi;
-                break;
-            }
-        }
-    } else if (nEn == 2) {
-        int idx = 0;
-        for (int mi = 0; mi < kMetricCount && idx < 2; ++mi) {
-            if (m_metricEnabled[static_cast<std::size_t>(mi)]) {
-                dualMi[idx++] = mi;
-            }
-        }
-    }
-
-    const int plotN = static_cast<int>(plotIdx.size());
-    for (int mi = 0; mi < kMetricCount; ++mi) {
-        auto *series = m_lineSeries[static_cast<std::size_t>(mi)];
-        const double lo = yMin[static_cast<std::size_t>(mi)];
-        const double hi = yMax[static_cast<std::size_t>(mi)];
-        const double span = std::max(hi - lo, 1e-12);
-
-        QList<QPointF> pts;
-        pts.reserve(plotN);
-        for (int si : plotIdx) {
-            const FlightSample &s = samples[static_cast<std::size_t>(si)];
-            const double x = chartXSeconds(tRef, s.timestamp, sessionElapsed);
-            double y = sampleValueForMetric(s, mi);
-            if (nEn > 2) {
-                y = (y - lo) / span;
-            }
-            pts.append(QPointF(x, y));
-        }
-        series->replace(pts);
-        const bool en = m_metricEnabled[static_cast<std::size_t>(mi)];
-        series->setVisible(en);
-        if (en) {
-            applySeriesPointDisplay(series, pts.size(), nEn);
-            series->setName(metricTitle(mi));
-        }
-    }
-
-    if (m_axisY2) m_axisY2->setVisible(false);
-
-    if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
-        auto *s1 = m_lineSeries[static_cast<std::size_t>(dualMi[1])];
-        if (s1) {
-            const auto attached = s1->attachedAxes();
-            if (attached.contains(m_axisY)) s1->detachAxis(m_axisY);
-            if (!attached.contains(m_axisY2)) s1->attachAxis(m_axisY2);
-        }
-        if (m_axisY2) m_axisY2->setVisible(true);
-    }
-    for (int mi = 0; mi < kMetricCount; ++mi) {
-        auto *s = m_lineSeries[static_cast<std::size_t>(mi)];
-        if (!s) continue;
-        bool isSecondDual = (nEn == 2 && mi == dualMi[1]);
-        const auto attached = s->attachedAxes();
-        if (isSecondDual) {
-            if (attached.contains(m_axisY)) s->detachAxis(m_axisY);
-            if (!attached.contains(m_axisY2)) s->attachAxis(m_axisY2);
-        } else {
-            if (attached.contains(m_axisY2)) s->detachAxis(m_axisY2);
-            if (!attached.contains(m_axisY)) s->attachAxis(m_axisY);
-        }
-    }
-
-    const double spanX = std::max(xMax - xMin, 1e-9);
-    const double xPad = std::max(spanX * 0.02, 0.05);
-
-    if (nEn == 1 && onlyMi >= 0) {
-        m_axisY->setTitleText(metricAxisUnitShort(onlyMi));
-        m_chart->setTitle(metricTitle(onlyMi));
-        if (!m_preserveChartAxes) {
-            const double lo = yMin[static_cast<std::size_t>(onlyMi)];
-            const double hi = yMax[static_cast<std::size_t>(onlyMi)];
-            const double span = std::max(hi - lo, 1e-9);
-            const double p = span * 0.08 + std::max(std::abs(hi) * 1e-6, 1e-3);
-            m_axisY->setRange(lo - p, hi + p);
-        }
-    } else if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
-        m_axisY->setTitleText(metricAxisUnitShort(dualMi[0]));
-        if (m_axisY2) m_axisY2->setTitleText(metricAxisUnitShort(dualMi[1]));
-        m_chart->setTitle(QStringLiteral("%1 vs %2").arg(metricTitle(dualMi[0]), metricTitle(dualMi[1])));
-        if (!m_preserveChartAxes) {
-            for (int d = 0; d < 2; ++d) {
-                auto *ax = (d == 0) ? m_axisY : m_axisY2;
-                if (!ax) continue;
-                const double lo = yMin[static_cast<std::size_t>(dualMi[d])];
-                const double hi = yMax[static_cast<std::size_t>(dualMi[d])];
-                const double span = std::max(hi - lo, 1e-9);
-                const double p = span * 0.08 + std::max(std::abs(hi) * 1e-6, 1e-3);
-                ax->setRange(lo - p, hi + p);
-            }
-        }
-    } else {
-        m_axisY->setTitleText(u"Normalized"_s);
-        m_chart->setTitle(u"Multi-trace overlay"_s);
-        if (!m_preserveChartAxes) {
-            m_axisY->setRange(-0.05, 1.05);
-        }
-    }
-    if (!m_preserveChartAxes) {
-        m_axisX->setRange(xMin - xPad, xMax + xPad);
-    }
-
-    if (m_tracesPanel) {
-        std::array<bool, kMetricCount> hasData{};
-        for (int i = 0; i < kMetricCount; ++i)
-            hasData[static_cast<std::size_t>(i)] = m_lineSeries[static_cast<std::size_t>(i)]
-                                                   && m_lineSeries[static_cast<std::size_t>(i)]->count() > 0;
-        m_tracesPanel->setMetricDataStates(hasData);
-    }
-    updateChartStatsLabel();
+    buildChartFromSamples(samples, end);
 }
 
 void DashboardPage::onSessionReset() {
@@ -1463,15 +1285,17 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         return;
     }
 
-    const int end = static_cast<int>(m_liveSamples.size());
-    const long tRef = m_liveSamples.front().timestamp;
-    const bool sessionElapsed =
-        useSessionElapsedTimeAxis(m_liveSamples.front().timestamp, m_liveSamples.back().timestamp);
+    buildChartFromSamples(m_liveSamples, static_cast<int>(m_liveSamples.size()));
+}
+
+void DashboardPage::buildChartFromSamples(const std::vector<FlightSample> &samples, int end) {
+    const long tRef = samples.front().timestamp;
+    const bool sessionElapsed = useSessionElapsedTimeAxis(samples.front().timestamp, samples.back().timestamp);
     m_axisX->setTitleText(sessionElapsed ? u"Session time (s)"_s : u"Flight time (s)"_s);
     const int nEn = countEnabledMetrics();
 
     const std::vector<int> plotIdx = lttbIndicesForChartDisplay(
-        m_liveSamples, end, kMaxChartDisplayPoints, m_metricEnabled, tRef, sessionElapsed);
+        samples, end, kMaxChartDisplayPoints, m_metricEnabled, tRef, sessionElapsed);
     if (plotIdx.empty()) {
         updateChartStatsLabel();
         return;
@@ -1481,17 +1305,17 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
 
     const int iFirst = plotIdx.front();
     const int iLast = plotIdx.back();
-    double xMin = chartXSeconds(tRef, m_liveSamples[static_cast<std::size_t>(iFirst)].timestamp, sessionElapsed);
-    double xMax = chartXSeconds(tRef, m_liveSamples[static_cast<std::size_t>(iLast)].timestamp, sessionElapsed);
+    double xMin = chartXSeconds(tRef, samples[static_cast<std::size_t>(iFirst)].timestamp, sessionElapsed);
+    double xMax = chartXSeconds(tRef, samples[static_cast<std::size_t>(iLast)].timestamp, sessionElapsed);
+
     std::array<double, kMetricCount> yMin{};
     std::array<double, kMetricCount> yMax{};
     for (int mi = 0; mi < kMetricCount; ++mi) {
         yMin[static_cast<std::size_t>(mi)] = std::numeric_limits<double>::infinity();
         yMax[static_cast<std::size_t>(mi)] = -std::numeric_limits<double>::infinity();
     }
-
     for (int si : plotIdx) {
-        const FlightSample &s = m_liveSamples[static_cast<std::size_t>(si)];
+        const FlightSample &s = samples[static_cast<std::size_t>(si)];
         for (int mi = 0; mi < kMetricCount; ++mi) {
             const double y = sampleValueForMetric(s, mi);
             auto &lo = yMin[static_cast<std::size_t>(mi)];
@@ -1505,17 +1329,12 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
     int dualMi[2] = {-1, -1};
     if (nEn == 1) {
         for (int mi = 0; mi < kMetricCount; ++mi) {
-            if (m_metricEnabled[static_cast<std::size_t>(mi)]) {
-                onlyMi = mi;
-                break;
-            }
+            if (m_metricEnabled[static_cast<std::size_t>(mi)]) { onlyMi = mi; break; }
         }
     } else if (nEn == 2) {
         int idx = 0;
         for (int mi = 0; mi < kMetricCount && idx < 2; ++mi) {
-            if (m_metricEnabled[static_cast<std::size_t>(mi)]) {
-                dualMi[idx++] = mi;
-            }
+            if (m_metricEnabled[static_cast<std::size_t>(mi)]) dualMi[idx++] = mi;
         }
     }
 
@@ -1529,12 +1348,10 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         QList<QPointF> pts;
         pts.reserve(plotN);
         for (int si : plotIdx) {
-            const FlightSample &s = m_liveSamples[static_cast<std::size_t>(si)];
+            const FlightSample &s = samples[static_cast<std::size_t>(si)];
             const double x = chartXSeconds(tRef, s.timestamp, sessionElapsed);
             double y = sampleValueForMetric(s, mi);
-            if (nEn > 2) {
-                y = (y - lo) / span;
-            }
+            if (nEn > 2) y = (y - lo) / span;
             pts.append(QPointF(x, y));
         }
         series->replace(pts);
@@ -1547,7 +1364,6 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
     }
 
     if (m_axisY2) m_axisY2->setVisible(false);
-
     if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
         if (m_axisY2) m_axisY2->setVisible(true);
     }
@@ -1572,11 +1388,11 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         m_axisY->setTitleText(metricAxisUnitShort(onlyMi));
         m_chart->setTitle(metricTitle(onlyMi));
         if (!m_preserveChartAxes) {
-            const double lo = yMin[static_cast<std::size_t>(onlyMi)];
-            const double hi = yMax[static_cast<std::size_t>(onlyMi)];
-            const double span = std::max(hi - lo, 1e-9);
-            const double p = span * 0.08 + std::max(std::abs(hi) * 1e-6, 1e-3);
-            m_axisY->setRange(lo - p, hi + p);
+            const double rLo = yMin[static_cast<std::size_t>(onlyMi)];
+            const double rHi = yMax[static_cast<std::size_t>(onlyMi)];
+            const double rSpan = std::max(rHi - rLo, 1e-9);
+            const double p = rSpan * 0.08 + std::max(std::abs(rHi) * 1e-6, 1e-3);
+            m_axisY->setRange(rLo - p, rHi + p);
         }
     } else if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
         m_axisY->setTitleText(metricAxisUnitShort(dualMi[0]));
@@ -1586,11 +1402,11 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
             for (int d = 0; d < 2; ++d) {
                 auto *ax = (d == 0) ? m_axisY : m_axisY2;
                 if (!ax) continue;
-                const double lo = yMin[static_cast<std::size_t>(dualMi[d])];
-                const double hi = yMax[static_cast<std::size_t>(dualMi[d])];
-                const double span = std::max(hi - lo, 1e-9);
-                const double p = span * 0.08 + std::max(std::abs(hi) * 1e-6, 1e-3);
-                ax->setRange(lo - p, hi + p);
+                const double rLo = yMin[static_cast<std::size_t>(dualMi[d])];
+                const double rHi = yMax[static_cast<std::size_t>(dualMi[d])];
+                const double rSpan = std::max(rHi - rLo, 1e-9);
+                const double p = rSpan * 0.08 + std::max(std::abs(rHi) * 1e-6, 1e-3);
+                ax->setRange(rLo - p, rHi + p);
             }
         }
     } else {
@@ -1707,31 +1523,23 @@ void DashboardPage::paintEvent(QPaintEvent *event) {
     QPainter painter(this);
     painter.setClipRegion(event->region());
 
-    const QColor backgroundColor(47, 47, 47);
-    painter.fillRect(rect(), backgroundColor);
+    painter.fillRect(rect(), QColor(Theme::kBgBase()));
 
     constexpr int dotSpacing = 28;
-    constexpr qreal dotDiameter = 3.0;
+    constexpr qreal dotRadius = 1.5;
     const int offset = dotSpacing / 2;
 
-    const int widthLimit = width();
-    const int heightLimit = height();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(Theme::kBorderDefault()).lighter(120));
 
     const QRectF clip = event->region().boundingRect();
     const int xStart = std::max(offset, static_cast<int>((clip.left() - offset) / dotSpacing) * dotSpacing + offset);
     const int yStart = std::max(offset, static_cast<int>((clip.top() - offset) / dotSpacing) * dotSpacing + offset);
-    const int xEnd = std::min(widthLimit, static_cast<int>(clip.right()) + dotSpacing);
-    const int yEnd = std::min(heightLimit, static_cast<int>(clip.bottom()) + dotSpacing);
+    const int xEnd = std::min(width(), static_cast<int>(clip.right()) + dotSpacing);
+    const int yEnd = std::min(height(), static_cast<int>(clip.bottom()) + dotSpacing);
 
-    QVector<QPointF> dots;
-    dots.reserve(((xEnd - xStart) / dotSpacing + 1) * ((yEnd - yStart) / dotSpacing + 1));
-    for (int y = yStart; y < yEnd; y += dotSpacing) {
-        for (int x = xStart; x < xEnd; x += dotSpacing) {
-            dots.append(QPointF(x, y));
-        }
-    }
-
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    painter.setPen(QPen(QColor(255, 255, 255, 50), dotDiameter, Qt::SolidLine, Qt::RoundCap));
-    painter.drawPoints(dots.data(), dots.size());
+    for (int y = yStart; y < yEnd; y += dotSpacing)
+        for (int x = xStart; x < xEnd; x += dotSpacing)
+            painter.drawEllipse(QPointF(x, y), dotRadius, dotRadius);
 }

@@ -153,14 +153,6 @@ void MainWindow::appendToLog(bool isError, const QString &text) {
         m_logEntries.erase(m_logEntries.begin());
     }
     m_logEntries.emplace_back(isError, text);
-
-    if (m_settingsWindow) {
-        if (isError) {
-            m_settingsWindow->appendLogError(text);
-        } else {
-            m_settingsWindow->appendLogEntry(text);
-        }
-    }
 }
 
 void MainWindow::setupActions() {
@@ -291,6 +283,141 @@ void MainWindow::rebuildRecentFilesMenu() {
     });
 }
 
+QString MainWindow::buildToolbarStyleSheet() {
+    const auto bgPanel = Theme::kBgPanel();
+    const auto textPri = Theme::kTextPrimary();
+    const auto textMid = Theme::kTextMid();
+    const auto btnBg = Theme::kBgButton();
+    const auto btnHov = Theme::kBtnHover();
+    const auto borderDef = Theme::kBorderDefault();
+    const auto borderLight = Theme::kBorderLight();
+    const auto accent = Theme::kAccentLink();
+    const auto textDim = Theme::kTextDim();
+
+    return QString(uR"(
+        QToolBar#missionToolbar {
+            background: %1;
+            padding: 10px 10px;
+            border: none;
+        }
+        QWidget#toolbarContent {
+            background: transparent;
+            margin: 0;
+        }
+        QWidget#brandBlock QLabel#brandLabel {
+            font-size: 26px;
+            font-weight: 400;
+            font-family: %2;
+            letter-spacing: 3px;
+            color: %3;
+        }
+        QWidget#brandBlock QLabel#missionMeta {
+            font-size: 14px;
+            color: %4;
+            font-family: %5;
+        }
+        QLabel#missionPageTitle {
+            font-size: 15px;
+            font-weight: 600;
+            color: %4;
+            letter-spacing: 2px;
+            font-family: %5;
+        }
+        QToolButton[kind="navButton"] {
+            font-size: %6px;
+            min-width: 150px;
+            padding: 5px 8px;
+            border: 2px solid %7;
+            border-radius: 0;
+            background-color: %8;
+            color: %3;
+            letter-spacing: 1px;
+            font-family: %5;
+        }
+        QToolButton[kind="navButton"]:hover {
+            background-color: %9;
+        }
+    )"_s)
+        .arg(bgPanel)               // %1
+        .arg(Theme::kFontDisplay)   // %2
+        .arg(textPri)               // %3
+        .arg(textMid)               // %4
+        .arg(Theme::kFontMono)      // %5
+        .arg(Theme::kFontSizeBase)  // %6
+        .arg(borderDef)             // %7
+        .arg(btnBg)                 // %8
+        .arg(btnHov)                // %9
+    + QString(uR"(
+        QToolButton[kind="navButton"]:checked {
+            background-color: %1;
+            color: %2;
+            border-color: %3;
+        }
+        QToolButton[kind="navButton"]:disabled {
+            color: %4;
+            border-color: %5;
+            background-color: transparent;
+        }
+        QToolButton[kind="iconButton"] {
+            min-width: 30px;
+            min-height: 30px;
+            border: none;
+            background-color: transparent;
+        }
+        QToolButton[kind="iconButton"]:hover {
+            background-color: %6;
+        }
+        QToolButton[kind="iconButton"]:checked {
+            background-color: %7;
+        }
+    )"_s)
+        .arg(accent)                // %1
+        .arg(Theme::kBgBase())      // %2
+        .arg(accent)                // %3
+        .arg(textDim)               // %4
+        .arg(borderLight)           // %5
+        .arg(btnHov)                // %6
+        .arg(btnBg);                // %7
+}
+
+QString MainWindow::buildDataBarStyleSheet() {
+    return QString(uR"(
+        QWidget#telemetryStrip {
+            background: %1;
+            color: %2;
+            border-top: 1px solid %3;
+            border-bottom: 1px solid %3;
+        }
+        QWidget#telemetryStrip QLabel#telemetryStripPage {
+            font-size: %4px;
+            color: %5;
+            letter-spacing: 3px;
+            font-weight: 600;
+            font-family: %6;
+        }
+        QWidget#telemetryStrip QLabel#telemetryBadge {
+            font-size: %7px;
+            color: %2;
+            letter-spacing: 1px;
+            font-family: %6;
+        }
+        QWidget#telemetryStrip QLabel#telemetryDropBadge {
+            font-size: %7px;
+            color: %8;
+            letter-spacing: 1px;
+            font-family: %6;
+        }
+    )"_s)
+        .arg(Theme::kBgDark())          // %1
+        .arg(Theme::kTextPrimary())     // %2
+        .arg(Theme::kBorderSubtle())    // %3
+        .arg(Theme::kFontSizeSm)        // %4
+        .arg(Theme::kTextDim())         // %5
+        .arg(Theme::kFontMono)          // %6
+        .arg(Theme::kFontSizeBase)      // %7
+        .arg(Theme::kDanger());         // %8
+}
+
 void MainWindow::setupToolbar() {
     auto *toolbar = new QToolBar(u"Mission Toolbar"_s, this);
     toolbar->setObjectName(u"missionToolbar"_s);
@@ -298,87 +425,7 @@ void MainWindow::setupToolbar() {
     toolbar->setFloatable(false);
     toolbar->setToolButtonStyle(Qt::ToolButtonTextOnly);
     toolbar->setAllowedAreas(Qt::TopToolBarArea);
-    toolbar->setStyleSheet(
-        QString(uR"(
-        QToolBar#missionToolbar {
-            background: rgba(73, 73, 73, 0.95);
-            padding: 10px 10px;
-            border: none;
-        }
-
-        QWidget#toolbarContent {
-            background: transparent;
-            margin: 0;
-        }
-
-        QWidget#brandBlock QLabel#brandLabel {
-            font-size: 26px;
-            font-weight: 400;
-            font-family: %1;
-            letter-spacing: 3px;
-            color: #f4f4f4;
-        }
-        QWidget#brandBlock QLabel#missionMeta {
-            font-size: 14px;
-            color: #dadada;
-            font-family: %2;
-        }
-
-        QLabel#missionPageTitle {
-            font-size: 15px;
-            font-weight: 600;
-            color: %3;
-            letter-spacing: 2px;
-            font-family: %2;
-        }
-
-        QToolButton[kind="navButton"] {
-            font-size: %4px;
-            min-width: 150px;
-            padding: 5px 8px;
-            border: 2px solid #cfcfcf;
-            border-radius: 0;
-            background-color: #4b4b4b;
-            color: #f7f7f7;
-            letter-spacing: 1px;
-            font-family: %2;
-        }
-
-        QToolButton[kind="navButton"]:hover {
-            background-color: #5c5c5c;
-        }
-
-        QToolButton[kind="navButton"]:checked {
-            background-color: #dfdfdf;
-            color: #101010;
-            border-color: #ffffff;
-        }
-
-        QToolButton[kind="navButton"]:disabled {
-            color: rgba(255, 255, 255, 120);
-            border-color: rgba(255, 255, 255, 70);
-            background-color: rgba(255, 255, 255, 0);
-        }
-
-        QToolButton[kind="iconButton"] {
-            min-width: 30px;
-            min-height: 30px;
-            border: none;
-            background-color: transparent;
-        }
-
-        QToolButton[kind="iconButton"]:hover {
-            background-color: rgba(255, 255, 255, 0.08);
-        }
-
-        QToolButton[kind="iconButton"]:checked {
-            background-color: rgba(255, 255, 255, 0.15);
-        }
-    )"_s)
-        .arg(Theme::kFontDisplay)
-        .arg(Theme::kFontMono)
-        .arg(Theme::kTextMid())
-        .arg(Theme::kFontSizeBase));
+    toolbar->setStyleSheet(buildToolbarStyleSheet());
     addToolBar(Qt::TopToolBarArea, toolbar);
 
     auto *text_shadow = new QGraphicsDropShadowEffect(this);
@@ -398,7 +445,8 @@ void MainWindow::setupToolbar() {
     auto *brandLayout = new QVBoxLayout(brandBlock);
     brandLayout->setContentsMargins(0, 0, 0, 0);
     brandLayout->setSpacing(2);
-    auto *brandLabel = new QLabel(u"Cosmo<span style=\"color:#000000\">Soft</span>"_s, brandBlock);
+    auto *brandLabel = new QLabel(
+        QString(u"Cosmo<span style=\"color:%1\">Soft</span>"_s).arg(Theme::kAccentLink()), brandBlock);
     brandLabel->setObjectName(u"brandLabel"_s);
     brandLabel->setTextFormat(Qt::RichText);
     const QVariant workbenchFamily = qApp->property("workbenchFontFamily");
@@ -508,43 +556,7 @@ void MainWindow::setupDataBar() {
     dataLayout->addWidget(m_droppedBadgeLabel);
     dataLayout->addStretch(1);
 
-    m_dataBar->setStyleSheet(
-        QString(uR"(
-        QWidget#telemetryStrip {
-            background: rgba(26, 26, 26, 0.95);
-            color: %1;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.7);
-        }
-
-        QWidget#telemetryStrip QLabel#telemetryStripPage {
-            font-size: %2px;
-            color: %3;
-            letter-spacing: 3px;
-            font-weight: 600;
-            font-family: %4;
-        }
-
-        QWidget#telemetryStrip QLabel#telemetryBadge {
-            font-size: %5px;
-            color: #f7f7f7;
-            letter-spacing: 1px;
-            font-family: %4;
-        }
-
-        QWidget#telemetryStrip QLabel#telemetryDropBadge {
-            font-size: %5px;
-            color: %6;
-            letter-spacing: 1px;
-            font-family: %4;
-        }
-    )"_s)
-        .arg(Theme::kTextPrimary())
-        .arg(Theme::kFontSizeSm)
-        .arg(Theme::kTextDim())
-        .arg(Theme::kFontMono)
-        .arg(Theme::kFontSizeBase)
-        .arg(Theme::kDanger()));
+    m_dataBar->setStyleSheet(buildDataBarStyleSheet());
 }
 
 void MainWindow::setupConnectionBar() {
@@ -588,6 +600,7 @@ void MainWindow::setupConnectionBar() {
     auto *baudLabel = new QLabel(u"Baud"_s, m_serialControlBlock);
     baudLabel->setStyleSheet(portLabel->styleSheet());
     m_baudCombo = new QComboBox(m_serialControlBlock);
+    m_baudCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     const QList<int> bauds = {9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
     for (int b : bauds) {
         m_baudCombo->addItem(QString::number(b), b);
@@ -658,8 +671,10 @@ void MainWindow::setupConnectionBar() {
     connect(exportBtn,     &QPushButton::clicked, this, &MainWindow::onExportSession);
 
     m_connectionBar->setStyleSheet(
-        QString(u"QWidget#connectionStrip { background: rgba(34, 34, 34, 0.98); color: %1; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }"_s)
-            .arg(Theme::kTextPrimary()));
+        QString(u"QWidget#connectionStrip { background: %1; color: %2; border-bottom: 1px solid %3; }"_s)
+            .arg(Theme::kBgPanel())
+            .arg(Theme::kTextPrimary())
+            .arg(Theme::kBorderSubtle()));
 
     loadSerialPrefsToUi();
 }
@@ -810,7 +825,7 @@ void MainWindow::openSettingsWindow() {
         m_settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
         m_settingsWindow->setWindowTitle(u"CosmoSoft Settings"_s);
         m_settingsWindow->setWindowIcon(QIcon(u":/icons/settings_button.png"_s));
-        m_settingsWindow->resize(520, 750);
+        m_settingsWindow->resize(640, 560);
 
         connect(m_settingsWindow, &QObject::destroyed, this, [this]() {
             m_settingsWindow = nullptr;
@@ -818,14 +833,6 @@ void MainWindow::openSettingsWindow() {
                 m_openSettingsAction->setChecked(false);
             }
         });
-
-        for (const auto &[isError, text] : m_logEntries) {
-            if (isError) {
-                m_settingsWindow->appendLogError(text);
-            } else {
-                m_settingsWindow->appendLogEntry(text);
-            }
-        }
     }
 
     m_settingsWindow->show();
@@ -1039,31 +1046,13 @@ void MainWindow::onShowAbout() {
 }
 
 void MainWindow::onThemeChanged() {
+    auto *toolbar = findChild<QToolBar *>(u"missionToolbar"_s);
+    if (toolbar) {
+        toolbar->setStyleSheet(buildToolbarStyleSheet());
+    }
+
     if (m_dataBar) {
-        m_dataBar->setStyleSheet(
-            QString(uR"(
-            QWidget#telemetryStrip { background: transparent; }
-            QLabel#telemetryBadge {
-                color: %1;
-                font-size: %2px;
-            }
-            QLabel#telemetryBadge[dim="true"] {
-                color: %3;
-                font-family: %4;
-                font-size: %5px;
-            }
-            QLabel#dataRateLabel {
-                color: %6;
-                letter-spacing: 1px;
-                font-family: %4;
-            }
-        )"_s)
-                .arg(Theme::kTextPrimary())
-                .arg(Theme::kFontSizeSm)
-                .arg(Theme::kTextDim())
-                .arg(Theme::kFontMono)
-                .arg(Theme::kFontSizeBase)
-                .arg(Theme::kDanger()));
+        m_dataBar->setStyleSheet(buildDataBarStyleSheet());
     }
 
     if (m_connectionBar) {

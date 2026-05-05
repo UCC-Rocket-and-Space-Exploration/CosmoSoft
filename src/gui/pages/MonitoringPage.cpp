@@ -40,16 +40,18 @@ MonitoringPage::MonitoringPage(FlightDataModel *model, QWidget *parent)
     m_statusLabel->setStyleSheet(
         QString(uR"(
         QLabel {
-            background-color: rgba(21, 22, 25, 0.80);
-            border: 1px solid %1;
-            border-radius: %2px;
+            background-color: %1;
+            border: 1px solid %2;
+            border-radius: %3px;
             padding: 14px 16px;
-            color: #e8e8e8;
-            font-size: %3px;
+            color: %4;
+            font-size: %5px;
         }
     )"_s)
+            .arg(Theme::kBgPanel())
             .arg(Theme::kBorderPanel())
             .arg(Theme::kRadiusMd)
+            .arg(Theme::kTextPrimary())
             .arg(Theme::kFontSizeMd));
     root->addWidget(m_statusLabel);
 

@@ -60,6 +60,7 @@ signals:
     void trailLengthChanged(int trailLength);
 
 private slots:
+    void applyThemeStyleSheet();
     void onPlaybackStarted();
     void onPlaybackPaused();
     void onPlaybackStopped();

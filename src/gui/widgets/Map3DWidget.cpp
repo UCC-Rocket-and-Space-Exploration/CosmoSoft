@@ -136,9 +136,10 @@ void Map3DWidget::pushThemeToMap() {
     if (!m_mapReady) return;
     const auto &p = cosmo::ThemeManager::instance().palette();
     const auto json = QStringLiteral(
-        R"({"bg_base":"%1","bg_dark":"%2","text_primary":"%3","text_dim":"%4",)"
-        R"("border_subtle":"%5","accent_link":"%6"})")
-        .arg(p.bg_base, p.bg_dark, p.text_primary, p.text_dim, p.border_subtle, p.accent_link);
+        R"({"bg_base":"%1","bg_dark":"%2","bg_panel":"%3","text_primary":"%4",)"
+        R"("text_dim":"%5","text_muted":"%6","border_subtle":"%7","accent_link":"%8"})")
+        .arg(p.bg_base, p.bg_dark, p.bg_panel, p.text_primary,
+             p.text_dim, p.text_muted, p.border_subtle, p.accent_link);
     runJs(QStringLiteral("applyTheme(%1)").arg(json));
 }
 

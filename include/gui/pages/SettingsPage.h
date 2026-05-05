@@ -1,14 +1,15 @@
 /**
  * @file SettingsPage.h
- * @brief Floating settings window with General, About, and Developer tabs.
+ * @brief Floating settings window with sidebar navigation.
  *
  * SettingsPage is opened as a top-level window from the toolbar settings button.
  * Settings are persisted to QSettings on close and restored on show via SettingsKeys.h.
  *
- * Tabs:
- *  - General  — UI font size, UI sounds toggle.
- *  - About    — Application version, description, license, repository link.
- *  - Developer — Debug mode toggle, system info, event log, developer helper.
+ * Sections (sidebar):
+ *  - Appearance  — Skin picker, font size.
+ *  - Data        — Unit system, UI sounds toggle.
+ *  - Developer   — Debug mode toggle, system info, developer reference.
+ *  - About       — Application version, description, license, repository link.
  */
 
 #ifndef COSMO_SOFT_SETTINGSPAGE_H
@@ -21,14 +22,15 @@ class QCloseEvent;
 class QComboBox;
 class QGroupBox;
 class QLabel;
+class QListWidget;
 class QPushButton;
 class QShowEvent;
-class QTabWidget;
-class EventLogPage;
+class QStackedWidget;
 
 /**
  * @class SettingsPage
- * @brief Tabbed settings window for CosmoSoft appearance, about info, and developer tools.
+ * @brief Sidebar-navigated settings window for CosmoSoft appearance,
+ *        data preferences, developer tools, and about info.
  */
 class SettingsPage : public QWidget {
     Q_OBJECT
@@ -39,19 +41,6 @@ public:
 
     /** @brief Returns true when the developer debug mode toggle is checked. */
     [[nodiscard]] bool debugModeEnabled() const;
-
-public slots:
-    /**
-     * @brief Appends a timestamped informational entry to the embedded event log.
-     * @param text Human-readable event description.
-     */
-    void appendLogEntry(const QString &text);
-
-    /**
-     * @brief Appends a timestamped error entry (shown in red) to the embedded event log.
-     * @param text Human-readable error description.
-     */
-    void appendLogError(const QString &text);
 
 signals:
     /**
@@ -77,42 +66,48 @@ private slots:
     void onDebugModeToggled(bool enabled);
     void onSkinChanged(int index);
     void onImportSkin();
+    void onThemeChanged();
 
 private:
     void buildUi();
-    QWidget *buildGeneralTab();
-    QWidget *buildAboutTab();
-    QWidget *buildDeveloperTab();
+    QWidget *buildAppearanceSection();
+    QWidget *buildDataSection();
+    QWidget *buildDeveloperSection();
+    QWidget *buildAboutSection();
 
     void loadFromSettings();
     void saveToSettings();
 
+    /** @brief Rebuilds the page-local stylesheet from the active theme palette. */
+    void refreshStyleSheet();
+
     /** @brief Applies @p pt as the application-wide font point size. */
     void applyFontPointSize(int pt);
 
-    // ── Tab container ─────────────────────────────────────────────────────────
-    QTabWidget *m_tabs = nullptr;
+    // ── Navigation ────────────────────────────────────────────────────────────
+    QListWidget   *m_nav   = nullptr;
+    QStackedWidget *m_pages = nullptr;
 
-    // ── General tab ───────────────────────────────────────────────────────────
-    QGroupBox   *m_skinGroup       = nullptr;
-    QComboBox   *m_skinCombo       = nullptr;
-    QPushButton *m_importSkinBtn   = nullptr;
+    // ── Appearance section ────────────────────────────────────────────────────
+    QGroupBox   *m_skinGroup     = nullptr;
+    QComboBox   *m_skinCombo     = nullptr;
+    QPushButton *m_importSkinBtn = nullptr;
 
-    QGroupBox *m_fontGroup        = nullptr;
-    QComboBox *m_fontSizeCombo    = nullptr;
-    QLabel    *m_fontPreview      = nullptr;
+    QGroupBox *m_fontGroup     = nullptr;
+    QComboBox *m_fontSizeCombo = nullptr;
+    QLabel    *m_fontPreview   = nullptr;
 
-    QGroupBox *m_unitsGroup       = nullptr;
-    QComboBox *m_unitSystemCombo  = nullptr;
+    // ── Data section ──────────────────────────────────────────────────────────
+    QGroupBox *m_unitsGroup      = nullptr;
+    QComboBox *m_unitSystemCombo = nullptr;
 
-    QGroupBox *m_soundGroup       = nullptr;
-    QCheckBox *m_uiSoundsCheck    = nullptr;
+    QGroupBox *m_soundGroup    = nullptr;
+    QCheckBox *m_uiSoundsCheck = nullptr;
 
-    // ── Developer tab ─────────────────────────────────────────────────────────
-    QCheckBox    *m_debugModeCheck = nullptr;
-    QLabel       *m_sysInfoLabel   = nullptr;
-    QGroupBox    *m_sysInfoGroup   = nullptr;
-    EventLogPage *m_eventLog       = nullptr;
+    // ── Developer section ─────────────────────────────────────────────────────
+    QCheckBox *m_debugModeCheck = nullptr;
+    QLabel    *m_sysInfoLabel   = nullptr;
+    QGroupBox *m_sysInfoGroup   = nullptr;
 };
 
 #endif // COSMO_SOFT_SETTINGSPAGE_H

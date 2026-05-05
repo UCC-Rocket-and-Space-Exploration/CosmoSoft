@@ -46,34 +46,38 @@ EventLogPage::EventLogPage(QWidget *parent)
         }
         #eventLogEdit {
             background-color: %1;
-            color: #d0d0d0;
-            font-family: %2;
-            font-size: %3px;
+            color: %2;
+            font-family: %3;
+            font-size: %4px;
             border: none;
             padding: 12px 16px;
         }
         #eventLogFooter {
-            background-color: #1e1e20;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            background-color: %5;
+            border-top: 1px solid %6;
         }
         #eventLogClearBtn {
-            border: 1px solid #5a5a5a;
-            border-radius: %4px;
+            border: 1px solid %7;
+            border-radius: %8px;
             padding: 4px 12px;
             min-height: 26px;
-            background-color: #2e2e32;
-            color: #c0c0c0;
-            font-size: %5px;
-            font-family: %2;
+            background-color: %9;
+            color: %2;
+            font-size: )"_s + QString::number(Theme::kFontSizeSm) + uR"(px;
+            font-family: %3;
         }
-        #eventLogClearBtn:hover  { background-color: #3a3a3e; }
-        #eventLogClearBtn:pressed { background-color: #222224; }
+        #eventLogClearBtn:hover  { background-color: )"_s + Theme::kBtnHover() + uR"(; }
+        #eventLogClearBtn:pressed { background-color: )"_s + Theme::kBtnPressed() + uR"(; }
     )"_s)
-            .arg(Theme::kBgDark())
-            .arg(Theme::kFontMono)
-            .arg(Theme::kFontSizeBase)
-            .arg(Theme::kRadiusSm)
-            .arg(Theme::kFontSizeSm));
+            .arg(Theme::kBgDark())          // %1
+            .arg(Theme::kTextPrimary())     // %2
+            .arg(Theme::kFontMono)          // %3
+            .arg(Theme::kFontSizeBase)      // %4
+            .arg(Theme::kBgPanel())         // %5
+            .arg(Theme::kBorderSubtle())    // %6
+            .arg(Theme::kBorderDefault())   // %7
+            .arg(Theme::kRadiusSm)          // %8
+            .arg(Theme::kBgButton()));      // %9
 
     appendEntry(u"Event log started."_s);
 }
@@ -84,9 +88,10 @@ void EventLogPage::appendEntry(const QString &text) {
     }
     const QString ts = QDateTime::currentDateTime().toString(u"HH:mm:ss"_s);
     m_log->appendHtml(
-        QStringLiteral("<span style=\"color:#6a8fa0\">[%1]</span>&nbsp;"
-                       "<span style=\"color:#d0d0d0\">%2</span>")
-            .arg(ts.toHtmlEscaped(), text.toHtmlEscaped()));
+        QStringLiteral("<span style=\"color:%1\">[%2]</span>&nbsp;"
+                       "<span style=\"color:%3\">%4</span>")
+            .arg(Theme::kTextDim(), ts.toHtmlEscaped(),
+                 Theme::kTextPrimary(), text.toHtmlEscaped()));
 }
 
 void EventLogPage::appendError(const QString &text) {
@@ -95,9 +100,10 @@ void EventLogPage::appendError(const QString &text) {
     }
     const QString ts = QDateTime::currentDateTime().toString(u"HH:mm:ss"_s);
     m_log->appendHtml(
-        QStringLiteral("<span style=\"color:#6a8fa0\">[%1]</span>&nbsp;"
-                       "<span style=\"color:#e05555\">ERROR: %2</span>")
-            .arg(ts.toHtmlEscaped(), text.toHtmlEscaped()));
+        QStringLiteral("<span style=\"color:%1\">[%2]</span>&nbsp;"
+                       "<span style=\"color:%3\">ERROR: %4</span>")
+            .arg(Theme::kTextDim(), ts.toHtmlEscaped(),
+                 Theme::kError(), text.toHtmlEscaped()));
 }
 
 void EventLogPage::onClearLog() {

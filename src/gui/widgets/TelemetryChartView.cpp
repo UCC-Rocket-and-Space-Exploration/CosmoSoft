@@ -120,15 +120,18 @@ TelemetryChartView::TelemetryChartView(QChart *c, QWidget *parent)
     m_hoverOverlay->setWordWrap(true);
     m_hoverOverlay->setMaximumWidth(420);
     m_hoverOverlay->setStyleSheet(
-        QString(u"background-color: rgba(10,11,14,220);"
-                u"color: #c8d4e0;"
-                u"font-size: %1px;"
-                u"font-family: %2;"
-                u"border: 1px solid #4a4d56;"
+        QString(u"background-color: %1;"
+                u"color: %2;"
+                u"font-size: %3px;"
+                u"font-family: %4;"
+                u"border: 1px solid %5;"
                 u"border-radius: 6px;"
                 u"padding: 6px 8px;"_s)
+            .arg(Theme::kBgDark())
+            .arg(Theme::kTextPrimary())
             .arg(Theme::kFontSizeSm)
-            .arg(Theme::kFontMono));
+            .arg(Theme::kFontMono)
+            .arg(Theme::kBorderPanel()));
     m_hoverOverlay->hide();
     m_crosshairOverlay->raise();
 

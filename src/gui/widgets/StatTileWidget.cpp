@@ -12,23 +12,25 @@
 
 using namespace Qt::StringLiterals;
 
-StatTileWidget::StatTileWidget(const QString &label,
-                               const QString &initialValue,
-                               QWidget *parent)
-    : QFrame(parent)
+namespace {
+
+QString buildTileQss(const QString &accentBorder = QString())
 {
-    // Self-contained stylesheet so the tile looks correct on any parent.
-    setStyleSheet(
-        QString(uR"(
+    const QString topBorder = accentBorder.isEmpty()
+        ? QString()
+        : QStringLiteral("border-top: 2px solid %1;").arg(accentBorder);
+
+    return QString(uR"(
         StatTileWidget {
-            background-color: rgba(21, 22, 25, 0.88);
-            border: 1px solid %1;
-            border-radius: %2px;
+            background-color: %1;
+            border: 1px solid %2;
+            %3
+            border-radius: %4px;
         }
         StatTileWidget QLabel[kind="statLabel"] {
-            font-size: %3px;
-            font-family: %4;
-            color: %5;
+            font-size: %5px;
+            font-family: %6;
+            color: %7;
             letter-spacing: 1px;
             background: transparent;
             border: none;
@@ -36,18 +38,30 @@ StatTileWidget::StatTileWidget(const QString &label,
         StatTileWidget QLabel[kind="statValue"] {
             font-size: 20px;
             font-weight: 700;
-            font-family: %4;
-            color: %6;
+            font-family: %6;
+            color: %8;
             background: transparent;
             border: none;
         }
     )"_s)
-            .arg(Theme::kBorderPanel())
-            .arg(Theme::kRadiusMd)
-            .arg(Theme::kFontSizeBase)
-            .arg(Theme::kFontMono)
-            .arg(Theme::kTextMuted())
-            .arg(Theme::kTextPrimary()));
+        .arg(Theme::kBgPanel())
+        .arg(Theme::kBorderPanel())
+        .arg(topBorder)
+        .arg(Theme::kRadiusMd)
+        .arg(Theme::kFontSizeBase)
+        .arg(Theme::kFontMono)
+        .arg(Theme::kTextMuted())
+        .arg(Theme::kTextPrimary());
+}
+
+} // namespace
+
+StatTileWidget::StatTileWidget(const QString &label,
+                               const QString &initialValue,
+                               QWidget *parent)
+    : QFrame(parent)
+{
+    setStyleSheet(buildTileQss());
 
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(12, 8, 12, 8);
@@ -79,38 +93,7 @@ void StatTileWidget::setLabel(const QString &text)
 
 void StatTileWidget::setAccentColor(const QColor &color)
 {
-    setStyleSheet(
-        QString(uR"(
-        StatTileWidget {
-            background-color: rgba(21, 22, 25, 0.88);
-            border: 1px solid %1;
-            border-top: 2px solid %7;
-            border-radius: %2px;
-        }
-        StatTileWidget QLabel[kind="statLabel"] {
-            font-size: %3px;
-            font-family: %4;
-            color: %5;
-            letter-spacing: 1px;
-            background: transparent;
-            border: none;
-        }
-        StatTileWidget QLabel[kind="statValue"] {
-            font-size: 20px;
-            font-weight: 700;
-            font-family: %4;
-            color: %6;
-            background: transparent;
-            border: none;
-        }
-    )"_s)
-            .arg(Theme::kBorderPanel())
-            .arg(Theme::kRadiusMd)
-            .arg(Theme::kFontSizeBase)
-            .arg(Theme::kFontMono)
-            .arg(Theme::kTextMuted())
-            .arg(Theme::kTextPrimary())
-            .arg(color.name(QColor::HexRgb)));
+    setStyleSheet(buildTileQss(color.name(QColor::HexRgb)));
 }
 
 void StatTileWidget::paintEvent(QPaintEvent *event)

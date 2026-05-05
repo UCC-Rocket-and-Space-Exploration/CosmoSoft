@@ -1,6 +1,7 @@
 #include "gui/widgets/TracesPanel.h"
 
 #include "gui/Theme.h"
+#include "gui/ThemeManager.h"
 #include "gui/widgets/MetricDefs.h"
 
 #include <QCheckBox>
@@ -55,81 +56,9 @@ TracesPanel::TracesPanel(QWidget *parent)
     setObjectName(u"tracesPanel"_s);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
 
-    const auto borderPanel = Theme::kBorderPanel();
-    const auto fontMono = QString::fromUtf8(Theme::kFontMono);
-    const auto textMuted = Theme::kTextMuted();
-    const auto textPrimary = Theme::kTextPrimary();
-    const auto bgPanel = Theme::kBgPanel();
-    const auto borderLight = Theme::kBorderLight();
-
-    setStyleSheet(
-        QString(uR"(
-        QFrame#tracesPanel {
-            background-color: %1;
-            border: 1px solid %2;
-            border-radius: %3px;
-        }
-        QLabel#tracesPanelTitle {
-            font-size: %4px;
-            font-family: %5;
-            color: %6;
-            letter-spacing: 2px;
-            padding-bottom: 2px;
-        }
-        QPushButton#tracesAllNoneBtn {
-            font-size: %4px;
-            font-family: %5;
-            color: %6;
-            background: transparent;
-            border: 1px solid %2;
-            border-radius: 12px;
-            padding: 5px 14px;
-            min-height: 28px;
-        }
-        QPushButton#tracesAllNoneBtn:hover {
-            color: %7;
-            border-color: %8;
-            background: rgba(128,128,128,0.08);
-        }
-        QFrame#traceSeparator { background-color: %2; border: none; }
-        QFrame#traceRow {
-            background-color: transparent;
-            border: none;
-            border-radius: 6px;
-        }
-        QFrame#traceRow:hover { background-color: rgba(128,128,128,0.06); }
-        QFrame#traceRow[noData="true"] QCheckBox#traceCheck { color: %6; }
-        QFrame#traceRow[noData="true"] QLabel#traceValueLabel { color: %6; }
-        QCheckBox#traceCheck {
-            font-size: %4px;
-            font-family: %5;
-            color: %7;
-            spacing: 0px;
-        }
-        QCheckBox#traceCheck::indicator {
-            width: 0px;
-            height: 0px;
-            border: none;
-            margin: 0px;
-            padding: 0px;
-        }
-        QLabel#traceValueLabel {
-            font-size: %9px;
-            font-family: %5;
-            color: %6;
-        }
-        QScrollArea#traceScroll { background: transparent; border: none; }
-        QWidget#traceScrollInner { background: transparent; }
-    )"_s)
-            .arg(bgPanel)                   // %1
-            .arg(borderPanel)               // %2
-            .arg(Theme::kRadiusMd)          // %3
-            .arg(Theme::kFontSizeBase)      // %4
-            .arg(fontMono)                  // %5
-            .arg(textMuted)                 // %6
-            .arg(textPrimary)               // %7
-            .arg(borderLight)               // %8
-            .arg(Theme::kFontSizeSm));      // %9
+    applyThemeStyleSheet();
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &TracesPanel::applyThemeStyleSheet);
 
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(8, 8, 8, 8);
@@ -243,6 +172,87 @@ TracesPanel::TracesPanel(QWidget *parent)
 std::array<bool, TracesPanel::kMetricCount> TracesPanel::enabledMetrics() const
 {
     return m_metricEnabled;
+}
+
+void TracesPanel::applyThemeStyleSheet()
+{
+    const auto borderPanel = Theme::kBorderPanel();
+    const auto fontMono = QString::fromUtf8(Theme::kFontMono);
+    const auto textMuted = Theme::kTextMuted();
+    const auto textPrimary = Theme::kTextPrimary();
+    const auto bgPanel = Theme::kBgPanel();
+    const auto borderLight = Theme::kBorderLight();
+
+    setStyleSheet(
+        QString(uR"(
+        QFrame#tracesPanel {
+            background-color: %1;
+            border: 1px solid %2;
+            border-radius: %3px;
+        }
+        QLabel#tracesPanelTitle {
+            font-size: %4px;
+            font-family: %5;
+            color: %6;
+            letter-spacing: 2px;
+            padding-bottom: 2px;
+        }
+        QPushButton#tracesAllNoneBtn {
+            font-size: %4px;
+            font-family: %5;
+            color: %6;
+            background: transparent;
+            border: 1px solid %2;
+            border-radius: 12px;
+            padding: 5px 14px;
+            min-height: 28px;
+        }
+        QPushButton#tracesAllNoneBtn:hover {
+            color: %7;
+            border-color: %8;
+            background: rgba(128,128,128,0.08);
+        }
+        QFrame#traceSeparator { background-color: %2; border: none; }
+        QFrame#traceRow {
+            background-color: transparent;
+            border: none;
+            border-radius: 6px;
+        }
+        QFrame#traceRow:hover { background-color: rgba(128,128,128,0.06); }
+        QFrame#traceRow[noData="true"] QCheckBox#traceCheck { color: %6; }
+        QFrame#traceRow[noData="true"] QLabel#traceValueLabel { color: %6; }
+        QCheckBox#traceCheck {
+            font-size: %4px;
+            font-family: %5;
+            color: %7;
+            spacing: 0px;
+        }
+        QCheckBox#traceCheck::indicator {
+            width: 0px;
+            height: 0px;
+            border: none;
+            margin: 0px;
+            padding: 0px;
+        }
+        QLabel#traceValueLabel {
+            font-size: %9px;
+            font-family: %5;
+            color: %6;
+        }
+        QScrollArea#traceScroll { background: transparent; border: none; }
+        QWidget#traceScrollInner { background: transparent; }
+    )"_s)
+            .arg(bgPanel)                   // %1
+            .arg(borderPanel)               // %2
+            .arg(Theme::kRadiusMd)          // %3
+            .arg(Theme::kFontSizeBase)      // %4
+            .arg(fontMono)                  // %5
+            .arg(textMuted)                 // %6
+            .arg(textPrimary)               // %7
+            .arg(borderLight)               // %8
+            .arg(Theme::kFontSizeSm));      // %9
+
+    refreshSwatchStates();
 }
 
 void TracesPanel::setMetricsOffered(const std::array<bool, kMetricCount> &offered)

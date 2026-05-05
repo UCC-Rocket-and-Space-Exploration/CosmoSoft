@@ -3,6 +3,7 @@
 #include "gui/FlightDataModel.h"
 #include "gui/FlightReplayController.h"
 #include "gui/Theme.h"
+#include "gui/ThemeManager.h"
 #include "gui/widgets/MetricDefs.h"
 
 #include "domain/FlightSession.h"
@@ -122,6 +123,127 @@ ReplayBar::ReplayBar(FlightReplayController *replay,
     updateLabels();
 }
 
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
+void ReplayBar::applyThemeStyleSheet()
+{
+    const auto borderPanel = Theme::kBorderPanel();
+    const auto textDim = Theme::kTextDim();
+    const auto bgPanel = Theme::kBgPanel();
+    const auto accent = Theme::kAccentLink();
+    const auto textPri = Theme::kTextPrimary();
+    const auto borderDef = Theme::kBorderDefault();
+    const auto bgBtn = Theme::kBgButton();
+    const auto btnHov = Theme::kBtnHover();
+    const auto fontMono = QString::fromUtf8(Theme::kFontMono);
+
+    setStyleSheet(
+        QString(uR"(
+        QFrame#replayBar {
+            background-color: %1;
+            border: 1px solid %2;
+            border-radius: %3px;
+        }
+        QLabel#replayBarTitle {
+            font-size: 10px;
+            font-family: %4;
+            color: %5;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+        }
+        QLabel#replayRateLabel {
+            font-size: 10px;
+            font-family: %4;
+            color: %6;
+            letter-spacing: 0.5px;
+        }
+        QLabel#replaySampleCaption {
+            font-size: 10px;
+            font-family: %4;
+            color: %6;
+        }
+        QLabel#replayClockLabel {
+            font-size: %7px;
+            font-family: %4;
+            color: %8;
+            letter-spacing: 0.5px;
+            min-width: 36px;
+        }
+        QFrame#replayVDiv { background-color: %9; border: none; }
+        QSlider#replayScrubSlider::groove:horizontal {
+            height: 4px; background: %2; border-radius: 2px;
+        }
+        QSlider#replayScrubSlider::handle:horizontal {
+            background: %5; width: 10px; height: 10px;
+            margin: -3px 0; border-radius: 5px;
+        }
+        QSlider#replayScrubSlider::sub-page:horizontal { background: %5; border-radius: 2px; }
+        QSlider#replayScrubSlider:disabled::handle:horizontal { background: %2; }
+    )"_s)
+            .arg(bgPanel)                   // %1
+            .arg(borderPanel)               // %2
+            .arg(Theme::kRadiusMd)          // %3
+            .arg(fontMono)                  // %4
+            .arg(accent)                    // %5
+            .arg(textDim)                   // %6
+            .arg(Theme::kFontSizeSm)        // %7
+            .arg(textPri)                   // %8
+            .arg(borderDef)                 // %9
+    + QString(uR"(
+        QToolButton#replayTransportBtn, QToolButton#replaySkipBtn {
+            background: %1;
+            border: 1px solid %2;
+            border-radius: %3px;
+            padding: 2px;
+            min-width: 30px; max-width: 30px;
+            min-height: 30px; max-height: 30px;
+            color: %4;
+        }
+        QToolButton#replayTransportBtn:hover, QToolButton#replaySkipBtn:hover {
+            background: %5; border-color: %6;
+        }
+        QToolButton#replayTransportBtn:disabled, QToolButton#replaySkipBtn:disabled {
+            color: %7; border-color: %2;
+        }
+        QToolButton#replayPlayPauseBtn {
+            background: %1;
+            border: 1px solid %8;
+            border-radius: %3px;
+            padding: 2px;
+            min-width: 30px; max-width: 30px;
+            min-height: 30px; max-height: 30px;
+            color: %4;
+        }
+        QToolButton#replayPlayPauseBtn:hover { background: %5; border-color: %8; }
+        QToolButton#replayPlayPauseBtn:disabled { background: %1; border-color: %2; color: %7; }
+        QComboBox#replaySpeedCombo {
+            font-size: %9px;
+            font-family: )"_s + fontMono + uR"(;
+            font-weight: 700;
+            background: %1;
+            border: 1px solid %8;
+            border-radius: 12px;
+            padding: 3px 8px;
+            color: %4;
+            min-width: 52px;
+        }
+        QComboBox#replaySpeedCombo:hover {
+            background: %5;
+            border-color: %8;
+        }
+        QComboBox#replaySpeedCombo:disabled { color: %7; background: %1; border-color: %2; }
+    )"_s)
+            .arg(bgBtn)                     // %1
+            .arg(borderPanel)               // %2
+            .arg(Theme::kRadiusSm)          // %3
+            .arg(textPri)                   // %4
+            .arg(btnHov)                    // %5
+            .arg(borderDef)                 // %6
+            .arg(textDim)                   // %7
+            .arg(accent)                    // %8
+            .arg(Theme::kFontSizeSm));      // %9
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 void ReplayBar::setSession(const FlightSession *session)
@@ -235,155 +357,9 @@ void ReplayBar::buildUi()
         u"Replay controls · Space: play/pause · Left/Right: step frame · "
         u"Click here first to capture keys"_s);
 
-    const auto borderPanel = Theme::kBorderPanel();
-    const auto textDim = Theme::kTextDim();
-    const auto bgPanel = Theme::kBgPanel();
-    const auto accent = Theme::kAccentLink();
-    const auto textPri = Theme::kTextPrimary();
-    const auto borderDef = Theme::kBorderDefault();
-    const auto bgBtn = Theme::kBgButton();
-    const auto btnHov = Theme::kBtnHover();
-    const auto fontMono = QString::fromUtf8(Theme::kFontMono);
-
-    setStyleSheet(
-        QString(uR"(
-        QFrame#replayBar {
-            background-color: %1;
-            border: 1px solid %2;
-            border-radius: %3px;
-        }
-        QLabel#replayBarTitle {
-            font-size: 10px;
-            font-family: %4;
-            color: %5;
-            letter-spacing: 1.5px;
-            font-weight: 700;
-        }
-        QLabel#replayRateLabel {
-            font-size: 10px;
-            font-family: %4;
-            color: %6;
-            letter-spacing: 0.5px;
-        }
-        QLabel#replaySampleCaption {
-            font-size: 10px;
-            font-family: %4;
-            color: %6;
-        }
-        QLabel#replayClockLabel {
-            font-size: %7px;
-            font-family: %4;
-            color: %8;
-            letter-spacing: 0.5px;
-            min-width: 36px;
-        }
-        QFrame#replayVDiv { background-color: %9; border: none; }
-        QSlider#replayScrubSlider::groove:horizontal {
-            height: 4px; background: %2; border-radius: 2px;
-        }
-        QSlider#replayScrubSlider::handle:horizontal {
-            background: %5; width: 10px; height: 10px;
-            margin: -3px 0; border-radius: 5px;
-        }
-        QSlider#replayScrubSlider::sub-page:horizontal { background: %5; border-radius: 2px; }
-        QSlider#replayScrubSlider:disabled::handle:horizontal { background: %2; }
-    )"_s)
-            .arg(bgPanel)                   // %1
-            .arg(borderPanel)               // %2
-            .arg(Theme::kRadiusMd)          // %3
-            .arg(fontMono)                  // %4
-            .arg(accent)                    // %5
-            .arg(textDim)                   // %6
-            .arg(Theme::kFontSizeSm)        // %7
-            .arg(textPri)                   // %8
-            .arg(borderDef)                 // %9
-    + QString(uR"(
-        QToolButton#replayTransportBtn, QToolButton#replaySkipBtn {
-            background: %1;
-            border: 1px solid %2;
-            border-radius: %3px;
-            padding: 2px;
-            min-width: 30px; max-width: 30px;
-            min-height: 30px; max-height: 30px;
-            color: %4;
-        }
-        QToolButton#replayTransportBtn:hover, QToolButton#replaySkipBtn:hover {
-            background: %5; border-color: %6;
-        }
-        QToolButton#replayTransportBtn:disabled, QToolButton#replaySkipBtn:disabled {
-            color: %7; border-color: %2;
-        }
-        QToolButton#replayPlayPauseBtn {
-            background: %1;
-            border: 1px solid %8;
-            border-radius: %3px;
-            padding: 2px;
-            min-width: 30px; max-width: 30px;
-            min-height: 30px; max-height: 30px;
-            color: %4;
-        }
-        QToolButton#replayPlayPauseBtn:hover { background: %5; border-color: %8; }
-        QToolButton#replayPlayPauseBtn:disabled { background: %1; border-color: %2; color: %7; }
-        QComboBox#replaySpeedCombo {
-            font-size: %9px;
-            font-family: )"_s + fontMono + uR"(;
-            font-weight: 700;
-            background: %1;
-            border: 1px solid %8;
-            border-radius: 12px;
-            padding: 3px 22px 3px 10px;
-            color: %4;
-            min-width: 64px;
-        }
-        QComboBox#replaySpeedCombo::drop-down {
-            subcontrol-origin: padding;
-            subcontrol-position: center right;
-            width: 16px;
-            border: none;
-            right: 4px;
-        }
-        QComboBox#replaySpeedCombo::down-arrow {
-            image: none;
-            width: 0; height: 0;
-            border-left: 4px solid transparent;
-            border-right: 4px solid transparent;
-            border-top: 5px solid %4;
-        }
-        QComboBox#replaySpeedCombo::down-arrow:disabled {
-            border-top-color: %7;
-        }
-        QComboBox#replaySpeedCombo:hover {
-            background: %5;
-            border-color: %8;
-        }
-        QComboBox#replaySpeedCombo:disabled { color: %7; background: %1; border-color: %2; }
-        QComboBox#replaySpeedCombo QAbstractItemView {
-            background: %1;
-            border: 1px solid %8;
-            border-radius: 6px;
-            padding: 4px 0px;
-            outline: none;
-            selection-background-color: %5;
-            selection-color: %4;
-            color: %4;
-            font-size: %9px;
-            font-family: )"_s + fontMono + uR"(;
-            font-weight: 700;
-        }
-        QComboBox#replaySpeedCombo QAbstractItemView::item {
-            min-height: 24px;
-            padding: 4px 10px;
-        }
-    )"_s)
-            .arg(bgBtn)                     // %1
-            .arg(borderPanel)               // %2
-            .arg(Theme::kRadiusSm)          // %3
-            .arg(textPri)                   // %4
-            .arg(btnHov)                    // %5
-            .arg(borderDef)                 // %6
-            .arg(textDim)                   // %7
-            .arg(accent)                    // %8
-            .arg(Theme::kFontSizeSm));      // %9
+    applyThemeStyleSheet();
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &ReplayBar::applyThemeStyleSheet);
 
     auto *outer = new QVBoxLayout(this);
     outer->setContentsMargins(10, 8, 10, 8);

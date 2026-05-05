@@ -21,6 +21,7 @@ class QProgressBar;
 class QTimer;
 class QToolButton;
 class QValueAxis;
+class QVBoxLayout;
 
 class FlightDataModel;
 class FlightReplayController;
@@ -101,13 +102,21 @@ private:
 
     // ── Chart helpers ─────────────────────────────────────────────────────────
 
+    /** Common chart-building pipeline shared by replay and live chart rebuilds. */
+    void buildChartFromSamples(const std::vector<FlightSample> &samples, int end);
+
+    /** Builds the chart toolbar and populates all toolbar member pointers. */
+    void buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHeaderLay);
+
     /** Zooms both axes in or out by one step, centered on the current view. */
     void zoomChartAxesAtCenter(bool zoomIn);
 
     /** Dispatches to rebuildReplayCharts or rebuildLiveSeriesFromHistory depending on mode. */
     void refreshAllSeriesFromData();
     void applyChartTheme();
+    void refreshPageStyleSheet();
     void updateChartStatsLabel();
+    [[nodiscard]] static QString buildDashboardQss();
 
     /**
      * Applies per-series point-marker and label visibility based on point count
@@ -149,7 +158,17 @@ private:
     QToolButton  *m_showMarkersToggle     = nullptr;
     QToolButton  *m_showPointValuesToggle = nullptr;
     QToolButton  *m_followToggle          = nullptr;
+    QToolButton  *m_tracesToggleBtn       = nullptr;
     QLabel       *m_chartStatsLabel       = nullptr;
+
+    // ── Graph-only toolbar groups (hidden in Map view) ────────────────────────
+    QWidget *m_zoomGroup    = nullptr;
+    QWidget *m_toggleGroup  = nullptr;
+    QWidget *m_actionGroup  = nullptr;
+    QWidget *m_chartHelpBtn = nullptr;
+
+    /** Shows/hides toolbar buttons appropriate to the current view (Graph vs Map). */
+    void updateToolbarForView();
 
     // ── Chart loading indicator ─────────────────────────────────────────────
     QProgressBar *m_chartLoadingBar = nullptr;

@@ -11,8 +11,7 @@
  *  - Serial port management: scan, connect, disconnect.
  *  - Flight-log loading (CSV / .telem) via QtConcurrent and QProgressDialog.
  *  - Session recording and export via FlightLogManager.
- *  - Routing parsed samples and errors to the data model and the event log
- *    embedded inside the settings window.
+ *  - Routing parsed samples and errors to the data model.
  *  - Keeping the toolbar, connection bar, and telemetry strip in sync with the
  *    active page and connection/replay state.
  */
@@ -85,6 +84,8 @@ private:
     void setupToolbar();
     void setupDataBar();
     void setupConnectionBar();
+    [[nodiscard]] QString buildToolbarStyleSheet();
+    [[nodiscard]] QString buildDataBarStyleSheet();
     void loadSerialPrefsToUi();
     void persistSerialPrefs();
     void setupPages();
