@@ -81,6 +81,10 @@ private:
     int  m_lastTrailLength    = 0;
     QString m_replayActivityText;
 
+    // UI containers
+    QFrame *m_navButtonGroup = nullptr;
+    QLabel *m_statusPill     = nullptr;
+
     // Transport widgets
     QToolButton *m_playPauseBtn        = nullptr;
     QToolButton *m_stopBtn             = nullptr;

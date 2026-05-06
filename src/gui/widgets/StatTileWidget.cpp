@@ -1,6 +1,7 @@
 #include "gui/widgets/StatTileWidget.h"
 
 #include "gui/Theme.h"
+#include "gui/ThemeManager.h"
 #include "gui/ThemePainter.h"
 
 #include <QAccessible>
@@ -28,29 +29,30 @@ QString buildTileQss(const QString &accentBorder = QString())
             border-radius: %4px;
         }
         StatTileWidget QLabel[kind="statLabel"] {
-            font-size: %5px;
-            font-family: %6;
-            color: %7;
-            letter-spacing: 1px;
+            font-size: 11px;
+            color: %5;
+            letter-spacing: 0.04em;
             background: transparent;
             border: none;
+            text-transform: uppercase;
+            font-weight: 500;
         }
         StatTileWidget QLabel[kind="statValue"] {
             font-size: 20px;
-            font-weight: 700;
+            font-weight: 600;
             font-family: %6;
-            color: %8;
+            color: %7;
             background: transparent;
             border: none;
+            line-height: 1.2;
         }
     )"_s)
         .arg(Theme::kBgPanel())
         .arg(Theme::kBorderPanel())
         .arg(topBorder)
         .arg(Theme::kRadiusMd)
-        .arg(Theme::kFontSizeBase)
-        .arg(Theme::kFontMono)
         .arg(Theme::kTextMuted())
+        .arg(Theme::kFontMono)
         .arg(Theme::kTextPrimary());
 }
 
@@ -61,8 +63,6 @@ StatTileWidget::StatTileWidget(const QString &label,
                                QWidget *parent)
     : QFrame(parent)
 {
-    setStyleSheet(buildTileQss());
-
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(12, 8, 12, 8);
     layout->setSpacing(4);
@@ -76,6 +76,10 @@ StatTileWidget::StatTileWidget(const QString &label,
     layout->addWidget(m_valueLabel);
 
     setAccessibleName(QStringLiteral("%1: %2").arg(label, initialValue));
+
+    applyThemeStyleSheet();
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &StatTileWidget::applyThemeStyleSheet);
 }
 
 void StatTileWidget::setValue(const QString &text)
@@ -93,7 +97,16 @@ void StatTileWidget::setLabel(const QString &text)
 
 void StatTileWidget::setAccentColor(const QColor &color)
 {
-    setStyleSheet(buildTileQss(color.name(QColor::HexRgb)));
+    m_accentColor = color;
+    applyThemeStyleSheet();
+}
+
+void StatTileWidget::applyThemeStyleSheet()
+{
+    const QString accentBorder = m_accentColor.isValid()
+        ? m_accentColor.name(QColor::HexRgb)
+        : QString();
+    setStyleSheet(buildTileQss(accentBorder));
 }
 
 void StatTileWidget::paintEvent(QPaintEvent *event)

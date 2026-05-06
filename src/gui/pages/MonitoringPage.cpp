@@ -2,7 +2,9 @@
 
 #include "gui/FlightDataModel.h"
 #include "gui/Theme.h"
+#include "gui/ThemeManager.h"
 #include "gui/ThemePainter.h"
+#include "gui/LayoutHelpers.h"
 #include "gui/widgets/MetricDefs.h"
 #include "gui/widgets/StatTileWidget.h"
 
@@ -27,32 +29,13 @@ MonitoringPage::MonitoringPage(FlightDataModel *model, QWidget *parent)
     setAutoFillBackground(false);
 
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(24, 24, 24, 24);
-    root->setSpacing(16);
+    LayoutHelpers::setPageMargins(root);
+    LayoutHelpers::setGenerousSpacing(root);
 
     // ── Status label (shown while waiting for first sample) ──────────────────
-    m_statusLabel = new QLabel(
-        u"Waiting for telemetry data.\n\n"
-        u"Connect a serial port using the controls above, or open a flight log via "
-        u"File → Open log… to get started."_s,
-        this);
+    m_statusLabel = new QLabel(this);
+    m_statusLabel->setTextFormat(Qt::RichText);
     m_statusLabel->setWordWrap(true);
-    m_statusLabel->setStyleSheet(
-        QString(uR"(
-        QLabel {
-            background-color: %1;
-            border: 1px solid %2;
-            border-radius: %3px;
-            padding: 14px 16px;
-            color: %4;
-            font-size: %5px;
-        }
-    )"_s)
-            .arg(Theme::kBgPanel())
-            .arg(Theme::kBorderPanel())
-            .arg(Theme::kRadiusMd)
-            .arg(Theme::kTextPrimary())
-            .arg(Theme::kFontSizeMd));
     root->addWidget(m_statusLabel);
 
     // ── Stat tile grid ───────────────────────────────────────────────────────
@@ -66,8 +49,8 @@ MonitoringPage::MonitoringPage(FlightDataModel *model, QWidget *parent)
     )"_s);
 
     auto *grid = new QGridLayout(tilesFrame);
-    grid->setContentsMargins(0, 0, 0, 0);
-    grid->setSpacing(10);
+    LayoutHelpers::setZeroMargins(grid);
+    grid->setSpacing(Theme::kSpaceSm + Theme::kSpaceXs);  // 10px = 6 + 4
 
     constexpr int kCols = 3;
     for (int i = 0; i < kTileCount; ++i) {
@@ -78,6 +61,10 @@ MonitoringPage::MonitoringPage(FlightDataModel *model, QWidget *parent)
 
     root->addWidget(tilesFrame);
     root->addStretch(1);
+
+    applyThemeStyleSheet();
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &MonitoringPage::applyThemeStyleSheet);
 
     if (m_model) {
         connect(m_model, &FlightDataModel::sampleUpdated, this, &MonitoringPage::onSampleUpdated);
@@ -97,6 +84,34 @@ void MonitoringPage::onSampleUpdated(const FlightSample &sample)
                                     ? QString{}
                                     : u" "_s + metricAxisUnitShort(i));
         m_tiles[static_cast<std::size_t>(i)]->setValue(text);
+    }
+}
+
+void MonitoringPage::applyThemeStyleSheet()
+{
+    if (m_statusLabel) {
+        m_statusLabel->setText(
+            QString(u"<div style='text-align: center; line-height: 1.6;'>"
+            u"<p style='font-size: 14px; font-weight: 600; margin-bottom: 8px;'>Waiting for telemetry data</p>"
+            u"<p style='font-size: 12px; color: %1;'>Connect a serial port using the controls above, or open a flight log via <strong>File → Open log…</strong> to get started.</p>"
+            u"</div>").arg(Theme::kTextMuted()));
+
+        m_statusLabel->setStyleSheet(
+            QString(uR"(
+            QLabel {
+                background-color: %1;
+                border: 1px solid %2;
+                border-radius: %3px;
+                padding: 14px 16px;
+                color: %4;
+                font-size: %5px;
+            }
+        )"_s)
+                .arg(Theme::kBgPanel())
+                .arg(Theme::kBorderPanel())
+                .arg(Theme::kRadiusMd)
+                .arg(Theme::kTextPrimary())
+                .arg(Theme::kFontSizeMd));
     }
 }
 

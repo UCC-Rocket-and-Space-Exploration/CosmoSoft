@@ -9,6 +9,7 @@
 #include "gui/SettingsKeys.h"
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
+#include "gui/LayoutHelpers.h"
 #include "services/persistence/FlightLogManager.h"
 #include "gui/FlightReplayController.h"
 #include "gui/pages/DashboardPage.h"
@@ -306,10 +307,11 @@ QString MainWindow::buildToolbarStyleSheet() {
         }
         QWidget#brandBlock QLabel#brandLabel {
             font-size: 26px;
-            font-weight: 400;
+            font-weight: 500;
             font-family: %2;
-            letter-spacing: 3px;
+            letter-spacing: 0.05em;
             color: %3;
+            line-height: 1.2;
         }
         QWidget#brandBlock QLabel#missionMeta {
             font-size: 14px;
@@ -320,7 +322,7 @@ QString MainWindow::buildToolbarStyleSheet() {
             font-size: 15px;
             font-weight: 600;
             color: %4;
-            letter-spacing: 2px;
+            letter-spacing: 0.08em;
             font-family: %5;
         }
         QToolButton[kind="navButton"] {
@@ -391,20 +393,20 @@ QString MainWindow::buildDataBarStyleSheet() {
         QWidget#telemetryStrip QLabel#telemetryStripPage {
             font-size: %4px;
             color: %5;
-            letter-spacing: 3px;
+            letter-spacing: 0.08em;
             font-weight: 600;
-            font-family: %6;
+            text-transform: uppercase;
         }
         QWidget#telemetryStrip QLabel#telemetryBadge {
             font-size: %7px;
             color: %2;
-            letter-spacing: 1px;
+            letter-spacing: 0.04em;
             font-family: %6;
         }
         QWidget#telemetryStrip QLabel#telemetryDropBadge {
             font-size: %7px;
             color: %8;
-            letter-spacing: 1px;
+            letter-spacing: 0.04em;
             font-family: %6;
         }
     )"_s)
@@ -430,14 +432,17 @@ void MainWindow::setupToolbar() {
 
     auto *text_shadow = new QGraphicsDropShadowEffect(this);
     text_shadow->setBlurRadius(5);
-    text_shadow->setColor(QColor(0, 0, 0, 160));
+    // Use semi-transparent black shadow that works on both light and dark themes
+    QColor shadowColor = QColor(Theme::kBgBase());
+    shadowColor = shadowColor.lightness() > 128 ? QColor(0, 0, 0, 100) : QColor(0, 0, 0, 160);
+    text_shadow->setColor(shadowColor);
     text_shadow->setOffset(1, 1);
 
     auto *content = new QWidget(toolbar);
     content->setObjectName(u"toolbarContent"_s);
     auto *contentLayout = new QHBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(24);
+    LayoutHelpers::setZeroMargins(contentLayout);
+    contentLayout->setSpacing(Theme::kSpaceXl);
 
     auto *brandBlock = new QWidget(content);
     brandBlock->setObjectName(u"brandBlock"_s);
@@ -445,19 +450,19 @@ void MainWindow::setupToolbar() {
     auto *brandLayout = new QVBoxLayout(brandBlock);
     brandLayout->setContentsMargins(0, 0, 0, 0);
     brandLayout->setSpacing(2);
-    auto *brandLabel = new QLabel(
+    m_brandLabel = new QLabel(
         QString(u"Cosmo<span style=\"color:%1\">Soft</span>"_s).arg(Theme::kAccentLink()), brandBlock);
-    brandLabel->setObjectName(u"brandLabel"_s);
-    brandLabel->setTextFormat(Qt::RichText);
+    m_brandLabel->setObjectName(u"brandLabel"_s);
+    m_brandLabel->setTextFormat(Qt::RichText);
     const QVariant workbenchFamily = qApp->property("workbenchFontFamily");
     if (workbenchFamily.isValid()) {
-        QFont brandFont = brandLabel->font();
+        QFont brandFont = m_brandLabel->font();
         brandFont.setFamily(workbenchFamily.toString());
         brandFont.setPointSize(26);
         brandFont.setBold(true);
-        brandLabel->setFont(brandFont);
+        m_brandLabel->setFont(brandFont);
     }
-    brandLayout->addWidget(brandLabel);
+    brandLayout->addWidget(m_brandLabel);
 
     m_missionMetaLabel = new QLabel(u"GMT: --:--:-- | -- --- ----"_s, brandBlock);
     m_missionMetaLabel->setObjectName(u"missionMeta"_s);
@@ -790,11 +795,32 @@ void MainWindow::syncTelemetryStrip() {
 
     if (isMonitoringPageActive()) {
         m_dataStripPageLabel->setText(u"MONITORING"_s);
+        const bool connected = !m_serialPortSummary.isEmpty();
+        const bool hasErrors = m_lastDroppedCount > 0;
+
         if (m_serialPortSummary.isEmpty()) {
             m_dataLinkStatusLabel->setText(u"LINK: idle"_s);
         } else {
             m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1").arg(m_serialPortSummary));
         }
+
+        // Apply semantic colors to link status
+        QString bgColor, textColor;
+        if (hasErrors) {
+            bgColor = Theme::kWarningBg();
+            textColor = Theme::kWarning();
+        } else if (connected) {
+            bgColor = Theme::kSuccessBg();
+            textColor = Theme::kSuccess();
+        } else {
+            bgColor = Theme::kBgDark();
+            textColor = Theme::kTextMuted();
+        }
+        m_dataLinkStatusLabel->setStyleSheet(
+            QString("QLabel { background: %1; color: %2; padding: 4px 8px; "
+                    "border-radius: 4px; font-family: %3; }")
+                .arg(bgColor, textColor, Theme::kFontMono));
+
         return;
     }
 
@@ -1051,6 +1077,11 @@ void MainWindow::onThemeChanged() {
         toolbar->setStyleSheet(buildToolbarStyleSheet());
     }
 
+    if (m_brandLabel) {
+        m_brandLabel->setText(
+            QString(u"Cosmo<span style=\"color:%1\">Soft</span>"_s).arg(Theme::kAccentLink()));
+    }
+
     if (m_dataBar) {
         m_dataBar->setStyleSheet(buildDataBarStyleSheet());
     }
@@ -1070,6 +1101,9 @@ void MainWindow::onThemeChanged() {
                 .arg(Theme::kFontSizeBase)
                 .arg(Theme::kFontMono));
     }
+
+    // Refresh telemetry strip to reapply semantic colors with new theme
+    syncTelemetryStrip();
 }
 
 void MainWindow::onExportSession() {

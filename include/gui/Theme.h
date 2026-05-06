@@ -98,6 +98,32 @@ inline const QString &kError() { return cosmo::ThemeManager::instance().palette(
 /** @brief Selection background in combo pop-up views. */
 inline const QString &kSelectBg() { return cosmo::ThemeManager::instance().palette().select_bg; }
 
+// ── Semantic status colors ────────────────────────────────────────────────────
+
+/** @brief Success state foreground (confirmation, completed actions). */
+inline const QString &kSuccess()   { return cosmo::ThemeManager::instance().palette().success; }
+
+/** @brief Success background for status indicators. */
+inline const QString &kSuccessBg() { return cosmo::ThemeManager::instance().palette().success_bg; }
+
+/** @brief Warning state foreground (caution, non-critical alerts). */
+inline const QString &kWarning()   { return cosmo::ThemeManager::instance().palette().warning; }
+
+/** @brief Warning background for status indicators. */
+inline const QString &kWarningBg() { return cosmo::ThemeManager::instance().palette().warning_bg; }
+
+/** @brief Info state foreground (tips, neutral information). */
+inline const QString &kInfo()      { return cosmo::ThemeManager::instance().palette().info; }
+
+/** @brief Info background for status indicators. */
+inline const QString &kInfoBg()    { return cosmo::ThemeManager::instance().palette().info_bg; }
+
+/** @brief Focus ring color for keyboard navigation. */
+inline const QString &kFocusRing() { return cosmo::ThemeManager::instance().palette().focus_ring; }
+
+/** @brief Focus ring offset/shadow color. */
+inline const QString &kFocusRingOffset() { return cosmo::ThemeManager::instance().palette().focus_ring_offset; }
+
 // ── Font families (unchanged — not palette-dependent) ─────────────────────────
 
 /** @brief Monospace stack used for all data labels and UI controls. */
@@ -106,7 +132,13 @@ constexpr auto kFontMono    = R"("Red Hat Mono","Courier New","Roboto Mono",mono
 /** @brief Display stack used for the brand logo label. */
 constexpr auto kFontDisplay = R"("Workbench","Courier New","Roboto Mono",monospace)";
 
+/** @brief Sans-serif stack for UI labels, prose, descriptions (non-data). */
+constexpr auto kFontUI = R"("Inter","SF Pro Text",system-ui,-apple-system,BlinkMacSystemFont,sans-serif)";
+
 // ── Font sizes (px) ───────────────────────────────────────────────────────────
+
+/** @brief Extra small: captions, badges, metadata labels. */
+constexpr int kFontSizeXs  = 10;
 
 /** @brief Small UI text: buttons, captions, badges. */
 constexpr int kFontSizeSm   = 11;
@@ -117,6 +149,29 @@ constexpr int kFontSizeBase = 12;
 /** @brief Medium headings: section titles, debug checkbox. */
 constexpr int kFontSizeMd   = 13;
 
+/** @brief Large UI text: page titles, section headers. */
+constexpr int kFontSizeLg  = 14;
+
+/** @brief Extra large: brand logo, major headings. */
+constexpr int kFontSizeXl  = 16;
+
+/** @brief Display size: brand wordmark. */
+constexpr int kFontSize2xl = 20;
+
+/** @brief Brand logo size. */
+constexpr int kFontSize3xl = 26;
+
+// ── Line heights ──────────────────────────────────────────────────────────────
+
+/** @brief Tight line height for data displays, stat tiles. */
+constexpr double kLineHeightTight  = 1.2;
+
+/** @brief Base line height for UI labels, buttons. */
+constexpr double kLineHeightBase   = 1.4;
+
+/** @brief Relaxed line height for prose, tooltips, descriptions. */
+constexpr double kLineHeightRelaxed = 1.6;
+
 // ── Border radii (px) ─────────────────────────────────────────────────────────
 
 /** @brief Standard corner radius for buttons, inputs, popups. */
@@ -124,6 +179,40 @@ constexpr int kRadiusSm = 4;
 
 /** @brief Larger corner radius for panels, stat tiles, group boxes. */
 constexpr int kRadiusMd = 8;
+
+// ── Spacing scale (px) ────────────────────────────────────────────────────────
+
+/** @brief Minimal spacing: tight checkbox spacing, trace row gaps. */
+constexpr int kSpaceXxs = 2;
+
+/** @brief Compact spacing: list item padding, tight layouts. */
+constexpr int kSpaceXs  = 4;
+
+/** @brief Small spacing: input padding, button gaps, panel inner spacing. */
+constexpr int kSpaceSm  = 6;
+
+/** @brief Base spacing: default gaps between controls, card padding. */
+constexpr int kSpaceBase = 8;
+
+/** @brief Medium spacing: section gaps, toolbar content spacing. */
+constexpr int kSpaceMd  = 12;
+
+/** @brief Large spacing: major layout gaps, navigation button spacing. */
+constexpr int kSpaceLg  = 16;
+
+/** @brief Extra large: page margins, top-level container spacing. */
+constexpr int kSpaceXl  = 24;
+
+// ── Transitions & animations (ms) ─────────────────────────────────────────────
+
+/** @brief Instant feedback: checkbox toggle, button press. */
+constexpr int kTransitionFast   = 100;
+
+/** @brief Standard UI transitions: hover, focus, color changes. */
+constexpr int kTransitionBase   = 200;
+
+/** @brief Smooth motion: panel slides, modal appearance. */
+constexpr int kTransitionSlow   = 300;
 
 } // namespace Theme
 

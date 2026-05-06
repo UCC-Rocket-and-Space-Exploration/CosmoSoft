@@ -47,6 +47,18 @@ struct ColorPalette {
     QString danger             = QStringLiteral("#ff6b6b");
     QString error              = QStringLiteral("#e05555");
     QString select_bg          = QStringLiteral("#4b4b4b");
+
+    // ── Semantic state colors ─────────────────────────────────────────────────
+    QString success            = QStringLiteral("#4caf50");
+    QString success_bg         = QStringLiteral("#1e3a20");
+    QString warning            = QStringLiteral("#ff9800");
+    QString warning_bg         = QStringLiteral("#3a2a10");
+    QString info               = QStringLiteral("#2196f3");
+    QString info_bg            = QStringLiteral("#1a2a3a");
+
+    // ── Focus state tokens ────────────────────────────────────────────────────
+    QString focus_ring         = QStringLiteral("#6ab0de");
+    QString focus_ring_offset  = QStringLiteral("#ffffff20");
 };
 
 /**

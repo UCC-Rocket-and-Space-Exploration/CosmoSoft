@@ -115,18 +115,20 @@ QString ThemeManager::generateQss(const ColorPalette &p)
 QWidget {
     color: @TEXT_PRIMARY@;
     font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    line-height: 1.4;
 }
 
 QPushButton {
     border: 1px solid @BORDER_LIGHT@;
     border-radius: 4px;
-    padding: 5px 16px;
-    min-height: 28px;
+    padding: 6px 16px;
+    min-height: 32px;
     min-width: 0px;
     background-color: @BG_BUTTON@;
     color: @TEXT_PRIMARY@;
-    font-size: 11px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    letter-spacing: 0;
 }
 QPushButton:hover {
     background-color: @BTN_HOVER@;
@@ -147,7 +149,7 @@ QComboBox {
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    line-height: 1.4;
 }
 QComboBox::drop-down {
     border: none;
@@ -167,7 +169,7 @@ QLineEdit {
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    line-height: 1.4;
 }
 
 QScrollBar:vertical {
@@ -203,7 +205,7 @@ QCheckBox {
     color: @TEXT_PRIMARY@;
     spacing: 8px;
     font-size: 12px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    line-height: 1.4;
 }
 QCheckBox::indicator {
     width: 16px;
@@ -226,7 +228,7 @@ QGroupBox {
     padding-top: 12px;
     background-color: @BG_PANEL@;
     font-size: 12px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    line-height: 1.4;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
@@ -245,13 +247,13 @@ QTabBar::tab {
     color: @TEXT_MUTED@;
     border: 1px solid @BORDER_SUBTLE@;
     border-bottom: none;
-    padding: 8px 24px;
+    padding: 8px 16px;
     margin-right: 2px;
     border-radius: 4px 4px 0 0;
     font-size: 12px;
-    letter-spacing: 1px;
+    letter-spacing: 0.02em;
     min-width: 100px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    line-height: 1.4;
 }
 QTabBar::tab:selected {
     background-color: @BG_BASE@;
@@ -266,8 +268,21 @@ QTabBar::tab:hover:!selected {
 
 QPushButton:focus, QToolButton:focus, QComboBox:focus, QLineEdit:focus,
 QCheckBox:focus, QSlider:focus {
-    outline: none;
-    border-color: @ACCENT_LINK@;
+    outline: 2px solid @FOCUS_RING@;
+    outline-offset: 2px;
+    border-color: @FOCUS_RING@;
+}
+
+/* High-contrast focus for keyboard navigation */
+QPushButton:focus-visible, QToolButton:focus-visible, QComboBox:focus-visible,
+QLineEdit:focus-visible, QCheckBox:focus-visible, QSlider:focus-visible {
+    outline: 2px solid @FOCUS_RING@;
+    outline-offset: 2px;
+}
+
+QTabBar::tab:focus {
+    outline: 2px solid @FOCUS_RING@;
+    outline-offset: -2px;
 }
 
 QToolTip {
@@ -277,7 +292,19 @@ QToolTip {
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 11px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    line-height: 1.6;
+}
+
+QProgressBar {
+    background-color: @BG_INPUT@;
+    border: 1px solid @BORDER_DEFAULT@;
+    border-radius: 4px;
+    height: 8px;
+    text-align: center;
+}
+QProgressBar::chunk {
+    background-color: @ACCENT_LINK@;
+    border-radius: 3px;
 }
 )");
 
@@ -298,6 +325,14 @@ QToolTip {
     qss.replace(QStringLiteral("@BTN_PRESSED@"), p.btn_pressed);
     qss.replace(QStringLiteral("@BTN_HOVER@"), p.btn_hover);
     qss.replace(QStringLiteral("@SELECT_BG@"), p.select_bg);
+    qss.replace(QStringLiteral("@SUCCESS@"), p.success);
+    qss.replace(QStringLiteral("@SUCCESS_BG@"), p.success_bg);
+    qss.replace(QStringLiteral("@WARNING@"), p.warning);
+    qss.replace(QStringLiteral("@WARNING_BG@"), p.warning_bg);
+    qss.replace(QStringLiteral("@INFO@"), p.info);
+    qss.replace(QStringLiteral("@INFO_BG@"), p.info_bg);
+    qss.replace(QStringLiteral("@FOCUS_RING@"), p.focus_ring);
+    qss.replace(QStringLiteral("@FOCUS_RING_OFFSET@"), p.focus_ring_offset);
 
     return qss;
 }

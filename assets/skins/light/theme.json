@@ -23,7 +23,15 @@
     "accent_checkbox_border": "#3080c0",
     "danger": "#d03030",
     "error": "#c02020",
-    "select_bg": "#d0e4f8"
+    "select_bg": "#d0e4f8",
+    "success": "#2e7d32",
+    "success_bg": "#e8f5e9",
+    "warning": "#ef6c00",
+    "warning_bg": "#fff3e0",
+    "info": "#1565c0",
+    "info_bg": "#e3f2fd",
+    "focus_ring": "#1a73b8",
+    "focus_ring_offset": "#00000010"
   },
   "texture_opacity": 0.15,
   "texture_mode": "tile"

@@ -48,7 +48,10 @@ protected:
         if (crosshairX < 0 && crosshairY < 0) return;
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, false);
-        p.setPen(QPen(QColor(255, 255, 255, 100), 1));
+        // Use theme-aware crosshair color
+        QColor crosshairColor(Theme::kTextPrimary());
+        crosshairColor.setAlpha(100);
+        p.setPen(QPen(crosshairColor, 1));
         if (crosshairX >= 0)
             p.drawLine(crosshairX, 0, crosshairX, height());
         if (crosshairY >= 0)

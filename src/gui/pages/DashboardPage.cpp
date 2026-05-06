@@ -834,50 +834,99 @@ QString DashboardPage::buildDashboardQss() {
     const auto bgInput     = Theme::kBgInput();
 
     auto ss = QString(uR"(
-        #dashboardPage { background-color: transparent; color: %1; font-family: %2; }
-        #dashboardPage QWidget { font-family: %2; }
-        QFrame#chartFrame { background-color: %3; border: 1px solid %4; border-radius: %5px; padding: 0px; }
+        #dashboardPage { background-color: transparent; color: %1; }
+        QFrame#chartFrame { background-color: %2; border: 1px solid %3; border-radius: %4px; padding: 0px; }
         #telemetryChartView { border: none; padding: 0px; margin: 0px; background-color: transparent; }
-        QToolButton#chartToggleBtn { border: 1px solid %4; border-radius: %6px; padding: 5px 14px; min-height: 32px; background-color: transparent; color: %7; font-size: %8px; font-weight: 500; }
-        QToolButton#chartToggleBtn:hover { background-color: %9; color: %1; border-color: %1; }
+        QToolButton#chartToggleBtn {
+            border: 1px solid %5;
+            border-radius: %6px;
+            padding: 6px 14px;
+            min-height: 32px;
+            background-color: %7;
+            color: %1;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        QToolButton#chartToggleBtn:hover { background-color: %8; color: %1; border-color: %5; }
     )"_s)
-        .arg(textPri).arg(fontMono).arg(bgPanel).arg(borderPanel)
-        .arg(Theme::kRadiusMd).arg(Theme::kRadiusSm).arg(textMuted)
-        .arg(Theme::kFontSizeSm).arg(btnHov);
+        .arg(textPri).arg(bgPanel).arg(borderPanel)
+        .arg(Theme::kRadiusMd).arg(borderLight)
+        .arg(Theme::kRadiusSm).arg(bgButton)
+        .arg(btnHov);
 
     ss += QString(uR"(
-        QToolButton#chartToggleBtn:checked { background-color: %1; border-color: %1; color: #ffffff; font-weight: 600; }
-        QToolButton#chartToggleBtn:checked:hover { background-color: %1; border-color: %1; color: #ffffff; }
-        QPushButton#chartZoomBtn { min-width: 32px; max-width: 32px; min-height: 32px; max-height: 32px; padding: 0px; font-weight: 700; font-size: 16px; border: 1px solid %2; border-radius: %3px; background-color: %4; color: %5; }
+        QToolButton#chartToggleBtn:checked {
+            background-color: %1;
+            border-color: %1;
+            color: %10;
+            font-weight: 600;
+        }
+        QToolButton#chartToggleBtn:checked:hover {
+            background-color: %1;
+            border-color: %1;
+            color: %10;
+        }
+        QToolButton#chartToggleBtn:pressed {
+            background-color: %9;
+        }
+        QPushButton#chartZoomBtn {
+            min-width: 32px;
+            max-width: 32px;
+            min-height: 32px;
+            max-height: 32px;
+            padding: 0px;
+            font-weight: 600;
+            font-size: 16px;
+            border: 1px solid %2;
+            border-radius: %3px;
+            background-color: %4;
+            color: %5;
+        }
         QPushButton#chartZoomBtn:hover { background-color: %6; border-color: %7; }
         QPushButton#chartZoomBtn:pressed { background-color: %8; }
     )"_s)
         .arg(accent).arg(borderPanel).arg(Theme::kRadiusSm)
         .arg(bgButton).arg(textPri).arg(btnHov)
-        .arg(borderLight).arg(btnPressed);
+        .arg(borderLight).arg(btnPressed).arg(btnPressed)
+        .arg(textPri);  // %10 - checked button text color
 
     ss += QString(uR"(
         QDoubleSpinBox { background-color: %1; color: %2; border: 1px solid %3; border-radius: %4px; padding: 4px 8px; min-height: 22px; }
         QSlider::groove:horizontal { height: 6px; background: %5; border-radius: 3px; }
         QSlider::handle:horizontal { width: 14px; margin: -5px 0; background: %6; border: 1px solid %3; border-radius: %4px; }
-        QPushButton#chartToolbarBtn { border: 1px solid %7; border-radius: %4px; padding: 5px 12px; min-height: 30px; background-color: %8; color: %2; font-size: %9px; }
+        QPushButton#chartToolbarBtn {
+            border: 1px solid %7;
+            border-radius: %4px;
+            padding: 6px 14px;
+            min-height: 32px;
+            background-color: %8;
+            color: %2;
+            font-size: 11px;
+            font-weight: 500;
+        }
     )"_s)
         .arg(bgInput).arg(textPri).arg(Theme::kBorderDefault())
         .arg(Theme::kRadiusSm).arg(bgPanel).arg(borderLight)
-        .arg(borderPanel).arg(bgButton).arg(Theme::kFontSizeSm);
+        .arg(borderPanel).arg(bgButton);
 
     ss += QString(uR"(
-        QPushButton#chartToolbarBtn:hover { background-color: %1; border-color: %2; }
-        QPushButton#chartToolbarBtn:pressed { background-color: %3; }
+        QPushButton#chartToolbarBtn:hover {
+            background-color: %1;
+            border-color: %2;
+        }
+        QPushButton#chartToolbarBtn:pressed {
+            background-color: %3;
+        }
         QWidget#viewSwitchGroup { background: %4; border: 1px solid %4; border-radius: %5px; }
         QPushButton#viewSwitchBtn { border: none; border-radius: %5px; padding: 6px 16px; min-height: 32px; background-color: transparent; color: %6; font-size: %7px; font-weight: 500; }
-        QPushButton#viewSwitchBtn:checked { background-color: %8; color: #ffffff; font-weight: 600; }
+        QPushButton#viewSwitchBtn:checked { background-color: %8; color: %10; font-weight: 600; }
         QPushButton#viewSwitchBtn:hover:!checked { background-color: %1; color: %9; }
         QPushButton#viewSwitchBtn:pressed:!checked { background-color: %3; }
     )"_s)
         .arg(btnHov).arg(borderLight).arg(btnPressed)
         .arg(borderPanel).arg(Theme::kRadiusMd).arg(textMuted)
-        .arg(Theme::kFontSizeSm).arg(accent).arg(textPri);
+        .arg(Theme::kFontSizeSm).arg(accent).arg(textPri)
+        .arg(textPri);  // %10 - checked button text color
 
     ss += QString(uR"(
         QToolButton#chartHelpBtn { font-weight: 700; font-size: %1px; min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; border: 1px solid %2; border-radius: 15px; background: %3; color: %4; padding: 0px; }
@@ -903,6 +952,25 @@ void DashboardPage::refreshPageStyleSheet() {
             u"border: 1px solid %3; border-radius: 8px; padding: 8px 12px;"_s)
                 .arg(textMuted).arg(bgPanel).arg(borderPanel));
     }
+
+    // Force button style updates for checkable buttons
+    auto forceButtonStyleUpdate = [](QWidget *widget) {
+        if (widget) {
+            widget->style()->unpolish(widget);
+            widget->style()->polish(widget);
+            widget->update();
+        }
+    };
+
+    forceButtonStyleUpdate(m_graphViewBtn);
+    forceButtonStyleUpdate(m_mapViewBtn);
+    forceButtonStyleUpdate(m_zoomOutBtn);
+    forceButtonStyleUpdate(m_zoomInBtn);
+    forceButtonStyleUpdate(m_zoomResetBtn);
+    forceButtonStyleUpdate(m_tracesToggleBtn);
+    forceButtonStyleUpdate(m_showMarkersToggle);
+    forceButtonStyleUpdate(m_showPointValuesToggle);
+    forceButtonStyleUpdate(m_followToggle);
 }
 
 void DashboardPage::updateToolbarForView() {
@@ -1509,7 +1577,9 @@ void DashboardPage::redrawEventMarkers() {
     for (const auto &marker : m_eventMarkers) {
         auto *line = new QLineSeries();
         line->setName(marker.name);
-        line->setPen(QPen(QColor(255, 160, 60, 180), 2, Qt::DashLine));
+        QColor markerColor(Theme::kWarning());
+        markerColor.setAlpha(180);
+        line->setPen(QPen(markerColor, 2, Qt::DashLine));
         line->append(marker.timeSec, m_axisY->min());
         line->append(marker.timeSec, m_axisY->max());
         m_chart->addSeries(line);

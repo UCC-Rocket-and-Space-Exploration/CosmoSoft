@@ -532,7 +532,7 @@ void SettingsPage::refreshStyleSheet() {
     /* ── Developer reference ─────────────────────────────────── */
     QPlainTextEdit#devReference {
         background-color: %2;
-        color: #b0c4b0;
+        color: %15;
         font-family: %14;
         font-size: %4px;
         border: none;
@@ -557,7 +557,8 @@ void SettingsPage::refreshStyleSheet() {
     .arg(Theme::kRadiusMd)          // %11
     .arg(Theme::kTextMid())         // %12
     .arg(Theme::kAccentLink())      // %13
-    .arg(Theme::kFontMono);         // %14
+    .arg(Theme::kFontMono)          // %14
+    .arg(Theme::kSuccess());        // %15
 
     setStyleSheet(sheet);
 }

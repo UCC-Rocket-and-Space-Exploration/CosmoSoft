@@ -35,7 +35,11 @@ public:
 protected:
     void paintEvent(QPaintEvent *event) override;
 
+private slots:
+    void applyThemeStyleSheet();
+
 private:
     QLabel *m_titleLabel = nullptr;
     QLabel *m_valueLabel = nullptr;
+    QColor m_accentColor;
 };

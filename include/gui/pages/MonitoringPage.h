@@ -45,6 +45,7 @@ protected:
 
 private slots:
     void onSampleUpdated(const FlightSample &sample);
+    void applyThemeStyleSheet();
 
 private:
     static constexpr int kTileCount = 9;

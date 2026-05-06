@@ -192,25 +192,28 @@ void TracesPanel::applyThemeStyleSheet()
         }
         QLabel#tracesPanelTitle {
             font-size: %4px;
-            font-family: %5;
             color: %6;
-            letter-spacing: 2px;
+            letter-spacing: 0.08em;
             padding-bottom: 2px;
+            font-weight: 600;
         }
         QPushButton#tracesAllNoneBtn {
-            font-size: %4px;
-            font-family: %5;
-            color: %6;
-            background: transparent;
-            border: 1px solid %2;
-            border-radius: 12px;
-            padding: 5px 14px;
-            min-height: 28px;
+            font-size: 11px;
+            color: %7;
+            background: %10;
+            border: 1px solid %8;
+            border-radius: 4px;
+            padding: 6px 12px;
+            min-height: 30px;
+            font-weight: 500;
         }
         QPushButton#tracesAllNoneBtn:hover {
             color: %7;
             border-color: %8;
-            background: rgba(128,128,128,0.08);
+            background: %11;
+        }
+        QPushButton#tracesAllNoneBtn:pressed {
+            background: %12;
         }
         QFrame#traceSeparator { background-color: %2; border: none; }
         QFrame#traceRow {
@@ -250,7 +253,10 @@ void TracesPanel::applyThemeStyleSheet()
             .arg(textMuted)                 // %6
             .arg(textPrimary)               // %7
             .arg(borderLight)               // %8
-            .arg(Theme::kFontSizeSm));      // %9
+            .arg(Theme::kFontSizeSm)        // %9
+            .arg(Theme::kBgButton())        // %10
+            .arg(Theme::kBtnHover())        // %11
+            .arg(Theme::kBtnPressed()));    // %12
 
     refreshSwatchStates();
 }

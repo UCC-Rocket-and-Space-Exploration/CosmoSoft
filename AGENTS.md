@@ -151,6 +151,67 @@ bool open();
 bool open();
 ```
 
+### 6. UI Theme Implementation Requirements
+
+**CRITICAL:** All UI work MUST be theme-aware and support both light and dark themes.
+
+When creating or modifying GUI widgets and pages:
+
+```cpp
+// ❌ BAD - Hardcoded colors that won't adapt to theme changes
+setStyleSheet("QLabel { color: #ffffff; background: #1f1f1f; }");
+
+// ✅ GOOD - Uses theme tokens that adapt automatically
+setStyleSheet(QString("QLabel { color: %1; background: %2; }")
+    .arg(Theme::kTextPrimary())
+    .arg(Theme::kBgPanel()));
+```
+
+**Required practices:**
+
+1. **Use Theme tokens exclusively** — Never hardcode colors in stylesheets or QPainter code
+   - Text: `Theme::kTextPrimary()`, `Theme::kTextMuted()`, `Theme::kTextMid()`
+   - Backgrounds: `Theme::kBgBase()`, `Theme::kBgPanel()`, `Theme::kBgDark()`
+   - Borders: `Theme::kBorderPanel()`, `Theme::kBorderDefault()`, `Theme::kBorderLight()`
+   - Buttons: `Theme::kBgButton()`, `Theme::kBtnHover()`, `Theme::kBtnPressed()`
+   - Semantic: `Theme::kSuccess()`, `Theme::kWarning()`, `Theme::kDanger()`, `Theme::kInfo()`
+
+2. **Connect to ThemeManager::themeChanged** — All custom widgets must refresh when theme changes
+   ```cpp
+   connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+           this, &MyWidget::applyThemeStyleSheet);
+   ```
+
+3. **Test both themes** — Verify your changes in Settings → Appearance by switching between Dark and Light
+   - All text must be readable (sufficient contrast)
+   - All buttons must be visible and distinguishable  
+   - No dark-on-dark or light-on-light rendering
+
+4. **Dynamic colors for QColor** — When using QColor with alpha or transformations:
+   ```cpp
+   // ❌ BAD
+   painter.setPen(QPen(QColor(255, 255, 255, 100), 1));
+   
+   // ✅ GOOD
+   QColor crosshairColor(Theme::kTextPrimary());
+   crosshairColor.setAlpha(100);
+   painter.setPen(QPen(crosshairColor, 1));
+   ```
+
+**Files modified for UI theming:**
+- `include/gui/Theme.h` — Design tokens (spacing, typography, colors)
+- `include/gui/CosmoTheme.h` — ColorPalette struct
+- `src/gui/ThemeManager.cpp` — Global QSS generation
+- `assets/skins/light/theme.json` — Light theme palette values
+- `assets/skins/dark/theme.json` — Dark theme palette values
+
+**Verification checklist:**
+- [ ] No hardcoded hex colors in .cpp files (check with `grep -rn "#[0-9a-fA-F]\{6\}" src/gui/`)
+- [ ] Widget connects to `themeChanged` signal
+- [ ] Tested in both light and dark themes
+- [ ] All text is legible with sufficient contrast
+- [ ] Buttons and interactive elements are visually distinct
+
 ---
 
 ## AI-Generated Code Policy
