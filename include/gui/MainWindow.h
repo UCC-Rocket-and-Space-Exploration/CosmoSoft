@@ -65,7 +65,6 @@ public slots:
 
 private slots:
     void updateMissionClock();
-    void updateDataRateLabel();
     void applyPendingReplayTelemetryStrip();
     void refreshSerialPorts();
     void startSerial(const QString &portName, int baud);
@@ -81,16 +80,12 @@ private:
     void setupActions();
     void setupMenuBar();
     void setupToolbar();
-    void setupDataBar();
     void setupConnectionBar();
     [[nodiscard]] QString buildToolbarStyleSheet();
-    [[nodiscard]] QString buildDataBarStyleSheet();
     void loadSerialPrefsToUi();
     void persistSerialPrefs();
     void setupPages();
     void openSettingsWindow();
-    void updateTopBarsForCurrentPage();
-    void syncTelemetryStrip();
     void applyReplayTelemetrySample(int trailLength);
 
     /**
@@ -127,13 +122,6 @@ private:
     QComboBox *m_portCombo          = nullptr;
     QComboBox *m_baudCombo          = nullptr;
 
-    // ── Telemetry strip ───────────────────────────────────────────────────────
-    QWidget *m_dataBar             = nullptr;
-    QLabel  *m_dataStripPageLabel  = nullptr;
-    QLabel  *m_dataLinkStatusLabel = nullptr;
-    QLabel  *m_dataRateLabel       = nullptr;
-    QLabel  *m_droppedBadgeLabel   = nullptr;
-
     // ── Data model and replay ─────────────────────────────────────────────────
     std::unique_ptr<FlightDataModel>        m_flightModel;
     std::unique_ptr<FlightReplayController> m_replay;
@@ -146,14 +134,9 @@ private:
     std::unique_ptr<SerialWorker>  m_serialWorker;
     std::unique_ptr<IComms>        m_comms;
 
-    // ── Timers and rate tracking ──────────────────────────────────────────────
-    QTimer *m_dataRateTimer                = nullptr;
+    // ── Timers ────────────────────────────────────────────────────────────────
     QTimer *m_replayTelemetryCoalesceTimer = nullptr;
     int     m_pendingReplayTelemetryTrail  = 0;
-    qint64  m_prevBytesForRate             = 0;
-
-    /** Last dropped-packet count seen; used to suppress redundant badge updates. */
-    std::size_t m_lastDroppedCount = 0;
 
     /**
      * Persistent log buffer.  Every entry is stored here so that the settings

@@ -90,7 +90,6 @@ MainWindow::MainWindow(QWidget *parent)
     setupActions();
     setupMenuBar();
     setupToolbar();
-    setupDataBar();
     setupPages();
     refreshSerialPorts();
 
@@ -108,7 +107,6 @@ MainWindow::MainWindow(QWidget *parent)
         const int idx = m_replay ? m_replay->index() : 0;
         if (idx <= 0) {
             m_flightModel->setDisplayedSample(FlightSample{});
-            syncTelemetryStrip();
         } else {
             applyReplayTelemetrySample(idx);
         }
@@ -116,11 +114,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_replay.get(), &FlightReplayController::playbackPaused, this, flushReplayTelemetryStrip);
     connect(m_replay.get(), &FlightReplayController::playbackStopped, this, flushReplayTelemetryStrip);
     connect(m_replay.get(), &FlightReplayController::playbackFinished, this, flushReplayTelemetryStrip);
-
-    m_dataRateTimer = new QTimer(this);
-    m_dataRateTimer->setInterval(1000);
-    connect(m_dataRateTimer, &QTimer::timeout, this, &MainWindow::updateDataRateLabel);
-    m_dataRateTimer->start();
 
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
             this, &MainWindow::onThemeChanged);
@@ -244,7 +237,6 @@ void MainWindow::rebuildRecentFilesMenu() {
                 if (m_flightDataPage) {
                     m_flightDataPage->setReplaySession(&m_loadedSession);
                 }
-                syncTelemetryStrip();
                 showStatusMessage(QStringLiteral("Loaded flight: %1").arg(filePath), 4000);
                 appendToLog(false, QStringLiteral("Loaded flight: %1").arg(filePath));
             });
@@ -360,44 +352,6 @@ QString MainWindow::buildToolbarStyleSheet() {
         .arg(btnBg);                // %7
 }
 
-QString MainWindow::buildDataBarStyleSheet() {
-    return QString(uR"(
-        QWidget#telemetryStrip {
-            background: %1;
-            color: %2;
-            border-top: 1px solid %3;
-            border-bottom: 1px solid %3;
-        }
-        QWidget#telemetryStrip QLabel#telemetryStripPage {
-            font-size: %4px;
-            color: %5;
-            letter-spacing: 0.08em;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        QWidget#telemetryStrip QLabel#telemetryBadge {
-            font-size: %7px;
-            color: %2;
-            letter-spacing: 0.04em;
-            font-family: %6;
-        }
-        QWidget#telemetryStrip QLabel#telemetryDropBadge {
-            font-size: %7px;
-            color: %8;
-            letter-spacing: 0.04em;
-            font-family: %6;
-        }
-    )"_s)
-        .arg(Theme::kBgDark())          // %1
-        .arg(Theme::kTextPrimary())     // %2
-        .arg(Theme::kBorderSubtle())    // %3
-        .arg(Theme::kFontSizeSm)        // %4
-        .arg(Theme::kTextDim())         // %5
-        .arg(Theme::kFontMono)          // %6
-        .arg(Theme::kFontSizeBase)      // %7
-        .arg(Theme::kDanger());         // %8
-}
-
 void MainWindow::setupToolbar() {
     auto *toolbar = new QToolBar(u"Mission Toolbar"_s, this);
     toolbar->setObjectName(u"missionToolbar"_s);
@@ -486,45 +440,6 @@ void MainWindow::setupToolbar() {
     contentLayout->addWidget(navContainer);
 
     toolbar->addWidget(content);
-}
-
-void MainWindow::setupDataBar() {
-    if (m_dataBar) {
-        return;
-    }
-
-    m_dataBar = new QWidget(this);
-    m_dataBar->setObjectName(u"telemetryStrip"_s);
-    m_dataBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
-    auto *dataLayout = new QHBoxLayout(m_dataBar);
-    dataLayout->setContentsMargins(16, 6, 16, 6);
-    dataLayout->setSpacing(24);
-
-    auto buildBadgeLabel = [](const QString &text, QWidget *parent) {
-        auto *label = new QLabel(text, parent);
-        label->setObjectName(u"telemetryBadge"_s);
-        label->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
-        return label;
-    };
-
-    m_dataStripPageLabel = buildBadgeLabel(u"Flight data"_s, m_dataBar);
-    m_dataStripPageLabel->setObjectName(u"telemetryStripPage"_s);
-    m_dataLinkStatusLabel = buildBadgeLabel(u"LINK: idle"_s, m_dataBar);
-    m_dataRateLabel = buildBadgeLabel(u"RATE: -- B/s"_s, m_dataBar);
-
-    m_droppedBadgeLabel = buildBadgeLabel(QString{}, m_dataBar);
-    m_droppedBadgeLabel->setObjectName(u"telemetryDropBadge"_s);
-    m_droppedBadgeLabel->setVisible(false);
-
-    dataLayout->addWidget(m_dataStripPageLabel);
-    dataLayout->addWidget(m_dataLinkStatusLabel);
-    dataLayout->addWidget(m_dataRateLabel);
-    dataLayout->addWidget(m_droppedBadgeLabel);
-    dataLayout->addStretch(1);
-
-    m_dataBar->setStyleSheet(buildDataBarStyleSheet());
 }
 
 void MainWindow::setupConnectionBar() {
@@ -690,13 +605,6 @@ void MainWindow::setupPages() {
         centralLayout->addWidget(m_connectionBar);
     }
 
-    if (!m_dataBar) {
-        setupDataBar();
-    }
-    if (m_dataBar) {
-        centralLayout->addWidget(m_dataBar);
-    }
-
     m_pages = new QStackedWidget(central);
     centralLayout->addWidget(m_pages, 1);
     setCentralWidget(central);
@@ -704,40 +612,6 @@ void MainWindow::setupPages() {
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_flightDataPage);
     m_pages->setCurrentWidget(m_flightDataPage);
-
-    connect(m_flightModel.get(), &FlightDataModel::replayModeChanged, this, [this](bool) {
-        syncTelemetryStrip();
-    });
-}
-
-void MainWindow::updateTopBarsForCurrentPage() {
-    if (m_flightModel) {
-        m_prevBytesForRate = m_flightModel->totalBytesReceived();
-    }
-    syncTelemetryStrip();
-    updateDataRateLabel();
-}
-
-void MainWindow::syncTelemetryStrip() {
-    if (!m_dataStripPageLabel || !m_dataLinkStatusLabel || !m_dataRateLabel || !m_flightModel) {
-        return;
-    }
-
-    m_dataStripPageLabel->setText(u"FLIGHT DATA"_s);
-    const bool replay = m_flightModel->replayMode();
-    const int n   = m_replay ? m_replay->sampleCount() : 0;
-    const int pos = m_replay ? m_replay->index() : 0;
-    if (replay && n > 0) {
-        m_dataLinkStatusLabel->setText(
-            QStringLiteral("SESSION: replay · %1 / %2 samples").arg(pos).arg(n));
-        m_dataRateLabel->setText(u"HINT: Play / slider on Flight data page"_s);
-    } else if (replay && n == 0) {
-        m_dataLinkStatusLabel->setText(u"SESSION: replay (empty)"_s);
-        m_dataRateLabel->setText(u"Open a log to load samples"_s);
-    } else {
-        const QString link = m_serialPortSummary.isEmpty() ? u"idle"_s : m_serialPortSummary;
-        m_dataLinkStatusLabel->setText(QStringLiteral("SESSION: live · %1").arg(link));
-    }
 }
 
 void MainWindow::openSettingsWindow() {
@@ -790,32 +664,6 @@ void MainWindow::updateMissionClock() {
     m_missionMetaLabel->setText(timestamp);
 }
 
-void MainWindow::updateDataRateLabel() {
-    if (!m_dataRateLabel || !m_flightModel) {
-        return;
-    }
-    const qint64 total = m_flightModel->totalBytesReceived();
-    const qint64 delta = total - m_prevBytesForRate;
-    m_prevBytesForRate = total;
-    if (!m_flightModel->replayMode()) {
-        m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
-    }
-
-    if (m_droppedBadgeLabel) {
-        const std::size_t dropped = m_rawQueue.dropped();
-        if (dropped != m_lastDroppedCount) {
-            m_lastDroppedCount = dropped;
-            if (dropped > 0) {
-                m_droppedBadgeLabel->setText(
-                    QStringLiteral("⚠ %1 dropped").arg(static_cast<qulonglong>(dropped)));
-                m_droppedBadgeLabel->setVisible(true);
-            } else {
-                m_droppedBadgeLabel->setVisible(false);
-            }
-        }
-    }
-}
-
 void MainWindow::refreshSerialPorts() {
     std::unique_ptr<ISerialPortScanner> scanner(SerialPortScannerFactory::createSerialPortScanner());
     if (!scanner || !m_portCombo) {
@@ -848,7 +696,6 @@ void MainWindow::onReplayPositionChanged(int trailLength) {
             m_replayTelemetryCoalesceTimer->stop();
         }
         m_flightModel->setDisplayedSample(FlightSample{});
-        syncTelemetryStrip();
         return;
     }
     if (trailLength > static_cast<int>(m_loadedSession.samples.size())) {
@@ -869,7 +716,6 @@ void MainWindow::applyReplayTelemetrySample(int trailLength) {
         return;
     }
     m_flightModel->setDisplayedSample(m_loadedSession.samples[static_cast<std::size_t>(trailLength - 1)]);
-    syncTelemetryStrip();
 }
 
 void MainWindow::applyPendingReplayTelemetryStrip() {
@@ -923,7 +769,6 @@ void MainWindow::onOpenReplayFile() {
         if (m_flightDataPage) {
             m_flightDataPage->setReplaySession(&m_loadedSession);
         }
-        syncTelemetryStrip();
         addRecentFile(path);
         const QString loadMsg = QStringLiteral("Loaded flight: %1").arg(path);
         showStatusMessage(loadMsg, 4000);
@@ -958,7 +803,6 @@ void MainWindow::onClearFlightData() {
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
     }
-    syncTelemetryStrip();
     showStatusMessage(u"Cleared flight replay data."_s, 2000);
     appendToLog(false, u"Flight data cleared."_s);
 }
@@ -979,10 +823,6 @@ void MainWindow::onThemeChanged() {
             QString(u"Cosmo<span style=\"color:%1\">Soft</span>"_s).arg(Theme::kAccentLink()));
     }
 
-    if (m_dataBar) {
-        m_dataBar->setStyleSheet(buildDataBarStyleSheet());
-    }
-
     if (m_connectionBar) {
         m_connectionBar->setStyleSheet(
             QString(u"QWidget#connectionStrip { background: %1; color: %2; border-bottom: 1px solid %3; }"_s)
@@ -998,9 +838,6 @@ void MainWindow::onThemeChanged() {
                 .arg(Theme::kFontSizeBase)
                 .arg(Theme::kFontMono));
     }
-
-    // Refresh telemetry strip to reapply semantic colors with new theme
-    syncTelemetryStrip();
 }
 
 void MainWindow::onExportSession() {
@@ -1044,8 +881,6 @@ void MainWindow::startSerial(const QString &portName, int baud) {
         m_comms.reset();
         return;
     }
-
-    m_prevBytesForRate = m_flightModel->totalBytesReceived();
 
     m_parserWorker = std::make_unique<ParserWorker>(
         m_rawQueue,
@@ -1100,7 +935,6 @@ void MainWindow::startSerial(const QString &portName, int baud) {
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
     }
-    syncTelemetryStrip();
     const QString connectMsg = QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud);
     showStatusMessage(connectMsg, 3000);
     appendToLog(false, connectMsg);
@@ -1121,7 +955,6 @@ void MainWindow::stopSerial() {
     }
     const bool wasConnected = !m_serialPortSummary.isEmpty();
     m_serialPortSummary.clear();
-    syncTelemetryStrip();
     if (wasConnected) {
         appendToLog(false, u"Serial port disconnected."_s);
     }
