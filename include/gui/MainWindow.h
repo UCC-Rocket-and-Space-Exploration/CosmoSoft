@@ -66,9 +66,6 @@ public slots:
 private slots:
     void updateMissionClock();
     void applyPendingReplayTelemetryStrip();
-    void refreshSerialPorts();
-    void startSerial(const QString &portName, int baud);
-    void stopSerial();
     void onReplayPositionChanged(int trailLength);
     void onOpenReplayFile();
     void onExportSession();
@@ -82,8 +79,6 @@ private:
     void setupToolbar();
     void setupConnectionBar();
     [[nodiscard]] QString buildToolbarStyleSheet();
-    void loadSerialPrefsToUi();
-    void persistSerialPrefs();
     void setupPages();
     void openSettingsWindow();
     void applyReplayTelemetrySample(int trailLength);
@@ -118,9 +113,6 @@ private:
     // ── Connection bar ────────────────────────────────────────────────────────
     QWidget  *m_connectionBar       = nullptr;
     QLabel   *m_connectionPageLabel = nullptr;
-    QWidget  *m_serialControlBlock  = nullptr;
-    QComboBox *m_portCombo          = nullptr;
-    QComboBox *m_baudCombo          = nullptr;
 
     // ── Data model and replay ─────────────────────────────────────────────────
     std::unique_ptr<FlightDataModel>        m_flightModel;
@@ -144,8 +136,6 @@ private:
      * true for errors, false for informational entries.
      */
     std::vector<std::pair<bool, QString>> m_logEntries;
-
-    QString m_serialPortSummary;
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

@@ -91,7 +91,6 @@ MainWindow::MainWindow(QWidget *parent)
     setupMenuBar();
     setupToolbar();
     setupPages();
-    refreshSerialPorts();
 
     connect(m_replay.get(), &FlightReplayController::positionChanged, this, &MainWindow::onReplayPositionChanged);
 
@@ -126,7 +125,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() {
     QSettings(kSettingsOrg, kSettingsApp).setValue(kSettingsWindowMainGeo, saveGeometry());
-    stopSerial();
+    // stopSerial();  // Commented out - serial functionality disabled
 }
 
 void MainWindow::showStatusMessage(const QString &message, int timeout) {
@@ -213,7 +212,7 @@ void MainWindow::rebuildRecentFilesMenu() {
             }
             QSettings rs(kSettingsOrg, kSettingsApp);
             rs.setValue(kSettingsReplayDir, QFileInfo(filePath).absolutePath());
-            stopSerial();
+            // stopSerial();  // Commented out - serial functionality disabled
             auto *progress = new QProgressDialog(u"Loading flight log…"_s, QString(), 0, 0, this);
             progress->setWindowModality(Qt::WindowModal);
             progress->setMinimumDuration(0);
@@ -455,7 +454,7 @@ void MainWindow::setupConnectionBar() {
     row->setContentsMargins(16, 8, 16, 8);
     row->setSpacing(12);
 
-    m_connectionPageLabel = new QLabel(u"Serial — port, baud, Connect. Flight logs — Open log…"_s, m_connectionBar);
+    m_connectionPageLabel = new QLabel(u"Flight logs — Open log…"_s, m_connectionBar);
     m_connectionPageLabel->setObjectName(u"connectionStripContext"_s);
     m_connectionPageLabel->setWordWrap(false);
     m_connectionPageLabel->setMinimumWidth(200);
@@ -465,46 +464,6 @@ void MainWindow::setupConnectionBar() {
             .arg(Theme::kFontSizeBase)
             .arg(Theme::kFontMono));
 
-    m_serialControlBlock = new QWidget(m_connectionBar);
-    m_serialControlBlock->setVisible(true);
-    auto *serialRow = new QHBoxLayout(m_serialControlBlock);
-    serialRow->setContentsMargins(0, 0, 0, 0);
-    serialRow->setSpacing(12);
-
-    auto *portLabel = new QLabel(u"Port"_s, m_serialControlBlock);
-    portLabel->setStyleSheet(
-        QString(u"color: %1; font-family: %2;"_s)
-            .arg(Theme::kTextMid())
-            .arg(Theme::kFontMono));
-    m_portCombo = new QComboBox(m_serialControlBlock);
-    m_portCombo->setEditable(true);
-    m_portCombo->setMinimumWidth(200);
-    m_portCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-
-    auto *baudLabel = new QLabel(u"Baud"_s, m_serialControlBlock);
-    baudLabel->setStyleSheet(portLabel->styleSheet());
-    m_baudCombo = new QComboBox(m_serialControlBlock);
-    m_baudCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    const QList<int> bauds = {9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
-    for (int b : bauds) {
-        m_baudCombo->addItem(QString::number(b), b);
-    }
-    m_baudCombo->setCurrentIndex(4);
-
-    auto *refreshBtn = new QPushButton(u"Refresh"_s, m_serialControlBlock);
-    refreshBtn->setAccessibleName(u"Refresh serial ports"_s);
-    auto *connectBtn = new QPushButton(u"Connect"_s, m_serialControlBlock);
-    connectBtn->setAccessibleName(u"Connect to serial port"_s);
-    auto *disconnectBtn = new QPushButton(u"Disconnect"_s, m_serialControlBlock);
-    disconnectBtn->setAccessibleName(u"Disconnect serial port"_s);
-    serialRow->addWidget(portLabel);
-    serialRow->addWidget(m_portCombo);
-    serialRow->addWidget(baudLabel);
-    serialRow->addWidget(m_baudCombo);
-    serialRow->addWidget(refreshBtn);
-    serialRow->addWidget(connectBtn);
-    serialRow->addWidget(disconnectBtn);
-
     auto *openLogBtn    = new QPushButton(u"Open log…"_s, m_connectionBar);
     openLogBtn->setAccessibleName(u"Open flight log file"_s);
     auto *clearFlightBtn = new QPushButton(u"Clear flight"_s, m_connectionBar);
@@ -513,43 +472,11 @@ void MainWindow::setupConnectionBar() {
     exportBtn->setAccessibleName(u"Export session to CSV"_s);
 
     row->addWidget(m_connectionPageLabel);
-    row->addWidget(m_serialControlBlock);
-    row->addSpacing(12);
     row->addWidget(openLogBtn);
     row->addWidget(clearFlightBtn);
     row->addWidget(exportBtn);
     row->addStretch(1);
 
-    connect(refreshBtn, &QPushButton::clicked, this, &MainWindow::refreshSerialPorts);
-    connect(connectBtn, &QPushButton::clicked, this, [this]() {
-        persistSerialPrefs();
-        const QString port = m_portCombo ? m_portCombo->currentText().trimmed() : QString{};
-        int baud = 115200;
-        if (m_baudCombo) {
-            baud = m_baudCombo->currentData().toInt();
-            if (baud <= 0) {
-                baud = m_baudCombo->currentText().toInt();
-            }
-            if (baud <= 0) {
-                baud = 115200;
-            }
-        }
-        startSerial(port, baud);
-    });
-    connect(disconnectBtn, &QPushButton::clicked, this, [this]() {
-        if (m_comms && m_comms->isOpen() && !m_logManager->session().samples.empty()) {
-            const auto reply = QMessageBox::question(
-                this,
-                u"Disconnect"_s,
-                u"A telemetry session is active. Disconnect anyway?"_s,
-                QMessageBox::Yes | QMessageBox::No,
-                QMessageBox::No);
-            if (reply != QMessageBox::Yes) {
-                return;
-            }
-        }
-        stopSerial();
-    });
     connect(openLogBtn,    &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
     connect(clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
     connect(exportBtn,     &QPushButton::clicked, this, &MainWindow::onExportSession);
@@ -560,9 +487,9 @@ void MainWindow::setupConnectionBar() {
             .arg(Theme::kTextPrimary())
             .arg(Theme::kBorderSubtle()));
 
-    loadSerialPrefsToUi();
 }
 
+/*
 void MainWindow::loadSerialPrefsToUi() {
     QSettings s(kSettingsOrg, kSettingsApp);
     const QString port = s.value(kSettingsSerialPort).toString();
@@ -593,6 +520,7 @@ void MainWindow::persistSerialPrefs() {
     s.setValue(kSettingsSerialPort, m_portCombo->currentText().trimmed());
     s.setValue(kSettingsSerialBaud, m_baudCombo->currentText());
 }
+*/
 
 void MainWindow::setupPages() {
     auto *central = new QWidget(this);
@@ -664,6 +592,8 @@ void MainWindow::updateMissionClock() {
     m_missionMetaLabel->setText(timestamp);
 }
 
+// NOTE: Serial port functionality commented out for future live mode
+/*
 void MainWindow::refreshSerialPorts() {
     std::unique_ptr<ISerialPortScanner> scanner(SerialPortScannerFactory::createSerialPortScanner());
     if (!scanner || !m_portCombo) {
@@ -689,6 +619,7 @@ void MainWindow::refreshSerialPorts() {
     }
     m_portCombo->blockSignals(false);
 }
+*/
 
 void MainWindow::onReplayPositionChanged(int trailLength) {
     if (trailLength <= 0) {
@@ -740,7 +671,7 @@ void MainWindow::onOpenReplayFile() {
 
     s.setValue(kSettingsReplayDir, QFileInfo(path).absolutePath());
 
-    stopSerial();
+    // stopSerial();  // Commented out - serial functionality disabled
 
     auto *progress = new QProgressDialog(u"Loading flight log…"_s, QString(), 0, 0, this);
     progress->setWindowModality(Qt::WindowModal);
@@ -868,6 +799,7 @@ void MainWindow::onExportSession() {
     }
 }
 
+/*
 void MainWindow::startSerial(const QString &portName, int baud) {
     stopSerial();
     if (portName.isEmpty()) {
@@ -959,3 +891,4 @@ void MainWindow::stopSerial() {
         appendToLog(false, u"Serial port disconnected."_s);
     }
 }
+*/
