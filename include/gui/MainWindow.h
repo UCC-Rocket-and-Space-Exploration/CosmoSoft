@@ -33,6 +33,7 @@ class QAction;
 class QComboBox;
 class QLabel;
 class QMenu;
+class QPushButton;
 class QStackedWidget;
 class QTimer;
 class DashboardPage;
@@ -114,6 +115,9 @@ private:
     // ── Connection bar ────────────────────────────────────────────────────────
     QWidget  *m_connectionBar       = nullptr;
     QLabel   *m_connectionPageLabel = nullptr;
+    QPushButton *m_openLogBtn     = nullptr;
+    QPushButton *m_clearFlightBtn = nullptr;
+    QPushButton *m_exportBtn      = nullptr;
 
     // ── Data model and replay ─────────────────────────────────────────────────
     std::unique_ptr<FlightDataModel>        m_flightModel;

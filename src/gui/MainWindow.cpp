@@ -77,6 +77,31 @@ struct FlightLogLoadResult {
     return r;
 }
 
+QPushButton* createActionButton(QWidget *parent, const QString &tooltip, const QString &iconName) {
+    auto *btn = new QPushButton(parent);
+    btn->setProperty("kind", "actionButton");
+    btn->setToolTip(tooltip);
+    btn->setAccessibleName(tooltip);
+    btn->setCursor(Qt::PointingHandCursor);
+    btn->setFocusPolicy(Qt::TabFocus);
+
+    // Use Qt standard icons as placeholders
+    QStyle::StandardPixmap iconType = QStyle::SP_FileIcon;
+    if (iconName == u"folder-open"_s) {
+        iconType = QStyle::SP_DirOpenIcon;
+    } else if (iconName == u"trash"_s) {
+        iconType = QStyle::SP_TrashIcon;
+    } else if (iconName == u"export"_s) {
+        iconType = QStyle::SP_DriveNetIcon;
+    }
+
+    QIcon icon = btn->style()->standardIcon(iconType);
+    btn->setIcon(icon);
+    btn->setIconSize(QSize(20, 20));
+
+    return btn;
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent)
@@ -466,22 +491,20 @@ void MainWindow::setupConnectionBar() {
             .arg(Theme::kFontSizeBase)
             .arg(Theme::kFontMono));
 
-    auto *openLogBtn    = new QPushButton(u"Open log…"_s, m_connectionBar);
-    openLogBtn->setAccessibleName(u"Open flight log file"_s);
-    auto *clearFlightBtn = new QPushButton(u"Clear flight"_s, m_connectionBar);
-    clearFlightBtn->setAccessibleName(u"Clear all flight data"_s);
-    auto *exportBtn     = new QPushButton(u"Export session…"_s, m_connectionBar);
-    exportBtn->setAccessibleName(u"Export session to CSV"_s);
+    m_openLogBtn = createActionButton(m_connectionBar, u"Open flight log"_s, u"folder-open"_s);
+    m_clearFlightBtn = createActionButton(m_connectionBar, u"Clear flight data"_s, u"trash"_s);
+    m_exportBtn = createActionButton(m_connectionBar, u"Export session to CSV"_s, u"export"_s);
 
     row->addWidget(m_connectionPageLabel);
-    row->addWidget(openLogBtn);
-    row->addWidget(clearFlightBtn);
-    row->addWidget(exportBtn);
+    row->addSpacing(16);
+    row->addWidget(m_openLogBtn);
+    row->addWidget(m_clearFlightBtn);
+    row->addWidget(m_exportBtn);
     row->addStretch(1);
 
-    connect(openLogBtn,    &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
-    connect(clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
-    connect(exportBtn,     &QPushButton::clicked, this, &MainWindow::onExportSession);
+    connect(m_openLogBtn, &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
+    connect(m_clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
+    connect(m_exportBtn, &QPushButton::clicked, this, &MainWindow::onExportSession);
 
     m_connectionBar->setStyleSheet(
         QString(u"QWidget#connectionStrip { background: %1; color: %2; border-bottom: 1px solid %3; }"_s)
