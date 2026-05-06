@@ -13,7 +13,6 @@
 #include "services/persistence/FlightLogManager.h"
 #include "gui/FlightReplayController.h"
 #include "gui/pages/DashboardPage.h"
-#include "gui/pages/MonitoringPage.h"
 #include "gui/AboutDialog.h"
 #include "gui/pages/SettingsPage.h"
 #include "gateway/comms/SerialWorker.h"
@@ -157,30 +156,12 @@ void MainWindow::appendToLog(bool isError, const QString &text) {
 }
 
 void MainWindow::setupActions() {
-    m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
-    m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
-
-    m_showFlightDataAction = new QAction(u"Flight data"_s, this);
-    m_showFlightDataAction->setToolTip(u"Switch to flight data and charts."_s);
-
     QIcon settingsIcon;
     settingsIcon.addFile(u":/icons/settings_button.png"_s, QSize(), QIcon::Normal, QIcon::Off);
     settingsIcon.addFile(u":/icons/settings_button_black.png"_s, QSize(), QIcon::Normal, QIcon::On);
     m_openSettingsAction = new QAction(settingsIcon, u"Settings"_s, this);
     m_openSettingsAction->setToolTip(u"Open the settings window."_s);
     m_openSettingsAction->setCheckable(true);
-
-    connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_monitoringPage);
-        updateTopBarsForCurrentPage();
-        statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
-    });
-
-    connect(m_showFlightDataAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_flightDataPage);
-        updateTopBarsForCurrentPage();
-        statusBar()->showMessage(u"Flight data page selected."_s, 2000);
-    });
 
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() { openSettingsWindow(); });
 }
@@ -200,9 +181,6 @@ void MainWindow::setupMenuBar() {
     fileMenu->addAction(u"&Quit"_s, QKeySequence::Quit, qApp, &QApplication::quit);
 
     auto *viewMenu = mb->addMenu(u"&View"_s);
-    viewMenu->addAction(m_showMonitoringAction);
-    viewMenu->addAction(m_showFlightDataAction);
-    viewMenu->addSeparator();
     viewMenu->addAction(m_openSettingsAction);
 
     auto *helpMenu = mb->addMenu(u"&Help"_s);
@@ -470,7 +448,7 @@ void MainWindow::setupToolbar() {
     brandLayout->addWidget(m_missionMetaLabel);
     contentLayout->addWidget(brandBlock);
 
-    m_toolbarPageLabel = new QLabel(u"Monitoring"_s, content);
+    m_toolbarPageLabel = new QLabel(u"Flight data"_s, content);
     m_toolbarPageLabel->setObjectName(u"missionPageTitle"_s);
     contentLayout->addWidget(m_toolbarPageLabel);
     contentLayout->addSpacing(8);
@@ -484,14 +462,6 @@ void MainWindow::setupToolbar() {
     }
 
     contentLayout->addStretch(1);
-
-    auto *navGroup = new QActionGroup(this);
-    navGroup->setExclusive(true);
-    m_showMonitoringAction->setCheckable(true);
-    m_showFlightDataAction->setCheckable(true);
-    navGroup->addAction(m_showMonitoringAction);
-    navGroup->addAction(m_showFlightDataAction);
-    m_showMonitoringAction->setChecked(true);
 
     auto makeNavButton = [](QAction *action,
                           QWidget *parent,
@@ -515,8 +485,6 @@ void MainWindow::setupToolbar() {
     auto *navLayout = new QHBoxLayout(navContainer);
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(12);
-    navLayout->addWidget(makeNavButton(m_showMonitoringAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_showFlightDataAction, navContainer));
 
     navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
 
@@ -546,7 +514,7 @@ void MainWindow::setupDataBar() {
         return label;
     };
 
-    m_dataStripPageLabel = buildBadgeLabel(u"Monitoring"_s, m_dataBar);
+    m_dataStripPageLabel = buildBadgeLabel(u"Flight data"_s, m_dataBar);
     m_dataStripPageLabel->setObjectName(u"telemetryStripPage"_s);
     m_dataLinkStatusLabel = buildBadgeLabel(u"LINK: idle"_s, m_dataBar);
     m_dataRateLabel = buildBadgeLabel(u"RATE: -- B/s"_s, m_dataBar);
@@ -577,7 +545,7 @@ void MainWindow::setupConnectionBar() {
     row->setContentsMargins(16, 8, 16, 8);
     row->setSpacing(12);
 
-    m_connectionPageLabel = new QLabel(m_connectionBar);
+    m_connectionPageLabel = new QLabel(u"Serial — port, baud, Connect. Flight logs — Open log…"_s, m_connectionBar);
     m_connectionPageLabel->setObjectName(u"connectionStripContext"_s);
     m_connectionPageLabel->setWordWrap(false);
     m_connectionPageLabel->setMinimumWidth(200);
@@ -588,6 +556,7 @@ void MainWindow::setupConnectionBar() {
             .arg(Theme::kFontMono));
 
     m_serialControlBlock = new QWidget(m_connectionBar);
+    m_serialControlBlock->setVisible(true);
     auto *serialRow = new QHBoxLayout(m_serialControlBlock);
     serialRow->setContentsMargins(0, 0, 0, 0);
     serialRow->setSpacing(12);
@@ -737,50 +706,16 @@ void MainWindow::setupPages() {
     centralLayout->addWidget(m_pages, 1);
     setCentralWidget(central);
 
-    m_monitoringPage = new MonitoringPage(m_flightModel.get());
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
-    m_pages->addWidget(m_monitoringPage);
     m_pages->addWidget(m_flightDataPage);
-    m_pages->setCurrentWidget(m_monitoringPage);
+    m_pages->setCurrentWidget(m_flightDataPage);
 
-    connect(m_pages, &QStackedWidget::currentChanged, this, [this](int) {
-        updateTopBarsForCurrentPage();
-    });
     connect(m_flightModel.get(), &FlightDataModel::replayModeChanged, this, [this](bool) {
         syncTelemetryStrip();
     });
-
-    updateTopBarsForCurrentPage();
-}
-
-bool MainWindow::isMonitoringPageActive() const {
-    return m_pages && m_pages->currentWidget() == m_monitoringPage;
 }
 
 void MainWindow::updateTopBarsForCurrentPage() {
-    const bool monitoring = isMonitoringPageActive();
-
-    if (m_toolbarPageLabel) {
-        if (monitoring) {
-            m_toolbarPageLabel->setText(u"Monitoring"_s);
-        } else {
-            m_toolbarPageLabel->setText(u"Flight data"_s);
-        }
-    }
-
-    if (m_connectionPageLabel) {
-        if (monitoring) {
-            m_connectionPageLabel->setText(
-                u"Serial — port, baud, Connect. Flight logs — Open log…"_s);
-        } else {
-            m_connectionPageLabel->setText(
-                u"Replay — Open log… or Clear flight. Serial controls are on Monitoring."_s);
-        }
-    }
-
-    if (m_serialControlBlock) {
-        m_serialControlBlock->setVisible(monitoring);
-    }
     if (m_flightModel) {
         m_prevBytesForRate = m_flightModel->totalBytesReceived();
     }
@@ -790,37 +725,6 @@ void MainWindow::updateTopBarsForCurrentPage() {
 
 void MainWindow::syncTelemetryStrip() {
     if (!m_dataStripPageLabel || !m_dataLinkStatusLabel || !m_dataRateLabel || !m_flightModel) {
-        return;
-    }
-
-    if (isMonitoringPageActive()) {
-        m_dataStripPageLabel->setText(u"MONITORING"_s);
-        const bool connected = !m_serialPortSummary.isEmpty();
-        const bool hasErrors = m_lastDroppedCount > 0;
-
-        if (m_serialPortSummary.isEmpty()) {
-            m_dataLinkStatusLabel->setText(u"LINK: idle"_s);
-        } else {
-            m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1").arg(m_serialPortSummary));
-        }
-
-        // Apply semantic colors to link status
-        QString bgColor, textColor;
-        if (hasErrors) {
-            bgColor = Theme::kWarningBg();
-            textColor = Theme::kWarning();
-        } else if (connected) {
-            bgColor = Theme::kSuccessBg();
-            textColor = Theme::kSuccess();
-        } else {
-            bgColor = Theme::kBgDark();
-            textColor = Theme::kTextMuted();
-        }
-        m_dataLinkStatusLabel->setStyleSheet(
-            QString("QLabel { background: %1; color: %2; padding: 4px 8px; "
-                    "border-radius: 4px; font-family: %3; }")
-                .arg(bgColor, textColor, Theme::kFontMono));
-
         return;
     }
 
@@ -898,9 +802,7 @@ void MainWindow::updateDataRateLabel() {
     const qint64 total = m_flightModel->totalBytesReceived();
     const qint64 delta = total - m_prevBytesForRate;
     m_prevBytesForRate = total;
-    if (isMonitoringPageActive()) {
-        m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
-    } else if (!m_flightModel->replayMode()) {
+    if (!m_flightModel->replayMode()) {
         m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
     }
 

@@ -2,10 +2,10 @@
  * @file StatTileWidget.h
  * @brief A compact dark-themed tile showing a labelled numeric readout.
  *
- * Used in the stats row at the top of DashboardPage and as stat tiles
- * in MonitoringPage.  Each tile shows a small UPPERCASE label (e.g. "ALTITUDE")
- * above a large value string (e.g. "42.0 m").  The stylesheet is self-contained
- * so the widget can be dropped into any page without extra CSS.
+ * Used in the stats row at the top of DashboardPage.  Each tile shows a small
+ * UPPERCASE label (e.g. "ALTITUDE") above a large value string (e.g. "42.0 m").
+ * The stylesheet is self-contained so the widget can be dropped into any page
+ * without extra CSS.
  */
 
 #pragma once

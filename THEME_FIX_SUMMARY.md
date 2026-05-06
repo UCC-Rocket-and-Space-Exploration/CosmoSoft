@@ -78,13 +78,25 @@ forceButtonStyleUpdate(m_followToggle);
   - Dark: `#6ab0de`
   - Light: `#1a73b8`
 
+## Additional Changes
+
+### Chart Stats Label Removal
+The chart stats label (showing trace count, point count, decimation status) has been completely removed:
+- Removed `updateChartStatsLabel()` function and all 13 call sites
+- Removed `m_chartStatsLabel` widget creation and member variable
+- Removed associated QSS styling
+
 ## Testing
 ✅ Build successful
 ✅ All buttons force-refresh on theme change
 ✅ Link status colors update dynamically
 ✅ Brand label accent color updates
+✅ No QString::arg errors
+✅ No linker errors
 
 ## Related Files Modified
 1. `include/gui/MainWindow.h` - Added m_brandLabel member
 2. `src/gui/MainWindow.cpp` - Brand label + link status updates
-3. `src/gui/pages/DashboardPage.cpp` - Button style force-refresh
+3. `src/gui/pages/DashboardPage.cpp` - Button style force-refresh, chart stats label removed
+4. `include/gui/pages/DashboardPage.h` - Chart stats label removed
+5. `src/gui/widgets/StatTileWidget.cpp` - Fixed QString::arg placeholders

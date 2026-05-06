@@ -19,8 +19,8 @@
  * @class FlightDataModel
  * @brief Centralised, thread-safe store for the latest flight sample and session metadata.
  *
- * MonitoringPage and DashboardPage subscribe to sampleUpdated() to refresh
- * their displays.  The model itself never performs any I/O or parsing.
+ * DashboardPage subscribes to sampleUpdated() to refresh its displays.
+ * The model itself never performs any I/O or parsing.
  */
 class FlightDataModel : public QObject {
     Q_OBJECT

@@ -9,7 +9,6 @@ set(GUI_MOC_HEADERS
         "${CMAKE_SOURCE_DIR}/include/gui/FlightReplayController.h"
         "${CMAKE_SOURCE_DIR}/include/gui/AboutDialog.h"
         "${CMAKE_SOURCE_DIR}/include/gui/ThemeManager.h"
-        "${CMAKE_SOURCE_DIR}/include/gui/pages/MonitoringPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/SettingsPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/DashboardPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/EventLogPage.h"

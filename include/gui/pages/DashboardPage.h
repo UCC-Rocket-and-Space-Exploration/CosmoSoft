@@ -115,7 +115,6 @@ private:
     void refreshAllSeriesFromData();
     void applyChartTheme();
     void refreshPageStyleSheet();
-    void updateChartStatsLabel();
     [[nodiscard]] static QString buildDashboardQss();
 
     /**
@@ -159,7 +158,6 @@ private:
     QToolButton  *m_showPointValuesToggle = nullptr;
     QToolButton  *m_followToggle          = nullptr;
     QToolButton  *m_tracesToggleBtn       = nullptr;
-    QLabel       *m_chartStatsLabel       = nullptr;
 
     // ── Graph-only toolbar groups (hidden in Map view) ────────────────────────
     QWidget *m_zoomGroup    = nullptr;

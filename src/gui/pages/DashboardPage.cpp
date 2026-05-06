@@ -289,8 +289,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         m_metricEnabled = enabled;
         m_preserveChartAxes = false;
         refreshAllSeriesFromData();
-        updateChartStatsLabel();
-    });
+        });
 
     auto *chartHost = new QWidget(this);
     chartHost->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -412,8 +411,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_liveChartCoalesceTimer->setSingleShot(true);
     connect(m_liveChartCoalesceTimer, &QTimer::timeout, this, [this]() {
         rebuildLiveSeriesFromHistory();
-        updateChartStatsLabel();
-        hideChartLoadingIndicator();
+            hideChartLoadingIndicator();
     });
 
     // Replay coalesce timer: scrubbing the timeline fires setReplayTrailLength()
@@ -549,7 +547,6 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     }
 
     refreshAllSeriesFromData();
-    updateChartStatsLabel();
 
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
             this, &DashboardPage::applyChartTheme);
@@ -814,10 +811,6 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
     chartToolbar->addWidget(m_chartHelpBtn);
 
     chartHeaderLay->addLayout(chartToolbar);
-
-    m_chartStatsLabel = new QLabel(chartHeader);
-    m_chartStatsLabel->setObjectName(u"chartStatsLabel"_s);
-    chartHeaderLay->addWidget(m_chartStatsLabel);
 }
 
 QString DashboardPage::buildDashboardQss() {
@@ -931,11 +924,10 @@ QString DashboardPage::buildDashboardQss() {
     ss += QString(uR"(
         QToolButton#chartHelpBtn { font-weight: 700; font-size: %1px; min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; border: 1px solid %2; border-radius: 15px; background: %3; color: %4; padding: 0px; }
         QToolButton#chartHelpBtn:hover { color: %5; border-color: %6; background: %7; }
-        QLabel#chartStatsLabel { color: %4; font-size: %8px; margin: 0px; padding: 0px; }
     )"_s)
         .arg(Theme::kFontSizeMd).arg(borderPanel).arg(bgButton)
         .arg(textMuted).arg(textPri).arg(borderLight)
-        .arg(btnHov).arg(Theme::kFontSizeSm);
+        .arg(btnHov);
 
     return ss;
 }
@@ -979,7 +971,6 @@ void DashboardPage::updateToolbarForView() {
     if (m_toggleGroup)    m_toggleGroup->setVisible(graphMode);
     if (m_actionGroup)    m_actionGroup->setVisible(graphMode);
     if (m_chartHelpBtn)   m_chartHelpBtn->setVisible(graphMode);
-    if (m_chartStatsLabel) m_chartStatsLabel->setVisible(graphMode);
     if (m_tracesToggleBtn) m_tracesToggleBtn->setVisible(graphMode);
 }
 
@@ -1004,7 +995,6 @@ void DashboardPage::onChartVisualOptionsToggled() {
         if (s && m_metricEnabled[static_cast<std::size_t>(mi)])
             applySeriesPointDisplay(s, s->count(), nEn);
     }
-    updateChartStatsLabel();
 }
 
 void DashboardPage::applySeriesPointDisplay(QLineSeries *series, int pointCount, int nEnabledMetrics) const {
@@ -1026,43 +1016,6 @@ void DashboardPage::applySeriesPointDisplay(QLineSeries *series, int pointCount,
     }
 
     series->setUseOpenGL(nEnabledMetrics == 1 && pointCount > 800 && !showVertices);
-}
-
-void DashboardPage::updateChartStatsLabel() {
-    if (!m_chartStatsLabel) {
-        return;
-    }
-    int maxPts = 0;
-    int nTr = 0;
-    for (int i = 0; i < kMetricCount; ++i) {
-        if (!m_metricEnabled[static_cast<std::size_t>(i)]) {
-            continue;
-        }
-        ++nTr;
-        auto *s = m_lineSeries[static_cast<std::size_t>(i)];
-        if (s) {
-            maxPts = std::max(maxPts, s->count());
-        }
-    }
-    const QString mode = (m_model && m_model->replayMode()) ? u"Replay"_s : u"Live"_s;
-    const QString norm = (nTr == 2) ? u" · dual Y-axis"_s : (nTr > 2) ? u" · normalized Y overlay"_s : u""_s;
-    QString opts;
-    if (m_showMarkersToggle) {
-        opts += m_showMarkersToggle->isChecked() ? u" · markers ≤400"_s : u" · markers off"_s;
-    }
-    if (m_showPointValuesToggle && m_showPointValuesToggle->isChecked()) {
-        opts += u" · point labels ≤100 (1 trace)"_s;
-    }
-    if (!m_hoverSampleIndexMap.empty() && m_hoverLogicalSampleCount > static_cast<int>(m_hoverSampleIndexMap.size())) {
-        opts += u" · LTTB decimation"_s;
-    }
-    m_chartStatsLabel->setText(
-        QStringLiteral("%1 · %2 traces · up to %3 points%4%5")
-            .arg(mode)
-            .arg(nTr)
-            .arg(maxPts)
-            .arg(norm)
-            .arg(opts));
 }
 
 /**
@@ -1136,26 +1089,6 @@ void DashboardPage::setReplaySession(const FlightSession *session) {
         if (m_mapViewBtn) m_mapViewBtn->setChecked(false);
     }
 
-    if (m_sessionInfoLabel) {
-        if (session && n > 0) {
-            double maxAlt = -1e30, minAlt = 1e30;
-            for (const auto &s : session->samples) {
-                maxAlt = std::max(maxAlt, s.altitude);
-                minAlt = std::min(minAlt, s.altitude);
-            }
-            const double durationSec = static_cast<double>(
-                session->samples.back().timestamp - session->samples.front().timestamp) / 1000.0;
-            m_sessionInfoLabel->setText(
-                QStringLiteral("Session: %1 samples · %2 s · peak alt %3 m · min alt %4 m")
-                    .arg(n)
-                    .arg(durationSec, 0, 'f', 1)
-                    .arg(maxAlt, 0, 'f', 1)
-                    .arg(minAlt, 0, 'f', 1));
-            m_sessionInfoLabel->setVisible(true);
-        } else {
-            m_sessionInfoLabel->setVisible(false);
-        }
-    }
 
     if (n > 0) {
         m_lastReplayTrailLength = n;
@@ -1165,7 +1098,6 @@ void DashboardPage::setReplaySession(const FlightSession *session) {
         m_lastReplayTrailLength = 0;
         rebuildReplayCharts(0);
     }
-    updateChartStatsLabel();
 }
 
 /**
@@ -1267,8 +1199,7 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         m_axisX->setRange(0, 10);
         m_axisY->setRange(-1, 1);
         m_chart->setTitle(u"Flight data"_s);
-        updateChartStatsLabel();
-        return;
+            return;
     }
 
     const auto &samples = m_session->samples;
@@ -1278,8 +1209,7 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         m_hoverSampleIndexMap.clear();
         m_hoverLogicalSampleCount = 0;
         m_replayChartBuiltTrailLength = 0;
-        updateChartStatsLabel();
-        return;
+            return;
     }
 
     m_replayChartBuiltTrailLength = end;
@@ -1320,7 +1250,6 @@ void DashboardPage::onSessionReset() {
     if (m_viewStack && m_liveSamples.empty() && (!m_session || m_session->samples.empty())) {
         m_viewStack->setCurrentIndex(2);
     }
-    updateChartStatsLabel();
 }
 
 /**
@@ -1349,8 +1278,7 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         m_axisX->setRange(0, 10);
         m_axisY->setRange(-1, 1);
         m_chart->setTitle(u"Flight data"_s);
-        updateChartStatsLabel();
-        return;
+            return;
     }
 
     buildChartFromSamples(m_liveSamples, static_cast<int>(m_liveSamples.size()));
@@ -1365,8 +1293,7 @@ void DashboardPage::buildChartFromSamples(const std::vector<FlightSample> &sampl
     const std::vector<int> plotIdx = lttbIndicesForChartDisplay(
         samples, end, kMaxChartDisplayPoints, m_metricEnabled, tRef, sessionElapsed);
     if (plotIdx.empty()) {
-        updateChartStatsLabel();
-        return;
+            return;
     }
     m_hoverSampleIndexMap = plotIdx;
     m_hoverLogicalSampleCount = end;
@@ -1495,7 +1422,6 @@ void DashboardPage::buildChartFromSamples(const std::vector<FlightSample> &sampl
                                                    && m_lineSeries[static_cast<std::size_t>(i)]->count() > 0;
         m_tracesPanel->setMetricDataStates(hasData);
     }
-    updateChartStatsLabel();
 }
 
 void DashboardPage::scheduleLiveChartRebuild() {
@@ -1504,8 +1430,7 @@ void DashboardPage::scheduleLiveChartRebuild() {
         m_liveChartCoalesceTimer->start(50);
     } else {
         rebuildLiveSeriesFromHistory();
-        updateChartStatsLabel();
-    }
+        }
 }
 
 void DashboardPage::zoomChartAxesAtCenter(bool zoomIn) {

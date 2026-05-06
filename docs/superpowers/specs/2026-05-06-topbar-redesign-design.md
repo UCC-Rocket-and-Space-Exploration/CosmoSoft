@@ -134,15 +134,17 @@ void MainWindow::onThemeChanged() {
   - `m_baudCombo` (baud rate dropdown)
   - Port/baud labels
   - Refresh, Connect, Disconnect buttons
-- Serial-related methods:
+- Serial-related UI methods:
   - `refreshSerialPorts()`
   - `loadSerialPrefsToUi()`
   - `persistSerialPrefs()`
-  - `startSerial()`
-  - `stopSerial()`
 - Serial-related member variables:
   - `m_serialPortSummary`
-  - Serial worker/parser pipeline (if not needed for future live mode)
+
+**Keep (commented out or moved to private section) for future live mode:**
+- `startSerial()` and `stopSerial()` methods
+- Serial worker/parser pipeline infrastructure
+- These will be re-enabled when live telemetry capture is added
 
 **Keep & Repurpose:**
 - Container widget: `m_connectionBar` (rename semantically to page action bar)
@@ -276,10 +278,10 @@ New icons needed (both dark and light variants):
 
 These should be added to the Qt resource file (`.qrc`) at `:/icons/` path.
 
-If icons don't exist, use:
-- Unicode fallback: 📁 (U+1F4C1), 🗑️ (U+1F5D1), 💾 (U+1F4BE)
-- Qt standard icons as temporary placeholders
-- Design custom icons matching the existing settings button style
+**Icon sourcing strategy:**
+1. First, check if suitable icons already exist in `:/icons/` directory
+2. If not, use Qt's standard icons as placeholders: `QStyle::SP_DirOpenIcon`, `QStyle::SP_TrashIcon`, `QStyle::SP_DriveNetIcon`
+3. Custom icons should be designed later to match the existing settings button style (simple line icons, 24x24px base size)
 
 ## Component Changes
 

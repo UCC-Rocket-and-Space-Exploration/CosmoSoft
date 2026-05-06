@@ -3,7 +3,7 @@
  * @brief Top-level application window for CosmoSoft.
  *
  * MainWindow owns the mission toolbar, connection bar, telemetry strip, and the
- * page stack (MonitoringPage, DashboardPage).  It also owns the
+ * page stack (DashboardPage).  It also owns the
  * live-telemetry pipeline (SerialWorker → BlockingQueue → ParserWorker →
  * FlightDataModel) and the replay pipeline (FlightReplayController).
  *
@@ -35,7 +35,6 @@ class QLabel;
 class QMenu;
 class QStackedWidget;
 class QTimer;
-class MonitoringPage;
 class DashboardPage;
 class SettingsPage;
 class FlightDataModel;
@@ -102,8 +101,6 @@ private:
      */
     void appendToLog(bool isError, const QString &text);
 
-    [[nodiscard]] bool isMonitoringPageActive() const;
-
     void addRecentFile(const QString &path);
     void rebuildRecentFilesMenu();
 
@@ -111,13 +108,10 @@ private:
     QMenu *m_recentFilesMenu = nullptr;
 
     // ── Toolbar actions ───────────────────────────────────────────────────────
-    QAction *m_showMonitoringAction  = nullptr;
-    QAction *m_showFlightDataAction  = nullptr;
     QAction *m_openSettingsAction    = nullptr;
 
     // ── Page stack ────────────────────────────────────────────────────────────
     QStackedWidget *m_pages           = nullptr;
-    MonitoringPage *m_monitoringPage  = nullptr;
     DashboardPage  *m_flightDataPage  = nullptr;
     SettingsPage   *m_settingsWindow  = nullptr;
 
