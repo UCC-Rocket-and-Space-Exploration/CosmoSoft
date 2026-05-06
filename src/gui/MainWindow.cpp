@@ -236,6 +236,8 @@ void MainWindow::rebuildRecentFilesMenu() {
                 if (m_flightDataPage) {
                     m_flightDataPage->setReplaySession(&m_loadedSession);
                 }
+                const QString filename = QFileInfo(filePath).fileName();
+                updateBreadcrumb(QStringLiteral("Session: %1").arg(filename));
                 showStatusMessage(QStringLiteral("Loaded flight: %1").arg(filePath), 4000);
                 appendToLog(false, QStringLiteral("Loaded flight: %1").arg(filePath));
             });
@@ -454,7 +456,7 @@ void MainWindow::setupConnectionBar() {
     row->setContentsMargins(16, 8, 16, 8);
     row->setSpacing(12);
 
-    m_connectionPageLabel = new QLabel(u"Flight logs — Open log…"_s, m_connectionBar);
+    m_connectionPageLabel = new QLabel(u"Flight Monitoring"_s, m_connectionBar);
     m_connectionPageLabel->setObjectName(u"connectionStripContext"_s);
     m_connectionPageLabel->setWordWrap(false);
     m_connectionPageLabel->setMinimumWidth(200);
@@ -487,6 +489,19 @@ void MainWindow::setupConnectionBar() {
             .arg(Theme::kTextPrimary())
             .arg(Theme::kBorderSubtle()));
 
+}
+
+void MainWindow::updateBreadcrumb(const QString &context) {
+    if (!m_connectionPageLabel) {
+        return;
+    }
+
+    if (context.isEmpty()) {
+        m_connectionPageLabel->setText(u"Flight Monitoring"_s);
+    } else {
+        m_connectionPageLabel->setText(
+            QStringLiteral("Flight Monitoring › %1").arg(context));
+    }
 }
 
 /*
@@ -701,6 +716,8 @@ void MainWindow::onOpenReplayFile() {
             m_flightDataPage->setReplaySession(&m_loadedSession);
         }
         addRecentFile(path);
+        const QString filename = QFileInfo(path).fileName();
+        updateBreadcrumb(QStringLiteral("Session: %1").arg(filename));
         const QString loadMsg = QStringLiteral("Loaded flight: %1").arg(path);
         showStatusMessage(loadMsg, 4000);
         appendToLog(false, loadMsg);
@@ -734,6 +751,7 @@ void MainWindow::onClearFlightData() {
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
     }
+    updateBreadcrumb();  // Reset to default
     showStatusMessage(u"Cleared flight replay data."_s, 2000);
     appendToLog(false, u"Flight data cleared."_s);
 }

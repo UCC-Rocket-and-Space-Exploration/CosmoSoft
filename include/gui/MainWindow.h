@@ -93,6 +93,7 @@ private:
 
     void addRecentFile(const QString &path);
     void rebuildRecentFilesMenu();
+    void updateBreadcrumb(const QString &context = QString());
 
     // ── Menu bar ─────────────────────────────────────────────────────────────
     QMenu *m_recentFilesMenu = nullptr;
