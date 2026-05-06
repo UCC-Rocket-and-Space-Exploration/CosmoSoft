@@ -448,11 +448,6 @@ void MainWindow::setupToolbar() {
     brandLayout->addWidget(m_missionMetaLabel);
     contentLayout->addWidget(brandBlock);
 
-    m_toolbarPageLabel = new QLabel(u"Flight data"_s, content);
-    m_toolbarPageLabel->setObjectName(u"missionPageTitle"_s);
-    contentLayout->addWidget(m_toolbarPageLabel);
-    contentLayout->addSpacing(8);
-
     updateMissionClock();
     if (!m_missionClockTimer) {
         m_missionClockTimer = new QTimer(this);

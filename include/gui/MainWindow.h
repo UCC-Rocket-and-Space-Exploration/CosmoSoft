@@ -118,7 +118,6 @@ private:
     // ── Toolbar labels ────────────────────────────────────────────────────────
     QLabel *m_brandLabel        = nullptr;
     QLabel *m_missionMetaLabel  = nullptr;
-    QLabel *m_toolbarPageLabel  = nullptr;
     QTimer *m_missionClockTimer = nullptr;
 
     // ── Connection bar ────────────────────────────────────────────────────────
