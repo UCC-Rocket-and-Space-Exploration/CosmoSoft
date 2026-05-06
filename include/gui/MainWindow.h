@@ -80,6 +80,7 @@ private:
     void setupToolbar();
     void setupConnectionBar();
     [[nodiscard]] QString buildToolbarStyleSheet();
+    [[nodiscard]] QString buildActionBarStyleSheet();
     void setupPages();
     void openSettingsWindow();
     void applyReplayTelemetrySample(int trailLength);

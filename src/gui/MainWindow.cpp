@@ -378,6 +378,47 @@ QString MainWindow::buildToolbarStyleSheet() {
         .arg(btnBg);                // %7
 }
 
+QString MainWindow::buildActionBarStyleSheet() {
+    return QString(uR"(
+        QWidget#connectionStrip {
+            background: %1;
+            color: %2;
+            border-bottom: 1px solid %3;
+            padding: 8px 16px;
+        }
+        QLabel#connectionStripContext {
+            font-size: %4px;
+            color: %5;
+            font-family: %6;
+            font-weight: 500;
+        }
+        QPushButton[kind="actionButton"] {
+            min-width: 32px;
+            min-height: 32px;
+            max-width: 32px;
+            max-height: 32px;
+            border: none;
+            border-radius: 4px;
+            background-color: transparent;
+            padding: 4px;
+        }
+        QPushButton[kind="actionButton"]:hover {
+            background-color: %7;
+        }
+        QPushButton[kind="actionButton"]:pressed {
+            background-color: %8;
+        }
+    )"_s)
+        .arg(Theme::kBgBase())          // %1 - lighter than toolbar
+        .arg(Theme::kTextPrimary())     // %2
+        .arg(Theme::kBorderSubtle())    // %3
+        .arg(Theme::kFontSizeBase)      // %4
+        .arg(Theme::kTextMid())         // %5
+        .arg(Theme::kFontMono)          // %6
+        .arg(Theme::kBtnHover())        // %7
+        .arg(Theme::kBtnPressed());     // %8
+}
+
 void MainWindow::setupToolbar() {
     auto *toolbar = new QToolBar(u"Mission Toolbar"_s, this);
     toolbar->setObjectName(u"missionToolbar"_s);
@@ -485,11 +526,6 @@ void MainWindow::setupConnectionBar() {
     m_connectionPageLabel->setObjectName(u"connectionStripContext"_s);
     m_connectionPageLabel->setWordWrap(false);
     m_connectionPageLabel->setMinimumWidth(200);
-    m_connectionPageLabel->setStyleSheet(
-        QString(u"color: %1; font-size: %2px; font-family: %3;"_s)
-            .arg(Theme::kTextMuted())
-            .arg(Theme::kFontSizeBase)
-            .arg(Theme::kFontMono));
 
     m_openLogBtn = createActionButton(m_connectionBar, u"Open flight log"_s, u"folder-open"_s);
     m_clearFlightBtn = createActionButton(m_connectionBar, u"Clear flight data"_s, u"trash"_s);
@@ -506,11 +542,7 @@ void MainWindow::setupConnectionBar() {
     connect(m_clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
     connect(m_exportBtn, &QPushButton::clicked, this, &MainWindow::onExportSession);
 
-    m_connectionBar->setStyleSheet(
-        QString(u"QWidget#connectionStrip { background: %1; color: %2; border-bottom: 1px solid %3; }"_s)
-            .arg(Theme::kBgPanel())
-            .arg(Theme::kTextPrimary())
-            .arg(Theme::kBorderSubtle()));
+    m_connectionBar->setStyleSheet(buildActionBarStyleSheet());
 
 }
 
@@ -796,19 +828,7 @@ void MainWindow::onThemeChanged() {
     }
 
     if (m_connectionBar) {
-        m_connectionBar->setStyleSheet(
-            QString(u"QWidget#connectionStrip { background: %1; color: %2; border-bottom: 1px solid %3; }"_s)
-                .arg(Theme::kBgPanel())
-                .arg(Theme::kTextPrimary())
-                .arg(Theme::kBorderSubtle()));
-    }
-
-    if (m_connectionPageLabel) {
-        m_connectionPageLabel->setStyleSheet(
-            QString(u"color: %1; font-size: %2px; font-family: %3;"_s)
-                .arg(Theme::kTextMuted())
-                .arg(Theme::kFontSizeBase)
-                .arg(Theme::kFontMono));
+        m_connectionBar->setStyleSheet(buildActionBarStyleSheet());
     }
 }
 
