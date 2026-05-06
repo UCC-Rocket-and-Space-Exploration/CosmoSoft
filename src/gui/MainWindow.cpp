@@ -817,6 +817,19 @@ void MainWindow::onShowAbout() {
 }
 
 void MainWindow::onThemeChanged() {
+    // Update settings icon based on theme
+    if (m_openSettingsAction) {
+        QIcon settingsIcon;
+        const QString themeId = cosmo::ThemeManager::instance().current().id;
+        const bool isDark = themeId.contains(u"dark"_s, Qt::CaseInsensitive);
+        const QString iconPath = isDark
+            ? u":/icons/settings_button.png"_s
+            : u":/icons/settings_button_black.png"_s;
+        settingsIcon.addFile(iconPath, QSize(), QIcon::Normal);
+        m_openSettingsAction->setIcon(settingsIcon);
+    }
+
+    // Update toolbar stylesheet
     auto *toolbar = findChild<QToolBar *>(u"missionToolbar"_s);
     if (toolbar) {
         toolbar->setStyleSheet(buildToolbarStyleSheet());
