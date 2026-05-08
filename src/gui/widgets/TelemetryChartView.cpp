@@ -1,6 +1,7 @@
 #include "gui/widgets/TelemetryChartView.h"
 
 #include "gui/Theme.h"
+#include "gui/ThemeManager.h"
 
 #include <QChart>
 #include <QFocusEvent>
@@ -122,6 +123,25 @@ TelemetryChartView::TelemetryChartView(QChart *c, QWidget *parent)
     m_hoverOverlay = new QLabel(viewport());
     m_hoverOverlay->setWordWrap(true);
     m_hoverOverlay->setMaximumWidth(420);
+    refreshHoverOverlayStyleSheet();
+    m_hoverOverlay->hide();
+    m_crosshairOverlay->raise();
+
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &TelemetryChartView::refreshHoverOverlayStyleSheet);
+
+    viewport()->installEventFilter(this);
+}
+
+void TelemetryChartView::setChart(QChart *c)
+{
+    m_chartPtr = c;
+}
+
+void TelemetryChartView::refreshHoverOverlayStyleSheet()
+{
+    if (!m_hoverOverlay) return;
+
     m_hoverOverlay->setStyleSheet(
         QString(u"background-color: %1;"
                 u"color: %2;"
@@ -135,15 +155,11 @@ TelemetryChartView::TelemetryChartView(QChart *c, QWidget *parent)
             .arg(Theme::kFontSizeSm)
             .arg(Theme::kFontMono)
             .arg(Theme::kBorderPanel()));
-    m_hoverOverlay->hide();
-    m_crosshairOverlay->raise();
 
-    viewport()->installEventFilter(this);
-}
-
-void TelemetryChartView::setChart(QChart *c)
-{
-    m_chartPtr = c;
+    // Force crosshair overlay repaint with new theme colors
+    if (m_crosshairOverlay) {
+        m_crosshairOverlay->update();
+    }
 }
 
 void TelemetryChartView::mousePressEvent(QMouseEvent *event)

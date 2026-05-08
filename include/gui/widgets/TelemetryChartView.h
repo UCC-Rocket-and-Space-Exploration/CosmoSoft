@@ -69,6 +69,7 @@ private:
     void endPanningIfActive();
     void panAxesByPixels(const QPoint &delta);
     static void zoomAxisAtFocal(QValueAxis *ax, double focal, double spanScale);
+    void refreshHoverOverlayStyleSheet();
 
     QChart  *m_chartPtr          = nullptr;
     bool     m_panning           = false;

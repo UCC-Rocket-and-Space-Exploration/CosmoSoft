@@ -19,6 +19,31 @@ The app builds and runs with:
 
 **Live serial:** Connect from the connection bar; bytes flow through `ParserWorker` → `Framer` → `Parser`. Until parsing is implemented, decoded live samples may not appear in the UI.
 
+## Theming
+
+CosmoSoft supports **light and dark themes** that can be switched on-the-fly without restarting the application.
+
+**Built-in themes:**
+- **Dark theme** — Default, optimized for low-light environments
+- **Light theme** — High-contrast option for bright conditions
+
+**Switching themes:**
+1. Open **Settings** via the gear icon in the toolbar
+2. Go to **Appearance** tab
+3. Select your preferred theme from the dropdown
+4. All UI elements update immediately
+
+**Custom skins:**
+- Import custom `.cosmo` theme files via Settings → Appearance → "Import .cosmo skin..."
+- Custom skins are ZIP archives containing a `theme.json` palette definition
+- Imported themes persist across app restarts
+
+**Theme persistence:**
+- Your selected theme is saved automatically via Qt Settings
+- macOS: `~/Library/Preferences/com.CosmoSoft.cosmo-soft.plist`
+- Linux: `~/.config/CosmoSoft/cosmo-soft.conf`
+- Windows: Registry under `HKEY_CURRENT_USER\Software\CosmoSoft\cosmo-soft`
+
 ## Requirements
 
 Before building, make sure you have:

@@ -945,6 +945,18 @@ void DashboardPage::refreshPageStyleSheet() {
                 .arg(textMuted).arg(bgPanel).arg(borderPanel));
     }
 
+    // Refresh toolbar group backgrounds
+    const auto toolGroupStyle = QString(u"background: %1; border-radius: 6px; border: none;"_s).arg(Theme::kBgPanel());
+    if (m_zoomGroup) {
+        m_zoomGroup->setStyleSheet(toolGroupStyle);
+    }
+    if (m_toggleGroup) {
+        m_toggleGroup->setStyleSheet(toolGroupStyle);
+    }
+    if (m_actionGroup) {
+        m_actionGroup->setStyleSheet(toolGroupStyle);
+    }
+
     // Force button style updates for checkable buttons
     auto forceButtonStyleUpdate = [](QWidget *widget) {
         if (widget) {

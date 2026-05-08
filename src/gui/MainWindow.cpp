@@ -92,7 +92,7 @@ QPushButton* createActionButton(QWidget *parent, const QString &tooltip, const Q
     } else if (iconName == u"trash"_s) {
         iconType = QStyle::SP_TrashIcon;
     } else if (iconName == u"export"_s) {
-        iconType = QStyle::SP_DriveNetIcon;
+        iconType = QStyle::SP_DialogSaveButton;
     }
 
     QIcon icon = btn->style()->standardIcon(iconType);

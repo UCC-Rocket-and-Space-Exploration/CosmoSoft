@@ -155,6 +155,16 @@ bool open();
 
 **CRITICAL:** All UI work MUST be theme-aware and support both light and dark themes.
 
+#### Theme System Architecture
+
+CosmoSoft uses a centralized theme management system:
+
+- **ThemeManager** singleton manages the active theme and emits `themeChanged()` signal
+- **Theme::k\*()** accessors provide runtime access to current theme colors
+- **ColorPalette** struct in `CosmoTheme.h` defines 25+ semantic color tokens
+- **Built-in themes** stored as JSON in `assets/skins/dark/` and `assets/skins/light/`
+- **Custom skins** can be imported as `.cosmo` ZIP archives
+
 When creating or modifying GUI widgets and pages:
 
 ```cpp
@@ -167,50 +177,307 @@ setStyleSheet(QString("QLabel { color: %1; background: %2; }")
     .arg(Theme::kBgPanel()));
 ```
 
-**Required practices:**
+#### Required Theme Integration Pattern
 
-1. **Use Theme tokens exclusively** — Never hardcode colors in stylesheets or QPainter code
-   - Text: `Theme::kTextPrimary()`, `Theme::kTextMuted()`, `Theme::kTextMid()`
-   - Backgrounds: `Theme::kBgBase()`, `Theme::kBgPanel()`, `Theme::kBgDark()`
-   - Borders: `Theme::kBorderPanel()`, `Theme::kBorderDefault()`, `Theme::kBorderLight()`
-   - Buttons: `Theme::kBgButton()`, `Theme::kBtnHover()`, `Theme::kBtnPressed()`
-   - Semantic: `Theme::kSuccess()`, `Theme::kWarning()`, `Theme::kDanger()`, `Theme::kInfo()`
+**Every widget that builds QSS stylesheets using Theme::k\*() accessors MUST:**
 
-2. **Connect to ThemeManager::themeChanged** — All custom widgets must refresh when theme changes
+1. **Extract stylesheet building into a dedicated method**
+   ```cpp
+   // In MyWidget.h
+   private:
+       void refreshStyleSheet();
+   
+   // In MyWidget.cpp
+   void MyWidget::refreshStyleSheet() {
+       setStyleSheet(QString("color: %1; background: %2;")
+           .arg(Theme::kTextPrimary())
+           .arg(Theme::kBgPanel()));
+   }
+   ```
+
+2. **Call the refresh method in the constructor**
+   ```cpp
+   MyWidget::MyWidget(QWidget *parent) : QWidget(parent) {
+       // Widget setup...
+       refreshStyleSheet();
+   }
+   ```
+
+3. **Connect to ThemeManager::themeChanged signal**
    ```cpp
    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
-           this, &MyWidget::applyThemeStyleSheet);
+           this, &MyWidget::refreshStyleSheet);
    ```
 
-3. **Test both themes** — Verify your changes in Settings → Appearance by switching between Dark and Light
-   - All text must be readable (sufficient contrast)
-   - All buttons must be visible and distinguishable  
-   - No dark-on-dark or light-on-light rendering
-
-4. **Dynamic colors for QColor** — When using QColor with alpha or transformations:
+4. **Include ThemeManager.h when connecting to the signal**
    ```cpp
-   // ❌ BAD
-   painter.setPen(QPen(QColor(255, 255, 255, 100), 1));
-   
-   // ✅ GOOD
-   QColor crosshairColor(Theme::kTextPrimary());
-   crosshairColor.setAlpha(100);
-   painter.setPen(QPen(crosshairColor, 1));
+   #include "gui/ThemeManager.h"
    ```
 
-**Files modified for UI theming:**
-- `include/gui/Theme.h` — Design tokens (spacing, typography, colors)
-- `include/gui/CosmoTheme.h` — ColorPalette struct
-- `src/gui/ThemeManager.cpp` — Global QSS generation
-- `assets/skins/light/theme.json` — Light theme palette values
-- `assets/skins/dark/theme.json` — Dark theme palette values
+**Exception:** Transient dialogs created on-demand (like `AboutDialog`) don't need signal connections since they get fresh theme colors each time they're instantiated.
 
-**Verification checklist:**
-- [ ] No hardcoded hex colors in .cpp files (check with `grep -rn "#[0-9a-fA-F]\{6\}" src/gui/`)
-- [ ] Widget connects to `themeChanged` signal
-- [ ] Tested in both light and dark themes
-- [ ] All text is legible with sufficient contrast
+#### Available Theme Tokens
+
+**Text colors:**
+- `Theme::kTextPrimary()` — Primary text (headings, body)
+- `Theme::kTextMid()` — Secondary text
+- `Theme::kTextMuted()` — Tertiary/disabled text
+- `Theme::kTextDim()` — Very subtle text
+
+**Backgrounds:**
+- `Theme::kBgBase()` — Base background
+- `Theme::kBgDark()` — Darker panels
+- `Theme::kBgPanel()` — Panel backgrounds
+- `Theme::kBgInput()` — Input field backgrounds
+- `Theme::kBgButton()` — Button backgrounds
+
+**Borders:**
+- `Theme::kBorderPanel()` — Panel borders
+- `Theme::kBorderDefault()` — Standard borders
+- `Theme::kBorderLight()` — Light borders
+- `Theme::kBorderSubtle()` — Very subtle borders
+
+**Interactive states:**
+- `Theme::kBtnHover()` — Button hover state
+- `Theme::kBtnPressed()` — Button pressed state
+- `Theme::kFocusRing()` — Focus indicator color
+- `Theme::kAccentLink()` — Accent/active/checked state
+- `Theme::kAccentCheckbox()` — Checkbox accent
+
+**Semantic colors:**
+- `Theme::kSuccess()` — Success states (green)
+- `Theme::kWarning()` — Warning states (orange)
+- `Theme::kDanger()` — Error/danger states (red)
+- `Theme::kInfo()` — Info states (blue)
+
+**Design constants:**
+- `Theme::kFontMono` — Monospace font family
+- `Theme::kFontSizeBase` — Base font size (12px)
+- `Theme::kFontSizeSm` — Small font size (11px)
+- `Theme::kRadiusSm` — Small border radius (4px)
+- `Theme::kRadiusMd` — Medium border radius (6px)
+
+#### Custom Painting with Theme Colors
+
+When using `QPainter` with dynamic colors:
+
+```cpp
+// ❌ BAD - Hardcoded RGB
+painter.setPen(QPen(QColor(255, 255, 255, 100), 1));
+
+// ✅ GOOD - Theme-aware with alpha
+QColor crosshairColor(Theme::kTextPrimary());
+crosshairColor.setAlpha(100);
+painter.setPen(QPen(crosshairColor, 1));
+```
+
+For custom paint events, trigger a repaint when theme changes:
+
+```cpp
+connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+        this, [this]() { update(); });  // Forces paintEvent() call
+```
+
+#### Stateful Widgets (Checkable Buttons)
+
+For widgets with state-dependent styles (checkable buttons, toggles), force style recomputation:
+
+```cpp
+void MyWidget::refreshStyleSheet() {
+    setStyleSheet(buildStyleSheet());
+    
+    // Force Qt to recompute styles for stateful widgets
+    m_toggleButton->style()->unpolish(m_toggleButton);
+    m_toggleButton->style()->polish(m_toggleButton);
+    m_toggleButton->update();
+}
+```
+
+#### Theme Files Structure
+
+**Built-in theme locations:**
+- `assets/skins/dark/theme.json` — Dark theme palette
+- `assets/skins/light/theme.json` — Light theme palette
+- `assets/resources.qrc` — Qt resource manifest (skins compiled into binary)
+
+**Theme JSON format:**
+```json
+{
+  "name": "Dark",
+  "author": "CosmoSoft",
+  "version": "1.0",
+  "palette": {
+    "bg_base": "#0f0f0f",
+    "text_primary": "#e8e8e8",
+    "accent_link": "#4a9eff",
+    ...
+  }
+}
+```
+
+**Custom skin import:**
+- Users can import `.cosmo` files (ZIP archives with `theme.json` + optional textures/preview)
+- Custom skins stored in `QStandardPaths::AppDataLocation/skins/<name>/`
+- Discovered on app startup and added to Settings dropdown
+
+#### Theme System Files
+
+**Core headers:**
+- `include/gui/Theme.h` — Runtime accessor functions (`Theme::kTextPrimary()`, etc.)
+- `include/gui/ThemeManager.h` — Singleton manager, `themeChanged()` signal
+- `include/gui/CosmoTheme.h` — Data structures (`ColorPalette`, `TextureSet`, `CosmoTheme`)
+- `include/gui/SkinLoader.h` — JSON parsing and `.cosmo` archive import
+- `include/gui/ThemePainter.h` — Texture painting utilities
+
+**Implementations:**
+- `src/gui/ThemeManager.cpp` — Global QSS generation (~310 lines), persistence
+- `src/gui/SkinLoader.cpp` — JSON parsing, ZIP extraction, discovery
+- `src/gui/ThemePainter.cpp` — Texture rendering (tile/stretch/cover modes)
+
+**UI integration:**
+- `src/gui/pages/SettingsPage.cpp` — Theme selector, import button
+
+#### Testing Requirements
+
+**Before committing UI changes, verify:**
+
+1. **Visual testing in both themes:**
+   - Launch app in Dark theme
+   - Navigate to your UI component
+   - Open Settings → Appearance → Switch to Light theme
+   - Return to your component — verify all colors updated immediately
+   - Switch back to Dark — verify again
+
+2. **Contrast checks:**
+   - All text must be readable (sufficient contrast)
+   - All buttons must be visible and distinguishable
+   - No dark-on-dark or light-on-light rendering
+   - Icons should adapt (swap images if needed, like `settings_button.png` vs `settings_button_black.png`)
+
+3. **Edge cases:**
+   - Theme change while your widget is visible (updates in real-time)
+   - Theme change while interactive state is active (hover, pressed, checked)
+   - Multiple rapid theme switches (no crashes or visual glitches)
+
+4. **Static analysis:**
+   ```bash
+   # Check for hardcoded hex colors in GUI code
+   grep -rn "#[0-9a-fA-F]\{6\}" src/gui/ include/gui/
+   ```
+
+#### Verification Checklist
+
+Before opening a PR with UI changes:
+
+- [ ] No hardcoded hex colors in .cpp or .h files
+- [ ] All stylesheets use `Theme::k*()` accessors
+- [ ] Widget connects to `themeChanged()` signal (unless transient dialog)
+- [ ] Refresh method extracts stylesheet building logic
+- [ ] Tested in Dark theme — all colors correct
+- [ ] Tested in Light theme — all colors correct
+- [ ] Theme switching works without app restart
+- [ ] All text has sufficient contrast
 - [ ] Buttons and interactive elements are visually distinct
+- [ ] Custom paint events use dynamic colors via `Theme::k*()`
+- [ ] Stateful widgets repolish if needed
+
+#### Common Mistakes to Avoid
+
+**❌ Forgetting to connect to themeChanged:**
+```cpp
+// Widget works on startup but doesn't update when theme changes
+MyWidget::MyWidget() {
+    setStyleSheet(QString("color: %1;").arg(Theme::kTextPrimary()));
+    // MISSING: connect to themeChanged signal!
+}
+```
+
+**✅ Correct pattern:**
+```cpp
+MyWidget::MyWidget() {
+    refreshStyleSheet();
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &MyWidget::refreshStyleSheet);
+}
+
+void MyWidget::refreshStyleSheet() {
+    setStyleSheet(QString("color: %1;").arg(Theme::kTextPrimary()));
+}
+```
+
+**❌ Mixing hardcoded and dynamic colors:**
+```cpp
+// Inconsistent — some colors adapt, some don't
+setStyleSheet(QString("color: %1; border: 1px solid #cccccc;")
+    .arg(Theme::kTextPrimary()));
+```
+
+**✅ All colors dynamic:**
+```cpp
+setStyleSheet(QString("color: %1; border: 1px solid %2;")
+    .arg(Theme::kTextPrimary())
+    .arg(Theme::kBorderLight()));
+```
+
+#### Examples of Correct Implementation
+
+**Simple widget:**
+```cpp
+// ReplayBar.h
+class ReplayBar : public QWidget {
+private:
+    void applyThemeStyleSheet();
+};
+
+// ReplayBar.cpp
+ReplayBar::ReplayBar(QWidget *parent) : QWidget(parent) {
+    // Setup widgets...
+    applyThemeStyleSheet();
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &ReplayBar::applyThemeStyleSheet);
+}
+
+void ReplayBar::applyThemeStyleSheet() {
+    setStyleSheet(QString(R"(
+        QPushButton {
+            background-color: %1;
+            color: %2;
+        }
+        QPushButton:hover { background-color: %3; }
+    )").arg(Theme::kBgButton())
+       .arg(Theme::kTextPrimary())
+       .arg(Theme::kBtnHover()));
+}
+```
+
+**Widget with custom painting:**
+```cpp
+// TelemetryChartView.cpp
+TelemetryChartView::TelemetryChartView(QChart *chart, QWidget *parent)
+    : QChartView(chart, parent) {
+    
+    m_hoverOverlay = new QLabel(viewport());
+    refreshHoverOverlayStyleSheet();
+    
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &TelemetryChartView::refreshHoverOverlayStyleSheet);
+}
+
+void TelemetryChartView::refreshHoverOverlayStyleSheet() {
+    if (!m_hoverOverlay) return;
+    
+    m_hoverOverlay->setStyleSheet(
+        QString("background-color: %1; color: %2; border: 1px solid %3;")
+            .arg(Theme::kBgDark())
+            .arg(Theme::kTextPrimary())
+            .arg(Theme::kBorderPanel()));
+    
+    // Force custom paint overlays to repaint with new colors
+    if (m_crosshairOverlay) {
+        m_crosshairOverlay->update();
+    }
+}
+```
 
 ---
 
