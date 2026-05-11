@@ -136,6 +136,7 @@ TelemetryChartView::TelemetryChartView(QChart *c, QWidget *parent)
 void TelemetryChartView::setChart(QChart *c)
 {
     m_chartPtr = c;
+    QChartView::setChart(c);
 }
 
 void TelemetryChartView::refreshHoverOverlayStyleSheet()
@@ -419,8 +420,9 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
     if (visibleSeries.size() > 1) {
         double closestDistSq = -1.0;
         for (QLineSeries *ls : visibleSeries) {
-            if (idx >= ls->count()) continue;
-            const QPointF cPt  = m_chartPtr->mapToPosition(ls->at(idx), ls);
+            const int lsIdx = std::min(idx, ls->count() - 1);
+            if (lsIdx < 0) continue;
+            const QPointF cPt  = m_chartPtr->mapToPosition(ls->at(lsIdx), ls);
             const QPointF sPt  = m_chartPtr->mapToScene(cPt);
             const QPointF vPt  = mapFromScene(sPt);
             const double dx = vPt.x() - widgetPos.x();

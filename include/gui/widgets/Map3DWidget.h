@@ -102,7 +102,6 @@ private:
     bool m_followEnabled  = false;
 
     std::vector<FlightSample> m_liveSamples;
-    int m_totalLiveSamples = 0;
 };
 
 /**

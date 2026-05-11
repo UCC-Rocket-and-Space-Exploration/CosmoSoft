@@ -1,6 +1,7 @@
 #include "gui/pages/EventLogPage.h"
 
 #include "gui/Theme.h"
+#include "gui/ThemeManager.h"
 
 #include <QDateTime>
 #include <QHBoxLayout>
@@ -39,6 +40,14 @@ EventLogPage::EventLogPage(QWidget *parent)
 
     connect(m_clearBtn, &QPushButton::clicked, this, &EventLogPage::onClearLog);
 
+    refreshStyleSheet();
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &EventLogPage::refreshStyleSheet);
+
+    appendEntry(u"Event log started."_s);
+}
+
+void EventLogPage::refreshStyleSheet() {
     setStyleSheet(
         QString(uR"(
         #eventLogPage {
@@ -63,11 +72,11 @@ EventLogPage::EventLogPage(QWidget *parent)
             min-height: 26px;
             background-color: %9;
             color: %2;
-            font-size: )"_s + QString::number(Theme::kFontSizeSm) + uR"(px;
+            font-size: %10px;
             font-family: %3;
         }
-        #eventLogClearBtn:hover  { background-color: )"_s + Theme::kBtnHover() + uR"(; }
-        #eventLogClearBtn:pressed { background-color: )"_s + Theme::kBtnPressed() + uR"(; }
+        #eventLogClearBtn:hover  { background-color: %11; }
+        #eventLogClearBtn:pressed { background-color: %12; }
     )"_s)
             .arg(Theme::kBgDark())          // %1
             .arg(Theme::kTextPrimary())     // %2
@@ -77,9 +86,10 @@ EventLogPage::EventLogPage(QWidget *parent)
             .arg(Theme::kBorderSubtle())    // %6
             .arg(Theme::kBorderDefault())   // %7
             .arg(Theme::kRadiusSm)          // %8
-            .arg(Theme::kBgButton()));      // %9
-
-    appendEntry(u"Event log started."_s);
+            .arg(Theme::kBgButton())        // %9
+            .arg(Theme::kFontSizeSm)        // %10
+            .arg(Theme::kBtnHover())        // %11
+            .arg(Theme::kBtnPressed()));    // %12
 }
 
 void EventLogPage::appendEntry(const QString &text) {

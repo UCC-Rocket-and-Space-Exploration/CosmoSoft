@@ -503,10 +503,9 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     // ── Splitter — traces panel | chart host ─────────────────────────────────
     // State (column widths) is persisted in QSettings so the user's layout
-    // survives app restarts.  childrenCollapsible = false prevents the user from
-    // accidentally shrinking either pane to zero.
+    // survives app restarts.
     auto *dashSplitter = new QSplitter(Qt::Horizontal, this);
-    dashSplitter->setChildrenCollapsible(true);
+    dashSplitter->setChildrenCollapsible(false);
     dashSplitter->addWidget(m_tracesPanel);
     dashSplitter->addWidget(chartHost);
     dashSplitter->setStretchFactor(0, 0);
@@ -1449,23 +1448,26 @@ void DashboardPage::zoomChartAxesAtCenter(bool zoomIn) {
     if (!m_axisX || !m_axisY) {
         return;
     }
-    const double xMid = (m_axisX->min() + m_axisX->max()) * 0.5;
-    const double yMid = (m_axisY->min() + m_axisY->max()) * 0.5;
-    const double hx = (m_axisX->max() - m_axisX->min()) * 0.5;
-    const double hy = (m_axisY->max() - m_axisY->min()) * 0.5;
     const double f = zoomIn ? 0.5 : 2.0;
+
+    const double xMid = (m_axisX->min() + m_axisX->max()) * 0.5;
+    const double hx = (m_axisX->max() - m_axisX->min()) * 0.5;
     m_axisX->setRange(xMid - hx * f, xMid + hx * f);
+
+    const double yMid = (m_axisY->min() + m_axisY->max()) * 0.5;
+    const double hy = (m_axisY->max() - m_axisY->min()) * 0.5;
     m_axisY->setRange(yMid - hy * f, yMid + hy * f);
+
+    if (m_axisY2 && m_axisY2->isVisible()) {
+        const double y2Mid = (m_axisY2->min() + m_axisY2->max()) * 0.5;
+        const double hy2 = (m_axisY2->max() - m_axisY2->min()) * 0.5;
+        m_axisY2->setRange(y2Mid - hy2 * f, y2Mid + hy2 * f);
+    }
+
     m_preserveChartAxes = true;
 }
 
 void DashboardPage::onSampleUpdated(const FlightSample &sample) {
-    const double accelMag = std::sqrt(
-        sample.acceleration.x * sample.acceleration.x
-        + sample.acceleration.y * sample.acceleration.y
-        + sample.acceleration.z * sample.acceleration.z);
-
-
     if (m_tracesPanel) m_tracesPanel->updateLiveValues(sample);
 
     if (!m_model || m_model->replayMode()) {

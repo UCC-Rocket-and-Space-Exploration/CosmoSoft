@@ -5,18 +5,18 @@
 #include "gateway/comms/CommsFactory.h"
 #include "gateway/comms/ISerialPortScanner.h"
 #include "gateway/comms/SerialPortScannerFactory.h"
+#include "gateway/comms/SerialWorker.h"
+#include "gui/AboutDialog.h"
 #include "gui/FlightDataModel.h"
+#include "gui/FlightReplayController.h"
+#include "gui/LayoutHelpers.h"
 #include "gui/SettingsKeys.h"
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
-#include "gui/LayoutHelpers.h"
-#include "services/persistence/FlightLogManager.h"
-#include "gui/FlightReplayController.h"
 #include "gui/pages/DashboardPage.h"
-#include "gui/AboutDialog.h"
 #include "gui/pages/SettingsPage.h"
-#include "gateway/comms/SerialWorker.h"
 #include "services/import/SampleFileLoader.h"
+#include "services/persistence/FlightLogManager.h"
 #include "services/telemetry/Framer.h"
 #include "services/telemetry/Parser.h"
 #include "services/telemetry/ParserWorker.h"
@@ -167,7 +167,7 @@ void MainWindow::onParserError(const QString &message) {
 void MainWindow::appendToLog(bool isError, const QString &text) {
     constexpr std::size_t kMaxLogEntries = 2000;
     if (m_logEntries.size() >= kMaxLogEntries) {
-        m_logEntries.erase(m_logEntries.begin());
+        m_logEntries.pop_front();
     }
     m_logEntries.emplace_back(isError, text);
 }
@@ -238,38 +238,7 @@ void MainWindow::rebuildRecentFilesMenu() {
             QSettings rs(kSettingsOrg, kSettingsApp);
             rs.setValue(kSettingsReplayDir, QFileInfo(filePath).absolutePath());
             // stopSerial();  // Commented out - serial functionality disabled
-            auto *progress = new QProgressDialog(u"Loading flight log…"_s, QString(), 0, 0, this);
-            progress->setWindowModality(Qt::WindowModal);
-            progress->setMinimumDuration(0);
-            progress->setCancelButton(nullptr);
-            progress->show();
-            auto *watcher = new QFutureWatcher<FlightLogLoadResult>(this);
-            connect(watcher, &QFutureWatcher<FlightLogLoadResult>::finished, this, [this, watcher, filePath, progress]() {
-                progress->close();
-                progress->deleteLater();
-                FlightLogLoadResult r = watcher->result();
-                watcher->deleteLater();
-                if (r.error) {
-                    QMessageBox::warning(this, u"Could not load log"_s, QString::fromStdString(*r.error));
-                    return;
-                }
-                m_loadedSession = std::move(r.session);
-                m_logManager->setSession(m_loadedSession);
-                m_flightModel->resetSession();
-                m_flightModel->setReplayMode(true);
-                m_replay->setSession(m_loadedSession);
-                if (m_flightDataPage) {
-                    m_flightDataPage->setReplaySession(&m_loadedSession);
-                }
-                const QString filename = QFileInfo(filePath).fileName();
-                updateBreadcrumb(QStringLiteral("Session: %1").arg(filename));
-                showStatusMessage(QStringLiteral("Loaded flight: %1").arg(filePath), 4000);
-                appendToLog(false, QStringLiteral("Loaded flight: %1").arg(filePath));
-            });
-            const QFuture<FlightLogLoadResult> future = QtConcurrent::run([filePath]() {
-                return loadFlightLogAtPath(filePath);
-            });
-            watcher->setFuture(future);
+            loadFlightLogAsync(filePath);
         });
     }
     m_recentFilesMenu->addSeparator();
@@ -429,13 +398,10 @@ void MainWindow::setupToolbar() {
     toolbar->setStyleSheet(buildToolbarStyleSheet());
     addToolBar(Qt::TopToolBarArea, toolbar);
 
-    auto *text_shadow = new QGraphicsDropShadowEffect(this);
-    text_shadow->setBlurRadius(5);
-    // Use semi-transparent black shadow that works on both light and dark themes
-    QColor shadowColor = QColor(Theme::kBgBase());
-    shadowColor = shadowColor.lightness() > 128 ? QColor(0, 0, 0, 100) : QColor(0, 0, 0, 160);
-    text_shadow->setColor(shadowColor);
-    text_shadow->setOffset(1, 1);
+    m_brandShadow = new QGraphicsDropShadowEffect(this);
+    m_brandShadow->setBlurRadius(5);
+    m_brandShadow->setOffset(1, 1);
+    updateBrandShadowColor();
 
     auto *content = new QWidget(toolbar);
     content->setObjectName(u"toolbarContent"_s);
@@ -445,7 +411,7 @@ void MainWindow::setupToolbar() {
 
     auto *brandBlock = new QWidget(content);
     brandBlock->setObjectName(u"brandBlock"_s);
-    brandBlock->setGraphicsEffect(text_shadow);
+    brandBlock->setGraphicsEffect(m_brandShadow);
     auto *brandLayout = new QVBoxLayout(brandBlock);
     brandLayout->setContentsMargins(0, 0, 0, 0);
     brandLayout->setSpacing(2);
@@ -743,6 +709,10 @@ void MainWindow::onOpenReplayFile() {
 
     // stopSerial();  // Commented out - serial functionality disabled
 
+    loadFlightLogAsync(path);
+}
+
+void MainWindow::loadFlightLogAsync(const QString &path) {
     auto *progress = new QProgressDialog(u"Loading flight log…"_s, QString(), 0, 0, this);
     progress->setWindowModality(Qt::WindowModal);
     progress->setMinimumDuration(0);
@@ -756,10 +726,8 @@ void MainWindow::onOpenReplayFile() {
         FlightLogLoadResult r = watcher->result();
         watcher->deleteLater();
         if (r.error) {
-            QMessageBox::warning(
-                this,
-                u"Could not load log"_s,
-                QString::fromStdString(*r.error));
+            QMessageBox::warning(this, u"Could not load log"_s,
+                                 QString::fromStdString(*r.error));
             return;
         }
         m_loadedSession = std::move(r.session);
@@ -816,20 +784,30 @@ void MainWindow::onShowAbout() {
     dlg.exec();
 }
 
+void MainWindow::updateBrandShadowColor() {
+    if (!m_brandShadow) {
+        return;
+    }
+    const bool lightBg = QColor(Theme::kBgBase()).lightness() > 128;
+    m_brandShadow->setColor(lightBg ? QColor(0, 0, 0, 100) : QColor(0, 0, 0, 160));
+}
+
 void MainWindow::onThemeChanged() {
-    // Update settings icon based on theme
     if (m_openSettingsAction) {
-        QIcon settingsIcon;
         const QString themeId = cosmo::ThemeManager::instance().current().id;
         const bool isDark = themeId.contains(u"dark"_s, Qt::CaseInsensitive);
-        const QString iconPath = isDark
-            ? u":/icons/settings_button.png"_s
-            : u":/icons/settings_button_black.png"_s;
-        settingsIcon.addFile(iconPath, QSize(), QIcon::Normal);
+        QIcon settingsIcon;
+        settingsIcon.addFile(
+            isDark ? u":/icons/settings_button.png"_s : u":/icons/settings_button_black.png"_s,
+            QSize(), QIcon::Normal, QIcon::Off);
+        settingsIcon.addFile(
+            isDark ? u":/icons/settings_button_black.png"_s : u":/icons/settings_button.png"_s,
+            QSize(), QIcon::Normal, QIcon::On);
         m_openSettingsAction->setIcon(settingsIcon);
     }
 
-    // Update toolbar stylesheet
+    updateBrandShadowColor();
+
     auto *toolbar = findChild<QToolBar *>(u"missionToolbar"_s);
     if (toolbar) {
         toolbar->setStyleSheet(buildToolbarStyleSheet());

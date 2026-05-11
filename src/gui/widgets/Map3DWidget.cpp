@@ -23,7 +23,7 @@ namespace {
 
 bool isValidCoord(double lat, double lon) {
     return std::isfinite(lat) && std::isfinite(lon)
-        && !(std::abs(lat) < 1e-9 && std::abs(lon) < 1e-9);
+        && std::abs(lat) <= 90.0 && std::abs(lon) <= 180.0;
 }
 
 } // namespace
@@ -92,6 +92,8 @@ Map3DWidget::Map3DWidget(QWidget *parent)
             this, &Map3DWidget::onBridgeStatsUpdated);
     connect(m_bridge, &Map3DBridge::ready,
             this, &Map3DWidget::onMapReady);
+    connect(m_bridge, &Map3DBridge::followChanged,
+            this, &Map3DWidget::setCameraFollow);
 
     m_webView = new QWebEngineView(this);
     m_webView->setPage(page);
@@ -145,7 +147,6 @@ void Map3DWidget::pushThemeToMap() {
 
 void Map3DWidget::setReplaySession(const FlightSession *session) {
     m_session = session;
-    m_totalLiveSamples = 0;
     m_liveSamples.clear();
 
     if (!session || session->samples.empty()) {
@@ -195,7 +196,6 @@ void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
     if (m_session) return;
 
     m_liveSamples.push_back(sample);
-    ++m_totalLiveSamples;
 
     if (!m_mapReady) return;
 
@@ -210,7 +210,6 @@ void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
 
 void Map3DWidget::onSessionReset() {
     m_session = nullptr;
-    m_totalLiveSamples = 0;
     m_liveSamples.clear();
     m_sessionPending = false;
 

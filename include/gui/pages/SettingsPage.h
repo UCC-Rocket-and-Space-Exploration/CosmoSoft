@@ -49,8 +49,6 @@ signals:
      */
     void debugModeChanged(bool enabled);
 
-    /** @brief Emitted when the unit system preference changes. */
-
 protected:
     /** @brief Loads persisted settings and restores window geometry on show. */
     void showEvent(QShowEvent *event) override;
@@ -78,8 +76,6 @@ private:
     /** @brief Rebuilds the page-local stylesheet from the active theme palette. */
     void refreshStyleSheet();
 
-    /** @brief Applies @p pt as the application-wide font point size. */
-
     // ── Navigation ────────────────────────────────────────────────────────────
     QListWidget   *m_nav   = nullptr;
     QStackedWidget *m_pages = nullptr;
@@ -89,9 +85,6 @@ private:
     QComboBox   *m_skinCombo     = nullptr;
     QPushButton *m_importSkinBtn = nullptr;
 
-    QGroupBox *m_fontGroup     = nullptr;
-    QComboBox *m_fontSizeCombo = nullptr;
-    QLabel    *m_fontPreview   = nullptr;
     QGroupBox *m_soundGroup    = nullptr;
     QCheckBox *m_uiSoundsCheck = nullptr;
 

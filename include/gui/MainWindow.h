@@ -22,6 +22,7 @@
 #include <QMainWindow>
 #include <QString>
 
+#include <deque>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -31,6 +32,7 @@
 
 class QAction;
 class QComboBox;
+class QGraphicsDropShadowEffect;
 class QLabel;
 class QMenu;
 class QPushButton;
@@ -86,8 +88,18 @@ private:
     void applyReplayTelemetrySample(int trailLength);
 
     /**
-     * @brief Appends a log entry to the persistent buffer and forwards it to
-     *        the settings window (if open).
+     * @brief Load a flight log asynchronously, showing a progress dialog.
+     *
+     * Handles CSV and .telem formats via QtConcurrent.  On success the loaded
+     * session is installed into the model, replay controller, and dashboard.
+     * The file is also added to the recent-files list.
+     *
+     * @param path Absolute path to the flight-log file.
+     */
+    void loadFlightLogAsync(const QString &path);
+
+    /**
+     * @brief Appends a log entry to the persistent in-memory buffer.
      * @param isError When true the entry is rendered as an error (red).
      * @param text    Human-readable message.
      */
@@ -96,6 +108,7 @@ private:
     void addRecentFile(const QString &path);
     void rebuildRecentFilesMenu();
     void updateBreadcrumb(const QString &context = QString());
+    void updateBrandShadowColor();
 
     // ── Menu bar ─────────────────────────────────────────────────────────────
     QMenu *m_recentFilesMenu = nullptr;
@@ -112,6 +125,7 @@ private:
     QLabel *m_brandLabel        = nullptr;
     QLabel *m_missionMetaLabel  = nullptr;
     QTimer *m_missionClockTimer = nullptr;
+    QGraphicsDropShadowEffect *m_brandShadow = nullptr;
 
     // ── Connection bar ────────────────────────────────────────────────────────
     QWidget  *m_connectionBar       = nullptr;
@@ -141,7 +155,7 @@ private:
      * window can be closed and reopened without losing history.  The bool is
      * true for errors, false for informational entries.
      */
-    std::vector<std::pair<bool, QString>> m_logEntries;
+    std::deque<std::pair<bool, QString>> m_logEntries;
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

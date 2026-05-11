@@ -15,6 +15,8 @@
 
 #include "domain/FlightSample.h"
 
+Q_DECLARE_METATYPE(FlightSample)
+
 /**
  * @class FlightDataModel
  * @brief Centralised, thread-safe store for the latest flight sample and session metadata.
@@ -51,7 +53,7 @@ public:
 
 public slots:
     /** @brief Stores @p sample as the latest and emits sampleUpdated(). Must be called on the GUI thread. */
-    void appendSample(FlightSample sample);
+    void appendSample(const FlightSample &sample);
 
     /** @brief Accumulates @p byteCount into totalBytesReceived() and emits bytesReceivedChanged(). */
     void addBytesReceived(qint64 byteCount);
@@ -70,6 +72,8 @@ signals:
     void replayModeChanged(bool replay);
 
 private:
+    // Defensive: all current access is GUI-thread-only via QueuedConnection,
+    // but the mutex guards against future direct cross-thread reads.
     mutable QMutex m_mutex;
     FlightSample m_latest;
     qint64 m_bytesReceived = 0;

@@ -82,6 +82,15 @@ std::optional<CosmoTheme> SkinLoader::parseThemeJson(const QByteArray &json,
         p.danger         = jsonStr(pal, QStringLiteral("danger"), p.danger);
         p.error          = jsonStr(pal, QStringLiteral("error"), p.error);
         p.select_bg      = jsonStr(pal, QStringLiteral("select_bg"), p.select_bg);
+
+        p.success        = jsonStr(pal, QStringLiteral("success"), p.success);
+        p.success_bg     = jsonStr(pal, QStringLiteral("success_bg"), p.success_bg);
+        p.warning        = jsonStr(pal, QStringLiteral("warning"), p.warning);
+        p.warning_bg     = jsonStr(pal, QStringLiteral("warning_bg"), p.warning_bg);
+        p.info           = jsonStr(pal, QStringLiteral("info"), p.info);
+        p.info_bg        = jsonStr(pal, QStringLiteral("info_bg"), p.info_bg);
+        p.focus_ring     = jsonStr(pal, QStringLiteral("focus_ring"), p.focus_ring);
+        p.focus_ring_offset = jsonStr(pal, QStringLiteral("focus_ring_offset"), p.focus_ring_offset);
     }
 
     // Textures

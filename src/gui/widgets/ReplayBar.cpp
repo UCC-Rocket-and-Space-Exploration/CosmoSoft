@@ -44,7 +44,6 @@ ReplayBar::ReplayBar(FlightReplayController *replay,
 
         connect(m_replaySlider, &QSlider::valueChanged, this, [this](int v) {
             if (m_replay) m_replay->setPosition(v);
-            emit trailLengthChanged(v);
         });
 
         connect(m_jumpStartBtn, &QToolButton::clicked, this, [this]() {

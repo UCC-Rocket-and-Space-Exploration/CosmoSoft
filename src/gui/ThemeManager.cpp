@@ -1,6 +1,7 @@
 #include "gui/ThemeManager.h"
-#include "gui/SkinLoader.h"
 #include "gui/SettingsKeys.h"
+#include "gui/SkinLoader.h"
+#include "gui/Theme.h"
 
 #include <QApplication>
 #include <QDir>
@@ -44,7 +45,7 @@ void ThemeManager::setActiveSkin(const CosmoTheme &theme)
 
     // Persist choice
     QSettings settings(kSettingsOrg, kSettingsApp);
-    settings.setValue(QStringLiteral("ui/activeSkin"), m_active.id);
+    settings.setValue(kSettingsActiveSkin, m_active.id);
 
     emit themeChanged();
 }
@@ -52,7 +53,7 @@ void ThemeManager::setActiveSkin(const CosmoTheme &theme)
 void ThemeManager::loadPersistedSkin(const QString &custom_skins_dir)
 {
     QSettings settings(kSettingsOrg, kSettingsApp);
-    const auto skin_id = settings.value(QStringLiteral("ui/activeSkin"),
+    const auto skin_id = settings.value(kSettingsActiveSkin,
                                         QStringLiteral("builtin:dark")).toString();
 
     std::optional<CosmoTheme> theme;
@@ -114,7 +115,7 @@ QString ThemeManager::generateQss(const ColorPalette &p)
 
 QWidget {
     color: @TEXT_PRIMARY@;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    font-family: @FONT_MONO@;
     line-height: 1.4;
 }
 
@@ -308,6 +309,7 @@ QProgressBar::chunk {
 }
 )");
 
+    qss.replace(QStringLiteral("@FONT_MONO@"), QString::fromUtf8(Theme::kFontMono));
     qss.replace(QStringLiteral("@ACCENT_CHECKBOX_BORDER@"), p.accent_checkbox_border);
     qss.replace(QStringLiteral("@ACCENT_CHECKBOX@"), p.accent_checkbox);
     qss.replace(QStringLiteral("@ACCENT_LINK@"), p.accent_link);

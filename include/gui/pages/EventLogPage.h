@@ -48,6 +48,7 @@ public slots:
 
 private slots:
     void onClearLog();
+    void refreshStyleSheet();
 
 private:
     QPlainTextEdit *m_log       = nullptr;

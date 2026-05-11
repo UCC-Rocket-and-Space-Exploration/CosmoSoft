@@ -221,7 +221,7 @@ void TracesPanel::applyThemeStyleSheet()
             border: none;
             border-radius: 6px;
         }
-        QFrame#traceRow:hover { background-color: rgba(128,128,128,0.06); }
+        QFrame#traceRow:hover { background-color: %13; }
         QFrame#traceRow[noData="true"] QCheckBox#traceCheck { color: %6; }
         QFrame#traceRow[noData="true"] QLabel#traceValueLabel { color: %6; }
         QCheckBox#traceCheck {
@@ -256,7 +256,8 @@ void TracesPanel::applyThemeStyleSheet()
             .arg(Theme::kFontSizeSm)        // %9
             .arg(Theme::kBgButton())        // %10
             .arg(Theme::kBtnHover())        // %11
-            .arg(Theme::kBtnPressed()));    // %12
+            .arg(Theme::kBtnPressed())      // %12
+            .arg(QColor(Theme::kTextMuted()).name(QColor::HexRgb) + QStringLiteral("0f"))); // %13 - subtle hover
 
     refreshSwatchStates();
 }
@@ -348,9 +349,11 @@ void TracesPanel::onSelectAllTraces()
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
         auto *cb = m_metricChecks[static_cast<std::size_t>(i)];
         if (cb && row && row->isVisible()) {
+            const QSignalBlocker b(cb);
             cb->setChecked(true);
         }
     }
+    onAnyMetricToggled();
 }
 
 void TracesPanel::onSelectNoneTraces()
@@ -379,9 +382,11 @@ void TracesPanel::onSelectNoneTraces()
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
         auto *cb = m_metricChecks[static_cast<std::size_t>(i)];
         if (cb && row && row->isVisible()) {
+            const QSignalBlocker b(cb);
             cb->setChecked(i == keeper);
         }
     }
+    onAnyMetricToggled();
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
