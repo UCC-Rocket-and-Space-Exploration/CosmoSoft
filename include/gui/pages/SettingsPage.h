@@ -6,8 +6,8 @@
  * Settings are persisted to QSettings on close and restored on show via SettingsKeys.h.
  *
  * Sections (sidebar):
- *  - Appearance  — Skin picker, font size.
- *  - Data        — Unit system, UI sounds toggle.
+ *  - Appearance  — Skin picker.
+ *  - Data        — UI sounds toggle.
  *  - Developer   — Debug mode toggle, system info, developer reference.
  *  - About       — Application version, description, license, repository link.
  */
@@ -50,7 +50,6 @@ signals:
     void debugModeChanged(bool enabled);
 
     /** @brief Emitted when the unit system preference changes. */
-    void unitSystemChanged(const QString &system);
 
 protected:
     /** @brief Loads persisted settings and restores window geometry on show. */
@@ -60,8 +59,6 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
 private slots:
-    void onFontSizeChanged(int index);
-    void onUnitSystemChanged(int index);
     void onSoundsToggled(bool enabled);
     void onDebugModeToggled(bool enabled);
     void onSkinChanged(int index);
@@ -82,7 +79,6 @@ private:
     void refreshStyleSheet();
 
     /** @brief Applies @p pt as the application-wide font point size. */
-    void applyFontPointSize(int pt);
 
     // ── Navigation ────────────────────────────────────────────────────────────
     QListWidget   *m_nav   = nullptr;
@@ -96,11 +92,6 @@ private:
     QGroupBox *m_fontGroup     = nullptr;
     QComboBox *m_fontSizeCombo = nullptr;
     QLabel    *m_fontPreview   = nullptr;
-
-    // ── Data section ──────────────────────────────────────────────────────────
-    QGroupBox *m_unitsGroup      = nullptr;
-    QComboBox *m_unitSystemCombo = nullptr;
-
     QGroupBox *m_soundGroup    = nullptr;
     QCheckBox *m_uiSoundsCheck = nullptr;
 

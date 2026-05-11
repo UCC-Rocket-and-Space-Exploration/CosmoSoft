@@ -164,9 +164,9 @@
     min-width: 200px;
     display: none;
   }
-  #statsOverlay .st { color: #6a7a8a; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; margin-top: 5px; }
+  #statsOverlay .st { color: var(--text-muted); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; margin-top: 5px; }
   #statsOverlay .st:first-child { margin-top: 0; }
-  #statsOverlay .sv { color: #e8ecf0; }
+  #statsOverlay .sv { color: var(--text-primary); }
   #statsOverlay .sd { border-top: 1px solid rgba(255,255,255,0.06); margin-top: 5px; padding-top: 5px; }
 
   /* ── 3D view labels ────────────────────────────────────────────── */
@@ -1016,6 +1016,8 @@ window.applyTheme = function(paletteJson) {
   document.documentElement.style.setProperty("--text-dim", p.text_dim);
   document.documentElement.style.setProperty("--border", p.border_subtle || "rgba(0,0,0,0.1)");
   document.documentElement.style.setProperty("--accent", p.accent_link || "#4a88c0");
+  document.documentElement.style.setProperty("--text-primary", p.text_primary);
+  document.documentElement.style.setProperty("--text-muted", p.text_muted);
 
   document.body.style.background = p.bg_base;
   document.body.style.color = p.text_primary;

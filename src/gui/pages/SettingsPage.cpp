@@ -139,34 +139,6 @@ QWidget *SettingsPage::buildAppearanceSection() {
 
     layout->addWidget(m_skinGroup);
 
-    // ── Font group ────────────────────────────────────────────────────────────
-    m_fontGroup = new QGroupBox(u"Font"_s, inner);
-    auto *fontLayout = new QVBoxLayout(m_fontGroup);
-    fontLayout->setContentsMargins(16, 20, 16, 16);
-    fontLayout->setSpacing(12);
-
-    auto *fontSizeLabel = new QLabel(u"UI font size (pt)"_s, m_fontGroup);
-    fontSizeLabel->setObjectName(u"fieldLabel"_s);
-    fontLayout->addWidget(fontSizeLabel);
-
-    m_fontSizeCombo = new QComboBox(m_fontGroup);
-    for (int pt = 9; pt <= 18; ++pt) {
-        m_fontSizeCombo->addItem(QString::number(pt), pt);
-    }
-    m_fontSizeCombo->setCurrentIndex(3);
-    connect(m_fontSizeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &SettingsPage::onFontSizeChanged);
-    fontLayout->addWidget(m_fontSizeCombo);
-
-    m_fontPreview = new QLabel(
-        u"Preview: Alt 1234.5 m  \u00b7  Temp 22.3 \u00b0C  \u00b7  RSSI \u221260 dBm"_s,
-        m_fontGroup);
-    m_fontPreview->setObjectName(u"fontPreview"_s);
-    m_fontPreview->setWordWrap(true);
-    fontLayout->addWidget(m_fontPreview);
-
-    layout->addWidget(m_fontGroup);
-    layout->addStretch(1);
 
     return inner;
 }
@@ -179,26 +151,6 @@ QWidget *SettingsPage::buildDataSection() {
     layout->setContentsMargins(28, 28, 28, 28);
     layout->setSpacing(20);
 
-    // ── Units group ───────────────────────────────────────────────────────────
-    m_unitsGroup = new QGroupBox(u"Units"_s, inner);
-    auto *unitsLayout = new QVBoxLayout(m_unitsGroup);
-    unitsLayout->setContentsMargins(16, 20, 16, 16);
-    unitsLayout->setSpacing(12);
-
-    auto *unitsLabel = new QLabel(u"Unit system"_s, m_unitsGroup);
-    unitsLabel->setObjectName(u"fieldLabel"_s);
-    unitsLayout->addWidget(unitsLabel);
-
-    m_unitSystemCombo = new QComboBox(m_unitsGroup);
-    m_unitSystemCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-    m_unitSystemCombo->addItem(u"Metric (m, \u00b0C, Pa)"_s, u"metric"_s);
-    m_unitSystemCombo->addItem(u"Imperial (ft, \u00b0F, psi)"_s, u"imperial"_s);
-    m_unitSystemCombo->setCurrentIndex(0);
-    connect(m_unitSystemCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &SettingsPage::onUnitSystemChanged);
-    unitsLayout->addWidget(m_unitSystemCombo);
-
-    layout->addWidget(m_unitsGroup);
 
     // ── Sound group ───────────────────────────────────────────────────────────
     m_soundGroup = new QGroupBox(u"Sound"_s, inner);
@@ -477,13 +429,6 @@ void SettingsPage::refreshStyleSheet() {
         padding: 12px 16px;
         border-radius: %6px;
     }
-    QLabel#fontPreview {
-        color: %7;
-        background-color: %2;
-        padding: 8px 12px;
-        border-radius: %6px;
-    }
-
     /* ── About labels ────────────────────────────────────────── */
     QLabel#aboutAppName {
         font-size: 26px;
@@ -569,42 +514,6 @@ void SettingsPage::onThemeChanged() {
 
 // ── Slot implementations ─────────────────────────────────────────────────────
 
-void SettingsPage::applyFontPointSize(int pt) {
-    if (pt < 6 || pt > 48) {
-        return;
-    }
-    QFont f = qApp->font();
-    f.setPointSize(pt);
-    qApp->setFont(f);
-}
-
-void SettingsPage::onFontSizeChanged(int index) {
-    if (!m_fontSizeCombo || index < 0) {
-        return;
-    }
-    const int pt = m_fontSizeCombo->itemData(index).toInt();
-    if (pt > 0) {
-        applyFontPointSize(pt);
-        QSettings s(kSettingsOrg, kSettingsApp);
-        s.setValue(kSettingsFontSize, pt);
-        if (m_fontPreview) {
-            QFont previewFont = m_fontPreview->font();
-            previewFont.setPointSize(pt);
-            m_fontPreview->setFont(previewFont);
-        }
-    }
-}
-
-void SettingsPage::onUnitSystemChanged(int index) {
-    if (!m_unitSystemCombo || index < 0) {
-        return;
-    }
-    const QString system = m_unitSystemCombo->itemData(index).toString();
-    QSettings s(kSettingsOrg, kSettingsApp);
-    s.setValue(kSettingsUnitSystem, system);
-    emit unitSystemChanged(system);
-}
-
 void SettingsPage::onSoundsToggled(bool enabled) {
     QSettings s(kSettingsOrg, kSettingsApp);
     s.setValue(kSettingsSoundsEnabled, enabled);
@@ -659,25 +568,6 @@ void SettingsPage::closeEvent(QCloseEvent *event) {
 void SettingsPage::loadFromSettings() {
     QSettings s(kSettingsOrg, kSettingsApp);
 
-    const int pt = s.value(kSettingsFontSize, 12).toInt();
-    if (m_fontSizeCombo) {
-        const int idx = m_fontSizeCombo->findData(pt);
-        if (idx >= 0) {
-            m_fontSizeCombo->blockSignals(true);
-            m_fontSizeCombo->setCurrentIndex(idx);
-            m_fontSizeCombo->blockSignals(false);
-        }
-        applyFontPointSize(pt);
-    }
-    if (m_unitSystemCombo) {
-        const QString system = s.value(kSettingsUnitSystem, u"metric"_s).toString();
-        const int unitIdx = m_unitSystemCombo->findData(system);
-        if (unitIdx >= 0) {
-            m_unitSystemCombo->blockSignals(true);
-            m_unitSystemCombo->setCurrentIndex(unitIdx);
-            m_unitSystemCombo->blockSignals(false);
-        }
-    }
     if (m_uiSoundsCheck) {
         m_uiSoundsCheck->setChecked(s.value(kSettingsSoundsEnabled, true).toBool());
     }
@@ -705,15 +595,6 @@ void SettingsPage::loadFromSettings() {
 
 void SettingsPage::saveToSettings() {
     QSettings s(kSettingsOrg, kSettingsApp);
-    if (m_fontSizeCombo) {
-        const int pt = m_fontSizeCombo->currentData().toInt();
-        if (pt > 0) {
-            s.setValue(kSettingsFontSize, pt);
-        }
-    }
-    if (m_unitSystemCombo) {
-        s.setValue(kSettingsUnitSystem, m_unitSystemCombo->currentData().toString());
-    }
     if (m_uiSoundsCheck) {
         s.setValue(kSettingsSoundsEnabled, m_uiSoundsCheck->isChecked());
     }
