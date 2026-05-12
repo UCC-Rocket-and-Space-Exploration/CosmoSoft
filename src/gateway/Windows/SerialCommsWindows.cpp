@@ -2,7 +2,6 @@
 
 #include <cstring>
 
-
 SerialCommsWindows::SerialCommsWindows(const std::string& device, int baud) :
     m_device(std::move(device)){
     m_baud = baud;
