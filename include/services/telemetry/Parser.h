@@ -8,9 +8,8 @@
 
 class Parser {
 public:
-    Parser();
-
-    FlightSample decode(Frame frame);
+    Parser() = default;
+    FlightSample decode(Frame);
 
 private:
 };

@@ -1,4 +1,5 @@
-add_library(cosmo-backend "")
+add_library(cosmo-backend ""
+        services/import/SampleFileLoader.cpp)
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 
 target_link_libraries(cosmo-backend
