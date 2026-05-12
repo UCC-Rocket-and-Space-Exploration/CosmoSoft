@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "gateway/comms/ISerialPortScanner.h"
+#include "../ISerialPortScanner.h"
 
 class SerialPortScannerWindows : public ISerialPortScanner {
 public:

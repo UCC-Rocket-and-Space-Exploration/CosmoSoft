@@ -2,8 +2,8 @@
 
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
-#include "gateway/comms/CommsFactory.h"
-#include "gateway/comms/ISerialPortScanner.h"
+#include "../../include/gateway/CommsFactory.h"
+#include "../../include/gateway/ISerialPortScanner.h"
 #include "gateway/comms/SerialPortScannerFactory.h"
 #include "gui/FlightDataModel.h"
 #include "gui/FlightReplayController.h"
