@@ -1,4 +1,4 @@
-#include "gateway/comms/windows/SerialPortScannerWindows.h"
+#include "gateway/windows/SerialPortScannerWindows.h"
 
 #include <string>
 #include <vector>
