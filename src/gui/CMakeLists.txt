@@ -15,7 +15,7 @@ set(GUI_MOC_HEADERS
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/ReplayBar.h"
 )
 
-add_library(gui ${SOURCES} ${pages} ${widgets} ${GUI_MOC_HEADERS})
+add_library(gui ${SOURCES} ${pages} ${widgets} ${GUI_MOC_HEADERS} "MainWindow.cpp")
 target_include_directories(gui PUBLIC ${HEADERS})
 
 target_link_libraries(gui
@@ -25,7 +25,7 @@ target_link_libraries(gui
         Qt6::Widgets
         Qt6::Charts
         Qt6::Concurrent
-        import
+#        import
 )
-
-target_link_libraries(cosmo-backend INTERFACE gui)
+target_link_libraries(cosmo-backend gui)
+#target_link_libraries(cosmo-backend INTERFACE gui)

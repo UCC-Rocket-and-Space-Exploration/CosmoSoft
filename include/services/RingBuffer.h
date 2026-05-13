@@ -1,9 +1,10 @@
 #ifndef COSMO_SOFT_RINGBUFFER_H
 #define COSMO_SOFT_RINGBUFFER_H
-#include <cstddef>
 #include <cstdint>
 
-// Not thread-safe; protect with a mutex (or redesign) if shared across threads.
+//TODO use atomic bool to make thread-safe, or consider using mutexes for better control over concurrent access;
+// also consider making it lock-free (by reserving single space for empty
+// but need to be careful with memory management and edge cases (full vs empty)
 class RingBuffer {
 public:
     RingBuffer(uint8_t* buffer, std::size_t capacity);
@@ -35,6 +36,7 @@ private:
     std::size_t m_size;
     std::size_t m_head;
     std::size_t m_tail;
+    // no full flag, will use empty empty cell for better thread safety and simpler logic, but need to be careful with edge cases (full vs empty)
 };
 
 #endif //COSMO_SOFT_RINGBUFFER_H

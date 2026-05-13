@@ -8,5 +8,4 @@ public:
     static ISerialPortScanner* createSerialPortScanner();
 };
 
-
 #endif //COSMO_SOFT_SERIALPORTSCANNERFACTORY_H

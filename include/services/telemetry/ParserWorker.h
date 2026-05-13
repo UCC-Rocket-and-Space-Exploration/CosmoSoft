@@ -1,24 +1,26 @@
 #ifndef COSMO_SOFT_PARSERWORKER_H
 #define COSMO_SOFT_PARSERWORKER_H
-
+#include <atomic>
 #include <functional>
+#include <queue>
 #include <string>
 #include <thread>
-#include <vector>
+#include <stop_token>
 
-#include "services/BlockingQueue.h"
-
-#include "Framer.h"
 #include "Parser.h"
-#include "domain/FlightSample.h"
+#include "Framer.h"
+#include "../../domain/FlightSample.h"
+
+template<typename T>
+class BlockingQueue;
 
 class ParserWorker {
 public:
     using Chunk = std::vector<uint8_t>;
-    using DataCallback = std::function<void(FlightSample &&)>;
+    using DataCallback  = std::function<void(FlightSample&&)>;
     using ErrorCallback = std::function<void(std::string_view)>;
 
-    ParserWorker(BlockingQueue<Chunk> &inQueue,
+    ParserWorker(BlockingQueue<Chunk>& inQueue,
                  DataCallback onData,
                  ErrorCallback onError)
         : m_inQueue(inQueue),
@@ -31,7 +33,7 @@ public:
 private:
     void run(const std::stop_token &st);
 
-    BlockingQueue<Chunk> &m_inQueue;
+    BlockingQueue<Chunk>& m_inQueue;
     Framer m_framer;
     Parser m_parser;
 
@@ -41,4 +43,10 @@ private:
     ErrorCallback m_onError;
 };
 
-#endif // COSMO_SOFT_PARSERWORKER_H
+
+
+
+#endif //COSMO_SOFT_PARSERWORKER_H
+
+
+

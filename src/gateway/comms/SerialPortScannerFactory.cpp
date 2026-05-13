@@ -1,13 +1,17 @@
-#include "gateway/comms/SerialPortScannerFactory.h"
+#ifndef COSMO_SOFT_ISERIALPORTSCANNER_H
+#define COSMO_SOFT_ISERIALPORTSCANNER_H
+#include <string>
+#include <vector>
 
-#if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
-#include "gateway/comms/posix/SerialPortScannerPosix.h"
-#endif
+class ISerialPortScanner {
+public:
+    virtual ~ISerialPortScanner() = default;
 
-ISerialPortScanner *SerialPortScannerFactory::createSerialPortScanner() {
-#if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
-    return new SerialPortScannerPosix();
-#else
-    return nullptr;
-#endif
-}
+    virtual std::vector<std::string> enumeratePorts() = 0;
+
+    virtual bool tryOpenPort(const std::string& portName) = 0;
+
+};
+
+
+#endif //COSMO_SOFT_ISERIALPORTSCANNER_H
