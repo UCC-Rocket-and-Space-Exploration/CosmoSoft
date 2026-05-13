@@ -1,6 +1,6 @@
-#include "../../include/gateway/CommsFactory.h"
+#include "../../../include/gateway/comms/CommsFactory.h"
 
-#include "gateway/comms/posix/SerialCommsPosix.h"
+#include "gateway/posix/SerialCommsPosix.h"
 
 
 #ifdef _WIN32

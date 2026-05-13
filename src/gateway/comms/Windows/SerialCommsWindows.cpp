@@ -1,6 +1,7 @@
-#include "gateway/comms/windows/SerialCommsWindows.h"
+#include "gateway/windows/SerialCommsWindows.h"
 
 #include <cstring>
+#include <string>
 
 SerialCommsWindows::SerialCommsWindows(const std::string& device, int baud) :
     m_device(std::move(device)){
@@ -11,7 +12,6 @@ SerialCommsWindows::SerialCommsWindows(const std::string& device, int baud) :
 bool SerialCommsWindows::open() {
     this->m_handle = CreateFile(m_device.c_str(), GENERIC_READ | GENERIC_WRITE,
                                0, NULL, OPEN_EXISTING,0,NULL);
-
     return this->m_handle != INVALID_HANDLE_VALUE;
 }
 

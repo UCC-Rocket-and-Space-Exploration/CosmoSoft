@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "../../domain/FlightSample.h"
-#include "../../gateway/IComms.h"
+#include "../../gateway/comms/IComms.h"
 #include "../../gateway/ISerialPortScanner.h"
 
 //To avoid blocking the UI when fetching serial data, we need to use Qt's signals and slots technique for async data fetching

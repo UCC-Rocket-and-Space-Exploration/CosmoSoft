@@ -1,6 +1,6 @@
 #ifndef COSMO_SOFT_SERIALCOMMSWINDOWS_H
 #define COSMO_SOFT_SERIALCOMMSWINDOWS_H
-#include "gateway/comms/IComms.h"
+#include "../IComms.h"
 #include <windows.h>
 
 
