@@ -1,4 +1,4 @@
-#include "gateway/windows/SerialCommsWindows.h"
+#include "gateway/comms/windows/SerialCommsWindows.h"
 
 #include <cstring>
 #include <string>
