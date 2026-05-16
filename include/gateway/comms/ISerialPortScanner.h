@@ -8,7 +8,6 @@ public:
     virtual ~ISerialPortScanner() = default;
 
     virtual std::vector<std::string> enumeratePorts() = 0;
-
     virtual bool tryOpenPort(const std::string& portName) = 0;
 
 };

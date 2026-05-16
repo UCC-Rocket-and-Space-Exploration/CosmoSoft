@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath> //added
 #include <fstream>
 #include <sstream>
 #include <string_view>
@@ -148,7 +149,7 @@ std::optional<std::string> SampleFileLoader::loadTheseusCsv(const std::string &p
         FlightSample sample{};
         double tSec = 0;
         if (static_cast<int>(cells.size()) > iTime && parseDouble(cells[static_cast<std::size_t>(iTime)], tSec)) {
-            sample.timestamp = static_cast<long>(std::lround(tSec * 1000.0));
+            sample.timestamp = static_cast<long>(std::lround(tSec * 1000.0)); // fixed by including cmath
         }
         if (iRssi >= 0 && static_cast<int>(cells.size()) > iRssi) {
             parseDouble(cells[static_cast<std::size_t>(iRssi)], sample.rssi);

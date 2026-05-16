@@ -22,3 +22,6 @@ set(HEADERS "${CMAKE_SOURCE_DIR}/include")
 
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts Concurrent WebEngineWidgets WebChannel)
 add_subdirectory(src)
+
+target_compile_features(cosmo-backend PUBLIC cxx_std_20)
+
