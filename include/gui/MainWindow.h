@@ -39,6 +39,7 @@ class QPushButton;
 class QStackedWidget;
 class QTimer;
 class DashboardPage;
+class LiveTelemetryPage;
 class SettingsPage;
 class FlightDataModel;
 class FlightReplayController;
@@ -115,11 +116,14 @@ private:
 
     // ── Toolbar actions ───────────────────────────────────────────────────────
     QAction *m_openSettingsAction    = nullptr;
+    QAction *m_dashboardAction       = nullptr;
+    QAction *m_liveTelemetryAction   = nullptr;
 
     // ── Page stack ────────────────────────────────────────────────────────────
-    QStackedWidget *m_pages           = nullptr;
-    DashboardPage  *m_flightDataPage  = nullptr;
-    SettingsPage   *m_settingsWindow  = nullptr;
+    QStackedWidget     *m_pages             = nullptr;
+    DashboardPage      *m_flightDataPage    = nullptr;
+    LiveTelemetryPage  *m_liveTelemetryPage = nullptr;
+    SettingsPage       *m_settingsWindow    = nullptr;
 
     // ── Toolbar labels ────────────────────────────────────────────────────────
     QLabel *m_brandLabel        = nullptr;

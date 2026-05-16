@@ -14,6 +14,7 @@
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
 #include "gui/pages/DashboardPage.h"
+#include "gui/pages/LiveTelemetryPage.h"
 #include "gui/pages/SettingsPage.h"
 #include "services/import/SampleFileLoader.h"
 #include "services/persistence/FlightLogManager.h"
@@ -181,6 +182,18 @@ void MainWindow::setupActions() {
     m_openSettingsAction->setCheckable(true);
 
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() { openSettingsWindow(); });
+
+    auto *pageGroup = new QActionGroup(this);
+    pageGroup->setExclusive(true);
+
+    m_dashboardAction = new QAction(u"Flight Replay"_s, this);
+    m_dashboardAction->setCheckable(true);
+    m_dashboardAction->setChecked(true);
+    pageGroup->addAction(m_dashboardAction);
+
+    m_liveTelemetryAction = new QAction(u"Live Telemetry"_s, this);
+    m_liveTelemetryAction->setCheckable(true);
+    pageGroup->addAction(m_liveTelemetryAction);
 }
 
 void MainWindow::setupMenuBar() {
@@ -468,6 +481,8 @@ void MainWindow::setupToolbar() {
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(12);
 
+    navLayout->addWidget(makeNavButton(m_liveTelemetryAction, navContainer));
+    navLayout->addWidget(makeNavButton(m_dashboardAction, navContainer));
     navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
 
     contentLayout->addWidget(navContainer);
@@ -575,7 +590,18 @@ void MainWindow::setupPages() {
 
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_flightDataPage);
+
+    m_liveTelemetryPage = new LiveTelemetryPage(this);
+    m_pages->addWidget(m_liveTelemetryPage);
+
     m_pages->setCurrentWidget(m_flightDataPage);
+
+    connect(m_dashboardAction, &QAction::triggered, this, [this]() {
+        m_pages->setCurrentWidget(m_flightDataPage);
+    });
+    connect(m_liveTelemetryAction, &QAction::triggered, this, [this]() {
+        m_pages->setCurrentWidget(m_liveTelemetryPage);
+    });
 }
 
 void MainWindow::openSettingsWindow() {
