@@ -60,6 +60,7 @@ signals:
     void trailLengthChanged(int trailLength);
 
 private slots:
+    void applyThemeStyleSheet();
     void onPlaybackStarted();
     void onPlaybackPaused();
     void onPlaybackStopped();
@@ -79,6 +80,10 @@ private:
     int  m_liveSampleCount    = 0;
     int  m_lastTrailLength    = 0;
     QString m_replayActivityText;
+
+    // UI containers
+    QFrame *m_navButtonGroup = nullptr;
+    QLabel *m_statusPill     = nullptr;
 
     // Transport widgets
     QToolButton *m_playPauseBtn        = nullptr;

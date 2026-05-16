@@ -16,14 +16,17 @@ class QLabel;
 class QLineSeries;
 class QPaintEvent;
 class QPushButton;
+class QStackedWidget;
+class QProgressBar;
 class QTimer;
 class QToolButton;
 class QValueAxis;
+class QVBoxLayout;
 
 class FlightDataModel;
 class FlightReplayController;
+class Map3DWidget;
 class ReplayBar;
-class StatTileWidget;
 class TracesPanel;
 
 /**
@@ -99,13 +102,20 @@ private:
 
     // ── Chart helpers ─────────────────────────────────────────────────────────
 
+    /** Common chart-building pipeline shared by replay and live chart rebuilds. */
+    void buildChartFromSamples(const std::vector<FlightSample> &samples, int end);
+
+    /** Builds the chart toolbar and populates all toolbar member pointers. */
+    void buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHeaderLay);
+
     /** Zooms both axes in or out by one step, centered on the current view. */
     void zoomChartAxesAtCenter(bool zoomIn);
 
     /** Dispatches to rebuildReplayCharts or rebuildLiveSeriesFromHistory depending on mode. */
     void refreshAllSeriesFromData();
     void applyChartTheme();
-    void updateChartStatsLabel();
+    void refreshPageStyleSheet();
+    [[nodiscard]] static QString buildDashboardQss();
 
     /**
      * Applies per-series point-marker and label visibility based on point count
@@ -121,20 +131,24 @@ private:
     const FlightSession    *m_session = nullptr;  ///< Non-owning; set by setReplaySession().
 
     // ── Widgets ───────────────────────────────────────────────────────────────
-    StatTileWidget *m_accelTile = nullptr;  ///< |ACCEL| stat tile.
-    StatTileWidget *m_altTile   = nullptr;  ///< ALTITUDE stat tile.
-    StatTileWidget *m_tempTile  = nullptr;  ///< TEMP stat tile.
-    StatTileWidget *m_pressTile = nullptr;  ///< PRESSURE stat tile.
-
-    TracesPanel *m_tracesPanel = nullptr;   ///< Metric toggle + live readout panel.
-    ReplayBar   *m_replayBar   = nullptr;   ///< Transport bar (buttons, scrubber, labels).
+    TracesPanel *m_tracesPanel       = nullptr;   ///< Metric toggle + live readout panel.
+    ReplayBar   *m_replayBar       = nullptr;   ///< Transport bar (buttons, scrubber, labels).
+    QLabel      *m_emptyStateLabel   = nullptr;  ///< Guidance shown when no data is loaded.
+    QLabel      *m_sessionInfoLabel  = nullptr;  ///< Session metadata summary.
 
     // ── Chart ─────────────────────────────────────────────────────────────────
     QChart     *m_chart     = nullptr;
     QChartView *m_chartView = nullptr;
     std::array<QLineSeries *, kMetricCount> m_lineSeries{};
-    QValueAxis *m_axisX = nullptr;
-    QValueAxis *m_axisY = nullptr;
+    QValueAxis *m_axisX  = nullptr;
+    QValueAxis *m_axisY  = nullptr;
+    QValueAxis *m_axisY2 = nullptr;  ///< Secondary right-hand Y axis for dual-metric mode.
+
+    // ── View switcher (Graph / Map) ───────────────────────────────────────────
+    QStackedWidget *m_viewStack    = nullptr;
+    Map3DWidget    *m_mapWidget    = nullptr;
+    QPushButton    *m_graphViewBtn = nullptr;
+    QPushButton    *m_mapViewBtn   = nullptr;
 
     // ── Chart toolbar buttons ─────────────────────────────────────────────────
     QPushButton  *m_zoomOutBtn            = nullptr;
@@ -143,7 +157,32 @@ private:
     QToolButton  *m_showMarkersToggle     = nullptr;
     QToolButton  *m_showPointValuesToggle = nullptr;
     QToolButton  *m_followToggle          = nullptr;
-    QLabel       *m_chartStatsLabel       = nullptr;
+    QToolButton  *m_tracesToggleBtn       = nullptr;
+
+    // ── Graph-only toolbar groups (hidden in Map view) ────────────────────────
+    QWidget *m_zoomGroup    = nullptr;
+    QWidget *m_toggleGroup  = nullptr;
+    QWidget *m_actionGroup  = nullptr;
+    QWidget *m_chartHelpBtn = nullptr;
+
+    /** Shows/hides toolbar buttons appropriate to the current view (Graph vs Map). */
+    void updateToolbarForView();
+
+    // ── Chart loading indicator ─────────────────────────────────────────────
+    QProgressBar *m_chartLoadingBar = nullptr;
+    void showChartLoadingIndicator();
+    void hideChartLoadingIndicator();
+
+    // ── Event markers ─────────────────────────────────────────────────────────
+    struct EventMarker {
+        double timeSec;
+        QString name;
+    };
+    std::vector<EventMarker> m_eventMarkers;
+    std::vector<QLineSeries *> m_markerSeries;
+    void addEventMarker(double timeSec, const QString &name);
+    void clearEventMarkers();
+    void redrawEventMarkers();
 
     // ── Chart update coalescing ───────────────────────────────────────────────
     QTimer *m_liveChartCoalesceTimer   = nullptr;  ///< 50 ms, single-shot.

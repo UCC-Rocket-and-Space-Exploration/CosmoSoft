@@ -2,21 +2,21 @@
 
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
-#include "../../include/gateway/comms/CommsFactory.h"
-#include "../../include/gateway/comms/ISerialPortScanner.h"
-#include "../../include/gateway/comms/SerialPortScannerFactory.h"
+#include "gateway/comms/CommsFactory.h"
+#include "gateway/comms/ISerialPortScanner.h"
+#include "gateway/comms/SerialPortScannerFactory.h"
+#include "gateway/comms/SerialWorker.h"
+#include "gui/AboutDialog.h"
 #include "gui/FlightDataModel.h"
+#include "gui/FlightReplayController.h"
+#include "gui/LayoutHelpers.h"
 #include "gui/SettingsKeys.h"
 #include "gui/Theme.h"
-#include "services/persistence/FlightLogManager.h"
-#include "gui/FlightReplayController.h"
+#include "gui/ThemeManager.h"
 #include "gui/pages/DashboardPage.h"
-#include "gui/pages/MonitoringPage.h"
-#include "gui/AboutDialog.h"
-#include "gui/pages/MapPage.h"
 #include "gui/pages/SettingsPage.h"
-#include "gateway/comms/SerialWorker.h"
 #include "services/import/SampleFileLoader.h"
+#include "services/persistence/FlightLogManager.h"
 #include "services/telemetry/Framer.h"
 #include "services/telemetry/Parser.h"
 #include "services/telemetry/ParserWorker.h"
@@ -30,6 +30,8 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFutureWatcher>
+#include <QMenu>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QFont>
 #include <QProgressDialog>
@@ -75,6 +77,31 @@ struct FlightLogLoadResult {
     return r;
 }
 
+QPushButton* createActionButton(QWidget *parent, const QString &tooltip, const QString &iconName) {
+    auto *btn = new QPushButton(parent);
+    btn->setProperty("kind", "actionButton");
+    btn->setToolTip(tooltip);
+    btn->setAccessibleName(tooltip);
+    btn->setCursor(Qt::PointingHandCursor);
+    btn->setFocusPolicy(Qt::TabFocus);
+
+    // Use Qt standard icons as placeholders
+    QStyle::StandardPixmap iconType = QStyle::SP_FileIcon;
+    if (iconName == u"folder-open"_s) {
+        iconType = QStyle::SP_DirOpenIcon;
+    } else if (iconName == u"trash"_s) {
+        iconType = QStyle::SP_TrashIcon;
+    } else if (iconName == u"export"_s) {
+        iconType = QStyle::SP_DialogSaveButton;
+    }
+
+    QIcon icon = btn->style()->standardIcon(iconType);
+    btn->setIcon(icon);
+    btn->setIconSize(QSize(20, 20));
+
+    return btn;
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent)
@@ -86,10 +113,9 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowIcon(QIcon(u":/images/Logo_rounded.png"_s));
 
     setupActions();
+    setupMenuBar();
     setupToolbar();
-    setupDataBar();
     setupPages();
-    refreshSerialPorts();
 
     connect(m_replay.get(), &FlightReplayController::positionChanged, this, &MainWindow::onReplayPositionChanged);
 
@@ -105,7 +131,6 @@ MainWindow::MainWindow(QWidget *parent)
         const int idx = m_replay ? m_replay->index() : 0;
         if (idx <= 0) {
             m_flightModel->setDisplayedSample(FlightSample{});
-            syncTelemetryStrip();
         } else {
             applyReplayTelemetrySample(idx);
         }
@@ -114,10 +139,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_replay.get(), &FlightReplayController::playbackStopped, this, flushReplayTelemetryStrip);
     connect(m_replay.get(), &FlightReplayController::playbackFinished, this, flushReplayTelemetryStrip);
 
-    m_dataRateTimer = new QTimer(this);
-    m_dataRateTimer->setInterval(1000);
-    connect(m_dataRateTimer, &QTimer::timeout, this, &MainWindow::updateDataRateLabel);
-    m_dataRateTimer->start();
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, &MainWindow::onThemeChanged);
 
     statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s);
 
@@ -127,7 +150,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() {
     QSettings(kSettingsOrg, kSettingsApp).setValue(kSettingsWindowMainGeo, saveGeometry());
-    stopSerial();
+    // stopSerial();  // Commented out - serial functionality disabled
 }
 
 void MainWindow::showStatusMessage(const QString &message, int timeout) {
@@ -144,29 +167,12 @@ void MainWindow::onParserError(const QString &message) {
 void MainWindow::appendToLog(bool isError, const QString &text) {
     constexpr std::size_t kMaxLogEntries = 2000;
     if (m_logEntries.size() >= kMaxLogEntries) {
-        m_logEntries.erase(m_logEntries.begin());
+        m_logEntries.pop_front();
     }
     m_logEntries.emplace_back(isError, text);
-
-    if (m_settingsWindow) {
-        if (isError) {
-            m_settingsWindow->appendLogError(text);
-        } else {
-            m_settingsWindow->appendLogEntry(text);
-        }
-    }
 }
 
 void MainWindow::setupActions() {
-    m_showMonitoringAction = new QAction(u"Monitoring"_s, this);
-    m_showMonitoringAction->setToolTip(u"Switch to the monitoring page."_s);
-
-    m_showFlightDataAction = new QAction(u"Flight data"_s, this);
-    m_showFlightDataAction->setToolTip(u"Switch to flight data and charts."_s);
-
-    m_showMapAction = new QAction(u"Map"_s, this);
-    m_showMapAction->setToolTip(u"Switch to the lat/lon map page."_s);
-
     QIcon settingsIcon;
     settingsIcon.addFile(u":/icons/settings_button.png"_s, QSize(), QIcon::Normal, QIcon::Off);
     settingsIcon.addFile(u":/icons/settings_button_black.png"_s, QSize(), QIcon::Normal, QIcon::On);
@@ -174,25 +180,212 @@ void MainWindow::setupActions() {
     m_openSettingsAction->setToolTip(u"Open the settings window."_s);
     m_openSettingsAction->setCheckable(true);
 
-    connect(m_showMonitoringAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_monitoringPage);
-        updateTopBarsForCurrentPage();
-        statusBar()->showMessage(u"Monitoring page selected."_s, 2000);
-    });
-
-    connect(m_showFlightDataAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_flightDataPage);
-        updateTopBarsForCurrentPage();
-        statusBar()->showMessage(u"Flight data page selected."_s, 2000);
-    });
-
-    connect(m_showMapAction, &QAction::triggered, this, [this]() {
-        m_pages->setCurrentWidget(m_mapPage);
-        updateTopBarsForCurrentPage();
-        statusBar()->showMessage(u"Map page selected."_s, 2000);
-    });
-
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() { openSettingsWindow(); });
+}
+
+void MainWindow::setupMenuBar() {
+    auto *mb = menuBar();
+
+    auto *fileMenu = mb->addMenu(u"&File"_s);
+    fileMenu->addAction(u"&Open log…"_s, QKeySequence::Open, this, &MainWindow::onOpenReplayFile);
+    m_recentFilesMenu = fileMenu->addMenu(u"Open &Recent"_s);
+    rebuildRecentFilesMenu();
+    fileMenu->addSeparator();
+    fileMenu->addAction(u"&Export session…"_s, QKeySequence(u"Ctrl+Shift+E"_s), this, &MainWindow::onExportSession);
+    fileMenu->addSeparator();
+    fileMenu->addAction(u"&Clear flight"_s, this, &MainWindow::onClearFlightData);
+    fileMenu->addSeparator();
+    fileMenu->addAction(u"&Quit"_s, QKeySequence::Quit, qApp, &QApplication::quit);
+
+    auto *viewMenu = mb->addMenu(u"&View"_s);
+    viewMenu->addAction(m_openSettingsAction);
+
+    auto *helpMenu = mb->addMenu(u"&Help"_s);
+    helpMenu->addAction(u"&About CosmoSoft…"_s, this, &MainWindow::onShowAbout);
+}
+
+void MainWindow::addRecentFile(const QString &path) {
+    QSettings s(kSettingsOrg, kSettingsApp);
+    QStringList recent = s.value(kSettingsRecentFiles).toStringList();
+    recent.removeAll(path);
+    recent.prepend(path);
+    constexpr int kMaxRecentFiles = 10;
+    while (recent.size() > kMaxRecentFiles) {
+        recent.removeLast();
+    }
+    s.setValue(kSettingsRecentFiles, recent);
+    rebuildRecentFilesMenu();
+}
+
+void MainWindow::rebuildRecentFilesMenu() {
+    if (!m_recentFilesMenu) {
+        return;
+    }
+    m_recentFilesMenu->clear();
+    QSettings s(kSettingsOrg, kSettingsApp);
+    const QStringList recent = s.value(kSettingsRecentFiles).toStringList();
+    if (recent.isEmpty()) {
+        m_recentFilesMenu->addAction(u"(no recent files)"_s)->setEnabled(false);
+        return;
+    }
+    for (const QString &filePath : recent) {
+        const QString display = QFileInfo(filePath).fileName();
+        m_recentFilesMenu->addAction(display, this, [this, filePath]() {
+            if (!QFileInfo::exists(filePath)) {
+                showStatusMessage(QStringLiteral("File not found: %1").arg(filePath), 4000);
+                return;
+            }
+            QSettings rs(kSettingsOrg, kSettingsApp);
+            rs.setValue(kSettingsReplayDir, QFileInfo(filePath).absolutePath());
+            // stopSerial();  // Commented out - serial functionality disabled
+            loadFlightLogAsync(filePath);
+        });
+    }
+    m_recentFilesMenu->addSeparator();
+    m_recentFilesMenu->addAction(u"Clear Recent"_s, this, [this]() {
+        QSettings cs(kSettingsOrg, kSettingsApp);
+        cs.remove(kSettingsRecentFiles);
+        rebuildRecentFilesMenu();
+    });
+}
+
+QString MainWindow::buildToolbarStyleSheet() {
+    const auto bgPanel = Theme::kBgPanel();
+    const auto textPri = Theme::kTextPrimary();
+    const auto textMid = Theme::kTextMid();
+    const auto btnBg = Theme::kBgButton();
+    const auto btnHov = Theme::kBtnHover();
+    const auto borderDef = Theme::kBorderDefault();
+    const auto borderLight = Theme::kBorderLight();
+    const auto accent = Theme::kAccentLink();
+    const auto textDim = Theme::kTextDim();
+
+    return QString(uR"(
+        QToolBar#missionToolbar {
+            background: %1;
+            padding: 10px 10px;
+            border: none;
+        }
+        QWidget#toolbarContent {
+            background: transparent;
+            margin: 0;
+        }
+        QWidget#brandBlock QLabel#brandLabel {
+            font-size: 26px;
+            font-weight: 500;
+            font-family: %2;
+            letter-spacing: 0.05em;
+            color: %3;
+            line-height: 1.2;
+        }
+        QWidget#brandBlock QLabel#missionMeta {
+            font-size: 14px;
+            color: %4;
+            font-family: %5;
+        }
+        QLabel#missionPageTitle {
+            font-size: 15px;
+            font-weight: 600;
+            color: %4;
+            letter-spacing: 0.08em;
+            font-family: %5;
+        }
+        QToolButton[kind="navButton"] {
+            font-size: %6px;
+            min-width: 150px;
+            padding: 5px 8px;
+            border: 2px solid %7;
+            border-radius: 0;
+            background-color: %8;
+            color: %3;
+            letter-spacing: 1px;
+            font-family: %5;
+        }
+        QToolButton[kind="navButton"]:hover {
+            background-color: %9;
+        }
+    )"_s)
+        .arg(bgPanel)               // %1
+        .arg(Theme::kFontDisplay)   // %2
+        .arg(textPri)               // %3
+        .arg(textMid)               // %4
+        .arg(Theme::kFontMono)      // %5
+        .arg(Theme::kFontSizeBase)  // %6
+        .arg(borderDef)             // %7
+        .arg(btnBg)                 // %8
+        .arg(btnHov)                // %9
+    + QString(uR"(
+        QToolButton[kind="navButton"]:checked {
+            background-color: %1;
+            color: %2;
+            border-color: %3;
+        }
+        QToolButton[kind="navButton"]:disabled {
+            color: %4;
+            border-color: %5;
+            background-color: transparent;
+        }
+        QToolButton[kind="iconButton"] {
+            min-width: 30px;
+            min-height: 30px;
+            border: none;
+            background-color: transparent;
+        }
+        QToolButton[kind="iconButton"]:hover {
+            background-color: %6;
+        }
+        QToolButton[kind="iconButton"]:checked {
+            background-color: %7;
+        }
+    )"_s)
+        .arg(accent)                // %1
+        .arg(Theme::kBgBase())      // %2
+        .arg(accent)                // %3
+        .arg(textDim)               // %4
+        .arg(borderLight)           // %5
+        .arg(btnHov)                // %6
+        .arg(btnBg);                // %7
+}
+
+QString MainWindow::buildActionBarStyleSheet() {
+    return QString(uR"(
+        QWidget#connectionStrip {
+            background: %1;
+            color: %2;
+            border-bottom: 1px solid %3;
+            padding: 8px 16px;
+        }
+        QLabel#connectionStripContext {
+            font-size: %4px;
+            color: %5;
+            font-family: %6;
+            font-weight: 500;
+        }
+        QPushButton[kind="actionButton"] {
+            min-width: 32px;
+            min-height: 32px;
+            max-width: 32px;
+            max-height: 32px;
+            border: none;
+            border-radius: 4px;
+            background-color: transparent;
+            padding: 4px;
+        }
+        QPushButton[kind="actionButton"]:hover {
+            background-color: %7;
+        }
+        QPushButton[kind="actionButton"]:pressed {
+            background-color: %8;
+        }
+    )"_s)
+        .arg(Theme::kBgBase())          // %1 - lighter than toolbar
+        .arg(Theme::kTextPrimary())     // %2
+        .arg(Theme::kBorderSubtle())    // %3
+        .arg(Theme::kFontSizeBase)      // %4
+        .arg(Theme::kTextMid())         // %5
+        .arg(Theme::kFontMono)          // %6
+        .arg(Theme::kBtnHover())        // %7
+        .arg(Theme::kBtnPressed());     // %8
 }
 
 void MainWindow::setupToolbar() {
@@ -202,129 +395,45 @@ void MainWindow::setupToolbar() {
     toolbar->setFloatable(false);
     toolbar->setToolButtonStyle(Qt::ToolButtonTextOnly);
     toolbar->setAllowedAreas(Qt::TopToolBarArea);
-    toolbar->setStyleSheet(
-        QString(uR"(
-        QToolBar#missionToolbar {
-            background: rgba(73, 73, 73, 0.95);
-            padding: 10px 10px;
-            border: none;
-        }
-
-        QWidget#toolbarContent {
-            background: transparent;
-            margin: 0;
-        }
-
-        QWidget#brandBlock QLabel#brandLabel {
-            font-size: 26px;
-            font-weight: 400;
-            font-family: %1;
-            letter-spacing: 3px;
-            color: #f4f4f4;
-        }
-        QWidget#brandBlock QLabel#missionMeta {
-            font-size: 14px;
-            color: #dadada;
-            font-family: %2;
-        }
-
-        QLabel#missionPageTitle {
-            font-size: 15px;
-            font-weight: 600;
-            color: %3;
-            letter-spacing: 2px;
-            font-family: %2;
-        }
-
-        QToolButton[kind="navButton"] {
-            font-size: %4px;
-            min-width: 150px;
-            padding: 5px 8px;
-            border: 2px solid #cfcfcf;
-            border-radius: 0;
-            background-color: #4b4b4b;
-            color: #f7f7f7;
-            letter-spacing: 1px;
-            font-family: %2;
-        }
-
-        QToolButton[kind="navButton"]:hover {
-            background-color: #5c5c5c;
-        }
-
-        QToolButton[kind="navButton"]:checked {
-            background-color: #dfdfdf;
-            color: #101010;
-            border-color: #ffffff;
-        }
-
-        QToolButton[kind="navButton"]:disabled {
-            color: rgba(255, 255, 255, 120);
-            border-color: rgba(255, 255, 255, 70);
-            background-color: rgba(255, 255, 255, 0);
-        }
-
-        QToolButton[kind="iconButton"] {
-            min-width: 30px;
-            min-height: 30px;
-            border: none;
-            background-color: transparent;
-        }
-
-        QToolButton[kind="iconButton"]:hover {
-            background-color: rgba(255, 255, 255, 0.08);
-        }
-
-        QToolButton[kind="iconButton"]:checked {
-            background-color: rgba(255, 255, 255, 0.15);
-        }
-    )"_s)
-        .arg(Theme::kFontDisplay)
-        .arg(Theme::kFontMono)
-        .arg(Theme::kTextMid)
-        .arg(Theme::kFontSizeBase));
+    toolbar->setStyleSheet(buildToolbarStyleSheet());
     addToolBar(Qt::TopToolBarArea, toolbar);
 
-    auto *text_shadow = new QGraphicsDropShadowEffect(this);
-    text_shadow->setBlurRadius(5);
-    text_shadow->setColor(QColor(0, 0, 0, 160));
-    text_shadow->setOffset(1, 1);
+    m_brandShadow = new QGraphicsDropShadowEffect(this);
+    m_brandShadow->setBlurRadius(5);
+    m_brandShadow->setOffset(1, 1);
+    updateBrandShadowColor();
 
     auto *content = new QWidget(toolbar);
     content->setObjectName(u"toolbarContent"_s);
     auto *contentLayout = new QHBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(24);
+    LayoutHelpers::setZeroMargins(contentLayout);
+    contentLayout->setSpacing(Theme::kSpaceXl);
 
     auto *brandBlock = new QWidget(content);
     brandBlock->setObjectName(u"brandBlock"_s);
-    brandBlock->setGraphicsEffect(text_shadow);
+    brandBlock->setGraphicsEffect(m_brandShadow);
     auto *brandLayout = new QVBoxLayout(brandBlock);
     brandLayout->setContentsMargins(0, 0, 0, 0);
     brandLayout->setSpacing(2);
-    auto *brandLabel = new QLabel(u"Cosmo<span style=\"color:#000000\">Soft</span>"_s, brandBlock);
-    brandLabel->setObjectName(u"brandLabel"_s);
-    brandLabel->setTextFormat(Qt::RichText);
+    m_brandLabel = new QLabel(
+        QString(u"Cosmo<span style=\"color:%1\">Soft</span>"_s).arg(Theme::kAccentLink()), brandBlock);
+    m_brandLabel->setObjectName(u"brandLabel"_s);
+    m_brandLabel->setTextFormat(Qt::RichText);
     const QVariant workbenchFamily = qApp->property("workbenchFontFamily");
     if (workbenchFamily.isValid()) {
-        QFont brandFont = brandLabel->font();
+        QFont brandFont = m_brandLabel->font();
         brandFont.setFamily(workbenchFamily.toString());
         brandFont.setPointSize(26);
         brandFont.setBold(true);
-        brandLabel->setFont(brandFont);
+        m_brandLabel->setFont(brandFont);
     }
-    brandLayout->addWidget(brandLabel);
+    brandLayout->addWidget(m_brandLabel);
 
     m_missionMetaLabel = new QLabel(u"GMT: --:--:-- | -- --- ----"_s, brandBlock);
     m_missionMetaLabel->setObjectName(u"missionMeta"_s);
     m_missionMetaLabel->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     brandLayout->addWidget(m_missionMetaLabel);
     contentLayout->addWidget(brandBlock);
-
-    m_toolbarPageLabel = new QLabel(u"Monitoring"_s, content);
-    m_toolbarPageLabel->setObjectName(u"missionPageTitle"_s);
-    contentLayout->addWidget(m_toolbarPageLabel);
-    contentLayout->addSpacing(8);
 
     updateMissionClock();
     if (!m_missionClockTimer) {
@@ -335,16 +444,6 @@ void MainWindow::setupToolbar() {
     }
 
     contentLayout->addStretch(1);
-
-    auto *navGroup = new QActionGroup(this);
-    navGroup->setExclusive(true);
-    m_showMonitoringAction->setCheckable(true);
-    m_showFlightDataAction->setCheckable(true);
-    m_showMapAction->setCheckable(true);
-    navGroup->addAction(m_showMonitoringAction);
-    navGroup->addAction(m_showFlightDataAction);
-    navGroup->addAction(m_showMapAction);
-    m_showMonitoringAction->setChecked(true);
 
     auto makeNavButton = [](QAction *action,
                           QWidget *parent,
@@ -368,90 +467,12 @@ void MainWindow::setupToolbar() {
     auto *navLayout = new QHBoxLayout(navContainer);
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(12);
-    navLayout->addWidget(makeNavButton(m_showMonitoringAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_showFlightDataAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_showMapAction, navContainer));
 
     navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
 
     contentLayout->addWidget(navContainer);
 
     toolbar->addWidget(content);
-}
-
-void MainWindow::setupDataBar() {
-    if (m_dataBar) {
-        return;
-    }
-
-    m_dataBar = new QWidget(this);
-    m_dataBar->setObjectName(u"telemetryStrip"_s);
-    m_dataBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-
-    auto *dataLayout = new QHBoxLayout(m_dataBar);
-    dataLayout->setContentsMargins(16, 6, 16, 6);
-    dataLayout->setSpacing(24);
-
-    auto buildBadgeLabel = [](const QString &text, QWidget *parent) {
-        auto *label = new QLabel(text, parent);
-        label->setObjectName(u"telemetryBadge"_s);
-        label->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
-        label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
-        return label;
-    };
-
-    m_dataStripPageLabel = buildBadgeLabel(u"Monitoring"_s, m_dataBar);
-    m_dataStripPageLabel->setObjectName(u"telemetryStripPage"_s);
-    m_dataLinkStatusLabel = buildBadgeLabel(u"LINK: idle"_s, m_dataBar);
-    m_dataRateLabel = buildBadgeLabel(u"RATE: -- B/s"_s, m_dataBar);
-
-    m_droppedBadgeLabel = buildBadgeLabel(QString{}, m_dataBar);
-    m_droppedBadgeLabel->setObjectName(u"telemetryDropBadge"_s);
-    m_droppedBadgeLabel->setVisible(false);
-
-    dataLayout->addWidget(m_dataStripPageLabel);
-    dataLayout->addWidget(m_dataLinkStatusLabel);
-    dataLayout->addWidget(m_dataRateLabel);
-    dataLayout->addWidget(m_droppedBadgeLabel);
-    dataLayout->addStretch(1);
-
-    m_dataBar->setStyleSheet(
-        QString(uR"(
-        QWidget#telemetryStrip {
-            background: rgba(26, 26, 26, 0.95);
-            color: %1;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.7);
-        }
-
-        QWidget#telemetryStrip QLabel#telemetryStripPage {
-            font-size: %2px;
-            color: %3;
-            letter-spacing: 3px;
-            font-weight: 600;
-            font-family: %4;
-        }
-
-        QWidget#telemetryStrip QLabel#telemetryBadge {
-            font-size: %5px;
-            color: #f7f7f7;
-            letter-spacing: 1px;
-            font-family: %4;
-        }
-
-        QWidget#telemetryStrip QLabel#telemetryDropBadge {
-            font-size: %5px;
-            color: %6;
-            letter-spacing: 1px;
-            font-family: %4;
-        }
-    )"_s)
-        .arg(Theme::kTextPrimary)
-        .arg(Theme::kFontSizeSm)
-        .arg(Theme::kTextDim)
-        .arg(Theme::kFontMono)
-        .arg(Theme::kFontSizeBase)
-        .arg(Theme::kDanger));
 }
 
 void MainWindow::setupConnectionBar() {
@@ -467,91 +488,44 @@ void MainWindow::setupConnectionBar() {
     row->setContentsMargins(16, 8, 16, 8);
     row->setSpacing(12);
 
-    m_connectionPageLabel = new QLabel(m_connectionBar);
+    m_connectionPageLabel = new QLabel(u"Flight Monitoring"_s, m_connectionBar);
     m_connectionPageLabel->setObjectName(u"connectionStripContext"_s);
     m_connectionPageLabel->setWordWrap(false);
     m_connectionPageLabel->setMinimumWidth(200);
-    m_connectionPageLabel->setStyleSheet(
-        QString(u"color: %1; font-size: %2px; font-family: %3;"_s)
-            .arg(Theme::kTextMuted)
-            .arg(Theme::kFontSizeBase)
-            .arg(Theme::kFontMono));
 
-    m_serialControlBlock = new QWidget(m_connectionBar);
-    auto *serialRow = new QHBoxLayout(m_serialControlBlock);
-    serialRow->setContentsMargins(0, 0, 0, 0);
-    serialRow->setSpacing(12);
-
-    auto *portLabel = new QLabel(u"Port"_s, m_serialControlBlock);
-    portLabel->setStyleSheet(
-        QString(u"color: %1; font-family: %2;"_s)
-            .arg(Theme::kTextMid)
-            .arg(Theme::kFontMono));
-    m_portCombo = new QComboBox(m_serialControlBlock);
-    m_portCombo->setEditable(true);
-    m_portCombo->setMinimumWidth(200);
-    m_portCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-
-    auto *baudLabel = new QLabel(u"Baud"_s, m_serialControlBlock);
-    baudLabel->setStyleSheet(portLabel->styleSheet());
-    m_baudCombo = new QComboBox(m_serialControlBlock);
-    const QList<int> bauds = {9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600};
-    for (int b : bauds) {
-        m_baudCombo->addItem(QString::number(b), b);
-    }
-    m_baudCombo->setCurrentIndex(4);
-
-    auto *refreshBtn = new QPushButton(u"Refresh"_s, m_serialControlBlock);
-    auto *connectBtn = new QPushButton(u"Connect"_s, m_serialControlBlock);
-    auto *disconnectBtn = new QPushButton(u"Disconnect"_s, m_serialControlBlock);
-    serialRow->addWidget(portLabel);
-    serialRow->addWidget(m_portCombo);
-    serialRow->addWidget(baudLabel);
-    serialRow->addWidget(m_baudCombo);
-    serialRow->addWidget(refreshBtn);
-    serialRow->addWidget(connectBtn);
-    serialRow->addWidget(disconnectBtn);
-
-    auto *openLogBtn    = new QPushButton(u"Open log…"_s, m_connectionBar);
-    auto *clearFlightBtn = new QPushButton(u"Clear flight"_s, m_connectionBar);
-    auto *exportBtn     = new QPushButton(u"Export session…"_s, m_connectionBar);
+    m_openLogBtn = createActionButton(m_connectionBar, u"Open flight log"_s, u"folder-open"_s);
+    m_clearFlightBtn = createActionButton(m_connectionBar, u"Clear flight data"_s, u"trash"_s);
+    m_exportBtn = createActionButton(m_connectionBar, u"Export session to CSV"_s, u"export"_s);
 
     row->addWidget(m_connectionPageLabel);
-    row->addWidget(m_serialControlBlock);
-    row->addSpacing(12);
-    row->addWidget(openLogBtn);
-    row->addWidget(clearFlightBtn);
-    row->addWidget(exportBtn);
+    row->addSpacing(16);
+    row->addWidget(m_openLogBtn);
+    row->addWidget(m_clearFlightBtn);
+    row->addWidget(m_exportBtn);
     row->addStretch(1);
 
-    connect(refreshBtn, &QPushButton::clicked, this, &MainWindow::refreshSerialPorts);
-    connect(connectBtn, &QPushButton::clicked, this, [this]() {
-        persistSerialPrefs();
-        const QString port = m_portCombo ? m_portCombo->currentText().trimmed() : QString{};
-        int baud = 115200;
-        if (m_baudCombo) {
-            baud = m_baudCombo->currentData().toInt();
-            if (baud <= 0) {
-                baud = m_baudCombo->currentText().toInt();
-            }
-            if (baud <= 0) {
-                baud = 115200;
-            }
-        }
-        startSerial(port, baud);
-    });
-    connect(disconnectBtn, &QPushButton::clicked, this, &MainWindow::stopSerial);
-    connect(openLogBtn,    &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
-    connect(clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
-    connect(exportBtn,     &QPushButton::clicked, this, &MainWindow::onExportSession);
+    connect(m_openLogBtn, &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
+    connect(m_clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
+    connect(m_exportBtn, &QPushButton::clicked, this, &MainWindow::onExportSession);
 
-    m_connectionBar->setStyleSheet(
-        QString(u"QWidget#connectionStrip { background: rgba(34, 34, 34, 0.98); color: %1; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }"_s)
-            .arg(Theme::kTextPrimary));
+    m_connectionBar->setStyleSheet(buildActionBarStyleSheet());
 
-    loadSerialPrefsToUi();
 }
 
+void MainWindow::updateBreadcrumb(const QString &context) {
+    if (!m_connectionPageLabel) {
+        return;
+    }
+
+    if (context.isEmpty()) {
+        m_connectionPageLabel->setText(u"Flight Monitoring"_s);
+    } else {
+        m_connectionPageLabel->setText(
+            QStringLiteral("Flight Monitoring › %1").arg(context));
+    }
+}
+
+/*
 void MainWindow::loadSerialPrefsToUi() {
     QSettings s(kSettingsOrg, kSettingsApp);
     const QString port = s.value(kSettingsSerialPort).toString();
@@ -582,6 +556,7 @@ void MainWindow::persistSerialPrefs() {
     s.setValue(kSettingsSerialPort, m_portCombo->currentText().trimmed());
     s.setValue(kSettingsSerialBaud, m_baudCombo->currentText());
 }
+*/
 
 void MainWindow::setupPages() {
     auto *central = new QWidget(this);
@@ -594,117 +569,13 @@ void MainWindow::setupPages() {
         centralLayout->addWidget(m_connectionBar);
     }
 
-    if (!m_dataBar) {
-        setupDataBar();
-    }
-    if (m_dataBar) {
-        centralLayout->addWidget(m_dataBar);
-    }
-
     m_pages = new QStackedWidget(central);
     centralLayout->addWidget(m_pages, 1);
     setCentralWidget(central);
 
-    m_monitoringPage = new MonitoringPage(m_flightModel.get());
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
-    m_mapPage        = new MapPage(m_flightModel.get(), m_replay.get());
-    m_pages->addWidget(m_monitoringPage);
     m_pages->addWidget(m_flightDataPage);
-    m_pages->addWidget(m_mapPage);
-    m_pages->setCurrentWidget(m_monitoringPage);
-
-    connect(m_pages, &QStackedWidget::currentChanged, this, [this](int) {
-        updateTopBarsForCurrentPage();
-    });
-    connect(m_flightModel.get(), &FlightDataModel::replayModeChanged, this, [this](bool) {
-        syncTelemetryStrip();
-    });
-
-    updateTopBarsForCurrentPage();
-}
-
-bool MainWindow::isMonitoringPageActive() const {
-    return m_pages && m_pages->currentWidget() == m_monitoringPage;
-}
-
-bool MainWindow::isMapPageActive() const {
-    return m_pages && m_pages->currentWidget() == m_mapPage;
-}
-
-void MainWindow::updateTopBarsForCurrentPage() {
-    const bool monitoring = isMonitoringPageActive();
-    const bool map        = isMapPageActive();
-
-    if (m_toolbarPageLabel) {
-        if (monitoring) {
-            m_toolbarPageLabel->setText(u"Monitoring"_s);
-        } else if (map) {
-            m_toolbarPageLabel->setText(u"Map"_s);
-        } else {
-            m_toolbarPageLabel->setText(u"Flight data"_s);
-        }
-    }
-
-    if (m_connectionPageLabel) {
-        if (monitoring) {
-            m_connectionPageLabel->setText(
-                u"Serial — port, baud, Connect. Flight logs — Open log…"_s);
-        } else if (map) {
-            m_connectionPageLabel->setText(
-                u"Map — lat/lon flight path. Load a log or connect for live tracking."_s);
-        } else {
-            m_connectionPageLabel->setText(
-                u"Replay — Open log… or Clear flight. Serial controls are on Monitoring."_s);
-        }
-    }
-
-    if (m_serialControlBlock) {
-        m_serialControlBlock->setVisible(monitoring);
-    }
-    if (m_flightModel) {
-        m_prevBytesForRate = m_flightModel->totalBytesReceived();
-    }
-    syncTelemetryStrip();
-    updateDataRateLabel();
-}
-
-void MainWindow::syncTelemetryStrip() {
-    if (!m_dataStripPageLabel || !m_dataLinkStatusLabel || !m_dataRateLabel || !m_flightModel) {
-        return;
-    }
-
-    if (isMonitoringPageActive()) {
-        m_dataStripPageLabel->setText(u"MONITORING"_s);
-        if (m_serialPortSummary.isEmpty()) {
-            m_dataLinkStatusLabel->setText(u"LINK: idle"_s);
-        } else {
-            m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1").arg(m_serialPortSummary));
-        }
-        return;
-    }
-
-    if (isMapPageActive()) {
-        m_dataStripPageLabel->setText(u"MAP"_s);
-        const QString link = m_serialPortSummary.isEmpty() ? u"idle"_s : m_serialPortSummary;
-        m_dataLinkStatusLabel->setText(QStringLiteral("LINK: %1").arg(link));
-        return;
-    }
-
-    m_dataStripPageLabel->setText(u"FLIGHT DATA"_s);
-    const bool replay = m_flightModel->replayMode();
-    const int n   = m_replay ? m_replay->sampleCount() : 0;
-    const int pos = m_replay ? m_replay->index() : 0;
-    if (replay && n > 0) {
-        m_dataLinkStatusLabel->setText(
-            QStringLiteral("SESSION: replay · %1 / %2 samples").arg(pos).arg(n));
-        m_dataRateLabel->setText(u"HINT: Play / slider on Flight data page"_s);
-    } else if (replay && n == 0) {
-        m_dataLinkStatusLabel->setText(u"SESSION: replay (empty)"_s);
-        m_dataRateLabel->setText(u"Open a log to load samples"_s);
-    } else {
-        const QString link = m_serialPortSummary.isEmpty() ? u"idle"_s : m_serialPortSummary;
-        m_dataLinkStatusLabel->setText(QStringLiteral("SESSION: live · %1").arg(link));
-    }
+    m_pages->setCurrentWidget(m_flightDataPage);
 }
 
 void MainWindow::openSettingsWindow() {
@@ -717,7 +588,7 @@ void MainWindow::openSettingsWindow() {
         m_settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
         m_settingsWindow->setWindowTitle(u"CosmoSoft Settings"_s);
         m_settingsWindow->setWindowIcon(QIcon(u":/icons/settings_button.png"_s));
-        m_settingsWindow->resize(520, 750);
+        m_settingsWindow->resize(640, 560);
 
         connect(m_settingsWindow, &QObject::destroyed, this, [this]() {
             m_settingsWindow = nullptr;
@@ -725,14 +596,6 @@ void MainWindow::openSettingsWindow() {
                 m_openSettingsAction->setChecked(false);
             }
         });
-
-        for (const auto &[isError, text] : m_logEntries) {
-            if (isError) {
-                m_settingsWindow->appendLogError(text);
-            } else {
-                m_settingsWindow->appendLogEntry(text);
-            }
-        }
     }
 
     m_settingsWindow->show();
@@ -765,34 +628,8 @@ void MainWindow::updateMissionClock() {
     m_missionMetaLabel->setText(timestamp);
 }
 
-void MainWindow::updateDataRateLabel() {
-    if (!m_dataRateLabel || !m_flightModel) {
-        return;
-    }
-    const qint64 total = m_flightModel->totalBytesReceived();
-    const qint64 delta = total - m_prevBytesForRate;
-    m_prevBytesForRate = total;
-    if (isMonitoringPageActive()) {
-        m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
-    } else if (!m_flightModel->replayMode()) {
-        m_dataRateLabel->setText(QStringLiteral("RATE: %1 B/s").arg(delta));
-    }
-
-    if (m_droppedBadgeLabel) {
-        const std::size_t dropped = m_rawQueue.dropped();
-        if (dropped != m_lastDroppedCount) {
-            m_lastDroppedCount = dropped;
-            if (dropped > 0) {
-                m_droppedBadgeLabel->setText(
-                    QStringLiteral("⚠ %1 dropped").arg(static_cast<qulonglong>(dropped)));
-                m_droppedBadgeLabel->setVisible(true);
-            } else {
-                m_droppedBadgeLabel->setVisible(false);
-            }
-        }
-    }
-}
-
+// NOTE: Serial port functionality commented out for future live mode
+/*
 void MainWindow::refreshSerialPorts() {
     std::unique_ptr<ISerialPortScanner> scanner(SerialPortScannerFactory::createSerialPortScanner());
     if (!scanner || !m_portCombo) {
@@ -818,18 +655,14 @@ void MainWindow::refreshSerialPorts() {
     }
     m_portCombo->blockSignals(false);
 }
+*/
 
 void MainWindow::onReplayPositionChanged(int trailLength) {
-    if (m_mapPage) {
-        m_mapPage->setReplayTrailLength(trailLength);
-    }
-
     if (trailLength <= 0) {
         if (m_replayTelemetryCoalesceTimer) {
             m_replayTelemetryCoalesceTimer->stop();
         }
         m_flightModel->setDisplayedSample(FlightSample{});
-        syncTelemetryStrip();
         return;
     }
     if (trailLength > static_cast<int>(m_loadedSession.samples.size())) {
@@ -850,7 +683,6 @@ void MainWindow::applyReplayTelemetrySample(int trailLength) {
         return;
     }
     m_flightModel->setDisplayedSample(m_loadedSession.samples[static_cast<std::size_t>(trailLength - 1)]);
-    syncTelemetryStrip();
 }
 
 void MainWindow::applyPendingReplayTelemetryStrip() {
@@ -875,8 +707,12 @@ void MainWindow::onOpenReplayFile() {
 
     s.setValue(kSettingsReplayDir, QFileInfo(path).absolutePath());
 
-    stopSerial();
+    // stopSerial();  // Commented out - serial functionality disabled
 
+    loadFlightLogAsync(path);
+}
+
+void MainWindow::loadFlightLogAsync(const QString &path) {
     auto *progress = new QProgressDialog(u"Loading flight log…"_s, QString(), 0, 0, this);
     progress->setWindowModality(Qt::WindowModal);
     progress->setMinimumDuration(0);
@@ -890,23 +726,21 @@ void MainWindow::onOpenReplayFile() {
         FlightLogLoadResult r = watcher->result();
         watcher->deleteLater();
         if (r.error) {
-            QMessageBox::warning(
-                this,
-                u"Could not load log"_s,
-                QString::fromStdString(*r.error));
+            QMessageBox::warning(this, u"Could not load log"_s,
+                                 QString::fromStdString(*r.error));
             return;
         }
         m_loadedSession = std::move(r.session);
+        m_logManager->setSession(m_loadedSession);
         m_flightModel->resetSession();
         m_flightModel->setReplayMode(true);
         m_replay->setSession(m_loadedSession);
         if (m_flightDataPage) {
             m_flightDataPage->setReplaySession(&m_loadedSession);
         }
-        if (m_mapPage) {
-            m_mapPage->setReplaySession(&m_loadedSession);
-        }
-        syncTelemetryStrip();
+        addRecentFile(path);
+        const QString filename = QFileInfo(path).fileName();
+        updateBreadcrumb(QStringLiteral("Session: %1").arg(filename));
         const QString loadMsg = QStringLiteral("Loaded flight: %1").arg(path);
         showStatusMessage(loadMsg, 4000);
         appendToLog(false, loadMsg);
@@ -918,6 +752,19 @@ void MainWindow::onOpenReplayFile() {
 }
 
 void MainWindow::onClearFlightData() {
+    const bool hasData = !m_logManager->session().samples.empty()
+                      || !m_loadedSession.samples.empty();
+    if (hasData) {
+        const auto reply = QMessageBox::question(
+            this,
+            u"Clear flight data"_s,
+            u"All loaded and recorded flight data will be lost.\n\nContinue?"_s,
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+        if (reply != QMessageBox::Yes) {
+            return;
+        }
+    }
     m_logManager->clear();
     m_replay->stop();
     m_loadedSession.samples.clear();
@@ -927,10 +774,7 @@ void MainWindow::onClearFlightData() {
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
     }
-    if (m_mapPage) {
-        m_mapPage->setReplaySession(nullptr);
-    }
-    syncTelemetryStrip();
+    updateBreadcrumb();  // Reset to default
     showStatusMessage(u"Cleared flight replay data."_s, 2000);
     appendToLog(false, u"Flight data cleared."_s);
 }
@@ -938,6 +782,45 @@ void MainWindow::onClearFlightData() {
 void MainWindow::onShowAbout() {
     AboutDialog dlg(this);
     dlg.exec();
+}
+
+void MainWindow::updateBrandShadowColor() {
+    if (!m_brandShadow) {
+        return;
+    }
+    const bool lightBg = QColor(Theme::kBgBase()).lightness() > 128;
+    m_brandShadow->setColor(lightBg ? QColor(0, 0, 0, 100) : QColor(0, 0, 0, 160));
+}
+
+void MainWindow::onThemeChanged() {
+    if (m_openSettingsAction) {
+        const QString themeId = cosmo::ThemeManager::instance().current().id;
+        const bool isDark = themeId.contains(u"dark"_s, Qt::CaseInsensitive);
+        QIcon settingsIcon;
+        settingsIcon.addFile(
+            isDark ? u":/icons/settings_button.png"_s : u":/icons/settings_button_black.png"_s,
+            QSize(), QIcon::Normal, QIcon::Off);
+        settingsIcon.addFile(
+            isDark ? u":/icons/settings_button_black.png"_s : u":/icons/settings_button.png"_s,
+            QSize(), QIcon::Normal, QIcon::On);
+        m_openSettingsAction->setIcon(settingsIcon);
+    }
+
+    updateBrandShadowColor();
+
+    auto *toolbar = findChild<QToolBar *>(u"missionToolbar"_s);
+    if (toolbar) {
+        toolbar->setStyleSheet(buildToolbarStyleSheet());
+    }
+
+    if (m_brandLabel) {
+        m_brandLabel->setText(
+            QString(u"Cosmo<span style=\"color:%1\">Soft</span>"_s).arg(Theme::kAccentLink()));
+    }
+
+    if (m_connectionBar) {
+        m_connectionBar->setStyleSheet(buildActionBarStyleSheet());
+    }
 }
 
 void MainWindow::onExportSession() {
@@ -951,13 +834,13 @@ void MainWindow::onExportSession() {
         this,
         u"Export session"_s,
         QDir::homePath(),
-        u"Text log (*.txt);;All files (*)"_s);
+        u"CSV (*.csv);;All files (*)"_s);
     if (path.isEmpty()) {
         return;
     }
 
     m_logManager->setOutputPath(path.toStdString());
-    if (m_logManager->exportSessionToTextFile()) {
+    if (m_logManager->exportSessionToCsv()) {
         const QString exportMsg = QStringLiteral("Session exported to %1").arg(path);
         showStatusMessage(exportMsg, 4000);
         appendToLog(false, exportMsg);
@@ -968,6 +851,7 @@ void MainWindow::onExportSession() {
     }
 }
 
+/*
 void MainWindow::startSerial(const QString &portName, int baud) {
     stopSerial();
     if (portName.isEmpty()) {
@@ -981,8 +865,6 @@ void MainWindow::startSerial(const QString &portName, int baud) {
         m_comms.reset();
         return;
     }
-
-    m_prevBytesForRate = m_flightModel->totalBytesReceived();
 
     m_parserWorker = std::make_unique<ParserWorker>(
         m_rawQueue,
@@ -1037,10 +919,6 @@ void MainWindow::startSerial(const QString &portName, int baud) {
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
     }
-    if (m_mapPage) {
-        m_mapPage->setReplaySession(nullptr);
-    }
-    syncTelemetryStrip();
     const QString connectMsg = QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud);
     showStatusMessage(connectMsg, 3000);
     appendToLog(false, connectMsg);
@@ -1061,8 +939,8 @@ void MainWindow::stopSerial() {
     }
     const bool wasConnected = !m_serialPortSummary.isEmpty();
     m_serialPortSummary.clear();
-    syncTelemetryStrip();
     if (wasConnected) {
         appendToLog(false, u"Serial port disconnected."_s);
     }
 }
+*/

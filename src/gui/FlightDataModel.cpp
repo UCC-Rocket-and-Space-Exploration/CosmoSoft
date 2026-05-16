@@ -1,9 +1,5 @@
 #include "gui/FlightDataModel.h"
 
-#include <QMetaType>
-
-Q_DECLARE_METATYPE(FlightSample)
-
 FlightDataModel::FlightDataModel(QObject *parent)
     : QObject(parent) {}
 
@@ -53,21 +49,15 @@ void FlightDataModel::setDisplayedSample(const FlightSample &sample) {
 }
 
 void FlightDataModel::resetByteCounter() {
-    qint64 total = 0;
     {
         QMutexLocker lock(&m_mutex);
         m_bytesReceived = 0;
-        total = m_bytesReceived;
     }
-    emit bytesReceivedChanged(total);
+    emit bytesReceivedChanged(0);
 }
 
-void FlightDataModel::appendSample(FlightSample sample) {
-    {
-        QMutexLocker lock(&m_mutex);
-        m_latest = sample;
-    }
-    emit sampleUpdated(sample);
+void FlightDataModel::appendSample(const FlightSample &sample) {
+    setDisplayedSample(sample);
 }
 
 void FlightDataModel::addBytesReceived(qint64 byteCount) {

@@ -38,7 +38,7 @@ AboutDialog::AboutDialog(QWidget *parent)
     descLabel->setWordWrap(true);
     descLabel->setAlignment(Qt::AlignLeft);
 
-    auto *licenseLabel = new QLabel(u"Licensed under the MIT License."_s, this);
+    auto *licenseLabel = new QLabel(u"Licensed under the Apache License 2.0."_s, this);
     licenseLabel->setAlignment(Qt::AlignLeft);
 
     auto *repoLabel = new QLabel(
@@ -75,8 +75,8 @@ AboutDialog::AboutDialog(QWidget *parent)
             color: %4;
         }
     )"_s)
-            .arg(Theme::kBgBase)
-            .arg(Theme::kTextPrimary)
+            .arg(Theme::kBgBase())
+            .arg(Theme::kTextPrimary())
             .arg(Theme::kFontMono)
-            .arg(Theme::kAccentLink));
+            .arg(Theme::kAccentLink()));
 }

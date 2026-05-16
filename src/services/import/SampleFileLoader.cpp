@@ -129,6 +129,8 @@ std::optional<std::string> SampleFileLoader::loadTheseusCsv(const std::string &p
     const int iAlt = findColumn(header, "altitude");
     const int iTemp = findColumn(header, "temperature");
     const int iBatt = findColumn(header, "battery_voltage");
+    const int iLat  = findColumn(header, "latitude");
+    const int iLon  = findColumn(header, "longitude");
     if (iTime < 0 || iAlt < 0) {
         return std::string("CSV missing required columns (need time, altitude): ") + path;
     }
@@ -170,6 +172,12 @@ std::optional<std::string> SampleFileLoader::loadTheseusCsv(const std::string &p
         if (iBatt >= 0 && static_cast<int>(cells.size()) > iBatt) {
             parseDouble(cells[static_cast<std::size_t>(iBatt)], sample.batteryVoltage);
         }
+        if (iLat >= 0 && static_cast<int>(cells.size()) > iLat) {
+            parseDouble(cells[static_cast<std::size_t>(iLat)], sample.coordinates.latitude);
+        }
+        if (iLon >= 0 && static_cast<int>(cells.size()) > iLon) {
+            parseDouble(cells[static_cast<std::size_t>(iLon)], sample.coordinates.longitude);
+        }
         samples.push_back(sample);
     }
 
@@ -187,8 +195,8 @@ std::optional<std::string> SampleFileLoader::loadTheseusCsv(const std::string &p
         iBatt >= 0,         // 4 battery
         iRssi >= 0,         // 5 RSSI
         false,              // 6 gyro — not in Theseus CSV schema
-        false,              // 7 latitude
-        false,              // 8 longitude
+        iLat >= 0,          // 7 latitude
+        iLon >= 0,          // 8 longitude
     };
     return std::nullopt;
 }

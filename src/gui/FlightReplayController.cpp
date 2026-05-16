@@ -46,15 +46,17 @@ void FlightReplayController::play() {
 }
 
 void FlightReplayController::pause() {
+    const bool wasPlaying = m_playing;
     m_playing = false;
-    if (m_timer) {
-        m_timer->stop();
+    m_timer->stop();
+    if (wasPlaying) {
+        emit playbackPaused();
     }
-    emit playbackPaused();
 }
 
 void FlightReplayController::stop() {
-    pause();
+    m_playing = false;
+    m_timer->stop();
     m_index = 0;
     emit positionChanged(m_index);
     emit playbackStopped();

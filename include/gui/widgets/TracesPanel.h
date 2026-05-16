@@ -49,14 +49,15 @@ public:
     void setMetricDataStates(const std::array<bool, kMetricCount> &hasData);
 
 signals:
-    /** Emitted whenever any checkbox changes. The array always has ≥1 true. */
-    void enabledMetricsChanged(std::array<bool, 9> enabled);
+    /** Emitted whenever any checkbox changes. The array always has at least one true. */
+    void enabledMetricsChanged(std::array<bool, kMetricCount> enabled);
 
 public slots:
     /** Refreshes the right-aligned value labels from the latest sample. */
     void updateLiveValues(const FlightSample &sample);
 
 private slots:
+    void applyThemeStyleSheet();
     void onAnyMetricToggled();
     void onSelectAllTraces();
     void onSelectNoneTraces();

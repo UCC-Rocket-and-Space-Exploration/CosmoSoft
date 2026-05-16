@@ -190,6 +190,14 @@ QTabBar::tab:hover:!selected {
     color: #d0d0d0;
 }
 
+/* ── Focus indicators ─────────────────────────────────────────────────────── */
+
+QPushButton:focus, QToolButton:focus, QComboBox:focus, QLineEdit:focus,
+QCheckBox:focus, QSlider:focus {
+    outline: none;
+    border-color: #4a88c0;
+}
+
 /* ── Tool tips ────────────────────────────────────────────────────────────── */
 
 QToolTip {

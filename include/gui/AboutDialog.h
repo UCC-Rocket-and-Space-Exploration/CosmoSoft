@@ -3,8 +3,8 @@
  * @brief Non-resizable dialog displaying application metadata.
  *
  * Shows the application name, version, license (Apache 2.0), and a clickable
- * link to the project's GitHub repository.  Triggered from the toolbar About
- * button in MainWindow.
+ * link to the project's GitHub repository.  Triggered from Help → About in
+ * the menu bar.
  */
 
 #ifndef COSMO_SOFT_ABOUTDIALOG_H

@@ -2,6 +2,12 @@
     <qresource prefix="/styles">
         <file alias="theme.qss">theme.qss</file>
     </qresource>
+    <qresource prefix="/skins/dark">
+        <file alias="theme.json">skins/dark/theme.json</file>
+    </qresource>
+    <qresource prefix="/skins/light">
+        <file alias="theme.json">skins/light/theme.json</file>
+    </qresource>
     <qresource prefix="/images">
         <file alias="Logo_rounded.png">images/Logo_rounded.png</file>
         <file alias="Logo_nb.png">images/Logo_nb.png</file>
@@ -10,6 +16,11 @@
     <qresource prefix="/fonts">
         <file alias="RedHatMono-Regular.ttf">fonts/RedHatMono-Regular.ttf</file>
         <file alias="Workbench-Regular.ttf">fonts/Workbench-Regular.ttf</file>
+    </qresource>
+    <qresource prefix="/map">
+        <file alias="map3d.html">map/map3d.html</file>
+        <file alias="leaflet.js">map/leaflet.js</file>
+        <file alias="leaflet.css">map/leaflet.css</file>
     </qresource>
     <qresource prefix="/icons">
         <file alias="settings_button.png">icons/settings_button.png</file>

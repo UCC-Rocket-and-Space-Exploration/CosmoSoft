@@ -69,6 +69,7 @@ private:
     void endPanningIfActive();
     void panAxesByPixels(const QPoint &delta);
     static void zoomAxisAtFocal(QValueAxis *ax, double focal, double spanScale);
+    void refreshHoverOverlayStyleSheet();
 
     QChart  *m_chartPtr          = nullptr;
     bool     m_panning           = false;
@@ -77,4 +78,6 @@ private:
 
     QWidget *m_crosshairOverlay = nullptr;  ///< ChartCrosshairOverlay instance (type defined in .cpp).
     QLabel  *m_hoverOverlay     = nullptr;  ///< Floating text bubble that follows the cursor.
+
+    int      m_hoverThrottleCounter = 0;    ///< Skips N hover updates during pan for performance.
 };
