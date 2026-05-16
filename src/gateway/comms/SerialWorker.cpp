@@ -29,7 +29,7 @@ void SerialWorker::stop() {
     }
 }
 
-void SerialWorker::run() {
+void SerialWorker::run() const { // const
     uint8_t buffer[256];
     while (m_running) {
         const ssize_t n = m_connectedPort->read(buffer, sizeof(buffer));

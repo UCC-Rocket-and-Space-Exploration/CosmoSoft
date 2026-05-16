@@ -9,7 +9,7 @@ target_link_libraries(cosmo-backend
     Qt6::Charts
 )
 
-add_subdirectory(gateway)
+add_subdirectory(gateway/comms)
 add_subdirectory(services/flight)
 add_subdirectory(services/persistence)
 add_subdirectory(services/telemetry)

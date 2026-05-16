@@ -32,4 +32,4 @@ target_link_libraries(gui
         persistence
 )
 
-target_link_libraries(cosmo-backend INTERFACE gui)
+target_link_libraries(cosmo-backend gui)

@@ -1,10 +1,11 @@
 #ifndef COSMO_SOFT_SERIALCOMMSWINDOWS_H
 #define COSMO_SOFT_SERIALCOMMSWINDOWS_H
-#include "../IComms.h"
 #include <windows.h>
 
+#include "gateway/comms/IComms.h"
 
-class SerialCommsWindows : IComms {
+
+class SerialCommsWindows : public IComms {
 public:
     explicit SerialCommsWindows(const std::string& device, int baud = 115200);
     ~SerialCommsWindows() override; //destructor
