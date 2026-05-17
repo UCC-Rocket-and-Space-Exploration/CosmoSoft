@@ -11,6 +11,7 @@ target_link_libraries(cosmo-backend
 
 add_subdirectory(gateway/comms)
 add_subdirectory(services/flight)
+add_subdirectory(services/import)
 add_subdirectory(services/persistence)
 add_subdirectory(services/telemetry)
 add_subdirectory(gui)

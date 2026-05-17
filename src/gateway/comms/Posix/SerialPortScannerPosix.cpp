@@ -1,4 +1,4 @@
-#include "../../../include/gateway/posix/SerialPortScannerPosix.h"
+#include "gateway/comms/Posix/SerialPortScannerPosix.h"
 
 #include <fcntl.h>
 #include <glob.h>

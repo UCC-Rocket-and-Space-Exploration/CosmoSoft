@@ -1,6 +1,7 @@
 #ifndef COSMO_SOFT_PARSER_H
 #define COSMO_SOFT_PARSER_H
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "Framer.h"
@@ -9,7 +10,7 @@
 class Parser {
 public:
     Parser() = default;
-    FlightSample decode(Frame);
+    std::optional<FlightSample> decode(Frame);
 
 private:
 };

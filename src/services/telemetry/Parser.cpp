@@ -2,6 +2,6 @@
 
 #include <optional>
 
-FlightSample Parser::decode(Frame) {
-    return FlightSample();
+std::optional<FlightSample> Parser::decode(Frame) {
+    return std::nullopt;
 }

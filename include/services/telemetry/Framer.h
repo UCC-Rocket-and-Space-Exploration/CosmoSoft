@@ -1,5 +1,6 @@
 #ifndef COSMO_SOFT_FRAMER_H
 #define COSMO_SOFT_FRAMER_H
+#include <cstddef>
 #include <cstdint>
 
 #define Kilobyte 1024
