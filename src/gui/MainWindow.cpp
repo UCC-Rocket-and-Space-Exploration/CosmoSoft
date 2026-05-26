@@ -17,6 +17,7 @@
 #include "gui/pages/LiveTelemetryPage.h"
 #include "gui/pages/SettingsPage.h"
 #include "services/import/SampleFileLoader.h"
+#include "services/flight/FakeFlightLink.h"
 #include "services/persistence/FlightLogManager.h"
 #include "services/telemetry/Framer.h"
 #include "services/telemetry/Parser.h"
@@ -94,6 +95,10 @@ QPushButton* createActionButton(QWidget *parent, const QString &tooltip, const Q
         iconType = QStyle::SP_TrashIcon;
     } else if (iconName == u"export"_s) {
         iconType = QStyle::SP_DialogSaveButton;
+    } else if (iconName == u"play"_s) {
+        iconType = QStyle::SP_MediaPlay;
+    } else if (iconName == u"stop"_s) {
+        iconType = QStyle::SP_MediaStop;
     }
 
     QIcon icon = btn->style()->standardIcon(iconType);
@@ -117,6 +122,10 @@ MainWindow::MainWindow(QWidget *parent)
     setupMenuBar();
     setupToolbar();
     setupPages();
+
+    m_fakeTransmissionTimer = new QTimer(this);
+    m_fakeTransmissionTimer->setInterval(250);
+    connect(m_fakeTransmissionTimer, &QTimer::timeout, this, &MainWindow::pushFakeTransmissionSample);
 
     connect(m_replay.get(), &FlightReplayController::positionChanged, this, &MainWindow::onReplayPositionChanged);
 
@@ -511,17 +520,20 @@ void MainWindow::setupConnectionBar() {
     m_openLogBtn = createActionButton(m_connectionBar, u"Open flight log"_s, u"folder-open"_s);
     m_clearFlightBtn = createActionButton(m_connectionBar, u"Clear flight data"_s, u"trash"_s);
     m_exportBtn = createActionButton(m_connectionBar, u"Export session to CSV"_s, u"export"_s);
+    m_fakeTransmissionBtn = createActionButton(m_connectionBar, u"Start fake live transmission"_s, u"play"_s);
 
     row->addWidget(m_connectionPageLabel);
     row->addSpacing(16);
     row->addWidget(m_openLogBtn);
     row->addWidget(m_clearFlightBtn);
     row->addWidget(m_exportBtn);
+    row->addWidget(m_fakeTransmissionBtn);
     row->addStretch(1);
 
     connect(m_openLogBtn, &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
     connect(m_clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
     connect(m_exportBtn, &QPushButton::clicked, this, &MainWindow::onExportSession);
+    connect(m_fakeTransmissionBtn, &QPushButton::clicked, this, &MainWindow::onToggleFakeTransmission);
 
     m_connectionBar->setStyleSheet(buildActionBarStyleSheet());
 
@@ -715,6 +727,92 @@ void MainWindow::applyPendingReplayTelemetryStrip() {
     applyReplayTelemetrySample(m_pendingReplayTelemetryTrail);
 }
 
+void MainWindow::refreshFakeTransmissionButton() {
+    if (!m_fakeTransmissionBtn) {
+        return;
+    }
+
+    const bool active = m_fakeTransmissionTimer && m_fakeTransmissionTimer->isActive();
+    m_fakeTransmissionBtn->setToolTip(active ? u"Stop fake live transmission"_s : u"Start fake live transmission"_s);
+    m_fakeTransmissionBtn->setAccessibleName(m_fakeTransmissionBtn->toolTip());
+    m_fakeTransmissionBtn->setIcon(
+        m_fakeTransmissionBtn->style()->standardIcon(active ? QStyle::SP_MediaStop : QStyle::SP_MediaPlay));
+}
+
+void MainWindow::stopFakeTransmission(bool completed) {
+    if (m_fakeTransmissionTimer) {
+        m_fakeTransmissionTimer->stop();
+    }
+    refreshFakeTransmissionButton();
+
+    if (completed) {
+        showStatusMessage(u"Fake live transmission complete."_s, 3000);
+        appendToLog(false, u"Fake live transmission complete."_s);
+    }
+}
+
+void MainWindow::onToggleFakeTransmission() {
+    if (m_fakeTransmissionTimer && m_fakeTransmissionTimer->isActive()) {
+        stopFakeTransmission(false);
+        showStatusMessage(u"Fake live transmission stopped."_s, 2500);
+        appendToLog(false, u"Fake live transmission stopped."_s);
+        return;
+    }
+
+    m_replay->stop();
+    m_loadedSession.samples.clear();
+    m_replay->setSession({});
+    m_logManager->clear();
+    m_flightModel->setReplayMode(false);
+    m_flightModel->resetByteCounter();
+    m_flightModel->resetSession();
+    if (m_flightDataPage) {
+        m_flightDataPage->setReplaySession(nullptr);
+    }
+
+    m_fakeTransmissionSamples.clear();
+    m_fakeTransmissionByteCounts.clear();
+    const auto packets = cosmo::flightlink::buildLaunchProfilePackets(160);
+    m_fakeTransmissionSamples.reserve(packets.size());
+    m_fakeTransmissionByteCounts.reserve(packets.size());
+    for (const auto &packet : packets) {
+        m_fakeTransmissionSamples.push_back(packet.sample);
+        m_fakeTransmissionByteCounts.push_back(static_cast<qint64>(packet.line.size() + 1));
+    }
+    m_fakeTransmissionIndex = 0;
+
+    if (m_pages && m_flightDataPage) {
+        m_pages->setCurrentWidget(m_flightDataPage);
+    }
+    if (m_dashboardAction) {
+        m_dashboardAction->setChecked(true);
+    }
+
+    updateBreadcrumb(u"Fake live transmission"_s);
+    showStatusMessage(u"Fake live transmission started."_s, 2500);
+    appendToLog(false, u"Fake live transmission started."_s);
+    if (m_fakeTransmissionTimer) {
+        m_fakeTransmissionTimer->start();
+    }
+    refreshFakeTransmissionButton();
+    pushFakeTransmissionSample();
+}
+
+void MainWindow::pushFakeTransmissionSample() {
+    if (m_fakeTransmissionIndex >= m_fakeTransmissionSamples.size()) {
+        stopFakeTransmission(true);
+        return;
+    }
+
+    const auto index = m_fakeTransmissionIndex++;
+    const FlightSample sample = m_fakeTransmissionSamples[index];
+    m_logManager->appendSample(sample);
+    m_flightModel->appendSample(sample);
+    if (index < m_fakeTransmissionByteCounts.size()) {
+        m_flightModel->addBytesReceived(m_fakeTransmissionByteCounts[index]);
+    }
+}
+
 void MainWindow::onOpenReplayFile() {
     QSettings s(kSettingsOrg, kSettingsApp);
     QString startDir = s.value(kSettingsReplayDir, QDir::homePath()).toString();
@@ -731,6 +829,7 @@ void MainWindow::onOpenReplayFile() {
         return;
     }
 
+    stopFakeTransmission(false);
     s.setValue(kSettingsReplayDir, QFileInfo(path).absolutePath());
 
     // stopSerial();  // Commented out - serial functionality disabled
@@ -791,6 +890,7 @@ void MainWindow::onClearFlightData() {
             return;
         }
     }
+    stopFakeTransmission(false);
     m_logManager->clear();
     m_replay->stop();
     m_loadedSession.samples.clear();

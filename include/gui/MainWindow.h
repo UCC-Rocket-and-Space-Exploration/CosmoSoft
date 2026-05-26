@@ -76,6 +76,8 @@ private slots:
     void onClearFlightData();
     void onShowAbout();
     void onThemeChanged();
+    void onToggleFakeTransmission();
+    void pushFakeTransmissionSample();
 
 private:
     void setupActions();
@@ -110,6 +112,8 @@ private:
     void rebuildRecentFilesMenu();
     void updateBreadcrumb(const QString &context = QString());
     void updateBrandShadowColor();
+    void stopFakeTransmission(bool completed = false);
+    void refreshFakeTransmissionButton();
 
     // ── Menu bar ─────────────────────────────────────────────────────────────
     QMenu *m_recentFilesMenu = nullptr;
@@ -137,6 +141,7 @@ private:
     QPushButton *m_openLogBtn     = nullptr;
     QPushButton *m_clearFlightBtn = nullptr;
     QPushButton *m_exportBtn      = nullptr;
+    QPushButton *m_fakeTransmissionBtn = nullptr;
 
     // ── Data model and replay ─────────────────────────────────────────────────
     std::unique_ptr<FlightDataModel>        m_flightModel;
@@ -153,6 +158,10 @@ private:
     // ── Timers ────────────────────────────────────────────────────────────────
     QTimer *m_replayTelemetryCoalesceTimer = nullptr;
     int     m_pendingReplayTelemetryTrail  = 0;
+    QTimer *m_fakeTransmissionTimer = nullptr;
+    std::vector<FlightSample> m_fakeTransmissionSamples;
+    std::vector<qint64> m_fakeTransmissionByteCounts;
+    std::size_t m_fakeTransmissionIndex = 0;
 
     /**
      * Persistent log buffer.  Every entry is stored here so that the settings
