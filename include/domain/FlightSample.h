@@ -25,7 +25,7 @@ struct FlightSample {
     AngularVelocity angularVelocity;
     Acceleration acceleration;
     Coordinates coordinates;
-    double altitude = 0;
+    double altitude = 0; // TODO: mb should be going into Coordinates?
     double pressure = 0;
     double temperature = 0;
     double batteryVoltage = 0;
