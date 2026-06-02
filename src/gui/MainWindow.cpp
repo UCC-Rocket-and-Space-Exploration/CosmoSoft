@@ -39,6 +39,7 @@
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QSettings>
+#include <QStringList>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QIcon>
@@ -56,6 +57,7 @@
 
 #include <QtConcurrent/QtConcurrentRun>
 
+#include <chrono>
 #include <optional>
 
 using namespace Qt::StringLiterals;
@@ -160,7 +162,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() {
     QSettings(kSettingsOrg, kSettingsApp).setValue(kSettingsWindowMainGeo, saveGeometry());
-    // stopSerial();  // Commented out - serial functionality disabled
+    stopFakeTransmission(false);
+    stopSerial();
 }
 
 void MainWindow::showStatusMessage(const QString &message, int timeout) {
@@ -259,7 +262,8 @@ void MainWindow::rebuildRecentFilesMenu() {
             }
             QSettings rs(kSettingsOrg, kSettingsApp);
             rs.setValue(kSettingsReplayDir, QFileInfo(filePath).absolutePath());
-            // stopSerial();  // Commented out - serial functionality disabled
+            stopFakeTransmission(false);
+            stopSerial();
             loadFlightLogAsync(filePath);
         });
     }
@@ -603,17 +607,30 @@ void MainWindow::setupPages() {
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_flightDataPage);
 
-    m_liveTelemetryPage = new LiveTelemetryPage(this);
+    m_liveTelemetryPage = new LiveTelemetryPage(m_flightModel.get(), this);
     m_pages->addWidget(m_liveTelemetryPage);
 
     m_pages->setCurrentWidget(m_flightDataPage);
 
     connect(m_dashboardAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_flightDataPage);
+        updateBreadcrumb();
     });
     connect(m_liveTelemetryAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_liveTelemetryPage);
+        updateBreadcrumb(m_serialPortSummary.isEmpty() ? u"Live Telemetry"_s : m_serialPortSummary);
     });
+
+    connect(m_liveTelemetryPage, &LiveTelemetryPage::scanDevicesRequested,
+            this, &MainWindow::onScanLiveDevices);
+    connect(m_liveTelemetryPage, &LiveTelemetryPage::connectDeviceRequested,
+            this, &MainWindow::onConnectLiveDevice);
+    connect(m_liveTelemetryPage, &LiveTelemetryPage::disconnectRequested,
+            this, &MainWindow::onDisconnectLiveDevice);
+    connect(m_liveTelemetryPage, &LiveTelemetryPage::startDemoRequested,
+            this, &MainWindow::onStartLiveDemo);
+
+    onScanLiveDevices();
 }
 
 void MainWindow::openSettingsWindow() {
@@ -740,6 +757,7 @@ void MainWindow::refreshFakeTransmissionButton() {
 }
 
 void MainWindow::stopFakeTransmission(bool completed) {
+    const bool wasActive = m_fakeTransmissionTimer && m_fakeTransmissionTimer->isActive();
     if (m_fakeTransmissionTimer) {
         m_fakeTransmissionTimer->stop();
     }
@@ -748,6 +766,11 @@ void MainWindow::stopFakeTransmission(bool completed) {
     if (completed) {
         showStatusMessage(u"Fake live transmission complete."_s, 3000);
         appendToLog(false, u"Fake live transmission complete."_s);
+    }
+    if (wasActive && m_liveTelemetryPage && m_serialPortSummary.isEmpty()) {
+        m_liveTelemetryPage->setActiveConnection(
+            completed ? u"Fake demo complete"_s : QString(),
+            false);
     }
 }
 
@@ -759,17 +782,13 @@ void MainWindow::onToggleFakeTransmission() {
         return;
     }
 
-    m_replay->stop();
-    m_loadedSession.samples.clear();
-    m_replay->setSession({});
-    m_logManager->clear();
-    m_flightModel->setReplayMode(false);
-    m_flightModel->resetByteCounter();
-    m_flightModel->resetSession();
-    if (m_flightDataPage) {
-        m_flightDataPage->setReplaySession(nullptr);
-    }
+    onStartLiveDemo();
+}
 
+void MainWindow::onStartLiveDemo() {
+    stopSerial();
+    stopFakeTransmission(false);
+    prepareLiveSession(u"Fake live transmission"_s);
     m_fakeTransmissionSamples.clear();
     m_fakeTransmissionByteCounts.clear();
     const auto packets = cosmo::flightlink::buildLaunchProfilePackets(160);
@@ -781,11 +800,14 @@ void MainWindow::onToggleFakeTransmission() {
     }
     m_fakeTransmissionIndex = 0;
 
-    if (m_pages && m_flightDataPage) {
-        m_pages->setCurrentWidget(m_flightDataPage);
+    if (m_pages && m_liveTelemetryPage) {
+        m_pages->setCurrentWidget(m_liveTelemetryPage);
     }
-    if (m_dashboardAction) {
-        m_dashboardAction->setChecked(true);
+    if (m_liveTelemetryAction) {
+        m_liveTelemetryAction->setChecked(true);
+    }
+    if (m_liveTelemetryPage) {
+        m_liveTelemetryPage->setActiveConnection(u"Fake demo"_s, true);
     }
 
     updateBreadcrumb(u"Fake live transmission"_s);
@@ -830,9 +852,8 @@ void MainWindow::onOpenReplayFile() {
     }
 
     stopFakeTransmission(false);
+    stopSerial();
     s.setValue(kSettingsReplayDir, QFileInfo(path).absolutePath());
-
-    // stopSerial();  // Commented out - serial functionality disabled
 
     loadFlightLogAsync(path);
 }
@@ -863,6 +884,9 @@ void MainWindow::loadFlightLogAsync(const QString &path) {
         if (m_flightDataPage) {
             m_flightDataPage->setReplaySession(&m_loadedSession);
         }
+        if (m_liveTelemetryPage) {
+            m_liveTelemetryPage->setActiveConnection(QString(), false);
+        }
         addRecentFile(path);
         const QString filename = QFileInfo(path).fileName();
         updateBreadcrumb(QStringLiteral("Session: %1").arg(filename));
@@ -891,14 +915,19 @@ void MainWindow::onClearFlightData() {
         }
     }
     stopFakeTransmission(false);
+    stopSerial();
     m_logManager->clear();
     m_replay->stop();
     m_loadedSession.samples.clear();
     m_replay->setSession({});
     m_flightModel->setReplayMode(false);
+    m_flightModel->resetByteCounter();
     m_flightModel->resetSession();
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr);
+    }
+    if (m_liveTelemetryPage) {
+        m_liveTelemetryPage->setActiveConnection(QString(), false);
     }
     updateBreadcrumb();  // Reset to default
     showStatusMessage(u"Cleared flight replay data."_s, 2000);
@@ -977,43 +1006,81 @@ void MainWindow::onExportSession() {
     }
 }
 
-/*
+void MainWindow::onScanLiveDevices() {
+    std::unique_ptr<ISerialPortScanner> scanner(SerialPortScannerFactory::createSerialPortScanner());
+    QStringList ports;
+    if (scanner) {
+        for (const auto &port : scanner->enumeratePorts()) {
+            ports.append(QString::fromStdString(port));
+        }
+    }
+    if (m_liveTelemetryPage) {
+        m_liveTelemetryPage->setAvailablePorts(ports);
+    }
+
+    const QString msg = ports.isEmpty()
+        ? u"No serial devices found."_s
+        : QStringLiteral("Found %1 serial device(s).").arg(ports.size());
+    showStatusMessage(msg, 2500);
+    appendToLog(false, msg);
+}
+
+void MainWindow::onConnectLiveDevice(const QString &portName, int baud) {
+    startSerial(portName, baud);
+}
+
+void MainWindow::onDisconnectLiveDevice() {
+    stopSerial();
+    showStatusMessage(u"Live telemetry disconnected."_s, 2500);
+}
+
+void MainWindow::prepareLiveSession(const QString &context) {
+    m_replay->stop();
+    m_loadedSession.samples.clear();
+    m_replay->setSession({});
+    m_logManager->clear();
+    m_flightModel->setReplayMode(false);
+    m_flightModel->resetByteCounter();
+    m_flightModel->resetSession();
+    m_lineDecoder.reset();
+    m_lastMalformedLineCount = 0;
+    clearRawQueue();
+    if (m_flightDataPage) {
+        m_flightDataPage->setReplaySession(nullptr);
+    }
+    if (m_liveTelemetryPage) {
+        m_liveTelemetryPage->resetLiveState();
+    }
+    updateBreadcrumb(context);
+}
+
+void MainWindow::clearRawQueue() {
+    std::vector<uint8_t> chunk;
+    while (m_rawQueue.pop_for(chunk, std::chrono::milliseconds(0))) {
+    }
+}
+
 void MainWindow::startSerial(const QString &portName, int baud) {
     stopSerial();
     if (portName.isEmpty()) {
         showStatusMessage(u"Select a serial port first."_s, 3000);
         return;
     }
+    stopFakeTransmission(false);
 
     m_comms = CommsFactory::createSerialComms(portName.toStdString(), baud);
     if (!m_comms || !m_comms->open()) {
         showStatusMessage(u"Failed to open serial port."_s, 5000);
+        appendToLog(true, QStringLiteral("Failed to open serial port: %1").arg(portName));
         m_comms.reset();
+        if (m_liveTelemetryPage) {
+            m_liveTelemetryPage->setActiveConnection(QString(), false);
+        }
         return;
     }
 
-    m_parserWorker = std::make_unique<ParserWorker>(
-        m_rawQueue,
-        [this](FlightSample &&s) {
-            m_logManager->appendSample(s);
-            FlightDataModel *model = m_flightModel.get();
-            QMetaObject::invokeMethod(
-                model,
-                "appendSample",
-                Qt::QueuedConnection,
-                Q_ARG(FlightSample, s));
-        },
-        [this](std::string_view err) {
-            const QString msg = QString::fromUtf8(err.data(), static_cast<int>(err.size()));
-            QMetaObject::invokeMethod(this, "onParserError", Qt::QueuedConnection, Q_ARG(QString, msg));
-        });
-
-    if (!m_parserWorker->start()) {
-        showStatusMessage(u"Parser thread failed to start."_s, 5000);
-        m_parserWorker.reset();
-        m_comms.reset();
-        return;
-    }
+    m_serialPortSummary = QStringLiteral("%1 @ %2").arg(portName).arg(baud);
+    prepareLiveSession(m_serialPortSummary);
 
     m_serialWorker = std::make_unique<SerialWorker>(
         m_comms.get(),
@@ -1026,6 +1093,10 @@ void MainWindow::startSerial(const QString &portName, int baud) {
                 "addBytesReceived",
                 Qt::QueuedConnection,
                 Q_ARG(qint64, n));
+            QMetaObject::invokeMethod(
+                this,
+                "drainLiveTelemetryQueue",
+                Qt::QueuedConnection);
         },
         [this](const std::string &err) {
             const QString msg = QString::fromStdString(err);
@@ -1034,20 +1105,50 @@ void MainWindow::startSerial(const QString &portName, int baud) {
 
     if (!m_serialWorker->start()) {
         showStatusMessage(u"Serial reader failed to start."_s, 5000);
+        appendToLog(true, u"Serial reader failed to start."_s);
         m_serialWorker.reset();
-        m_parserWorker.reset();
+        if (m_comms) {
+            m_comms->close();
+        }
         m_comms.reset();
+        m_serialPortSummary.clear();
+        if (m_liveTelemetryPage) {
+            m_liveTelemetryPage->setActiveConnection(QString(), false);
+        }
         return;
     }
 
-    m_serialPortSummary = QStringLiteral("%1 @ %2").arg(portName).arg(baud);
-    m_flightModel->setReplayMode(false);
-    if (m_flightDataPage) {
-        m_flightDataPage->setReplaySession(nullptr);
+    if (m_pages && m_liveTelemetryPage) {
+        m_pages->setCurrentWidget(m_liveTelemetryPage);
+    }
+    if (m_liveTelemetryAction) {
+        m_liveTelemetryAction->setChecked(true);
+    }
+    if (m_liveTelemetryPage) {
+        m_liveTelemetryPage->setActiveConnection(m_serialPortSummary, true);
     }
     const QString connectMsg = QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud);
     showStatusMessage(connectMsg, 3000);
     appendToLog(false, connectMsg);
+}
+
+void MainWindow::drainLiveTelemetryQueue() {
+    std::vector<uint8_t> chunk;
+    while (m_rawQueue.pop_for(chunk, std::chrono::milliseconds(0))) {
+        const auto samples = m_lineDecoder.ingest(chunk.data(), chunk.size());
+        for (const auto &sample : samples) {
+            m_logManager->appendSample(sample);
+            m_flightModel->appendSample(sample);
+        }
+    }
+
+    const std::size_t malformed = m_lineDecoder.malformedLineCount();
+    if (malformed > m_lastMalformedLineCount) {
+        const QString msg = QStringLiteral("Skipped %1 malformed live telemetry row(s).")
+                                .arg(malformed - m_lastMalformedLineCount);
+        m_lastMalformedLineCount = malformed;
+        onParserError(msg);
+    }
 }
 
 void MainWindow::stopSerial() {
@@ -1064,9 +1165,13 @@ void MainWindow::stopSerial() {
         m_comms.reset();
     }
     const bool wasConnected = !m_serialPortSummary.isEmpty();
+    const QString previous = m_serialPortSummary;
     m_serialPortSummary.clear();
     if (wasConnected) {
-        appendToLog(false, u"Serial port disconnected."_s);
+        const QString msg = QStringLiteral("Serial port disconnected: %1").arg(previous);
+        appendToLog(false, msg);
+        if (m_liveTelemetryPage) {
+            m_liveTelemetryPage->setActiveConnection(QString(), false);
+        }
     }
 }
-*/

@@ -11,7 +11,7 @@ class Parser;
 
 /**
  * Loads flight logs into FlightSession.
- * - Theseus CSV: first non-comment row is the header with column names.
+ * - CSV: first non-comment row is the header with supported telemetry column names.
  * - TELEM: hex lines fed through Framer + Parser (samples only if decode is implemented).
  */
 class SampleFileLoader {

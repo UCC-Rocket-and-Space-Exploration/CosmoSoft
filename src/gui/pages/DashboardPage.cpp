@@ -1026,7 +1026,9 @@ void DashboardPage::applySeriesPointDisplay(QLineSeries *series, int pointCount,
         series->setPointLabelsColor(QColor(Theme::kTextPrimary()));
     }
 
-    series->setUseOpenGL(nEnabledMetrics == 1 && pointCount > 800 && !showVertices);
+    // Qt Charts' OpenGL series backend can create an invalid QOpenGLWidget
+    // context under Qt 6's default Metal composition on macOS.
+    series->setUseOpenGL(false);
 }
 
 /**

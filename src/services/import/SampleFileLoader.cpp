@@ -5,8 +5,9 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cmath> //added
+#include <cmath>
 #include <fstream>
+#include <initializer_list>
 #include <sstream>
 #include <string_view>
 
@@ -52,6 +53,18 @@ int findColumn(const std::vector<std::string> &header, const char *name) {
     return -1;
 }
 
+int findColumnAny(
+    const std::vector<std::string> &header,
+    std::initializer_list<const char *> names) {
+    for (const char *name : names) {
+        const int column = findColumn(header, name);
+        if (column >= 0) {
+            return column;
+        }
+    }
+    return -1;
+}
+
 bool parseDouble(const std::string &s, double &out) {
     if (s.empty()) {
         return false;
@@ -59,6 +72,12 @@ bool parseDouble(const std::string &s, double &out) {
     std::istringstream iss(s);
     iss >> out;
     return !iss.fail();
+}
+
+bool parseCellDouble(const std::vector<std::string> &cells, int index, double &out) {
+    return index >= 0
+        && static_cast<int>(cells.size()) > index
+        && parseDouble(cells[static_cast<std::size_t>(index)], out);
 }
 
 int hexNibble(char c) {
@@ -122,17 +141,26 @@ std::optional<std::string> SampleFileLoader::loadTheseusCsv(const std::string &p
         return std::string("CSV has no header row: ") + path;
     }
 
-    const int iTime = findColumn(header, "time");
+    const int iTimeMs = findColumnAny(header, {"time_ms", "timestamp_ms"});
+    const int iTimeSec = findColumnAny(header, {"time", "time_s", "timestamp"});
+    const int iTime = iTimeMs >= 0 ? iTimeMs : iTimeSec;
+    const bool timeInMilliseconds = iTimeMs >= 0;
     const int iRssi = findColumn(header, "rssi");
-    const int iAccel = findColumn(header, "acceleration");
-    const int iPress = findColumn(header, "pressure");
-    const int iAlt = findColumn(header, "altitude");
-    const int iTemp = findColumn(header, "temperature");
-    const int iBatt = findColumn(header, "battery_voltage");
-    const int iLat  = findColumn(header, "latitude");
-    const int iLon  = findColumn(header, "longitude");
+    const int iAccel = findColumnAny(header, {"acceleration", "accel"});
+    const int iAccelX = findColumnAny(header, {"acceleration_x", "accel_x", "ax", "ax_ms2"});
+    const int iAccelY = findColumnAny(header, {"acceleration_y", "accel_y", "ay", "ay_ms2"});
+    const int iAccelZ = findColumnAny(header, {"acceleration_z", "accel_z", "az", "az_ms2"});
+    const int iGyroX = findColumnAny(header, {"angular_velocity_x", "gyro_x", "gx", "gx_rads"});
+    const int iGyroY = findColumnAny(header, {"angular_velocity_y", "gyro_y", "gy", "gy_rads"});
+    const int iGyroZ = findColumnAny(header, {"angular_velocity_z", "gyro_z", "gz", "gz_rads"});
+    const int iPress = findColumnAny(header, {"pressure", "pressure_pa"});
+    const int iAlt = findColumnAny(header, {"altitude", "altitude_m", "alt_m"});
+    const int iTemp = findColumnAny(header, {"temperature", "temperature_c", "temp", "temp_c"});
+    const int iBatt = findColumnAny(header, {"battery_voltage", "battery", "voltage", "main_voltage"});
+    const int iLat  = findColumnAny(header, {"latitude", "lat"});
+    const int iLon  = findColumnAny(header, {"longitude", "lon", "lng"});
     if (iTime < 0 || iAlt < 0) {
-        return std::string("CSV missing required columns (need time, altitude): ") + path;
+        return std::string("CSV missing required columns (need time/time_ms and altitude/altitude_m): ") + path;
     }
 
     std::vector<FlightSample> samples;
@@ -147,37 +175,29 @@ std::optional<std::string> SampleFileLoader::loadTheseusCsv(const std::string &p
         }
 
         FlightSample sample{};
-        double tSec = 0;
-        if (static_cast<int>(cells.size()) > iTime && parseDouble(cells[static_cast<std::size_t>(iTime)], tSec)) {
-            sample.timestamp = static_cast<long>(std::lround(tSec * 1000.0)); // fixed by including cmath
+        double timeValue = 0;
+        if (parseCellDouble(cells, iTime, timeValue)) {
+            sample.timestamp = static_cast<long>(
+                std::lround(timeInMilliseconds ? timeValue : timeValue * 1000.0));
         }
-        if (iRssi >= 0 && static_cast<int>(cells.size()) > iRssi) {
-            parseDouble(cells[static_cast<std::size_t>(iRssi)], sample.rssi);
+        parseCellDouble(cells, iRssi, sample.rssi);
+        parseCellDouble(cells, iPress, sample.pressure);
+        parseCellDouble(cells, iAlt, sample.altitude);
+        parseCellDouble(cells, iTemp, sample.temperature);
+        parseCellDouble(cells, iBatt, sample.batteryVoltage);
+        parseCellDouble(cells, iLat, sample.coordinates.latitude);
+        parseCellDouble(cells, iLon, sample.coordinates.longitude);
+
+        double a = 0;
+        if (parseCellDouble(cells, iAccel, a)) {
+            sample.acceleration.z = a;
         }
-        if (iAccel >= 0 && static_cast<int>(cells.size()) > iAccel) {
-            double a = 0;
-            if (parseDouble(cells[static_cast<std::size_t>(iAccel)], a)) {
-                sample.acceleration.z = a;
-            }
-        }
-        if (iPress >= 0 && static_cast<int>(cells.size()) > iPress) {
-            parseDouble(cells[static_cast<std::size_t>(iPress)], sample.pressure);
-        }
-        if (static_cast<int>(cells.size()) > iAlt) {
-            parseDouble(cells[static_cast<std::size_t>(iAlt)], sample.altitude);
-        }
-        if (iTemp >= 0 && static_cast<int>(cells.size()) > iTemp) {
-            parseDouble(cells[static_cast<std::size_t>(iTemp)], sample.temperature);
-        }
-        if (iBatt >= 0 && static_cast<int>(cells.size()) > iBatt) {
-            parseDouble(cells[static_cast<std::size_t>(iBatt)], sample.batteryVoltage);
-        }
-        if (iLat >= 0 && static_cast<int>(cells.size()) > iLat) {
-            parseDouble(cells[static_cast<std::size_t>(iLat)], sample.coordinates.latitude);
-        }
-        if (iLon >= 0 && static_cast<int>(cells.size()) > iLon) {
-            parseDouble(cells[static_cast<std::size_t>(iLon)], sample.coordinates.longitude);
-        }
+        parseCellDouble(cells, iAccelX, sample.acceleration.x);
+        parseCellDouble(cells, iAccelY, sample.acceleration.y);
+        parseCellDouble(cells, iAccelZ, sample.acceleration.z);
+        parseCellDouble(cells, iGyroX, sample.angularVelocity.x);
+        parseCellDouble(cells, iGyroY, sample.angularVelocity.y);
+        parseCellDouble(cells, iGyroZ, sample.angularVelocity.z);
         samples.push_back(sample);
     }
 
@@ -187,14 +207,19 @@ std::optional<std::string> SampleFileLoader::loadTheseusCsv(const std::string &p
 
     out.samples = std::move(samples);
     // Trace panel rows only for columns that exist in this file (see FlightSession::metricsInSource order).
+    const bool hasAcceleration = iAccel >= 0
+        || iAccelX >= 0
+        || iAccelY >= 0
+        || iAccelZ >= 0;
+    const bool hasGyro = iGyroX >= 0 || iGyroY >= 0 || iGyroZ >= 0;
     out.metricsInSource = {
         true,               // 0 altitude — required column
         iTemp >= 0,         // 1 temperature
         iPress >= 0,        // 2 pressure
-        iAccel >= 0,        // 3 |acceleration| (single-axis column in CSV)
+        hasAcceleration,    // 3 |acceleration|
         iBatt >= 0,         // 4 battery
         iRssi >= 0,         // 5 RSSI
-        false,              // 6 gyro — not in Theseus CSV schema
+        hasGyro,            // 6 gyro
         iLat >= 0,          // 7 latitude
         iLon >= 0,          // 8 longitude
     };

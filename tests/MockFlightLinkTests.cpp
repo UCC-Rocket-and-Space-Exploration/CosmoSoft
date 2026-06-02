@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include "services/flight/FakeFlightLink.h"
+#include "services/telemetry/LineTelemetryDecoder.h"
 
 #include <array>
 #include <cstdlib>
@@ -112,4 +114,67 @@ TEST_CASE("Telemetry CSV row validation rejects malformed rows without productio
     REQUIRE_FALSE(cosmo::flightlink::isValidTelemetryCsvRow(nonNumericAcceleration));
     REQUIRE_FALSE(cosmo::flightlink::isValidTelemetryCsvRow(
         std::string(cosmo::flightlink::kExampleTelemetryRow) + ",1.0"));
+}
+
+TEST_CASE("LineTelemetryDecoder decodes fake telemetry CSV rows", "[telemetry]") {
+    const auto sample = cosmo::telemetry::decodeTelemetryCsvRow(
+        cosmo::flightlink::kExampleTelemetryRow);
+
+    REQUIRE(sample.has_value());
+    REQUIRE(sample->timestamp == 0);
+    REQUIRE(sample->temperature == Catch::Approx(18.50));
+    REQUIRE(sample->pressure == Catch::Approx(101325.00));
+    REQUIRE(sample->altitude == Catch::Approx(0.0));
+    REQUIRE(sample->acceleration.z == Catch::Approx(9.810));
+    REQUIRE(sample->angularVelocity.y == Catch::Approx(0.015));
+    REQUIRE(sample->coordinates.latitude == Catch::Approx(cosmo::flightlink::kLaunchLatitude));
+    REQUIRE(sample->coordinates.longitude == Catch::Approx(cosmo::flightlink::kLaunchLongitude));
+    REQUIRE(sample->batteryVoltage == Catch::Approx(0.0));
+    REQUIRE(sample->rssi == Catch::Approx(0.0));
+}
+
+TEST_CASE("LineTelemetryDecoder rejects malformed telemetry CSV rows", "[telemetry]") {
+    REQUIRE_FALSE(cosmo::telemetry::decodeTelemetryCsvRow("13603,19.24,100896.15"));
+    REQUIRE_FALSE(cosmo::telemetry::decodeTelemetryCsvRow(
+        "0.00,18.50,101325.00,0.00,0.000,0.040,not-a-number,0.000,0.015,0.000,"
+        "0.000,0.300,0.000,51.89350958382806,-8.492074863487407,0.00"));
+    REQUIRE_FALSE(cosmo::telemetry::decodeTelemetryCsvRow(
+        std::string(cosmo::flightlink::kExampleTelemetryRow) + ",1.0"));
+    REQUIRE_FALSE(cosmo::telemetry::decodeTelemetryCsvRow(
+        cosmo::telemetry::kLiveTelemetryCsvHeader));
+}
+
+TEST_CASE("LineTelemetryDecoder reconstructs rows split across serial chunks", "[telemetry]") {
+    cosmo::flightlink::FakeFlightComputer computer;
+    const cosmo::flightlink::FakeGroundStation station;
+    cosmo::telemetry::LineTelemetryDecoder decoder;
+    std::vector<FlightSample> samples;
+
+    for (int packetIndex = 0; packetIndex < 2; ++packetIndex) {
+        const auto packetLine = computer.nextPacketLine();
+        REQUIRE(packetLine.has_value());
+        for (const auto &chunk : station.chunkPacketLine(*packetLine, 11)) {
+            auto decoded = decoder.ingest(chunk.data(), chunk.size());
+            samples.insert(samples.end(), decoded.begin(), decoded.end());
+        }
+    }
+
+    REQUIRE(samples.size() == 2);
+    REQUIRE(samples[0].timestamp == 0);
+    REQUIRE(samples[1].timestamp > samples[0].timestamp);
+    REQUIRE(decoder.malformedLineCount() == 0);
+}
+
+TEST_CASE("Fake live packet stream decodes to ordered sample timestamps", "[telemetry]") {
+    cosmo::flightlink::FakeFlightComputer computer;
+    long previousTimestamp = -1;
+
+    for (int i = 0; i < 5; ++i) {
+        const auto packetLine = computer.nextPacketLine();
+        REQUIRE(packetLine.has_value());
+        const auto sample = cosmo::telemetry::decodeTelemetryCsvRow(*packetLine);
+        REQUIRE(sample.has_value());
+        REQUIRE(sample->timestamp > previousTimestamp);
+        previousTimestamp = sample->timestamp;
+    }
 }
