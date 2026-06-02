@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(cosmo-tests
     MockFlightLinkTests.cpp
+    SampleFileLoaderTests.cpp
 )
 
 target_include_directories(cosmo-tests PRIVATE
@@ -19,6 +20,11 @@ target_include_directories(cosmo-tests PRIVATE
 
 target_link_libraries(cosmo-tests PRIVATE
     Catch2::Catch2WithMain
+    import
+)
+
+target_compile_definitions(cosmo-tests PRIVATE
+    COSMO_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
 
 list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")

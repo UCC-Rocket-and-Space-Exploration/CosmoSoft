@@ -20,10 +20,15 @@
 
 #include <QWidget>
 
+#include <memory>
 #include <vector>
 
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
+
+namespace cosmo::preview {
+class FlightPreviewCache;
+}
 
 class QWebEngineView;
 class QWebChannel;
@@ -45,7 +50,8 @@ public:
      * @brief Switches to replay mode with the given session.
      * Pass nullptr to return to live mode and clear the map.
      */
-    void setReplaySession(const FlightSession *session);
+    void setReplaySession(std::shared_ptr<const FlightSession> session,
+                          std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview);
 
     /** @brief Rebuilds the visible trail to show the first @p trailLength samples. */
     void setReplayTrailLength(int trailLength);
@@ -96,7 +102,8 @@ private:
     Map3DBridge          *m_bridge    = nullptr;
     TileCacheInterceptor *m_tileCache = nullptr;
 
-    const FlightSession  *m_session   = nullptr;
+    std::shared_ptr<const FlightSession> m_session;
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
     bool m_mapReady   = false;
     bool m_sessionPending = false;
     bool m_followEnabled  = false;

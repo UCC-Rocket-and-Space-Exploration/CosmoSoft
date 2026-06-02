@@ -12,12 +12,16 @@ class Parser;
 /**
  * Loads flight logs into FlightSession.
  * - CSV: first non-comment row is the header with supported telemetry column names.
+ * - XLSX: first worksheet with supported telemetry column names in the first non-empty row.
  * - TELEM: hex lines fed through Framer + Parser (samples only if decode is implemented).
  */
 class SampleFileLoader {
 public:
     /** @return Error message if load failed; session is unchanged on error. */
     static std::optional<std::string> loadTheseusCsv(const std::string &path, FlightSession &out);
+
+    /** @return Error message if load failed; session is unchanged on error. */
+    static std::optional<std::string> loadXlsx(const std::string &path, FlightSession &out);
 
     /**
      * Decodes Altos-style "TELEM <hex>" lines through Framer/Parser.

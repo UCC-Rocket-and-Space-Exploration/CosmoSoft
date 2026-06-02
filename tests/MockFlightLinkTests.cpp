@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include "services/flight/FakeFlightLink.h"
+#include "services/preview/FlightPreviewCache.h"
 #include "services/telemetry/LineTelemetryDecoder.h"
 
 #include <array>
@@ -177,4 +178,89 @@ TEST_CASE("Fake live packet stream decodes to ordered sample timestamps", "[tele
         REQUIRE(sample->timestamp > previousTimestamp);
         previousTimestamp = sample->timestamp;
     }
+}
+
+TEST_CASE("FlightPreviewCache builds monotonic display time without mutating raw timestamps", "[preview]") {
+    FlightSession session;
+    session.samples.resize(5);
+    session.samples[0].timestamp = 0;
+    session.samples[1].timestamp = 250;
+    session.samples[2].timestamp = 500;
+    session.samples[3].timestamp = -100;
+    session.samples[4].timestamp = 750;
+
+    const auto cache = cosmo::preview::FlightPreviewCache::build(session);
+
+    REQUIRE(cache->correctedTimelineUsed());
+    REQUIRE(cache->timestampDiscontinuityCount() == 1);
+    REQUIRE(cache->medianPositiveDeltaMs() == 250);
+    REQUIRE(session.samples[3].timestamp == -100);
+    REQUIRE(cache->displaySeconds().size() == session.samples.size());
+    for (std::size_t i = 1; i < cache->displaySeconds().size(); ++i) {
+        REQUIRE(cache->displaySeconds()[i] > cache->displaySeconds()[i - 1]);
+    }
+    REQUIRE(cache->durationSeconds() == Catch::Approx(1.6));
+}
+
+TEST_CASE("FlightPreviewCache chart indices cap point count and preserve spikes", "[preview]") {
+    FlightSession session;
+    session.samples.resize(101);
+    for (int i = 0; i <= 100; ++i) {
+        auto &sample = session.samples[static_cast<std::size_t>(i)];
+        sample.timestamp = i * 10;
+        sample.altitude = 1.0;
+    }
+    session.samples[50].altitude = 1000.0;
+
+    const auto cache = cosmo::preview::FlightPreviewCache::build(session);
+    std::array<bool, cosmo::preview::FlightPreviewCache::kMetricCount> enabled{};
+    enabled[0] = true;
+
+    const auto exact = cache->chartIndices(session, 10, 15, 20, enabled);
+    REQUIRE(exact.size() == 5);
+    REQUIRE(exact.front() == 10);
+    REQUIRE(exact.back() == 14);
+
+    const auto reduced = cache->chartIndices(session, 0, 101, 12, enabled);
+    REQUIRE(reduced.size() <= 12);
+    REQUIRE(reduced.front() == 0);
+    REQUIRE(reduced.back() == 100);
+    REQUIRE(std::find(reduced.begin(), reduced.end(), 50) != reduced.end());
+}
+
+TEST_CASE("FlightPreviewCache filters placeholder GPS rows and caps map paths", "[preview]") {
+    FlightSession session;
+    session.samples.resize(12050);
+    for (int i = 0; i < static_cast<int>(session.samples.size()); ++i) {
+        auto &sample = session.samples[static_cast<std::size_t>(i)];
+        sample.timestamp = i * 10;
+        sample.coordinates.latitude = 54.0 + static_cast<double>(i) * 1e-6;
+        sample.coordinates.longitude = -6.0;
+    }
+    session.samples[10].coordinates.latitude = 0.0;
+    session.samples[10].coordinates.longitude = 0.0;
+    session.samples[20].coordinates.latitude = 120.0;
+
+    const auto cache = cosmo::preview::FlightPreviewCache::build(session);
+
+    REQUIRE_FALSE(cache->gpsSampleValid(10));
+    REQUIRE_FALSE(cache->gpsSampleValid(20));
+    REQUIRE(cache->gpsSampleValid(21));
+    REQUIRE(cache->droppedGpsRows() == 2);
+    REQUIRE(cache->map2DIndices().size() <= cosmo::preview::FlightPreviewCache::kMap2DPointBudget);
+    REQUIRE(cache->map3DIndices().size() <= cosmo::preview::FlightPreviewCache::kMap3DPointBudget);
+}
+
+TEST_CASE("FlightPreviewCache replay buckets avoid per-sample rebuilds for large logs", "[preview]") {
+    FlightSession session;
+    session.samples.resize(10000);
+    for (int i = 0; i < static_cast<int>(session.samples.size()); ++i) {
+        session.samples[static_cast<std::size_t>(i)].timestamp = i * 10;
+    }
+
+    const auto cache = cosmo::preview::FlightPreviewCache::build(session);
+
+    REQUIRE(cache->replayBucket(50, 6000) == 50);
+    REQUIRE(cache->replayBucket(6001, 6000) == cache->replayBucket(6002, 6000));
+    REQUIRE(cache->replayBucket(9999, 6000) <= cache->replayBucket(10000, 6000));
 }

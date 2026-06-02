@@ -25,6 +25,9 @@ public:
     /** @brief Exports session samples as CSV with a full header row. */
     [[nodiscard]] bool exportSessionToCsv() const;
 
+    /** @brief Exports @p session as CSV with a full header row to outputPath(). */
+    [[nodiscard]] bool exportSessionToCsv(const FlightSession &session) const;
+
 private:
     FlightSession m_session;
     std::string m_fileName;

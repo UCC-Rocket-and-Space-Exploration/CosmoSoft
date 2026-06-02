@@ -21,6 +21,12 @@
 #include <QFrame>
 #include <QString>
 
+#include <memory>
+
+namespace cosmo::preview {
+class FlightPreviewCache;
+}
+
 class QComboBox;
 class QLabel;
 class QSlider;
@@ -28,7 +34,7 @@ class QToolButton;
 
 class FlightDataModel;
 class FlightReplayController;
-struct FlightSession;
+class FlightSession;
 
 class ReplayBar : public QFrame {
     Q_OBJECT
@@ -42,7 +48,8 @@ public:
      * Resets the scrubber range and initial position for @p session.
      * Pass nullptr to return to the "no file" state.
      */
-    void setSession(const FlightSession *session);
+    void setSession(std::shared_ptr<const FlightSession> session,
+                    std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview);
 
     /**
      * Updates the scrubber position without emitting trailLengthChanged.
@@ -76,7 +83,8 @@ private:
 
     FlightReplayController *m_replay = nullptr;
     FlightDataModel        *m_model  = nullptr;
-    const FlightSession    *m_session = nullptr;
+    std::shared_ptr<const FlightSession> m_session;
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
     int  m_liveSampleCount    = 0;
     int  m_lastTrailLength    = 0;
     QString m_replayActivityText;

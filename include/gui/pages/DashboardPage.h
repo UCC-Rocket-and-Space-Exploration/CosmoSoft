@@ -4,10 +4,13 @@
 #include <QWidget>
 
 #include <array>
+#include <deque>
+#include <memory>
 #include <vector>
 
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
+#include "services/preview/FlightPreviewCache.h"
 
 class QChart;
 class QChartView;
@@ -66,7 +69,8 @@ public:
      * positions the replay controller at the end (most recent sample).
      * Pass nullptr to return to an idle state.
      */
-    void setReplaySession(const FlightSession *session);
+    void setReplaySession(std::shared_ptr<const FlightSession> session,
+                          std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview);
 
     /**
      * Updates the visible replay trail to @p trailLength samples.
@@ -104,6 +108,10 @@ private:
 
     /** Common chart-building pipeline shared by replay and live chart rebuilds. */
     void buildChartFromSamples(const std::vector<FlightSample> &samples, int end);
+    void buildChartFromSampleIndices(const std::vector<FlightSample> &samples,
+                                     const std::vector<int> &sampleIndices,
+                                     int logicalSampleCount);
+    [[nodiscard]] int chartPointBudget() const;
 
     /** Builds the chart toolbar and populates all toolbar member pointers. */
     void buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHeaderLay);
@@ -128,7 +136,8 @@ private:
     // ── Data sources ──────────────────────────────────────────────────────────
     FlightDataModel        *m_model   = nullptr;
     FlightReplayController *m_replay  = nullptr;
-    const FlightSession    *m_session = nullptr;  ///< Non-owning; set by setReplaySession().
+    std::shared_ptr<const FlightSession> m_session;  ///< Shared loaded replay session.
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
 
     // ── Widgets ───────────────────────────────────────────────────────────────
     TracesPanel *m_tracesPanel       = nullptr;   ///< Metric toggle + live readout panel.
@@ -202,11 +211,13 @@ private:
     std::vector<int> m_hoverSampleIndexMap;
     int m_hoverLogicalSampleCount    = 0;   ///< Total logical samples at last rebuild.
     int m_replayChartBuiltTrailLength = -1; ///< Trail length at last full replay rebuild.
+    int m_replayChartBuiltBucket = -1;      ///< Preview bucket at last replay rebuild.
 
     int m_lastReplayTrailLength = 0;  ///< Most recent trail length from the controller.
 
     /** Circular live-telemetry buffer, bounded to kMaxLiveBufferSamples. */
-    std::vector<FlightSample> m_liveSamples;
+    std::deque<FlightSample> m_liveSamples;
+    std::vector<FlightSample> m_liveChartScratch;
 
     /**
      * Mirrors TracesPanel::enabledMetrics() — kept in sync via enabledMetricsChanged

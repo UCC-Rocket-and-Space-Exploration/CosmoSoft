@@ -7,6 +7,7 @@ target_link_libraries(cosmo-backend
     Qt6::Gui
     Qt6::Widgets
     Qt6::Charts
+    ZLIB::ZLIB
 )
 
 add_subdirectory(gateway/comms)

@@ -58,7 +58,9 @@
 #include <QtConcurrent/QtConcurrentRun>
 
 #include <chrono>
+#include <memory>
 #include <optional>
+#include <utility>
 
 using namespace Qt::StringLiterals;
 
@@ -66,17 +68,26 @@ namespace {
 
 struct FlightLogLoadResult {
     std::optional<std::string> error;
-    FlightSession session;
+    std::shared_ptr<const FlightSession> session;
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview;
 };
 
 [[nodiscard]] FlightLogLoadResult loadFlightLogAtPath(const QString &path) {
     FlightLogLoadResult r;
+    FlightSession session;
     if (path.endsWith(u".telem", Qt::CaseInsensitive)) {
         Framer framer;
         Parser parser;
-        r.error = SampleFileLoader::loadTelemFile(path.toStdString(), r.session, framer, parser);
+        r.error = SampleFileLoader::loadTelemFile(path.toStdString(), session, framer, parser);
+    } else if (path.endsWith(u".xlsx", Qt::CaseInsensitive)) {
+        r.error = SampleFileLoader::loadXlsx(path.toStdString(), session);
     } else {
-        r.error = SampleFileLoader::loadTheseusCsv(path.toStdString(), r.session);
+        r.error = SampleFileLoader::loadTheseusCsv(path.toStdString(), session);
+    }
+    if (!r.error) {
+        auto loadedSession = std::make_shared<FlightSession>(std::move(session));
+        r.preview = cosmo::preview::FlightPreviewCache::build(*loadedSession);
+        r.session = std::move(loadedSession);
     }
     return r;
 }
@@ -720,7 +731,7 @@ void MainWindow::onReplayPositionChanged(int trailLength) {
         m_flightModel->setDisplayedSample(FlightSample{});
         return;
     }
-    if (trailLength > static_cast<int>(m_loadedSession.samples.size())) {
+    if (!m_loadedSession || trailLength > static_cast<int>(m_loadedSession->samples.size())) {
         return;
     }
     m_pendingReplayTelemetryTrail = trailLength;
@@ -734,10 +745,10 @@ void MainWindow::onReplayPositionChanged(int trailLength) {
 }
 
 void MainWindow::applyReplayTelemetrySample(int trailLength) {
-    if (trailLength <= 0 || trailLength > static_cast<int>(m_loadedSession.samples.size())) {
+    if (!m_loadedSession || trailLength <= 0 || trailLength > static_cast<int>(m_loadedSession->samples.size())) {
         return;
     }
-    m_flightModel->setDisplayedSample(m_loadedSession.samples[static_cast<std::size_t>(trailLength - 1)]);
+    m_flightModel->setDisplayedSample(m_loadedSession->samples[static_cast<std::size_t>(trailLength - 1)]);
 }
 
 void MainWindow::applyPendingReplayTelemetryStrip() {
@@ -846,7 +857,7 @@ void MainWindow::onOpenReplayFile() {
         this,
         u"Open flight log"_s,
         startDir,
-        u"Flight logs (*.csv *.telem);;CSV (*.csv);;TELEM (*.telem);;All files (*)"_s);
+        u"Flight logs (*.csv *.xlsx *.telem);;CSV (*.csv);;XLSX (*.xlsx);;TELEM (*.telem);;All files (*)"_s);
     if (path.isEmpty()) {
         return;
     }
@@ -877,12 +888,12 @@ void MainWindow::loadFlightLogAsync(const QString &path) {
             return;
         }
         m_loadedSession = std::move(r.session);
-        m_logManager->setSession(m_loadedSession);
+        m_loadedPreview = std::move(r.preview);
         m_flightModel->resetSession();
         m_flightModel->setReplayMode(true);
-        m_replay->setSession(m_loadedSession);
+        m_replay->setSession(m_loadedSession, m_loadedPreview);
         if (m_flightDataPage) {
-            m_flightDataPage->setReplaySession(&m_loadedSession);
+            m_flightDataPage->setReplaySession(m_loadedSession, m_loadedPreview);
         }
         if (m_liveTelemetryPage) {
             m_liveTelemetryPage->setActiveConnection(QString(), false);
@@ -902,7 +913,7 @@ void MainWindow::loadFlightLogAsync(const QString &path) {
 
 void MainWindow::onClearFlightData() {
     const bool hasData = !m_logManager->session().samples.empty()
-                      || !m_loadedSession.samples.empty();
+                      || (m_loadedSession && !m_loadedSession->samples.empty());
     if (hasData) {
         const auto reply = QMessageBox::question(
             this,
@@ -918,13 +929,14 @@ void MainWindow::onClearFlightData() {
     stopSerial();
     m_logManager->clear();
     m_replay->stop();
-    m_loadedSession.samples.clear();
-    m_replay->setSession({});
+    m_loadedSession.reset();
+    m_loadedPreview.reset();
+    m_replay->setSession(nullptr, nullptr);
     m_flightModel->setReplayMode(false);
     m_flightModel->resetByteCounter();
     m_flightModel->resetSession();
     if (m_flightDataPage) {
-        m_flightDataPage->setReplaySession(nullptr);
+        m_flightDataPage->setReplaySession(nullptr, nullptr);
     }
     if (m_liveTelemetryPage) {
         m_liveTelemetryPage->setActiveConnection(QString(), false);
@@ -979,8 +991,14 @@ void MainWindow::onThemeChanged() {
 }
 
 void MainWindow::onExportSession() {
-    const auto &session = m_logManager->session();
-    if (session.samples.empty()) {
+    const FlightSession *session = nullptr;
+    if (m_flightModel && m_flightModel->replayMode() && m_loadedSession) {
+        session = m_loadedSession.get();
+    } else {
+        session = &m_logManager->session();
+    }
+
+    if (!session || session->samples.empty()) {
         showStatusMessage(u"No samples to export — connect a serial port or load a log first."_s, 4000);
         return;
     }
@@ -995,7 +1013,7 @@ void MainWindow::onExportSession() {
     }
 
     m_logManager->setOutputPath(path.toStdString());
-    if (m_logManager->exportSessionToCsv()) {
+    if (m_logManager->exportSessionToCsv(*session)) {
         const QString exportMsg = QStringLiteral("Session exported to %1").arg(path);
         showStatusMessage(exportMsg, 4000);
         appendToLog(false, exportMsg);
@@ -1036,8 +1054,9 @@ void MainWindow::onDisconnectLiveDevice() {
 
 void MainWindow::prepareLiveSession(const QString &context) {
     m_replay->stop();
-    m_loadedSession.samples.clear();
-    m_replay->setSession({});
+    m_loadedSession.reset();
+    m_loadedPreview.reset();
+    m_replay->setSession(nullptr, nullptr);
     m_logManager->clear();
     m_flightModel->setReplayMode(false);
     m_flightModel->resetByteCounter();
@@ -1046,7 +1065,7 @@ void MainWindow::prepareLiveSession(const QString &context) {
     m_lastMalformedLineCount = 0;
     clearRawQueue();
     if (m_flightDataPage) {
-        m_flightDataPage->setReplaySession(nullptr);
+        m_flightDataPage->setReplaySession(nullptr, nullptr);
     }
     if (m_liveTelemetryPage) {
         m_liveTelemetryPage->resetLiveState();

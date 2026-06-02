@@ -29,6 +29,7 @@
 
 #include "domain/FlightSession.h"
 #include "services/BlockingQueue.h"
+#include "services/preview/FlightPreviewCache.h"
 #include "services/telemetry/LineTelemetryDecoder.h"
 
 class QAction;
@@ -157,7 +158,8 @@ private:
     std::unique_ptr<FlightDataModel>        m_flightModel;
     std::unique_ptr<FlightReplayController> m_replay;
     std::unique_ptr<FlightLogManager>       m_logManager;
-    FlightSession m_loadedSession;
+    std::shared_ptr<const FlightSession> m_loadedSession;
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_loadedPreview;
 
     // ── Live-telemetry pipeline ───────────────────────────────────────────────
     BlockingQueue<std::vector<uint8_t>> m_rawQueue{512};
