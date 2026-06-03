@@ -37,9 +37,25 @@ TEST_CASE("SampleFileLoader loads telemetry XLSX workbook", "[import]") {
     REQUIRE(first.angularVelocity.y == Catch::Approx(-0.073));
     REQUIRE(first.angularVelocity.z == Catch::Approx(0.015));
     REQUIRE(first.coordinates.latitude == Catch::Approx(54.303349));
-    REQUIRE(first.coordinates.longitude == Catch::Approx(5.582283));
+    REQUIRE(first.coordinates.longitude == Catch::Approx(-5.582283));
 
     const std::array<bool, FlightSession::kTraceMetricCount> expectedMetrics{
         true, true, true, true, false, false, true, true, true};
     REQUIRE(session.metricsInSource == expectedMetrics);
+}
+
+TEST_CASE("SampleFileLoader loads corrected telemetry CSV coordinates", "[import]") {
+    FlightSession session;
+
+    const auto error = SampleFileLoader::loadTheseusCsv(
+        sampleDataPath("flight_2026-05-30_17-34-27.csv"),
+        session);
+
+    INFO(error.value_or("no error"));
+    REQUIRE_FALSE(error.has_value());
+    REQUIRE(session.samples.size() == 7167);
+
+    const FlightSample &first = session.samples.front();
+    REQUIRE(first.coordinates.latitude == Catch::Approx(54.303349));
+    REQUIRE(first.coordinates.longitude == Catch::Approx(-5.582283));
 }
