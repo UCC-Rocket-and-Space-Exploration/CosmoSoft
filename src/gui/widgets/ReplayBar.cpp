@@ -5,6 +5,7 @@
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
 #include "gui/widgets/MetricDefs.h"
+#include "services/preview/FlightPreviewCache.h"
 
 #include "domain/FlightSession.h"
 
@@ -23,6 +24,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 using namespace Qt::StringLiterals;
 
@@ -359,10 +361,13 @@ void ReplayBar::applyThemeStyleSheet()
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-void ReplayBar::setSession(const FlightSession *session)
+void ReplayBar::setSession(
+    std::shared_ptr<const FlightSession> session,
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview)
 {
-    m_session = session;
-    const int n = session ? static_cast<int>(session->samples.size()) : 0;
+    m_session = std::move(session);
+    m_preview = std::move(preview);
+    const int n = m_session ? static_cast<int>(m_session->samples.size()) : 0;
 
     if (m_replaySlider) {
         const QSignalBlocker b(m_replaySlider);
@@ -676,12 +681,11 @@ void ReplayBar::updateLabels()
     const auto &samples = m_session->samples;
     const int n    = static_cast<int>(samples.size());
     const int head = std::clamp(m_lastTrailLength, 0, n);
-    const long tRef = samples.front().timestamp;
-    const bool sessionElapsed = MetricDefs::useSessionElapsedTimeAxis(
-        samples.front().timestamp, samples.back().timestamp);
-    const double tLogStart = MetricDefs::chartXSeconds(tRef, samples.front().timestamp, sessionElapsed);
-    const double tLogEnd   = MetricDefs::chartXSeconds(tRef, samples.back().timestamp, sessionElapsed);
-    const double fullDur   = std::max(0.0, tLogEnd - tLogStart);
+    const double fullDur = m_preview
+        ? m_preview->durationSeconds()
+        : std::max(
+              0.0,
+              static_cast<double>(samples.back().timestamp - samples.front().timestamp) / 1000.0);
 
     if (m_replaySampleCaption) {
         if (head <= 0) {
@@ -700,9 +704,8 @@ void ReplayBar::updateLabels()
     }
 
     if (m_replayTimeLeftLabel && m_replayTimeRightLabel) {
-        const double elapsed = (head > 0)
-            ? (MetricDefs::chartXSeconds(tRef, samples[static_cast<std::size_t>(head - 1)].timestamp, sessionElapsed)
-               - tLogStart)
+        const double elapsed = (head > 0 && m_preview)
+            ? m_preview->displaySecondAt(head - 1)
             : 0.0;
         m_replayTimeLeftLabel->setText(MetricDefs::formatReplayClockHms(elapsed));
         m_replayTimeRightLabel->setText(MetricDefs::formatReplayClockHms(fullDur));

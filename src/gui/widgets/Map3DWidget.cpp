@@ -1,5 +1,6 @@
 #include "gui/widgets/Map3DWidget.h"
 #include "gui/ThemeManager.h"
+#include "services/preview/FlightPreviewCache.h"
 
 #include <QDir>
 #include <QFile>
@@ -17,7 +18,9 @@
 #include <QWebEngineUrlRequestInterceptor>
 #include <QWebEngineView>
 
+#include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace {
 
@@ -145,11 +148,14 @@ void Map3DWidget::pushThemeToMap() {
     runJs(QStringLiteral("applyTheme(%1)").arg(json));
 }
 
-void Map3DWidget::setReplaySession(const FlightSession *session) {
-    m_session = session;
+void Map3DWidget::setReplaySession(
+    std::shared_ptr<const FlightSession> session,
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview) {
+    m_session = std::move(session);
+    m_preview = std::move(preview);
     m_liveSamples.clear();
 
-    if (!session || session->samples.empty()) {
+    if (!m_session || m_session->samples.empty()) {
         if (m_mapReady) {
             runJs(QStringLiteral("clearAll()"));
         }
@@ -168,28 +174,71 @@ void Map3DWidget::sendPendingSession() {
     m_sessionPending = false;
     if (!m_session || m_session->samples.empty()) return;
 
-    QJsonArray arr;
-    for (const auto &s : m_session->samples) {
+    const auto appendPoint = [this](QJsonArray &array, int sampleIndex) {
+        if (sampleIndex < 0 || sampleIndex >= static_cast<int>(m_session->samples.size())) {
+            return;
+        }
+        const auto &s = m_session->samples[static_cast<std::size_t>(sampleIndex)];
         QJsonObject obj;
+        obj[QStringLiteral("idx")] = sampleIndex;
         obj[QStringLiteral("lat")] = s.coordinates.latitude;
         obj[QStringLiteral("lon")] = s.coordinates.longitude;
         obj[QStringLiteral("alt")] = s.altitude;
-        obj[QStringLiteral("ts")]  = static_cast<double>(s.timestamp);
-        arr.append(obj);
+        obj[QStringLiteral("ts")] = m_preview
+            ? m_preview->displaySecondAt(sampleIndex)
+            : static_cast<double>(s.timestamp) / 1000.0;
+        array.append(obj);
+    };
+
+    QJsonArray path2d;
+    QJsonArray path3d;
+    if (m_preview) {
+        for (const int sampleIndex : m_preview->map2DIndices()) {
+            appendPoint(path2d, sampleIndex);
+        }
+        for (const int sampleIndex : m_preview->map3DIndices()) {
+            appendPoint(path3d, sampleIndex);
+        }
+    } else {
+        for (int i = 0; i < static_cast<int>(m_session->samples.size()); ++i) {
+            const auto &s = m_session->samples[static_cast<std::size_t>(i)];
+            if (isValidCoord(s.coordinates.latitude, s.coordinates.longitude)) {
+                appendPoint(path2d, i);
+                appendPoint(path3d, i);
+            }
+        }
     }
 
-    const QByteArray jsonBytes = QJsonDocument(arr).toJson(QJsonDocument::Compact);
+    QJsonObject payload;
+    payload[QStringLiteral("total")] = static_cast<int>(m_session->samples.size());
+    payload[QStringLiteral("path")] = path2d;
+    payload[QStringLiteral("path3d")] = path3d;
+    const QByteArray jsonBytes = QJsonDocument(payload).toJson(QJsonDocument::Compact);
     const QString json = QString::fromUtf8(jsonBytes);
 
-    QString escaped = json;
-    escaped.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
-    escaped.replace(QLatin1Char('\''), QStringLiteral("\\'"));
-    runJs(QStringLiteral("loadSession('%1')").arg(escaped));
+    runJs(QStringLiteral("loadSession(%1)").arg(json));
 }
 
 void Map3DWidget::setReplayTrailLength(int trailLength) {
-    if (!m_session || !m_mapReady) return;
-    runJs(QStringLiteral("setTrailLength(%1)").arg(trailLength));
+    if (!m_session || m_session->samples.empty() || !m_mapReady) return;
+    QJsonObject current;
+    const int idx = std::clamp(trailLength - 1, 0, static_cast<int>(m_session->samples.size()) - 1);
+    if (trailLength > 0 && (!m_preview || m_preview->gpsSampleValid(idx))) {
+        const auto &s = m_session->samples[static_cast<std::size_t>(idx)];
+        if (isValidCoord(s.coordinates.latitude, s.coordinates.longitude)) {
+            current[QStringLiteral("idx")] = idx;
+            current[QStringLiteral("lat")] = s.coordinates.latitude;
+            current[QStringLiteral("lon")] = s.coordinates.longitude;
+            current[QStringLiteral("alt")] = s.altitude;
+            current[QStringLiteral("ts")] = m_preview
+                ? m_preview->displaySecondAt(idx)
+                : static_cast<double>(s.timestamp) / 1000.0;
+        }
+    }
+    const QString currentJson = current.isEmpty()
+        ? QStringLiteral("null")
+        : QString::fromUtf8(QJsonDocument(current).toJson(QJsonDocument::Compact));
+    runJs(QStringLiteral("setTrailLength(%1,%2)").arg(trailLength).arg(currentJson));
 }
 
 void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
@@ -209,7 +258,8 @@ void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
 }
 
 void Map3DWidget::onSessionReset() {
-    m_session = nullptr;
+    m_session.reset();
+    m_preview.reset();
     m_liveSamples.clear();
     m_sessionPending = false;
 

@@ -230,14 +230,21 @@
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { Line2 } from "three/addons/lines/Line2.js";
+import { LineGeometry } from "three/addons/lines/LineGeometry.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 
 const THREE_LOADED = !!THREE;
 const ORBIT_LOADED = !!OrbitControls;
+const WIDE_LINES_LOADED = !!Line2 && !!LineGeometry && !!LineMaterial && !!LineSegments2 && !!LineSegmentsGeometry;
 
 const EARTH_R = 6371000, D2R = Math.PI/180, R2D = 180/Math.PI;
 let map = null, bridge = null;
 let pathLine = null, trailLine = null, launchMarker = null, rocketMarker = null;
-let allPos = [], allAlt = [], allTs = [], trailLen = 0, following = false;
+let allPos = [], allAlt = [], allTs = [], allIdx = [], trailLen = 0, following = false;
+let allPos3d = [], allAlt3d = [], allIdx3d = [], totalRawSamples = 0, currentExactPoint = null;
 let activeView = "2d";
 let activeLayer = "map", tileLayerMap = null, tileLayerTerrain = null, tileLayerSat = null;
 
@@ -246,6 +253,8 @@ let scene3d, camera3d, renderer3d, controls3d, animId3d = null;
 let pathLine3d, trailLine3d, ghostLine3d;
 let launchSphere3d, rocketSphere3d, rocketGlow3d;
 let groundGrid3d, groundMesh3d;
+let currentRocketWorld3d = null;
+let currentThemePalette = null;
 let needsUpdate3d = true;
 const ALT_EXAGGERATION = 3.0;
 let ground3dMode = "box";
@@ -267,20 +276,40 @@ function fBearing(a1,o1,a2,o2) {
 function validC(lat,lon){return isFinite(lat)&&isFinite(lon)&&!(Math.abs(lat)<1e-9&&Math.abs(lon)<1e-9);}
 function fmtAlt(m){return m>=1000?(m/1000).toFixed(1)+" km":m.toFixed(0)+" m";}
 function fmtDist(m){return m>=1000?(m/1000).toFixed(2)+" km":m.toFixed(0)+" m";}
+function sampleIdx(indices, i){return Number.isFinite(indices[i])?indices[i]:i;}
+
+function setFollowing(enabled, notifyBridge) {
+  following = !!enabled;
+  const btn = document.getElementById("btnFollow");
+  if (btn) btn.classList.toggle("active", following);
+  if (following) window.centerOnCurrent();
+  if (bridge && notifyBridge) bridge.onFollowChanged(following);
+}
+
+function firstValid3DReference() {
+  const source = allPos3d.length ? allPos3d : allPos;
+  for (const p of source) {
+    if (validC(p.lat, p.lon)) return p;
+  }
+  return null;
+}
+
+function toLocal3DPoint(p, alt, refLat, refLon) {
+  const cosRef = Math.cos(refLat * D2R);
+  const x = (p.lon - refLon) * D2R * EARTH_R * cosRef;
+  const z = -(p.lat - refLat) * D2R * EARTH_R;
+  const relAlt = alt - groundRefAlt;
+  const terrainY = getTerrainY(p.lat, p.lon, refLat, refLon);
+  return new THREE.Vector3(x, terrainY + relAlt * ALT_EXAGGERATION, z);
+}
 
 /* ── Convert lat/lon/alt to local XYZ for the 3D scene ───────────── */
 function toLocal3D(positions, altitudes, refLat, refLon) {
   const pts = [];
-  const cosRef = Math.cos(refLat * D2R);
   for (let i = 0; i < positions.length; i++) {
     const p = positions[i];
     if (!validC(p.lat, p.lon)) continue;
-    const x = (p.lon - refLon) * D2R * EARTH_R * cosRef;
-    const z = -(p.lat - refLat) * D2R * EARTH_R;
-    const relAlt = altitudes[i] - groundRefAlt;
-    const terrainY = getTerrainY(p.lat, p.lon, refLat, refLon);
-    const y = terrainY + relAlt * ALT_EXAGGERATION;
-    pts.push(new THREE.Vector3(x, y, z));
+    pts.push(toLocal3DPoint(p, altitudes[i], refLat, refLon));
   }
   return pts;
 }
@@ -298,6 +327,105 @@ function getTerrainY(lat, lon, refLat, refLon) {
   const e01 = g.data[(iy+1) * g.cols + ix], e11 = g.data[(iy+1) * g.cols + ix + 1];
   const elev = (e00*(1-fx)*(1-fy) + e10*fx*(1-fy) + e01*(1-fx)*fy + e11*fx*fy);
   return (elev - groundRefAlt) * ALT_EXAGGERATION;
+}
+
+function createWideLine(color, width, opacity, isSegments=false) {
+  const geometry = isSegments ? new LineSegmentsGeometry() : new LineGeometry();
+  const material = new LineMaterial({
+    color,
+    linewidth: width,
+    transparent: opacity < 1,
+    opacity,
+    depthTest: true,
+    depthWrite: false
+  });
+  const line = isSegments ? new LineSegments2(geometry, material) : new Line2(geometry, material);
+  line.userData.isSegments = isSegments;
+  line.frustumCulled = false;
+  line.renderOrder = isSegments ? 1 : 2;
+  return line;
+}
+
+function updateLineMaterialResolution() {
+  if (!renderer3d) return;
+  const size = renderer3d.getSize(new THREE.Vector2());
+  for (const line of [ghostLine3d, trailLine3d, pathLine3d]) {
+    if (line?.material?.resolution) line.material.resolution.set(size.x, size.y);
+  }
+}
+
+function updateWideLine(line, points) {
+  if (!line) return;
+  const minPoints = line.userData.isSegments ? 2 : 2;
+  if (!points || points.length < minPoints) {
+    line.visible = false;
+    return;
+  }
+  const flat = [];
+  for (const p of points) flat.push(p.x, p.y, p.z);
+  line.geometry.dispose();
+  line.geometry = line.userData.isSegments ? new LineSegmentsGeometry() : new LineGeometry();
+  line.geometry.setPositions(flat);
+  line.visible = true;
+  updateLineMaterialResolution();
+}
+
+function setLineStyle(line, color, width, opacity) {
+  if (!line?.material) return;
+  line.material.color.set(color);
+  line.material.linewidth = width;
+  line.material.opacity = opacity;
+  line.material.transparent = opacity < 1;
+  line.material.needsUpdate = true;
+}
+
+function setGridColors(primary, secondary) {
+  if (!groundGrid3d) return;
+  const materials = Array.isArray(groundGrid3d.material) ? groundGrid3d.material : [groundGrid3d.material];
+  if (materials[0]) materials[0].color.set(primary);
+  if (materials[1]) materials[1].color.set(secondary);
+}
+
+function apply3DTheme() {
+  if (!scene3d) return;
+  const isDark = currentThemeDark;
+  const bg = currentThemePalette?.bg_dark || currentThemePalette?.bg_base || (isDark ? "#080a10" : "#f4f7fb");
+  const fog = currentThemePalette?.bg_dark || currentThemePalette?.bg_base || (isDark ? "#080a10" : "#f4f7fb");
+  const trail = currentThemePalette?.accent_link || (isDark ? 0x64c8ff : 0x0057b8);
+  const ghost = isDark ? 0x3a5a78 : 0x4a6478;
+  const drop = isDark ? 0x64c8ff : 0x0b63ce;
+  const rocket = isDark ? 0xff8a3d : 0xd44818;
+  const rocketEmissive = isDark ? 0x993300 : 0x8f220d;
+  const launch = isDark ? 0x44cc77 : 0x12864a;
+  const launchEmissive = isDark ? 0x226633 : 0x0b4f2d;
+
+  scene3d.background = new THREE.Color(bg);
+  if (scene3d.fog) scene3d.fog.color.set(fog);
+  setGridColors(isDark ? 0x223044 : 0x75889a, isDark ? 0x121a28 : 0xc2ccd6);
+  if (groundMesh3d && ground3dMode === "box") {
+    groundMesh3d.material.color.set(currentThemePalette?.bg_panel || (isDark ? 0x0a0e16 : 0xe8edf2));
+  } else if (groundMesh3d?.material?.color) {
+    groundMesh3d.material.color.set(0xffffff);
+  }
+
+  setLineStyle(ghostLine3d, ghost, isDark ? 3.0 : 3.5, isDark ? 0.55 : 0.50);
+  setLineStyle(trailLine3d, trail, isDark ? 7.0 : 8.0, 1.0);
+  setLineStyle(pathLine3d, drop, isDark ? 2.0 : 2.5, isDark ? 0.22 : 0.34);
+
+  if (launchSphere3d?.material) {
+    launchSphere3d.material.color.set(launch);
+    launchSphere3d.material.emissive.set(launchEmissive);
+  }
+  if (rocketSphere3d?.material) {
+    rocketSphere3d.material.color.set(rocket);
+    rocketSphere3d.material.emissive.set(rocketEmissive);
+  }
+  if (rocketGlow3d?.material) {
+    rocketGlow3d.material.color.set(rocket);
+  }
+  const info = document.getElementById("info3d");
+  if (info) info.style.color = currentThemePalette?.text_dim || (isDark ? "#9fb4c8" : "#1f3142");
+  updateLineMaterialResolution();
 }
 
 /* ── Leaflet 2D ──────────────────────────────────────────────────── */
@@ -339,7 +467,7 @@ function initMap() {
   st.textContent = "@keyframes pulse{0%{transform:scale(0.5);opacity:0.8;}100%{transform:scale(2.2);opacity:0;}}";
   document.head.appendChild(st);
 
-  map.on("dragstart",()=>{if(following){following=false;document.getElementById("btnFollow").classList.remove("active");}});
+  map.on("dragstart",()=>{if(following)setFollowing(false,true);});
 }
 
 /* ── Layer switching ─────────────────────────────────────────────── */
@@ -369,7 +497,7 @@ function switchLayer(name) {
 
 /* ── Three.js 3D ─────────────────────────────────────────────────── */
 function init3D() {
-  if (!THREE_LOADED || !ORBIT_LOADED) {
+  if (!THREE_LOADED || !ORBIT_LOADED || !WIDE_LINES_LOADED) {
     document.getElementById("info3d").textContent = "3D unavailable: Three.js libraries failed to load";
     return;
   }
@@ -391,6 +519,9 @@ function init3D() {
   controls3d.minDistance = 20;
   controls3d.maxDistance = 8000;
   controls3d.maxPolarAngle = Math.PI * 0.48;
+  controls3d.addEventListener("start", () => {
+    if (following) setFollowing(false, true);
+  });
 
   // ground plane grid
   groundGrid3d = new THREE.GridHelper(4000, 80, 0x1a2030, 0x111822);
@@ -410,24 +541,15 @@ function init3D() {
   scene3d.add(dLight);
 
   // ghost line (full path, dimmed)
-  ghostLine3d = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x2a4060, transparent: true, opacity: 0.4, linewidth: 1 })
-  );
+  ghostLine3d = createWideLine(0x3a5a78, 3.0, 0.55);
   scene3d.add(ghostLine3d);
 
   // trail line (active, bright)
-  trailLine3d = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x4fa5de, linewidth: 2 })
-  );
+  trailLine3d = createWideLine(0x64c8ff, 7.0, 1.0);
   scene3d.add(trailLine3d);
 
   // vertical drop lines from trail to ground
-  pathLine3d = new THREE.LineSegments(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x4fa5de, transparent: true, opacity: 0.12 })
-  );
+  pathLine3d = createWideLine(0x64c8ff, 2.0, 0.22, true);
   scene3d.add(pathLine3d);
 
   // launch sphere
@@ -454,6 +576,7 @@ function init3D() {
   scene3d.add(rocketGlow3d);
 
   resize3D();
+  apply3DTheme();
 }
 
 function resize3D() {
@@ -463,11 +586,13 @@ function resize3D() {
   camera3d.aspect = w / h;
   camera3d.updateProjectionMatrix();
   renderer3d.setSize(w, h);
+  updateLineMaterialResolution();
   needsUpdate3d = true;
 }
 
 function animate3D() {
   animId3d = requestAnimationFrame(animate3D);
+  update3DFollowCamera();
   controls3d.update();
 
   // pulse the rocket glow
@@ -485,13 +610,16 @@ function update3DEntities() {
   if (!scene3d) return;
 
   const allValid = [], allValidAlt = [];
-  for (let i = 0; i < allPos.length; i++) {
-    if (validC(allPos[i].lat, allPos[i].lon)) { allValid.push(allPos[i]); allValidAlt.push(allAlt[i]); }
+  const ghostPos = allPos3d.length ? allPos3d : allPos;
+  const ghostAlt = allPos3d.length ? allAlt3d : allAlt;
+  for (let i = 0; i < ghostPos.length; i++) {
+    if (validC(ghostPos[i].lat, ghostPos[i].lon)) { allValid.push(ghostPos[i]); allValidAlt.push(ghostAlt[i]); }
   }
   if (allValid.length === 0) {
-    ghostLine3d.geometry.setFromPoints([]);
-    trailLine3d.geometry.setFromPoints([]);
-    pathLine3d.geometry.setFromPoints([]);
+    updateWideLine(ghostLine3d, []);
+    updateWideLine(trailLine3d, []);
+    updateWideLine(pathLine3d, []);
+    currentRocketWorld3d = null;
     launchSphere3d.visible = false;
     rocketSphere3d.visible = false;
     rocketGlow3d.visible = false;
@@ -503,20 +631,29 @@ function update3DEntities() {
 
   // ghost (full path)
   const ghostPts = toLocal3D(allValid, allValidAlt, refLat, refLon);
-  ghostLine3d.geometry.dispose();
-  ghostLine3d.geometry = new THREE.BufferGeometry().setFromPoints(ghostPts);
+  updateWideLine(ghostLine3d, ghostPts);
 
   // trail (active)
   const trailValid = [], trailAlt = [];
-  const n = Math.min(trailLen, allPos.length);
-  for (let i = 0; i < n; i++) {
-    if (validC(allPos[i].lat, allPos[i].lon)) { trailValid.push(allPos[i]); trailAlt.push(allAlt[i]); }
+  const trailPos = allPos3d.length ? allPos3d : allPos;
+  const trailAltSrc = allPos3d.length ? allAlt3d : allAlt;
+  const trailIdxSrc = allPos3d.length ? allIdx3d : allIdx;
+  for (let i = 0; i < trailPos.length; i++) {
+    if (sampleIdx(trailIdxSrc, i) < trailLen && validC(trailPos[i].lat, trailPos[i].lon)) {
+      trailValid.push(trailPos[i]); trailAlt.push(trailAltSrc[i]);
+    }
+  }
+  if (currentExactPoint && validC(currentExactPoint.lat, currentExactPoint.lon)) {
+    const last = trailValid.length ? trailValid[trailValid.length - 1] : null;
+    if (!last || Math.abs(last.lat - currentExactPoint.lat) > 1e-10 || Math.abs(last.lon - currentExactPoint.lon) > 1e-10) {
+      trailValid.push({lat:currentExactPoint.lat, lon:currentExactPoint.lon});
+      trailAlt.push(currentExactPoint.alt);
+    }
   }
 
   if (trailValid.length > 0) {
     const trailPts = toLocal3D(trailValid, trailAlt, refLat, refLon);
-    trailLine3d.geometry.dispose();
-    trailLine3d.geometry = new THREE.BufferGeometry().setFromPoints(trailPts);
+    updateWideLine(trailLine3d, trailPts);
 
     // vertical drop lines (every 3rd point) — to terrain surface
     const dropVerts = [];
@@ -527,8 +664,7 @@ function update3DEntities() {
         : 0;
       dropVerts.push(new THREE.Vector3(trailPts[i].x, tY, trailPts[i].z));
     }
-    pathLine3d.geometry.dispose();
-    pathLine3d.geometry = new THREE.BufferGeometry().setFromPoints(dropVerts);
+    updateWideLine(pathLine3d, dropVerts);
 
     // launch
     launchSphere3d.position.copy(trailPts[0]);
@@ -536,6 +672,7 @@ function update3DEntities() {
 
     // rocket
     const rp = trailPts[trailPts.length - 1];
+    currentRocketWorld3d = rp.clone();
     rocketSphere3d.position.copy(rp);
     rocketSphere3d.visible = true;
     rocketGlow3d.position.copy(rp);
@@ -549,21 +686,79 @@ function update3DEntities() {
       : "Alt " + fmtAlt(lastA);
     document.getElementById("info3d").textContent =
       altLabel + "  ·  " + ALT_EXAGGERATION + "x vert" +
-      "  ·  Drag to orbit  ·  Scroll to zoom";
+      "  ·  Locate/Fit/Follow  ·  Drag to orbit";
   } else {
-    trailLine3d.geometry.setFromPoints([]);
-    pathLine3d.geometry.setFromPoints([]);
+    updateWideLine(trailLine3d, []);
+    updateWideLine(pathLine3d, []);
+    currentRocketWorld3d = null;
     launchSphere3d.visible = false;
     rocketSphere3d.visible = false;
     rocketGlow3d.visible = false;
   }
 }
 
-function fit3DCamera() {
+function currentRocket3DPoint() {
+  if (currentRocketWorld3d) return currentRocketWorld3d.clone();
+  const ref = firstValid3DReference();
+  if (!ref) return null;
+
+  if (currentExactPoint && validC(currentExactPoint.lat, currentExactPoint.lon)) {
+    return toLocal3DPoint(currentExactPoint, currentExactPoint.alt, ref.lat, ref.lon);
+  }
+
+  const trailPos = allPos3d.length ? allPos3d : allPos;
+  const trailAltSrc = allPos3d.length ? allAlt3d : allAlt;
+  const trailIdxSrc = allPos3d.length ? allIdx3d : allIdx;
+  for (let i = trailPos.length - 1; i >= 0; i--) {
+    if (sampleIdx(trailIdxSrc, i) < trailLen && validC(trailPos[i].lat, trailPos[i].lon)) {
+      return toLocal3DPoint(trailPos[i], trailAltSrc[i], ref.lat, ref.lon);
+    }
+  }
+  return null;
+}
+
+function cameraViewDirection() {
+  if (!camera3d || !controls3d) return new THREE.Vector3(0.65, 0.55, 0.50).normalize();
+  const dir = camera3d.position.clone().sub(controls3d.target);
+  if (dir.lengthSq() < 1e-6) return new THREE.Vector3(0.65, 0.55, 0.50).normalize();
+  return dir.normalize();
+}
+
+function currentPath3DSize() {
+  const ref = firstValid3DReference();
+  if (!ref) return 80;
+  const source = allPos3d.length ? allPos3d : allPos;
+  const altSource = allPos3d.length ? allAlt3d : allAlt;
+  const pts = toLocal3D(source, altSource, ref.lat, ref.lon);
+  if (pts.length === 0) return 80;
+  const box = new THREE.Box3();
+  for (const p of pts) box.expandByPoint(p);
+  const size = box.getSize(new THREE.Vector3());
+  return Math.max(size.x, size.y, size.z, 20);
+}
+
+function center3DCameraOnRocket() {
+  if (!scene3d || !controls3d || !camera3d) return false;
+  const target = currentRocket3DPoint();
+  if (!target) return false;
+  const pathSize = currentPath3DSize();
+  const distance = Math.max(35, Math.min(220, pathSize * 0.35));
+  const dir = cameraViewDirection();
+  controls3d.target.copy(target);
+  camera3d.position.copy(target).add(dir.multiplyScalar(distance));
+  controls3d.minDistance = Math.max(4, distance * 0.08);
+  controls3d.maxDistance = Math.max(8000, pathSize * 8);
+  controls3d.update();
+  return true;
+}
+
+function fit3DPath() {
   if (!scene3d) return;
   const allValid = [], allValidAlt = [];
-  for (let i = 0; i < allPos.length; i++) {
-    if (validC(allPos[i].lat, allPos[i].lon)) { allValid.push(allPos[i]); allValidAlt.push(allAlt[i]); }
+  const cameraPos = allPos3d.length ? allPos3d : allPos;
+  const cameraAlt = allPos3d.length ? allAlt3d : allAlt;
+  for (let i = 0; i < cameraPos.length; i++) {
+    if (validC(cameraPos[i].lat, cameraPos[i].lon)) { allValid.push(cameraPos[i]); allValidAlt.push(cameraAlt[i]); }
   }
   if (allValid.length === 0) return;
   const refLat = allValid[0].lat, refLon = allValid[0].lon;
@@ -574,11 +769,37 @@ function fit3DCamera() {
   const center = new THREE.Vector3();
   box.getCenter(center);
   const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z, 100);
+  const maxDim = Math.max(size.x, size.y, size.z, 20);
+  const distance = Math.max(50, maxDim * 1.7);
 
   controls3d.target.copy(center);
-  camera3d.position.set(center.x + maxDim * 0.8, center.y + maxDim * 1.2, center.z + maxDim * 0.8);
+  controls3d.minDistance = Math.max(4, maxDim * 0.03);
+  controls3d.maxDistance = Math.max(8000, maxDim * 10);
+  camera3d.position.copy(center).add(new THREE.Vector3(0.65, 0.55, 0.50).normalize().multiplyScalar(distance));
   controls3d.update();
+}
+
+function fit3DCamera() {
+  fit3DPath();
+}
+
+function set3DCameraDistance(scale) {
+  if (!camera3d || !controls3d) return;
+  const offset = camera3d.position.clone().sub(controls3d.target);
+  const current = Math.max(offset.length(), controls3d.minDistance);
+  const next = Math.max(controls3d.minDistance, Math.min(controls3d.maxDistance, current * scale));
+  const dir = offset.lengthSq() < 1e-6 ? cameraViewDirection() : offset.normalize();
+  camera3d.position.copy(controls3d.target).add(dir.multiplyScalar(next));
+  controls3d.update();
+}
+
+function update3DFollowCamera() {
+  if (!following || activeView !== "3d" || !camera3d || !controls3d) return;
+  const target = currentRocket3DPoint();
+  if (!target) return;
+  const offset = camera3d.position.clone().sub(controls3d.target);
+  controls3d.target.lerp(target, 0.18);
+  camera3d.position.copy(controls3d.target).add(offset);
 }
 
 /* ── 3D ground tile rendering ────────────────────────────────────── */
@@ -603,8 +824,9 @@ function tileToBounds(x, y, z) {
 }
 
 async function buildGroundTexture(tileType) {
-  if (allPos.length === 0) return;
-  const valid = allPos.filter(p => validC(p.lat, p.lon));
+  const groundPos = allPos3d.length ? allPos3d : allPos;
+  if (groundPos.length === 0) return;
+  const valid = groundPos.filter(p => validC(p.lat, p.lon));
   if (valid.length === 0) return;
 
   let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
@@ -714,15 +936,17 @@ async function fetchElevationGrid(bounds) {
     latT: cornerTL.latT, latB: cornerBR.latB
   };
 
-  if (allAlt.length > 0) {
-    groundRefAlt = allAlt[0];
+  const groundAlt = allAlt3d.length ? allAlt3d : allAlt;
+  if (groundAlt.length > 0) {
+    groundRefAlt = groundAlt[0];
   }
 }
 
 function applyGroundTexture() {
   if (!groundMesh3d || !groundTexture || !groundTexBounds) return;
-  const refLat = allPos.find(p => validC(p.lat, p.lon))?.lat ?? 0;
-  const refLon = allPos.find(p => validC(p.lat, p.lon))?.lon ?? 0;
+  const groundPos = allPos3d.length ? allPos3d : allPos;
+  const refLat = groundPos.find(p => validC(p.lat, p.lon))?.lat ?? 0;
+  const refLon = groundPos.find(p => validC(p.lat, p.lon))?.lon ?? 0;
   const cosRef = Math.cos(refLat * D2R);
 
   const xL = (groundTexBounds.lonL - refLon) * D2R * EARTH_R * cosRef;
@@ -782,6 +1006,7 @@ async function switchGround3D(mode) {
     groundMesh3d.position.set(0, -0.5, 0);
     scene3d.fog = new THREE.FogExp2(0x080a10, 0.00015);
     scene3d.background = new THREE.Color(0x080a10);
+    apply3DTheme();
     update3DEntities();
     return;
   }
@@ -790,8 +1015,11 @@ async function switchGround3D(mode) {
   scene3d.fog = null;
   scene3d.background = new THREE.Color(mode === "sat" ? 0x0a1520 : 0x88aacc);
   await buildGroundTexture(mode);
-  await fetchElevationGrid(groundTexBounds);
-  applyGroundTexture();
+  if (groundTexBounds) {
+    await fetchElevationGrid(groundTexBounds);
+    applyGroundTexture();
+  }
+  apply3DTheme();
   update3DEntities();
 }
 
@@ -814,9 +1042,10 @@ function switchView(mode) {
     if (lsEl) lsEl.style.display = "none";
     if (g3El) g3El.style.display = "flex";
     if (!scene3d) init3D();
+    if (!scene3d) return;
     resize3D();
     update3DEntities();
-    fit3DCamera();
+    if (!center3DCameraOnRocket()) fit3DPath();
     if (!animId3d) animate3D();
   } else {
     mapEl.style.display = "block";
@@ -863,7 +1092,11 @@ function drawAltProfile() {
   ctx.lineTo(W,H); ctx.closePath();
   ctx.fillStyle=bgFill; ctx.fill();
 
-  const aN=Math.min(trailLen,n);
+  let aN=0;
+  for(let i=0;i<n;i++){
+    if(sampleIdx(allIdx,i)<trailLen)aN=i+1;
+    else break;
+  }
   if (aN>0) {
     ctx.beginPath(); ctx.moveTo(0,H);
     for(let i=0;i<aN;i++){ctx.lineTo((i/(n-1))*W, H-pad-((allAlt[i]-minA)/range)*(H-pad*2));}
@@ -888,10 +1121,20 @@ function drawAltProfile() {
 }
 
 /* ── Update 2D entities ──────────────────────────────────────────── */
-function updateEntities(tLen) {
+function updateEntities(tLen, exactPoint) {
+  currentExactPoint = exactPoint || null;
   const vp=[], va=[];
-  const n=Math.min(tLen,allPos.length);
-  for(let i=0;i<n;i++){const p=allPos[i];if(validC(p.lat,p.lon)){vp.push(p);va.push(allAlt[i]);}}
+  const total = totalRawSamples || allPos.length;
+  for(let i=0;i<allPos.length;i++){
+    const p=allPos[i];
+    if(sampleIdx(allIdx,i) < tLen && validC(p.lat,p.lon)){vp.push(p);va.push(allAlt[i]);}
+  }
+  if(currentExactPoint && validC(currentExactPoint.lat,currentExactPoint.lon)){
+    const last=vp.length?vp[vp.length-1]:null;
+    if(!last || Math.abs(last.lat-currentExactPoint.lat)>1e-10 || Math.abs(last.lon-currentExactPoint.lon)>1e-10){
+      vp.push({lat:currentExactPoint.lat,lon:currentExactPoint.lon});va.push(currentExactPoint.alt);
+    }
+  }
 
   const allValid=[];
   for(let i=0;i<allPos.length;i++){if(validC(allPos[i].lat,allPos[i].lon))allValid.push([allPos[i].lat,allPos[i].lon]);}
@@ -899,7 +1142,7 @@ function updateEntities(tLen) {
 
   if(vp.length===0){
     trailLine.setLatLngs([]);launchMarker.setOpacity(0);rocketMarker.setOpacity(0);
-    sendStats([],[],n);drawAltProfile();
+    sendStats([],[],total);drawAltProfile();
     if(activeView==="3d")update3DEntities();
     return;
   }
@@ -911,8 +1154,8 @@ function updateEntities(tLen) {
 
   if(following && activeView==="2d") map.panTo([last.lat,last.lon],{animate:true,duration:0.3});
 
-  sendStats(vp,va,n);
-  updateStatsOverlay(vp,va,n);
+  sendStats(vp,va,total);
+  updateStatsOverlay(vp,va,total);
   drawAltProfile();
   if(activeView==="3d")update3DEntities();
 }
@@ -952,45 +1195,62 @@ document.addEventListener("keydown", function(e) {
 
 /* ── API from C++ ────────────────────────────────────────────────── */
 window.addPoint = function(lat,lon,alt,ts){
-  allPos.push({lat,lon});allAlt.push(alt);allTs.push(ts);
-  trailLen=allPos.length;
-  updateEntities(trailLen);
+  const idx=allPos.length;
+  allPos.push({lat,lon});allAlt.push(alt);allTs.push(ts);allIdx.push(idx);
+  allPos3d.push({lat,lon});allAlt3d.push(alt);allIdx3d.push(idx);
+  totalRawSamples=allPos.length;trailLen=allPos.length;
+  updateEntities(trailLen,null);
 };
-window.loadSession = function(jsonStr){
-  const s=JSON.parse(jsonStr);
-  allPos=[];allAlt=[];allTs=[];
-  for(const r of s){allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);}
-  trailLen=allPos.length;
-  updateEntities(trailLen);
-  fitCamera();
+window.loadSession = function(payload){
+  const s=(typeof payload==="string")?JSON.parse(payload):payload;
+  const path=Array.isArray(s)?s:(s.path||[]);
+  const path3d=Array.isArray(s)?s:(s.path3d||path);
+  totalRawSamples=Array.isArray(s)?path.length:(s.total||path.length);
+  allPos=[];allAlt=[];allTs=[];allIdx=[];
+  allPos3d=[];allAlt3d=[];allIdx3d=[];currentExactPoint=null;
+  for(let i=0;i<path.length;i++){
+    const r=path[i];allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(Number.isFinite(r.idx)?r.idx:i);
+  }
+  for(let i=0;i<path3d.length;i++){
+    const r=path3d[i];allPos3d.push({lat:r.lat,lon:r.lon});allAlt3d.push(r.alt);allIdx3d.push(Number.isFinite(r.idx)?r.idx:i);
+  }
+  trailLen=totalRawSamples;
+  updateEntities(trailLen,null);
+  if(activeView==="3d"){
+    if(!center3DCameraOnRocket())fit3DPath();
+  } else {
+    fitCamera();
+  }
 };
-window.setTrailLength = function(nn){
-  trailLen=Math.max(0,Math.min(nn,allPos.length));
-  updateEntities(trailLen);
+window.setTrailLength = function(nn,current){
+  trailLen=Math.max(0,Math.min(nn,totalRawSamples||allPos.length));
+  updateEntities(trailLen,current||null);
 };
 window.fitCamera = function(){
-  if(activeView==="3d"){fit3DCamera();return;}
+  if(activeView==="3d"){fit3DPath();return;}
   const pts=[];
   for(let i=0;i<allPos.length;i++){if(validC(allPos[i].lat,allPos[i].lon))pts.push([allPos[i].lat,allPos[i].lon]);}
   if(pts.length===0)return;
   map.fitBounds(L.latLngBounds(pts).pad(0.15),{animate:true,duration:0.6});
 };
 window.centerOnCurrent = function(){
-  if(activeView==="3d"){/* 3D orbit stays user-controlled */return;}
-  const nn=Math.min(trailLen,allPos.length);
-  for(let i=nn-1;i>=0;i--){
+  if(activeView==="3d"){center3DCameraOnRocket();return;}
+  if(currentExactPoint && validC(currentExactPoint.lat,currentExactPoint.lon)){
+    map.setView([currentExactPoint.lat,currentExactPoint.lon],Math.max(map.getZoom(),16),{animate:true,duration:0.5});return;
+  }
+  for(let i=allPos.length-1;i>=0;i--){
+    if(sampleIdx(allIdx,i)>=trailLen)continue;
     if(validC(allPos[i].lat,allPos[i].lon)){
       map.setView([allPos[i].lat,allPos[i].lon],Math.max(map.getZoom(),16),{animate:true,duration:0.5});return;
     }
   }
 };
 window.followRocket = function(en){
-  following=en;
-  document.getElementById("btnFollow").classList.toggle("active",en);
-  if(en)window.centerOnCurrent();
+  setFollowing(en,false);
 };
 window.clearAll = function(){
-  allPos=[];allAlt=[];allTs=[];trailLen=0;
+  allPos=[];allAlt=[];allTs=[];allIdx=[];trailLen=0;
+  allPos3d=[];allAlt3d=[];allIdx3d=[];totalRawSamples=0;currentExactPoint=null;
   pathLine.setLatLngs([]);trailLine.setLatLngs([]);
   launchMarker.setOpacity(0);rocketMarker.setOpacity(0);
   document.getElementById("statsOverlay").style.display="none";
@@ -1008,6 +1268,7 @@ window.applyTheme = function(paletteJson) {
   const p = (typeof paletteJson === "string") ? JSON.parse(paletteJson) : paletteJson;
   const isDark = isColorDark(p.bg_base || "#1f1f1f");
   currentThemeDark = isDark;
+  currentThemePalette = p;
 
   // CSS overrides
   document.documentElement.style.setProperty("--bg", p.bg_base);
@@ -1067,19 +1328,7 @@ window.applyTheme = function(paletteJson) {
     }
   }
 
-  // 3D scene colors
-  if (scene3d) {
-    const bgColor = new THREE.Color(p.bg_dark || p.bg_base);
-    scene3d.background = bgColor;
-    if (scene3d.fog) scene3d.fog.color = bgColor;
-    if (groundGrid3d) {
-      groundGrid3d.material.color = isDark ? new THREE.Color(0x1a2a3a) : new THREE.Color(0xb0c0d0);
-    }
-    if (groundMesh3d) {
-      groundMesh3d.material.color = isDark ? new THREE.Color(0x0a0c10) : new THREE.Color(0xe0e4e8);
-    }
-    needsUpdate3d = true;
-  }
+  if (scene3d) apply3DTheme();
 
   // Redraw altitude chart with new colors
   drawAltProfile();
@@ -1100,13 +1349,16 @@ function init() {
   document.getElementById("btnLocate").onclick = window.centerOnCurrent;
   document.getElementById("btnFit").onclick = window.fitCamera;
   document.getElementById("btnFollow").onclick = function(){
-    following=!following;
-    this.classList.toggle("active",following);
-    if(following)window.centerOnCurrent();
-    if(bridge)bridge.onFollowChanged(following);
+    setFollowing(!following,true);
   };
-  document.getElementById("btnZoomIn").onclick = function(){if(activeView==="2d")map.zoomIn();};
-  document.getElementById("btnZoomOut").onclick = function(){if(activeView==="2d")map.zoomOut();};
+  document.getElementById("btnZoomIn").onclick = function(){
+    if(activeView==="2d")map.zoomIn();
+    else set3DCameraDistance(0.65);
+  };
+  document.getElementById("btnZoomOut").onclick = function(){
+    if(activeView==="2d")map.zoomOut();
+    else set3DCameraDistance(1.45);
+  };
   document.getElementById("btn2D").onclick = function(){switchView("2d");};
   document.getElementById("btn3D").onclick = function(){switchView("3d");};
   document.getElementById("lsMap").onclick = function(){switchLayer("map");};

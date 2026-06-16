@@ -19,6 +19,10 @@ void FlightLogManager::setSession(const FlightSession &session) {
 }
 
 bool FlightLogManager::exportSessionToCsv() const {
+    return exportSessionToCsv(m_session);
+}
+
+bool FlightLogManager::exportSessionToCsv(const FlightSession &session) const {
     if (m_fileName.empty()) {
         return false;
     }
@@ -29,7 +33,7 @@ bool FlightLogManager::exportSessionToCsv() const {
     out << "time,altitude,temperature,pressure,acceleration_x,acceleration_y,"
            "acceleration_z,latitude,longitude,battery_voltage,rssi,"
            "angular_velocity_x,angular_velocity_y,angular_velocity_z\n";
-    for (const auto &s : m_session.samples) {
+    for (const auto &s : session.samples) {
         out << s.timestamp
             << ',' << s.altitude
             << ',' << s.temperature

@@ -23,6 +23,7 @@ set(HEADERS "${CMAKE_SOURCE_DIR}/include")
 include(CTest)
 
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts Concurrent WebEngineWidgets WebChannel)
+find_package(ZLIB REQUIRED)
 add_subdirectory(src)
 
 target_compile_features(cosmo-backend PUBLIC cxx_std_20)

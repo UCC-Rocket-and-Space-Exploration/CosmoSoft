@@ -18,8 +18,11 @@
 
 #include <QObject>
 
+#include <memory>
+
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
+#include "services/preview/FlightPreviewCache.h"
 
 class QTimer;
 
@@ -38,19 +41,26 @@ public:
      *
      * Any in-progress playback is paused before the session is replaced.
      */
-    void setSession(FlightSession session);
+    void setSession(std::shared_ptr<const FlightSession> session,
+                    std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview);
 
     /** @brief Returns a const reference to the currently loaded session. */
-    [[nodiscard]] const FlightSession &session() const { return m_session; }
+    [[nodiscard]] const FlightSession &session() const;
+
+    /** @brief Returns a shared pointer to the currently loaded session, or null. */
+    [[nodiscard]] std::shared_ptr<const FlightSession> sessionPtr() const { return m_session; }
 
     /** @brief Returns true when a non-empty session is loaded. */
-    [[nodiscard]] bool hasSession() const { return !m_session.samples.empty(); }
+    [[nodiscard]] bool hasSession() const { return m_session && !m_session->samples.empty(); }
 
     /** @brief Returns the current playback index (number of samples in the visible trail). */
     [[nodiscard]] int index() const { return m_index; }
 
     /** @brief Returns the total number of samples in the loaded session. */
-    [[nodiscard]] int sampleCount() const { return static_cast<int>(m_session.samples.size()); }
+    [[nodiscard]] int sampleCount() const
+    {
+        return m_session ? static_cast<int>(m_session->samples.size()) : 0;
+    }
 
     /**
      * @brief Sets the playback speed multiplier.
@@ -106,7 +116,8 @@ private slots:
     void onTimerTick();
 
 private:
-    FlightSession m_session;
+    std::shared_ptr<const FlightSession> m_session;
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
     QTimer *m_timer  = nullptr;
     int     m_index  = 0;
     double  m_speed  = 1.0;

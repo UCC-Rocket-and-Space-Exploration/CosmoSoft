@@ -4,6 +4,17 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
+
+namespace {
+
+[[nodiscard]] const FlightSession &emptySession()
+{
+    static const FlightSession session;
+    return session;
+}
+
+} // namespace
 
 FlightReplayController::FlightReplayController(QObject *parent)
     : QObject(parent),
@@ -12,11 +23,18 @@ FlightReplayController::FlightReplayController(QObject *parent)
     connect(m_timer, &QTimer::timeout, this, &FlightReplayController::onTimerTick);
 }
 
-void FlightReplayController::setSession(FlightSession session) {
+void FlightReplayController::setSession(
+    std::shared_ptr<const FlightSession> session,
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview) {
     pause();
     m_session = std::move(session);
+    m_preview = std::move(preview);
     m_index = 0;
     emit positionChanged(m_index);
+}
+
+const FlightSession &FlightReplayController::session() const {
+    return m_session ? *m_session : emptySession();
 }
 
 void FlightReplayController::setSpeed(double multiplier) {
@@ -28,11 +46,11 @@ void FlightReplayController::setSpeed(double multiplier) {
 }
 
 void FlightReplayController::play() {
-    if (m_session.samples.empty()) {
+    if (!m_session || m_session->samples.empty()) {
         emit errorOccurred(tr("No flight loaded."));
         return;
     }
-    const int n = static_cast<int>(m_session.samples.size());
+    const int n = static_cast<int>(m_session->samples.size());
     if (m_index > n) {
         m_index = 0;
     }
@@ -63,21 +81,21 @@ void FlightReplayController::stop() {
 }
 
 void FlightReplayController::setPosition(int trailLength) {
-    if (m_session.samples.empty()) {
+    if (!m_session || m_session->samples.empty()) {
         return;
     }
     pause();
-    const int n = static_cast<int>(m_session.samples.size());
+    const int n = static_cast<int>(m_session->samples.size());
     m_index = std::clamp(trailLength, 0, n);
     emit positionChanged(m_index);
 }
 
 void FlightReplayController::onTimerTick() {
-    if (!m_playing || m_session.samples.empty()) {
+    if (!m_playing || !m_session || m_session->samples.empty()) {
         return;
     }
 
-    const int n = static_cast<int>(m_session.samples.size());
+    const int n = static_cast<int>(m_session->samples.size());
     if (m_index < 0 || m_index >= n) {
         m_playing = false;
         emit playbackFinished();
@@ -93,13 +111,15 @@ void FlightReplayController::onTimerTick() {
         return;
     }
 
-    const long tPrev = m_session.samples[static_cast<std::size_t>(m_index - 1)].timestamp;
-    const long tCur = m_session.samples[static_cast<std::size_t>(m_index)].timestamp;
-    long dt = tCur - tPrev;
-    if (dt < 0) {
-        dt = 0;
+    double dtMs = 0.0;
+    if (m_preview && static_cast<int>(m_preview->displaySeconds().size()) == n) {
+        dtMs = (m_preview->displaySecondAt(m_index) - m_preview->displaySecondAt(m_index - 1)) * 1000.0;
+    } else {
+        const long tPrev = m_session->samples[static_cast<std::size_t>(m_index - 1)].timestamp;
+        const long tCur = m_session->samples[static_cast<std::size_t>(m_index)].timestamp;
+        dtMs = static_cast<double>(std::max<long>(0, tCur - tPrev));
     }
-    int ms = static_cast<int>(std::lround(static_cast<double>(dt) / m_speed));
+    int ms = static_cast<int>(std::lround(dtMs / m_speed));
     if (ms < 1) {
         ms = 1;
     }

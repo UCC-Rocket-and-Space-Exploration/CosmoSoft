@@ -4,7 +4,7 @@
  *
  * MainWindow owns the mission toolbar, connection bar, telemetry strip, and the
  * page stack (DashboardPage).  It also owns the
- * live-telemetry pipeline (SerialWorker → BlockingQueue → ParserWorker →
+ * live-telemetry pipeline (SerialWorker → BlockingQueue → line CSV decoder →
  * FlightDataModel) and the replay pipeline (FlightReplayController).
  *
  * Responsibilities:
@@ -29,6 +29,8 @@
 
 #include "domain/FlightSession.h"
 #include "services/BlockingQueue.h"
+#include "services/preview/FlightPreviewCache.h"
+#include "services/telemetry/LineTelemetryDecoder.h"
 
 class QAction;
 class QComboBox;
@@ -78,6 +80,11 @@ private slots:
     void onThemeChanged();
     void onToggleFakeTransmission();
     void pushFakeTransmissionSample();
+    void onScanLiveDevices();
+    void onConnectLiveDevice(const QString &portName, int baud);
+    void onDisconnectLiveDevice();
+    void onStartLiveDemo();
+    void drainLiveTelemetryQueue();
 
 private:
     void setupActions();
@@ -114,6 +121,10 @@ private:
     void updateBrandShadowColor();
     void stopFakeTransmission(bool completed = false);
     void refreshFakeTransmissionButton();
+    void startSerial(const QString &portName, int baud);
+    void stopSerial();
+    void prepareLiveSession(const QString &context);
+    void clearRawQueue();
 
     // ── Menu bar ─────────────────────────────────────────────────────────────
     QMenu *m_recentFilesMenu = nullptr;
@@ -147,13 +158,17 @@ private:
     std::unique_ptr<FlightDataModel>        m_flightModel;
     std::unique_ptr<FlightReplayController> m_replay;
     std::unique_ptr<FlightLogManager>       m_logManager;
-    FlightSession m_loadedSession;
+    std::shared_ptr<const FlightSession> m_loadedSession;
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_loadedPreview;
 
     // ── Live-telemetry pipeline ───────────────────────────────────────────────
     BlockingQueue<std::vector<uint8_t>> m_rawQueue{512};
     std::unique_ptr<ParserWorker>  m_parserWorker;
     std::unique_ptr<SerialWorker>  m_serialWorker;
     std::unique_ptr<IComms>        m_comms;
+    cosmo::telemetry::LineTelemetryDecoder m_lineDecoder;
+    QString m_serialPortSummary;
+    std::size_t m_lastMalformedLineCount = 0;
 
     // ── Timers ────────────────────────────────────────────────────────────────
     QTimer *m_replayTelemetryCoalesceTimer = nullptr;
