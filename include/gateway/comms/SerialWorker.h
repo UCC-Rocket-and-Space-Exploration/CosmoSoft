@@ -6,6 +6,8 @@
 #include <thread>
 #include <vector>
 
+#include "IBuffer.h"
+#include "services/RingBuffer.h"
 #include "../../domain/FlightSample.h"
 #include "../../gateway/comms/IComms.h"
 #include "gateway/comms/ISerialPortScanner.h"
@@ -19,7 +21,7 @@ class SerialWorker {
 
 public:
 
-    explicit SerialWorker(IComms* comms, DataCallback onData, ErrorCallback onError) : m_connectedPort(comms), m_onData(std::move(onData)), m_onError(std::move(onError)), m_running(false) {};
+    explicit SerialWorker(IComms* comms, IBuffer* buffer, ErrorCallback onError) : m_connectedPort(comms), m_buffer(buffer), m_onError(std::move(onError)), m_running(false) {};
     ~SerialWorker();
 
     bool start();
@@ -27,7 +29,7 @@ public:
 
 private:
     void run() const;
-
+    IBuffer* m_buffer;
     std::thread m_workerThread;
     std::atomic<bool> m_running;
 

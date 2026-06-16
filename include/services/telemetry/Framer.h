@@ -5,11 +5,6 @@
 
 #define Kilobyte 1024
 
-struct Frame {
-    uint8_t* data;
-    std::size_t size;
-};
-
 //TODO
 // consider how errors are handled (malformed frame, etc.) and how to report them back to the caller; perhaps add an error callback or return an error code along with the frames
 // consider including CRC field in frame format

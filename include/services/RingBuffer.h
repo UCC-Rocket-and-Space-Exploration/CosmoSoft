@@ -8,18 +8,18 @@
 #include <iostream>
 #include <mutex>
 #include <optional>
+#include "IBuffer.h"
 
 template <typename T>
-class RingBuffer {
+class RingBuffer : public IBuffer{
 public:
     explicit RingBuffer(int size);
     explicit RingBuffer(const RingBuffer& other) = delete;
     RingBuffer(RingBuffer&& other) noexcept;
 
     ~RingBuffer();
-    void put(T item);
-
-    std::optional<T> get();
+    void put(T item) override;
+    std::optional<T> get() override;
 
 private:
     [[nodiscard]] bool is_empty() const;

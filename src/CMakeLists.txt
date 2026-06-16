@@ -1,5 +1,9 @@
 add_library(cosmo-backend ""
-        services/import/SampleFileLoader.cpp)
+        services/import/SampleFileLoader.cpp
+        ../include/services/IBuffer.h
+        ../include/domain/Frame.h
+        ../include/domain/FrameFormat.h
+        ../include/gateway/comms/IFramerWorker.h)
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 
 target_link_libraries(cosmo-backend

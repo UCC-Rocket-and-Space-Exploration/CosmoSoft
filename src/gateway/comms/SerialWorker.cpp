@@ -13,6 +13,7 @@ bool SerialWorker::start() {
     if (m_workerThread.joinable()) {
         return true;
     }
+
     m_running = true;
     m_workerThread = std::thread([this]() { run(); });
     if (!m_workerThread.joinable()) {

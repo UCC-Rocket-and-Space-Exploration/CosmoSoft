@@ -1,4 +1,3 @@
-
 #pragma once //works fine on linux?
 #include <optional>
 
