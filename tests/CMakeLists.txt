@@ -11,6 +11,7 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(cosmo-tests
     MockFlightLinkTests.cpp
     SampleFileLoaderTests.cpp
+        include/SerialWriter.h
 )
 
 target_include_directories(cosmo-tests PRIVATE

@@ -1,0 +1,8 @@
+//
+// Created by Lenovo on 6/16/2026.
+//
+
+#ifndef COSMO_SOFT_SERIALWRITERMOCK_H
+#define COSMO_SOFT_SERIALWRITERMOCK_H
+
+#endif //COSMO_SOFT_SERIALWRITERMOCK_H

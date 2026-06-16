@@ -1,6 +1,8 @@
 #pragma once //works fine on linux?
 #include <optional>
 
+#include "services/RingBuffer.h"
+
 template <typename T>
 RingBuffer<T>::RingBuffer(int size) {
      m_buffer = new int[size]{};

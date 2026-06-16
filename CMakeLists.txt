@@ -18,16 +18,23 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
+
 set(HEADERS "${CMAKE_SOURCE_DIR}/include")
+
 
 include(CTest)
 
-find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts Concurrent WebEngineWidgets WebChannel)
-find_package(ZLIB REQUIRED)
+find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts Concurrent)
+
+#find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts Concurrent WebEngineWidgets WebChannel)
+find_package(ZLIB REQUIRED) # for compressing
 add_subdirectory(src)
 
-target_compile_features(cosmo-backend PUBLIC cxx_std_20)
+#target_compile_features(cosmo-backend PUBLIC cxx_std_20)
 
 if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
+
+target_link_libraries(cosmo-soft-bin PRIVATE cosmo-backend)
+target_compile_features(cosmo-soft-bin PRIVATE cxx_std_20)

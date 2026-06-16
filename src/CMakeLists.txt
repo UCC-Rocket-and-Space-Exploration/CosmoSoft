@@ -1,9 +1,4 @@
-add_library(cosmo-backend ""
-        services/import/SampleFileLoader.cpp
-        ../include/services/IBuffer.h
-        ../include/domain/Frame.h
-        ../include/domain/FrameFormat.h
-        ../include/gateway/comms/IFramerWorker.h)
+add_library(cosmo-backend "")
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 
 target_link_libraries(cosmo-backend
@@ -15,15 +10,10 @@ target_link_libraries(cosmo-backend
 )
 
 add_subdirectory(gateway/comms)
-add_subdirectory(services/flight)
-add_subdirectory(services/import)
-add_subdirectory(services/persistence)
-add_subdirectory(services/telemetry)
+add_subdirectory(services)
 add_subdirectory(gui)
 
 add_executable(cosmo-soft-bin
     main.cpp
     "${CMAKE_SOURCE_DIR}/assets/resources.qrc"
 )
-
-target_link_libraries(cosmo-soft-bin PRIVATE cosmo-backend)
