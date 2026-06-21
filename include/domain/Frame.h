@@ -1,7 +1,7 @@
-#include <domain/FrameFormat.h>
-
 #ifndef COSMO_SOFT_FRAME_H
 #define COSMO_SOFT_FRAME_H
+#include <cstdint>
+#include <domain/FrameFormat.h>
 
 struct Frame {
 	FrameFormat format;

@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 
-#include "IComms.h"
+#include "interfaces/IComms.h"
 
 //factory class design pattern for handling instantiating either POSIX or windows implementation of IComms
 class CommsFactory {

@@ -1,6 +1,6 @@
 #ifndef COSMO_SOFT_SERIALPORTSCANNERFACTORY_H
 #define COSMO_SOFT_SERIALPORTSCANNERFACTORY_H
-#include "ISerialPortScanner.h"
+#include "interfaces/ISerialPortScanner.h"
 
 
 class SerialPortScannerFactory {

@@ -1,13 +1,13 @@
 #ifndef COSMO_SOFT_IPARSERWORKER_H
 #define COSMO_SOFT_IPARSERWORKER_H
-#include "IWorker.h"
+#include "gateway/comms/interfaces/IWorker.h"
 
 class IFramerWorker : public IWorker{
     public:
-    virtual ~IFramerWorker() = default;
+    ~IFramerWorker() override = default;
 
-    void run() = 0;
-    void stop() = 0;
+    void run() override = 0;
+    void stop() override = 0;
 };
 
 #endif //COSMO_SOFT_IPARSERWORKER_H

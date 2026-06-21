@@ -12,5 +12,4 @@ public:
 
 };
 
-
 #endif //COSMO_SOFT_ISERIALPORTSCANNER_H

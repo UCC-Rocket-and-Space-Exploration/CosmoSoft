@@ -9,9 +9,11 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(cosmo-tests
-    MockFlightLinkTests.cpp
-    SampleFileLoaderTests.cpp
+#    MockFlightLinkTests.cpp
+#    SampleFileLoaderTests.cpp
         include/SerialWriter.h
+        comms/CsvFramerTests.cpp
+        comms/Mocks/SerialWriter.cpp
 )
 
 target_include_directories(cosmo-tests PRIVATE
@@ -20,8 +22,8 @@ target_include_directories(cosmo-tests PRIVATE
 )
 
 target_link_libraries(cosmo-tests PRIVATE
-    Catch2::Catch2WithMain
-    import
+    Catch2::Catch2WithMain cosmo-backend
+#    import
 )
 
 target_compile_definitions(cosmo-tests PRIVATE

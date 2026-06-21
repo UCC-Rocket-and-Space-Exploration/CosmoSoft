@@ -1,14 +1,16 @@
 #ifndef COSMO_SOFT_SERIALCOMMSWINDOWS_H
 #define COSMO_SOFT_SERIALCOMMSWINDOWS_H
+#include <iostream>
+#include <utility>
 #include <windows.h>
 
-#include "gateway/comms/IComms.h"
+#include "../interfaces/IComms.h"
 
 
 class SerialCommsWindows : public IComms {
 public:
-    explicit SerialCommsWindows(const std::string& device, int baud = 115200);
-    ~SerialCommsWindows() override; //destructor
+    explicit SerialCommsWindows(std::string device, int baud = 115200);
+    ~SerialCommsWindows() override;
 
     bool open() override;
     void close() override;
@@ -20,10 +22,12 @@ public:
     ssize_t write(const uint8_t* data, size_t size) override;
     ssize_t read(uint8_t* buffer, size_t maxSize) override;
     [[nodiscard]] std::string getDeviceName() const override;
-    SerialCommsWindows(std::string& device, int baud);
+
 private:
+    COMMTIMEOUTS m_timeouts{};
+    // const DWORD read_timeout = 5000;
+    std::string m_device;
     HANDLE m_handle;
-    const std::string& m_device;
     int m_baud;
 };
 

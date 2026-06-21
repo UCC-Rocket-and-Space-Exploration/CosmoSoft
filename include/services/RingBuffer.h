@@ -1,23 +1,18 @@
 #ifndef COSMO_SOFT_RINGBUFFER_H
 #define COSMO_SOFT_RINGBUFFER_H
-#include <cstdint>
-
-//TODO use atomic bool to make thread-safe, or consider using mutexes for better control over concurrent access;
-// also consider making it lock-free (by reserving single space for empty
-// but need to be careful with memory management and edge cases (full vs empty)
 #include <iostream>
 #include <mutex>
 #include <optional>
-#include "IBuffer.h"
+#include "services/IBuffer.h"
 
 template <typename T>
-class RingBuffer : public IBuffer{
+class RingBuffer : public IBuffer<T>{
 public:
     explicit RingBuffer(int size);
     explicit RingBuffer(const RingBuffer& other) = delete;
     RingBuffer(RingBuffer&& other) noexcept;
 
-    ~RingBuffer();
+    ~RingBuffer() override;
     void put(T item) override;
     std::optional<T> get() override;
 

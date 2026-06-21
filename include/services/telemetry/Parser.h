@@ -7,12 +7,12 @@
 #include "Framer.h"
 #include "domain/FlightSample.h"
 
-class Parser {
-public:
-    Parser() = default;
-    std::optional<FlightSample> decode(Frame);
-
-private:
-};
+// class Parser {
+// public:
+//     Parser() = default;
+//     std::optional<FlightSample> decode(Frame);
+//
+// private:
+// };
 
 #endif //COSMO_SOFT_TELEMETRYPARSER_H
