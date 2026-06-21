@@ -2,13 +2,17 @@
 #include "gui/ThemeManager.h"
 #include "services/preview/FlightPreviewCache.h"
 
+#include <QApplication>
 #include <QDir>
+#include <QEvent>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QKeyEvent>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QNativeGestureEvent>
 #include <QStandardPaths>
 #include <QVBoxLayout>
 #include <QWebChannel>
@@ -17,6 +21,7 @@
 #include <QWebEngineSettings>
 #include <QWebEngineUrlRequestInterceptor>
 #include <QWebEngineView>
+#include <QWidget>
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +33,109 @@ bool isValidCoord(double lat, double lon) {
     return std::isfinite(lat) && std::isfinite(lon)
         && std::abs(lat) <= 90.0 && std::abs(lon) <= 180.0;
 }
+
+/**
+ * @class LockedMapWebView
+ * @brief QWebEngineView variant that keeps the embedded map at page zoom 100%.
+ */
+class LockedMapWebView : public QWebEngineView {
+public:
+    explicit LockedMapWebView(QWidget *parent = nullptr)
+        : QWebEngineView(parent) {
+        if (auto *app = QApplication::instance()) {
+            app->installEventFilter(this);
+        }
+    }
+
+    ~LockedMapWebView() override {
+        if (auto *app = QApplication::instance()) {
+            app->removeEventFilter(this);
+        }
+    }
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override {
+        if (shouldBlockPageZoom(watched, event)) {
+            resetZoomFactor();
+            event->accept();
+            return true;
+        }
+        return QWebEngineView::eventFilter(watched, event);
+    }
+
+    bool event(QEvent *event) override {
+        if (shouldBlockPageZoom(this, event)) {
+            resetZoomFactor();
+            event->accept();
+            return true;
+        }
+        return QWebEngineView::event(event);
+    }
+
+    void keyPressEvent(QKeyEvent *event) override {
+        if (isBrowserZoomShortcut(event)) {
+            resetZoomFactor();
+            event->accept();
+            return;
+        }
+        QWebEngineView::keyPressEvent(event);
+    }
+
+private:
+    [[nodiscard]] bool shouldBlockPageZoom(QObject *watched, QEvent *event) const {
+        if (!isMapTarget(watched)) {
+            return false;
+        }
+        switch (event->type()) {
+        case QEvent::NativeGesture: {
+            const auto *gesture = static_cast<QNativeGestureEvent *>(event);
+            return gesture->gestureType() == Qt::ZoomNativeGesture
+                || gesture->gestureType() == Qt::SmartZoomNativeGesture;
+        }
+        case QEvent::KeyPress:
+            return isBrowserZoomShortcut(static_cast<QKeyEvent *>(event));
+        default:
+            return false;
+        }
+    }
+
+    [[nodiscard]] bool isBrowserZoomShortcut(const QKeyEvent *event) const {
+        const bool hasZoomModifier =
+            event->modifiers().testFlag(Qt::ControlModifier)
+            || event->modifiers().testFlag(Qt::MetaModifier);
+        if (!hasZoomModifier) {
+            return false;
+        }
+
+        switch (event->key()) {
+        case Qt::Key_0:
+        case Qt::Key_Equal:
+        case Qt::Key_Minus:
+        case Qt::Key_Plus:
+        case Qt::Key_Underscore:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    [[nodiscard]] bool isMapTarget(QObject *watched) const {
+        for (QObject *obj = watched; obj != nullptr; obj = obj->parent()) {
+            if (obj == this || obj == page()) {
+                return true;
+            }
+        }
+
+        const auto *widget = qobject_cast<QWidget *>(watched);
+        return widget && (widget == this || isAncestorOf(widget));
+    }
+
+    void resetZoomFactor() {
+        if (!qFuzzyCompare(zoomFactor(), 1.0)) {
+            setZoomFactor(1.0);
+        }
+    }
+};
 
 } // namespace
 
@@ -98,8 +206,10 @@ Map3DWidget::Map3DWidget(QWidget *parent)
     connect(m_bridge, &Map3DBridge::followChanged,
             this, &Map3DWidget::setCameraFollow);
 
-    m_webView = new QWebEngineView(this);
+    m_webView = new LockedMapWebView(this);
+    m_webView->setContextMenuPolicy(Qt::NoContextMenu);
     m_webView->setPage(page);
+    m_webView->setZoomFactor(1.0);
     layout->addWidget(m_webView);
 
     QFile htmlFile(QStringLiteral(":/map/map3d.html"));

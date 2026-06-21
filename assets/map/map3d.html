@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>CosmoSoft Flight Map</title>
 <link rel="stylesheet" href="qrc:///map/leaflet.css" />
 <script src="qrc:///map/leaflet.js"></script>
@@ -13,6 +13,7 @@
   html, body {
     width: 100%; height: 100%;
     overflow: hidden;
+    overscroll-behavior: none;
     background: #0c0e14;
     font-family: "Red Hat Mono", "Courier New", monospace;
     color: #c8d4e0;
@@ -22,7 +23,7 @@
     top: 0; left: 0; right: 0;
     bottom: 80px;
   }
-  #map { width: 100%; height: 100%; background: #0c0e14; }
+  #map { width: 100%; height: 100%; background: #0c0e14; touch-action: none; }
   #view3d {
     width: 100%; height: 100%;
     background: #080a10;
@@ -432,7 +433,9 @@ function apply3DTheme() {
 function initMap() {
   map = L.map("map", {
     center: [51.049,-1.398], zoom: 15,
-    zoomControl: false, attributionControl: false, preferCanvas: true
+    zoomControl: false,
+    attributionControl: false,
+    preferCanvas: true
   });
 
   tileLayerMap = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{
@@ -1170,6 +1173,30 @@ function sendStats(vp,va,total){
 
 let lastStatsText = "";
 
+function handlePageZoomWheel(e) {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (activeView === "2d" && map) {
+    const nextZoom = map.getZoom() + (e.deltaY < 0 ? 1 : -1);
+    map.setZoomAround(map.mouseEventToContainerPoint(e), nextZoom);
+    return;
+  }
+
+  if (activeView === "3d") {
+    set3DCameraDistance(e.deltaY < 0 ? 0.9 : 1.1);
+  }
+}
+
+function preventBrowserPageZoomShortcut(e) {
+  if (!e.ctrlKey && !e.metaKey) return false;
+  if (!["0", "=", "+", "-", "_"].includes(e.key)) return false;
+  e.preventDefault();
+  e.stopPropagation();
+  return true;
+}
+
 function updateStatsOverlay(vp,va,total){
   const el=document.getElementById("statsOverlay");
   if(vp.length===0){el.style.display="none";lastStatsText="";return;}
@@ -1187,7 +1214,16 @@ function updateStatsOverlay(vp,va,total){
   el.style.display="block";
 }
 
+document.addEventListener("wheel", handlePageZoomWheel, { capture: true, passive: false });
+["gesturestart", "gesturechange", "gestureend"].forEach(type => {
+  document.addEventListener(type, e => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, { capture: true, passive: false });
+});
+
 document.addEventListener("keydown", function(e) {
+  if (preventBrowserPageZoomShortcut(e)) return;
   if ((e.ctrlKey || e.metaKey) && e.key === "c" && !window.getSelection().toString() && lastStatsText) {
     navigator.clipboard.writeText(lastStatsText).catch(()=>{});
   }
