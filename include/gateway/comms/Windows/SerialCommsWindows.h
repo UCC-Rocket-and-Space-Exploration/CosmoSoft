@@ -14,7 +14,7 @@ public:
 
     bool open() override;
     void close() override;
-    bool isOpen() const override;
+    [[nodiscard]] bool isOpen() const override;
     //Blocking write function
     // uint8_t* data: pointer to the start of a block of unsigned 8-bit integers (serial port streams operate on a per-byte basis)
     // size_t size: how many bytes to write starting from the pointer as an unsigned long

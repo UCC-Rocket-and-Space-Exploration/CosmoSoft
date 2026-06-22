@@ -11,7 +11,8 @@ SerialCommsWindows::SerialCommsWindows(std::string device, int baud){
     m_device = std::move(device);
     m_baud = baud;
     SerialCommsWindows::open();
-    m_timeouts = COMMTIMEOUTS(50, 10, 5000);
+    // m_timeouts = COMMTIMEOUTS(50, 10, 5000);
+    // this->m_handle = nullptr;
 }
 
 SerialCommsWindows::~SerialCommsWindows() {
@@ -27,7 +28,12 @@ bool SerialCommsWindows::open() {
     if (this->m_handle == INVALID_HANDLE_VALUE) {
         throw SerialPortNotOpened("Serial port " + this->m_device + " can't be opened.");
     }
-    bool timeout_not_experienced = SetCommTimeouts(this->m_handle, &m_timeouts);
+    COMMTIMEOUTS timeouts = {0};
+
+    timeouts.ReadIntervalTimeout = 50;
+    timeouts.ReadTotalTimeoutConstant = 5000;
+    timeouts.ReadTotalTimeoutMultiplier = 10;
+    bool timeout_not_experienced = SetCommTimeouts(this->m_handle, &timeouts);
 
     if (not timeout_not_experienced) {
         std::cout << "Unsuccessful timeout set" << std::endl;
@@ -50,8 +56,10 @@ bool SerialCommsWindows::isOpen() const {
 ssize_t SerialCommsWindows::write(const uint8_t* data, size_t size) {
     DWORD bytesWritten = 0;
 
-    WriteFile(this->m_handle, data, size, &bytesWritten, NULL);
-    // FlushFileBuffers(this->m_handle);
+    bool written = WriteFile(this->m_handle, data, size, &bytesWritten, nullptr);
+    if (!written) {
+        std::cout << "Write error: " << GetLastError() << std::endl;
+    }
     std::cout << "Written: " << bytesWritten << std::endl;
     return bytesWritten;
 }

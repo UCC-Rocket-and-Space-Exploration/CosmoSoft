@@ -7,13 +7,16 @@
 #include "gateway/comms/interfaces/IComms.h"
 
 class SerialWriter {
-    public:
-    explicit SerialWriter(std::unique_ptr<IComms> comms) {
-        m_comms = std::move(comms);
+public:
+    explicit SerialWriter(std::shared_ptr<IComms> comms) {
+        m_comms = comms;
+        if (!m_comms->isOpen()) {
+            m_comms->open();
+        }
     }
     SerialWriter(SerialWriter&& other) = delete;
     void write(char* message) const;
 private:
-    std::unique_ptr<IComms> m_comms;
+    std::shared_ptr<IComms> m_comms;
 };
 #endif //COSMO_SOFT_SERIALWRITERMOCK_H

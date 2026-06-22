@@ -4,4 +4,4 @@ add_subdirectory(persistence)
 add_subdirectory(telemetry)
 
 #include(RingBuffer.tpp)
-target_sources(cosmo-backend PRIVATE "RingBuffer.tpp")
+#target_sources(cosmo-backend PRIVATE "../../include/services/RingBuffer.tpp")

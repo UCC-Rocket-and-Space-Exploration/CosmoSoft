@@ -2,6 +2,7 @@
 #include "include/SerialWriter.h"
 #include <cstring>
 #include <iostream>
+#include <thread>
 
 #include "gateway/comms/Windows/SerialCommsWindows.h"
 

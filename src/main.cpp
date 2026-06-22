@@ -1,3 +1,4 @@
+#include <iostream>
 #include <QApplication>
 #include <QFile>
 #include <QFont>
@@ -8,8 +9,14 @@
 #include <QResource>
 
 #include "domain/FlightSample.h"
+#include "gateway/comms/SerialFramerWorker.h"
+#include "gateway/comms/windows/SerialCommsWindows.h"
 #include "gui/MainWindow.h"
 #include "gui/ThemeManager.h"
+// #include "SerialWriter.h"
+#include "services/RingBuffer.h"
+#include "services/SerialWriter.h"
+#include "services/telemetry/CsvFramer.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);

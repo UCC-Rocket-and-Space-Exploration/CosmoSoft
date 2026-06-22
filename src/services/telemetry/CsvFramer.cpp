@@ -11,32 +11,30 @@ Frame CsvFramer::get_frame() {
     uint8_t previous_byte = 0;
     uint8_t next_byte = 0;
 
-    while (next_byte != '\n') {
+    while (next_byte != frame_separator) {
         this->m_comms->read(byte_buffer, 1);
         next_byte = byte_buffer[0];
         if (frame_size != 0) {
             per_frame_buffer.push_back(previous_byte);
         }
-        frame_size++;
+        if (next_byte == 0) {
+            break;
+        }
         previous_byte = next_byte;
+        frame_size++;
     }
-    frame.size = frame_size - 1; //discluding \n char
-
-    if (frame.size == 0) {
-        frame.data = nullptr;
-    }
-    else {
-        std::cout << "frame.data not emp" << std::endl;
-        frame.data = per_frame_buffer.data();
-    }
+    frame.size = per_frame_buffer.size(); //discluding \n char
     frame.format = Csv;
+
+    if (frame.size != 0) {
+        frame.data = per_frame_buffer;
+    }
     per_frame_buffer.clear();
     return frame;
 }
 
-CsvFramer::CsvFramer(std::unique_ptr<IComms> comms) {
-    m_comms = std::move(comms);
+CsvFramer::CsvFramer(const std::shared_ptr<IComms>& comms) : m_comms(comms) {
     per_frame_buffer = std::vector<uint8_t>();
 }
-CsvFramer::~CsvFramer() {
-}
+
+CsvFramer::~CsvFramer() = default;

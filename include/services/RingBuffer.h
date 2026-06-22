@@ -3,7 +3,7 @@
 #include <iostream>
 #include <mutex>
 #include <optional>
-#include "services/IBuffer.h"
+#include "interfaces/IBuffer.h"
 
 template <typename T>
 class RingBuffer : public IBuffer<T>{
@@ -14,6 +14,7 @@ public:
 
     ~RingBuffer() override;
     void put(T item) override;
+    void show();
     std::optional<T> get() override;
 
 private:
@@ -27,6 +28,6 @@ private:
     size_t m_head = 0;
     size_t m_tail = 0;
 };
-#include "RingBuffer.tpp"
+#include "services/RingBuffer.tpp"
 
 #endif //COSMO_SOFT_RINGBUFFER_H
