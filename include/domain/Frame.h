@@ -4,9 +4,9 @@
 #include <vector>
 #include <domain/FrameFormat.h>
 
-struct Frame {
+class Frame {
+public:
 	FrameFormat format;
 	std::vector<uint8_t> data;
-    std::size_t size; //TODO: delete
 };
 #endif //COSMO_SOFT_FRAME_H

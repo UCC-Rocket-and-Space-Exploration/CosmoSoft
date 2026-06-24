@@ -14,8 +14,8 @@ public:
 
     ~RingBuffer() override;
     void put(T item) override;
-    void show();
-    std::optional<T> get() override;
+    // void show();
+    [[nodiscard]] std::optional<T> get() override;
 
 private:
     [[nodiscard]] bool is_empty() const;

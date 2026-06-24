@@ -15,9 +15,12 @@ add_executable(cosmo-tests
         comms/CsvFramerTests.cpp
         comms/Mocks/SerialWriter.cpp
         comms/SerialFramerWorker.cpp
-        include/functions.h
+        include/helpers.h
         comms/RingBuffer.cpp
         comms/SerialFramerWokrerAssertTests.cpp
+        comms/DecodersTests.cpp
+        comms/ParserWorkerTests.cpp
+        comms/Mocks/onDataMock.cpp
 )
 
 target_include_directories(cosmo-tests PRIVATE

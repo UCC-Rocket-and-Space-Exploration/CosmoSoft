@@ -1,52 +1,30 @@
-// #ifndef COSMO_SOFT_PARSERWORKER_H
-// #define COSMO_SOFT_PARSERWORKER_H
-// #include <atomic>
-// #include <functional>
-// #include <queue>
-// #include <string>
-// #include <thread>
-// #include <stop_token>
-//
-// #include "Parser.h"
-// #include "Framer.h"
-// #include "../../domain/FlightSample.h"
-//
-// template<typename T>
-// class BlockingQueue;
-//
-// class ParserWorker {
-// public:
-//     using Chunk = std::vector<uint8_t>;
-//     using DataCallback  = std::function<void(FlightSample&&)>;
-//     using ErrorCallback = std::function<void(std::string_view)>;
-//
-//     ParserWorker(BlockingQueue<Chunk>& inQueue,
-//                  DataCallback onData,
-//                  ErrorCallback onError)
-//         : m_inQueue(inQueue),
-//           m_onData(std::move(onData)),
-//           m_onError(std::move(onError)) {}
-//
-//     bool start();
-//     void stop();
-//
-// private:
-//     void run(const std::stop_token &st);
-//
-//     BlockingQueue<Chunk>& m_inQueue;
-//     Framer m_framer;
-//     Parser m_parser;
-//
-//     std::jthread m_thread;
-//
-//     DataCallback m_onData;
-//     ErrorCallback m_onError;
-// };
-//
-//
-//
-//
-// #endif //COSMO_SOFT_PARSERWORKER_H
-//
-//
-//
+#ifndef COSMO_SOFT_IPARSERWORKER_H
+#define COSMO_SOFT_IPARSERWORKER_H
+#include <memory>
+#include <thread>
+
+#include "FrameDecoderFactory.h"
+#include "shared/abstraction/Worker.h"
+#include "domain/FlightSample.h"
+#include "services/RingBuffer.h"
+
+#define Buffer std::shared_ptr<IBuffer<Frame>>
+
+class ParserWorker : public Worker{
+    public:
+    explicit ParserWorker(
+        const Buffer& buffer,
+        void (*on_parsed_data_callback)(const FlightSample& flight_sample), FrameFormat frame_format);
+    ~ParserWorker() override = default;
+protected:
+    void m_process() override;
+
+private:
+    void (*m_on_parsed_data_callback)(const FlightSample& flight_sample);
+    Buffer m_buffer;
+    std::unique_ptr<IFrameDecoder> m_decoder;
+    std::atomic_bool m_first_frame {true};
+    int m_initial_timestamp = 0;
+};
+
+#endif //COSMO_SOFT_IPARSERWORKER_H

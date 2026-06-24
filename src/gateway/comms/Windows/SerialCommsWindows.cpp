@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 
-#include "common/SerialPortNotOpened.h"
+#include "shared/SerialPortNotOpened.h"
 
 SerialCommsWindows::SerialCommsWindows(std::string device, int baud){
     m_device = std::move(device);

@@ -1,10 +1,19 @@
 add_library(cosmo-backend ""
         ../include/services/interfaces/IFramer.h
-        ../include/gateway/comms/interfaces/IDataReader.h
-        ../include/services/telemetry/IFrameDecoder.h
+        ../include/services/interfaces/IFrameDecoder.h
         ../include/services/telemetry/CsvFramer.h
         services/telemetry/CsvFramer.cpp
-        ../include/common/SerialPortNotOpened.h)
+        ../include/shared/SerialPortNotOpened.h
+        ../include/services/telemetry/FrameDecoderFactory.h
+        ../include/services/telemetry/frame_decoders/CsvFrameDecoder.h
+        services/telemetry/FrameDecoderFactory.cpp
+        ../include/services/telemetry/frame_decoders/TeleMegaFrameDecoder.h
+        ../include/services/telemetry/frame_decoders/TeleMiniFrameDecoder.h
+        shared/abstraction/Worker.cpp
+        services/telemetry/frame_decoders/CsvFrameDecoder.cpp
+        services/telemetry/frame_decoders/TeleMegaDecoder.cpp
+        services/telemetry/frame_decoders/TeleMiniFrameDecoder.cpp
+)
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 
 target_link_libraries(cosmo-backend
@@ -17,6 +26,7 @@ target_link_libraries(cosmo-backend
 
 add_subdirectory(gateway/comms)
 add_subdirectory(services)
+add_subdirectory(shared)
 #add_subdirectory(gui)
 
 add_executable(cosmo-soft-bin

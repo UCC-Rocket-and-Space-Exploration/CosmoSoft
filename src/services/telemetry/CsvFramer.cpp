@@ -23,10 +23,10 @@ Frame CsvFramer::get_frame() {
         previous_byte = next_byte;
         frame_size++;
     }
-    frame.size = per_frame_buffer.size(); //discluding \n char
+    // frame.data.size = per_frame_buffer.size(); //discluding \n char
     frame.format = Csv;
 
-    if (frame.size != 0) {
+    if (!per_frame_buffer.empty()) {
         frame.data = per_frame_buffer;
     }
     per_frame_buffer.clear();
