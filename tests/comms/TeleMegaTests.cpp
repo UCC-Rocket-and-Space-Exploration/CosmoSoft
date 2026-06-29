@@ -1,0 +1,76 @@
+// #include <iostream>
+#include <catch2/catch_test_macros.hpp>
+
+#include "gateway/comms/windows/SerialCommsWindows.h"
+#include "include/SerialWriter.h"
+#include "services/telemetry/framers/CsvFramer.h"
+#include "services/telemetry/framers/TeleFramer.h"
+#include "shared/SerialTimeout.h"
+
+
+TEST_CASE("get frames with different formats") {
+    std::shared_ptr<SerialCommsWindows> writer_comm = std::make_shared<SerialCommsWindows>("COM2");
+    std::shared_ptr<SerialCommsWindows> reader_comm = std::make_shared<SerialCommsWindows>("COM1");
+
+    SerialWriter writer(writer_comm);
+    TeleFramer framer(reader_comm);
+
+    std::cout << "initilized" << std::endl;
+    //Arrange
+    std::string packet_data = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii9";
+    std::string full_packet = "TELEM ";
+    std::string full_packet_without_w = "TELEM";
+
+    constexpr char length_byte[2] = {0x22, 0};
+    full_packet.append(length_byte);
+    full_packet_without_w.append(length_byte);
+    full_packet_without_w += packet_data;
+    full_packet += packet_data;
+
+    //TODO: add gps framer/parser
+    //Act
+    char* content = const_cast<char*>(full_packet.c_str());
+    char* content2 = const_cast<char*>(full_packet_without_w.c_str());
+
+    std::cout << "content: " << content << std::endl;
+    writer.write(content);
+    std::cout << "content2: " << content2 << std::endl;
+    writer.write(content2);
+
+    Frame frame = framer.get_frame(true);
+    Frame frame2 = framer.get_frame(true);
+
+    REQUIRE(frame.data.size() == packet_data.size());
+    REQUIRE(frame2.data.size() == packet_data.size());
+
+    std::cout << std::endl;
+
+    //Assert
+    for (int i = 0; i < packet_data.size(); i++) {
+        std::cout << frame.data[i];
+        REQUIRE(packet_data[i] == frame.data[i]);
+        REQUIRE(packet_data[i] == frame2.data[i]);
+    }
+
+    std::cout << "\n";
+
+}
+
+
+// TEST_CASE("getting csv frame, while cancellation") {
+//     std::shared_ptr<SerialCommsWindows> writer_comm = std::make_shared<SerialCommsWindows>("COM2");
+//     std::shared_ptr<SerialCommsWindows> reader_comm = std::make_shared<SerialCommsWindows>("COM1");
+//
+//     SerialWriter writer(writer_comm);
+//     TeleFramer framer(reader_comm);
+//
+//     std::cout << "initilized" << std::endl;
+//     //Arrange
+//     char content[] = "13603,19.24,100896.15,165.59,0.704,-0.927,9.850,-0.047,0.091,0.091,-4.822,-2.985,16.506,0.000000,0.000000,0.00";
+//
+//     //Act
+//     bool running = false;
+//     writer.write(content);
+//     Frame frame = framer.get_frame(running);
+//     REQUIRE(frame.data.empty());
+// }

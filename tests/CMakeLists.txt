@@ -8,21 +8,22 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-add_executable(cosmo-tests
-#    MockFlightLinkTests.cpp
+add_executable(cosmo-tests ""
+        #    MockFlightLinkTests.cpp
 #    SampleFileLoaderTests.cpp
-        include/SerialWriter.h
-        comms/CsvFramerTests.cpp
-        comms/Mocks/SerialWriter.cpp
-        comms/SerialFramerWorker.cpp
-        include/helpers.h
-        comms/RingBuffer.cpp
-        comms/SerialFramerWokrerAssertTests.cpp
-        comms/DecodersTests.cpp
-        comms/ParserWorkerTests.cpp
-        comms/Mocks/onDataMock.cpp
-)
 
+#        include/SerialWriter.h
+#        comms/CsvFramerTests.cpp
+#        comms/Mocks/SerialWriter.cpp
+#        comms/SerialFramerWorker.cpp
+#        include/helpers.h
+#        comms/RingBuffer.cpp
+#        comms/SerialFramerWokrerAssertTests.cpp
+#        comms/DecodersTests.cpp
+#        comms/ParserWorkerTests.cpp
+#        comms/Mocks/onDataMock.cpp
+)
+add_subdirectory("comms")
 target_include_directories(cosmo-tests PRIVATE
     "${CMAKE_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}"

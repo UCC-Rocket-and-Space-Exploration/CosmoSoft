@@ -6,15 +6,15 @@
 #include "gateway/comms/interfaces/IComms.h"
 #include "services/interfaces/IFramer.h"
 
-class CsvFramer : public IFramer{
+class CsvFramer final : public IFramer{
 public:
     ~CsvFramer() override;
     explicit CsvFramer(const std::shared_ptr<IComms>& comms);
-    Frame get_frame() override;
+    Frame get_frame(const bool& running) override;
 
 private:
     const char frame_separator = '\n';
     const std::shared_ptr<IComms>& m_comms;
-    std::vector<uint8_t> per_frame_buffer;
 };
+
 #endif //COSMO_SOFT_CSVFRAMER_H

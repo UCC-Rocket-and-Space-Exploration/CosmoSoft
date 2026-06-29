@@ -6,6 +6,8 @@
 #include <string>
 
 #include "shared/SerialPortNotOpened.h"
+#include "shared/SerialTimeout.h"
+#include "shared/UnhandledSerialException.h"
 
 SerialCommsWindows::SerialCommsWindows(std::string device, int baud){
     m_device = std::move(device);
@@ -21,10 +23,11 @@ SerialCommsWindows::~SerialCommsWindows() {
 
 bool SerialCommsWindows::open() {
     if (this->m_handle != INVALID_HANDLE_VALUE && this->m_handle != nullptr) {
+        std::cout << "port " << m_device << "was already opened" << std::endl;
         return true;
     }
     this->m_handle = CreateFile(m_device.c_str(), GENERIC_READ | GENERIC_WRITE,
-                                0, NULL, OPEN_EXISTING,0,NULL);
+                                0, nullptr, OPEN_EXISTING,0,NULL);
     if (this->m_handle == INVALID_HANDLE_VALUE) {
         throw SerialPortNotOpened("Serial port " + this->m_device + " can't be opened.");
     }
@@ -38,7 +41,9 @@ bool SerialCommsWindows::open() {
     if (not timeout_not_experienced) {
         std::cout << "Unsuccessful timeout set" << std::endl;
         std::cout << GetLastError();
+        return false;
     }
+    std::cout << "Opened for " << m_device << std::endl;
     return true;
 }
 void SerialCommsWindows::close() {
@@ -55,7 +60,8 @@ bool SerialCommsWindows::isOpen() const {
 
 ssize_t SerialCommsWindows::write(const uint8_t* data, size_t size) {
     DWORD bytesWritten = 0;
-
+    bool val_handle = m_handle != nullptr && m_handle != INVALID_HANDLE_VALUE;
+    std::cout << "val handle: " << val_handle << std::endl;
     bool written = WriteFile(this->m_handle, data, size, &bytesWritten, nullptr);
     if (!written) {
         std::cout << "Write error: " << GetLastError() << std::endl;
@@ -66,7 +72,16 @@ ssize_t SerialCommsWindows::write(const uint8_t* data, size_t size) {
 
 ssize_t SerialCommsWindows::read(uint8_t* buffer, size_t maxSize) {
     unsigned long read_bytes_number;
-    WINBOOL read_status = ReadFile(this->m_handle, buffer, maxSize, &read_bytes_number, NULL);
+    WINBOOL read_status = ReadFile(this->m_handle, buffer, maxSize, &read_bytes_number, nullptr);
+
+    if (read_bytes_number == 0) {
+        throw SerialTimeout("Timeout reached when reading from the port " + this->m_device + ".");
+    }
+
+    if (read_status == 0) {
+        throw UnhandledSerialException("Unknown excpetion occured while reading from the device: " +
+            this->m_device + "." + "Full message: " + std::to_string(GetLastError()));
+    }
     return read_bytes_number;
 }
 

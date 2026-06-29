@@ -16,7 +16,7 @@
 // #include "SerialWriter.h"
 #include "services/RingBuffer.h"
 #include "services/SerialWriter.h"
-#include "services/telemetry/CsvFramer.h"
+#include "../include/services/telemetry/framers/CsvFramer.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);

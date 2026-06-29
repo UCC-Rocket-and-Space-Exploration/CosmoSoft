@@ -1,8 +1,10 @@
+
 #include <iostream>
 #include <thread>
-
 #include "gateway/comms/SerialFramerWorker.h"
 #include "gateway/comms/windows/SerialCommsWindows.h"
+#include "shared/SerialTimeout.h"
+#include "shared/UnhandledSerialException.h"
 
 // void SerialFramerWorker::start() {
 //     std::cout << "Starting to run worker" << std::endl;
@@ -15,7 +17,15 @@ void SerialFramerWorker::m_process() {
     try {
         std::cout << "entering worker loop" << std::endl;
         while (m_running) {
-            Frame frame = m_framer->get_frame();
+            Frame frame;
+            try {
+                frame = m_framer->get_frame(m_running);
+            }
+            catch (const std::exception& ex) {
+                //logger: log error
+                std::cerr << ex.what() << std::endl;
+                continue;
+            }
             std::cout << "got frame size: " << frame.data.size() << std::endl;
             for(auto i : frame.data) {
                 std::cout << i;

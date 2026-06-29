@@ -5,6 +5,6 @@
 class IFramer {
     public:
     virtual ~IFramer() = default;
-    virtual Frame get_frame() = 0;
+    virtual Frame get_frame(const bool& running) = 0;
 };
 #endif //COSMO_SOFT_IFRAMER_H

@@ -2,9 +2,9 @@
 #define COSMO_SOFT_SERIALFRAMERWORKER_H
 #include <memory>
 #include <thread>
-#include "../../services/interfaces/IFramer.h"
-#include "../../services/interfaces/IBuffer.h"
-#include "../../shared/abstraction/Worker.h"
+#include "services/interfaces/IFramer.h"
+#include "services/interfaces/IBuffer.h"
+#include "shared/abstraction/Worker.h"
 
 class SerialFramerWorker final : public Worker{
 public:
@@ -22,8 +22,6 @@ protected:
 private:
     std::shared_ptr<IFramer> m_framer;
     std::shared_ptr<IBuffer<Frame>> m_buffer;
-    // std::atomic<bool> m_running{false};
-    // std::thread m_thread;
 };
 
 #endif //COSMO_SOFT_SERIALFRAMERWORKER_H

@@ -4,7 +4,7 @@
 
 class SerialWriter {
     public:
-    explicit SerialWriter(std::shared_ptr<IComms> comms) {
+    explicit SerialWriter(const std::shared_ptr<IComms>& comms) {
         m_comms = comms;
         if (!m_comms->isOpen()) {
             m_comms->open();

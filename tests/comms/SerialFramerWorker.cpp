@@ -4,14 +4,15 @@
 // #include "gateway/comms/windows/SerialCommsWindows.h"
 // #include "include/SerialWriter.h"
 // #include "services/RingBuffer.h"
-// #include "services/telemetry/CsvFramer.h"
-// #include "include/functions.h"
+// #include "include/helpers.h"
+// #include "services/telemetry/framers/CsvFramer.h"
 //
 //
 // TEST_CASE("adds 2 csv frames") {
-//     std::shared_ptr<IComms> writer_comm = std::make_shared<SerialCommsWindows>("COM1");
+//     const std::shared_ptr<IComms> writer_comm = std::make_shared<SerialCommsWindows>("COM1");
 //     const std::shared_ptr<IComms> reader_comm = std::make_shared<SerialCommsWindows>("COM2");
-//
+//     auto status = writer_comm->open();
+//     REQUIRE(status == true);
 //     std::shared_ptr<CsvFramer> csv_framer = std::make_shared<CsvFramer>(reader_comm);
 //     SerialWriter writer(writer_comm);
 //     std::shared_ptr<RingBuffer<Frame>> buffer = std::make_shared<RingBuffer<Frame>>(10);
