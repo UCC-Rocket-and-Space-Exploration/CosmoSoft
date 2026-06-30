@@ -4,6 +4,7 @@
 #include "domain/Frame.h"
 
 class IFrameDecoder {
+    //decoders must be stateless(view vault)
     public:
     virtual ~IFrameDecoder() = default;
     virtual FlightSample decode(Frame frame) = 0;

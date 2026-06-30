@@ -4,7 +4,7 @@
 #include "gateway/comms/windows/SerialCommsWindows.h"
 #include "include/SerialWriter.h"
 #include "services/telemetry/framers/CsvFramer.h"
-#include "shared/SerialTimeout.h"
+#include "../../include/shared/exceptions/SerialTimeout.h"
 
 
 // TEST_CASE("getting frame with \\n char only") {

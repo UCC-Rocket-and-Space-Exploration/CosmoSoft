@@ -1,5 +1,5 @@
 
-#include "services/telemetry/framers/TeleFramer.h"
+#include "services/telemetry/framers/AltosFramer.h"
 
 #include <cstring>
 #include <iostream>
@@ -7,9 +7,9 @@
 
 #include "domain/Frame.h"
 
-TeleFramer::~TeleFramer() = default;
+AltosFramer::~AltosFramer() = default;
 
-Frame TeleFramer::get_frame(const bool& running) {
+Frame AltosFramer::get_frame(const bool& running) {
     constexpr size_t packet_data_length = 0x22;
     constexpr size_t full_packet_length = packet_data_length + 1; //adding checksum byte
 
@@ -37,15 +37,15 @@ Frame TeleFramer::get_frame(const bool& running) {
     std::vector<uint8_t> v = {};
     copy(frame_data, frame_data + full_packet_length, back_inserter(v));
     frame.data = v;
-
+    frame.format = AltosFrame;
     return frame;
 }
 
-bool TeleFramer::sign_start(uint8_t byte) {
+bool AltosFramer::sign_start(uint8_t byte) {
     return static_cast<int>(byte) == static_cast<int>('T');
 }
 
-void TeleFramer::verify_sign(bool running) const {
+void AltosFramer::verify_sign(bool running) const {
     uint8_t sign[4] = {};
     while (running) {
         size_t read_bytes = this->m_comms->read(sign, 1);

@@ -9,10 +9,10 @@
 #include "gateway/comms/interfaces/IComms.h"
 #include "services/interfaces/IFramer.h"
 
-class TeleFramer final : public IFramer {
+class AltosFramer final : public IFramer {
 public:
-    ~TeleFramer() override;
-    explicit TeleFramer(const std::shared_ptr<IComms>& comms) : m_comms(comms) {}
+    ~AltosFramer() override;
+    explicit AltosFramer(const std::shared_ptr<IComms>& comms) : m_comms(comms) {}
     Frame get_frame(const bool& running) override;
 
     static bool sign_start(uint8_t byte);

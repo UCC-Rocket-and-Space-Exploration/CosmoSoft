@@ -5,9 +5,9 @@
 #include <iostream>
 #include <string>
 
-#include "shared/SerialPortNotOpened.h"
-#include "shared/SerialTimeout.h"
-#include "shared/UnhandledSerialException.h"
+#include "../../../../include/shared/exceptions/SerialPortNotOpened.h"
+#include "../../../../include/shared/exceptions/SerialTimeout.h"
+#include "../../../../include/shared/exceptions/UnhandledSerialException.h"
 
 SerialCommsWindows::SerialCommsWindows(std::string device, int baud){
     m_device = std::move(device);

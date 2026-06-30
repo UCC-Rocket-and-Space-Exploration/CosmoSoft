@@ -2,7 +2,7 @@
 #define COSMO_SOFT_TELEMINIFRAMEDECODER_H
 #include "services/interfaces/IFrameDecoder.h"
 
-class TeleMiniFrameDecoder : public IFrameDecoder{
+class TeleMiniV1FrameDecoder : public IFrameDecoder{
 public:
     FlightSample decode(Frame frame) override;
 };

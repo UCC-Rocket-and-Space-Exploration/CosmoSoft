@@ -3,20 +3,30 @@ add_library(cosmo-backend ""
         ../include/services/interfaces/IFrameDecoder.h
         ../include/services/telemetry/framers/CsvFramer.h
         services/telemetry/framers/CsvFramer.cpp
-        ../include/shared/SerialPortNotOpened.h
-        ../include/services/telemetry/FrameDecoderFactory.h
+        ../include/shared/exceptions/SerialPortNotOpened.h
+        ../include/services/telemetry/FrameDecoderVault.h
         ../include/services/telemetry/frame_decoders/CsvFrameDecoder.h
-        services/telemetry/FrameDecoderFactory.cpp
-        ../include/services/telemetry/frame_decoders/TeleMegaFrameDecoder.h
-        ../include/services/telemetry/frame_decoders/TeleMiniFrameDecoder.h
+        services/telemetry/FrameDecoderVault.cpp
+        ../include/services/telemetry/frame_decoders/TeleMegaKalmanFrameDecoder.h
+        ../include/services/telemetry/frame_decoders/TeleMiniV1FrameDecoder.h
         shared/abstraction/Worker.cpp
         services/telemetry/frame_decoders/CsvFrameDecoder.cpp
-        services/telemetry/frame_decoders/TeleMegaDecoder.cpp
-        services/telemetry/frame_decoders/TeleMiniFrameDecoder.cpp
-        ../include/services/telemetry/framers/TeleFramer.h
-        services/telemetry/framers/TeleFramer.cpp
-        ../include/shared/SerialTimeout.h
-        ../include/shared/UnhandledSerialException.h
+        services/telemetry/frame_decoders/TeleMegaKalmanFrameDecoder.cpp
+        services/telemetry/frame_decoders/TeleMiniV1FrameDecoder.cpp
+        ../include/services/telemetry/framers/AltosFramer.h
+        services/telemetry/framers/AltosFramer.cpp
+        ../include/shared/exceptions/SerialTimeout.h
+        ../include/shared/exceptions/UnhandledSerialException.h
+        ../include/shared/AltosPacketTypes.h
+        ../include/shared/exceptions/IncorrectAltosPacketType.h
+        ../include/services/telemetry/frame_decoders/TeleMiniV3FrameDecoder.h
+        ../include/services/telemetry/frame_decoders/TeleMegaImuFrameDecoder.h
+        ../include/services/telemetry/frame_decoders/GpsFrameDecoder.h
+        ../include/services/telemetry/frame_decoders/ConfigFrameDecoder.h
+        services/telemetry/frame_decoders/TeleMegaImuFrameDecoder.cpp
+        services/telemetry/frame_decoders/TeleMiniV3FrameDecoder.cpp
+        services/telemetry/frame_decoders/GpsFrameDecoder.cpp
+        services/telemetry/frame_decoders/ConfigFrameDecoder.cpp
 )
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 

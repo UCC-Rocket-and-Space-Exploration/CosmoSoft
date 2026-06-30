@@ -2,7 +2,6 @@
 #define COSMO_SOFT_PACKAGEFORMAT_H
 enum FrameFormat{
       Csv,
-      TeleMega,
-      TeleMini
+      AltosFrame
 };
 #endif //COSMO_SOFT_PACKAGEFORMAT_H

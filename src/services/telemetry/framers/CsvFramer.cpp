@@ -31,7 +31,6 @@ Frame CsvFramer::get_frame(const bool& running) {
     if (!per_frame_buffer.empty()) {
         frame.data = per_frame_buffer;
     }
-
     return frame;
 }
 

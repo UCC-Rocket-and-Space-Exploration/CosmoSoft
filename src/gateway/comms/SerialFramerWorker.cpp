@@ -3,8 +3,8 @@
 #include <thread>
 #include "gateway/comms/SerialFramerWorker.h"
 #include "gateway/comms/windows/SerialCommsWindows.h"
-#include "shared/SerialTimeout.h"
-#include "shared/UnhandledSerialException.h"
+#include "../../../include/shared/exceptions/SerialTimeout.h"
+#include "../../../include/shared/exceptions/UnhandledSerialException.h"
 
 // void SerialFramerWorker::start() {
 //     std::cout << "Starting to run worker" << std::endl;

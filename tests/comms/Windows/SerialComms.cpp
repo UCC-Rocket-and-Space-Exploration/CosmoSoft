@@ -2,7 +2,7 @@
 
 #include "catch2/catch_test_macros.hpp"
 #include "gateway/comms/windows/SerialCommsWindows.h"
-#include "shared/SerialTimeout.h"
+#include "../../../include/shared/exceptions/SerialTimeout.h"
 #include  "include/SerialWriter.h"
 
 // TEST_CASE("Serial") {
