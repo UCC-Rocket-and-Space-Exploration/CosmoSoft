@@ -12,15 +12,17 @@ AltosFramer::~AltosFramer() = default;
 Frame AltosFramer::get_frame(const bool& running) {
     constexpr size_t packet_data_length = 0x22;
     constexpr size_t full_packet_length = packet_data_length + 1; //adding checksum byte
-
-    Frame frame = {};
     verify_sign(running);
+    Frame frame = {};
+
+    std::vector<uint8_t> full_frame_data = {'T', 'E', 'L', 'E', 'M'};
     uint8_t len_byte_buf[1] = {};
     std::cout << "skipping bytes: " << std::endl;
 
     do {
         m_comms->read(len_byte_buf, 1);
         std::cout << len_byte_buf[0] << std::endl;
+        full_frame_data.push_back(len_byte_buf[0]);
         if (len_byte_buf[0] == packet_length_value){
             break;
         }
@@ -28,15 +30,16 @@ Frame AltosFramer::get_frame(const bool& running) {
 
     uint8_t frame_data[full_packet_length] = {};
     m_comms->read(frame_data, full_packet_length);
+    full_frame_data.insert(full_frame_data.end(), frame_data, frame_data + full_packet_length);
 
-    std::cout << "actual bytes: " << std::endl;
-    for (auto a: frame_data) {
-        std::cout << a;
-    }
+    // std::cout << "actual bytes: " << std::endl;
+    // for (auto a: full_frame_data) {
+    //     std::cout << a;
+    // }
 
-    std::vector<uint8_t> v = {};
-    copy(frame_data, frame_data + full_packet_length, back_inserter(v));
-    frame.data = v;
+    // std::vector<uint8_t> v = {};
+    // copy(frame_data, frame_data + full_packet_length, back_inserter(v));
+    frame.data = full_frame_data;
     frame.format = AltosFrame;
     return frame;
 }

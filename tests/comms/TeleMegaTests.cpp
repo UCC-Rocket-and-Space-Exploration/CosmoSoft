@@ -5,55 +5,59 @@
 #include "include/SerialWriter.h"
 #include "services/telemetry/framers/CsvFramer.h"
 #include "services/telemetry/framers/AltosFramer.h"
-#include "../../include/shared/exceptions/SerialTimeout.h"
+#include "shared/exceptions/SerialTimeout.h"
 
+TEST_CASE("get frames with different formats") {
+    std::shared_ptr<SerialCommsWindows> writer_comm = std::make_shared<SerialCommsWindows>("COM2");
+    std::shared_ptr<SerialCommsWindows> reader_comm = std::make_shared<SerialCommsWindows>("COM1");
 
-// TEST_CASE("get frames with different formats") {
-//     std::shared_ptr<SerialCommsWindows> writer_comm = std::make_shared<SerialCommsWindows>("COM2");
-//     std::shared_ptr<SerialCommsWindows> reader_comm = std::make_shared<SerialCommsWindows>("COM1");
-//
-//     SerialWriter writer(writer_comm);
-//     AltosFramer framer(reader_comm);
-//
-//     std::cout << "initilized" << std::endl;
-//     //Arrange
-//     std::string packet_data = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii9";
-//     std::string full_packet = "TELEM ";
-//     std::string full_packet_without_w = "TELEM";
-//
-//     constexpr char length_byte[2] = {0x22, 0};
-//     full_packet.append(length_byte);
-//     full_packet_without_w.append(length_byte);
-//     full_packet_without_w += packet_data;
-//     full_packet += packet_data;
-//
-//     //Act
-//     char* content = const_cast<char*>(full_packet.c_str());
-//     char* content2 = const_cast<char*>(full_packet_without_w.c_str());
-//
-//     std::cout << "content: " << content << std::endl;
-//     writer.write(content);
-//     std::cout << "content2: " << content2 << std::endl;
-//     writer.write(content2);
-//
-//     Frame frame = framer.get_frame(true);
-//     Frame frame2 = framer.get_frame(true);
-//
-//     REQUIRE(frame.data.size() == packet_data.size());
-//     REQUIRE(frame2.data.size() == packet_data.size());
-//
-//     std::cout << std::endl;
-//
-//     //Assert
-//     for (int i = 0; i < packet_data.size(); i++) {
-//         std::cout << frame.data[i];
-//         REQUIRE(packet_data[i] == frame.data[i]);
-//         REQUIRE(packet_data[i] == frame2.data[i]);
-//     }
-//
-//     std::cout << "\n";
-//
-// }
+    SerialWriter writer(writer_comm);
+    AltosFramer framer(reader_comm);
+
+    std::cout << "initilized" << std::endl;
+    //Arrange
+    std::string packet_data = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii9";
+    std::string full_packet = "TELEM ";
+    std::string full_packet_without_w = "TELEM";
+
+    constexpr char length_byte[2] = {0x22, 0};
+    full_packet.append(length_byte);
+    full_packet_without_w.append(length_byte);
+    full_packet_without_w += packet_data;
+    full_packet += packet_data;
+
+    //Act
+    char* content = const_cast<char*>(full_packet.c_str());
+    char* content2 = const_cast<char*>(full_packet_without_w.c_str());
+
+    std::cout << "content: " << content << std::endl;
+    writer.write(content);
+    std::cout << "content2: " << content2 << std::endl;
+    writer.write(content2);
+
+    Frame frame = framer.get_frame(true);
+    Frame frame2 = framer.get_frame(true);
+
+    //Assert
+    REQUIRE(frame.data.size() == full_packet.size());
+    REQUIRE(frame2.data.size() == full_packet_without_w.size());
+
+    std::cout << std::endl;
+
+    for (int i = 0; i < full_packet.size(); i++) {
+        std::cout << frame.data[i];
+        REQUIRE(full_packet[i] == frame.data[i]);
+        // REQUIRE(packet_data[i] == frame2.data[i]);
+    }
+
+    std::cout << "\n";
+    for (int i = 0; i < full_packet_without_w.size(); i++) {
+        std::cout << frame2.data[i];
+        REQUIRE(full_packet_without_w[i] == frame2.data[i]);
+        // REQUIRE(packet_data[i] == frame2.data[i]);
+    }
+    std::cout << "\n";
+}
 
 
 // TEST_CASE("getting csv frame, while cancellation") {
