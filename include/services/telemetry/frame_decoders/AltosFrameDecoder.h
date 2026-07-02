@@ -12,5 +12,6 @@ protected:
     //packet starts right after length byte, ends after checksum bytes
     static bool checksum_valid(const Frame& frame);
     static void throw_if_checksum_not_valid(const Frame& frame);
+    static void get_field_bytes(const Frame& frame, uint8_t* bytes_buf, size_t packet_field_start_offset, size_t read_count);
 };
 #endif //COSMO_SOFT_IALTOSFRAMEDECODER_H

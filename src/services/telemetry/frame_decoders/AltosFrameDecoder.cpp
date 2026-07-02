@@ -32,3 +32,14 @@ bool AltosFrameDecoder::checksum_valid(const Frame& frame) {
     }
     return expected_checksum == actual_checksum;
 }
+
+void AltosFrameDecoder::get_field_bytes(const Frame& frame, uint8_t* bytes_buf, size_t packet_field_start_offset, size_t read_count) {
+    for (int i = 0; i < read_count; i++) {
+        size_t byte_pos = frame.packet_start_index + packet_field_start_offset*2 + i*2;
+        char byte_part[2] = {
+            static_cast<char>(frame.data[byte_pos]),
+            static_cast<char>(frame.data[byte_pos + 1])};
+        std::string byte_str(byte_part, 2);
+        bytes_buf[i] = ByteHelper::get_byte_from_str(byte_str);
+    }
+}
