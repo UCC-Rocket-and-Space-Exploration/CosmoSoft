@@ -7,6 +7,6 @@ class IFrameDecoder {
     //decoders must be stateless(view vault)
     public:
     virtual ~IFrameDecoder() = default;
-    virtual FlightSample decode(Frame frame) = 0;
+    virtual FlightSample decode(const Frame &frame) = 0;
 };
 #endif //COSMO_SOFT_IFRAMEDECODER_H

@@ -20,7 +20,7 @@ public:
 private:
     std::shared_ptr<IComms> m_comms;
     const std::string m_frames_separator = "TELEM";
-    const uint8_t packet_length_value = 0x22;
+    // const uint8_t packet_length_value = 0x22;
     void verify_sign(bool running) const;
 };
 #endif //COSMO_SOFT_TELEMEGAFRAMER_H

@@ -27,6 +27,10 @@ add_library(cosmo-backend ""
         services/telemetry/frame_decoders/TeleMiniV3FrameDecoder.cpp
         services/telemetry/frame_decoders/GpsFrameDecoder.cpp
         services/telemetry/frame_decoders/ConfigFrameDecoder.cpp
+        ../include/services/telemetry/frame_decoders/AltosFrameDecoder.h
+        services/telemetry/frame_decoders/AltosFrameDecoder.cpp
+        ../include/shared/ByteHelper.h
+        shared/ByteHelper.cpp
 )
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 

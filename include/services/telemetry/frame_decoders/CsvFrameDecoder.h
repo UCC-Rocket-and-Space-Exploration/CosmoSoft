@@ -7,7 +7,7 @@
 
 class CsvFrameDecoder : public IFrameDecoder {
 public:
-    FlightSample decode(Frame frame) override;
+    FlightSample decode(const Frame &frame) override;
 private:
     static bool isNumber(const std::string & value);
 

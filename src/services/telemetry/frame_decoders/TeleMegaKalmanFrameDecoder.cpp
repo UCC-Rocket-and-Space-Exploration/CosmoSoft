@@ -1,6 +1,6 @@
 #include "services/telemetry/frame_decoders/TeleMegaKalmanFrameDecoder.h"
 
-FlightSample TeleMegaKalmanFrameDecoder::decode(Frame frame) {
+FlightSample TeleMegaKalmanFrameDecoder::decode(const Frame &frame) {
     FlightSample sample{};
     return sample;
 }

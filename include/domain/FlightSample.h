@@ -15,7 +15,7 @@ struct AngularVelocity {
 struct Acceleration {
     double x = 0, y = 0, z = 0;
 };
-struct AngularOffsetCoordinates {
+struct AngularRotationCoordinates {
     double x = 0, y = 0, z = 0;
 };
 struct Coordinates {
@@ -28,12 +28,12 @@ struct FlightSample {
     AngularVelocity angularVelocity;
     Acceleration acceleration;
     Coordinates coordinates;
-    AngularOffsetCoordinates angularRotation;
+    AngularRotationCoordinates angularRotation;
     double altitude = 0; // TODO: mb should be going into Coordinates?
     double pressure = 0;
     double temperature = 0;
     double batteryVoltage = 0;
-    double distanceFromLaunchPoint = 0;
+    double distanceFromLaunchPoint = 0; //distance_m?
 };
 
 // struct FlightSample {

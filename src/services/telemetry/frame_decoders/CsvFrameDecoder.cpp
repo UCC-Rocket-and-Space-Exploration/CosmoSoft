@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-FlightSample CsvFrameDecoder::decode(Frame frame) {
+FlightSample CsvFrameDecoder::decode(const Frame &frame) {
     FlightSample f_sample;
     int field_pos = 0;
     std::string current_field;

@@ -9,6 +9,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(cosmo-tests ""
+        comms/ByteHelperTests.cpp
         #    MockFlightLinkTests.cpp
 #    SampleFileLoaderTests.cpp
 

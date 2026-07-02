@@ -16,24 +16,16 @@ TEST_CASE("get frames with different formats") {
 
     std::cout << "initilized" << std::endl;
     //Arrange
-    std::string packet_data = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii9";
-    std::string full_packet = "TELEM ";
-    std::string full_packet_without_w = "TELEM";
-
-    constexpr char length_byte[2] = {0x22, 0};
-    full_packet.append(length_byte);
-    full_packet_without_w.append(length_byte);
-    full_packet_without_w += packet_data;
-    full_packet += packet_data;
+    std::string packet_data = "224f01080b05765e00701f1a1bbeb8d7b60b070605140c000600000000000000003fa988";
+    std::string full_packet = "TELEM " + packet_data;
+    std::string full_packet_without_w = "TELEM" + packet_data;
 
     //Act
-    char* content = const_cast<char*>(full_packet.c_str());
-    char* content2 = const_cast<char*>(full_packet_without_w.c_str());
 
-    std::cout << "content: " << content << std::endl;
-    writer.write(content);
-    std::cout << "content2: " << content2 << std::endl;
-    writer.write(content2);
+    std::cout << "packet1: " << full_packet << std::endl;
+    writer.write(const_cast<char*>(full_packet.c_str()));
+    std::cout << "packet2: " << full_packet_without_w << std::endl;
+    writer.write(const_cast<char*>(full_packet_without_w.c_str()));
 
     Frame frame = framer.get_frame(true);
     Frame frame2 = framer.get_frame(true);
@@ -43,6 +35,8 @@ TEST_CASE("get frames with different formats") {
     REQUIRE(frame2.data.size() == full_packet_without_w.size());
 
     std::cout << std::endl;
+    REQUIRE(frame.packet_start_index == 8);
+    REQUIRE(frame2.packet_start_index == 7);
 
     for (int i = 0; i < full_packet.size(); i++) {
         std::cout << frame.data[i];
