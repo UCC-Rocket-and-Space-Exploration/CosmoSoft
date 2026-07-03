@@ -13,10 +13,9 @@
 #include "gateway/comms/windows/SerialCommsWindows.h"
 #include "gui/MainWindow.h"
 #include "gui/ThemeManager.h"
-// #include "SerialWriter.h"
 #include "services/RingBuffer.h"
 #include "services/SerialWriter.h"
-#include "../include/services/telemetry/framers/CsvFramer.h"
+#include "services/telemetry/framers/CsvFramer.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);

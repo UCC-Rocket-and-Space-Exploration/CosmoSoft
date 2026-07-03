@@ -5,7 +5,7 @@
 
 class TeleMegaImuFrameDecoder : public AltosFrameDecoder{
 public:
-    FlightSample decode(const Frame &frame) override;
+    [[nodiscard]] FlightSample decode(const Frame &frame) override;
 };
 
 #endif //COSMO_SOFT_TELEMEGAIMUFRAMEDECODER_H
