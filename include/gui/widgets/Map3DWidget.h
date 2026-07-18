@@ -1,10 +1,10 @@
 /**
  * @file Map3DWidget.h
- * @brief 3D globe map widget embedding CesiumJS via QWebEngineView.
+ * @brief Flight-map widget embedding Leaflet and Three.js via QWebEngineView.
  *
  * Map3DWidget provides the same public API as the former MapChartWidget so it
  * can be dropped into DashboardPage as a replacement.  Communication with the
- * CesiumJS viewer running inside the web engine is handled through a
+ * map renderer running inside the web engine is handled through a
  * QWebChannel bridge object (Map3DBridge).
  *
  * Supports:
@@ -19,6 +19,7 @@
 #define COSMO_SOFT_MAP3DWIDGET_H
 
 #include <QWidget>
+#include <QVariantMap>
 
 #include <memory>
 #include <vector>
@@ -32,12 +33,15 @@ class FlightPreviewCache;
 
 class QWebEngineView;
 class QWebChannel;
+class QLabel;
+class QPushButton;
+class QTimer;
 class Map3DBridge;
 class TileCacheInterceptor;
 
 /**
  * @class Map3DWidget
- * @brief QWebEngineView wrapper rendering a CesiumJS 3D globe with flight path.
+ * @brief QWebEngineView wrapper rendering 2D/3D flight paths.
  */
 class Map3DWidget : public QWidget {
     Q_OBJECT
@@ -91,20 +95,27 @@ private slots:
                               int totalSamples, int validGpsSamples,
                               double launchLat, double launchLon);
     void onMapReady();
+    void onMapLoadFinished(bool succeeded);
     void pushThemeToMap();
 
 private:
-    void runJs(const QString &js);
+    void loadMapPage();
+    void showMapLoadError(const QString &message);
     void sendPendingSession();
 
     QWebEngineView       *m_webView   = nullptr;
     QWebChannel          *m_channel   = nullptr;
     Map3DBridge          *m_bridge    = nullptr;
     TileCacheInterceptor *m_tileCache = nullptr;
+    QWidget              *m_loadError = nullptr;
+    QLabel               *m_loadErrorLabel = nullptr;
+    QPushButton          *m_retryButton = nullptr;
+    QTimer               *m_readyWatchdog = nullptr;
 
     std::shared_ptr<const FlightSession> m_session;
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
     bool m_mapReady   = false;
+    bool m_loadAttemptActive = false;
     bool m_sessionPending = false;
     bool m_followEnabled  = false;
 
@@ -129,11 +140,62 @@ signals:
                       int totalSamples, int validGpsSamples,
                       double launchLat, double launchLon);
 
-    /** @brief Emitted by JS when the CesiumJS viewer is fully initialized. */
+    /** @brief Emitted by JS when the embedded map is fully initialized. */
     void ready();
 
     /** @brief Emitted when the user toggles camera follow from the in-map button. */
     void followChanged(bool enabled);
+
+    /** @brief Sends a validated theme palette to the embedded map. */
+    void themeChanged(const QVariantMap &theme);
+
+    /** @brief Sends a complete replay-session payload to the embedded map. */
+    void sessionLoaded(const QVariantMap &session);
+
+    /** @brief Updates the replay trail and its exact current point. */
+    void trailLengthChanged(int trailLength, const QVariantMap &currentPoint);
+
+    /** @brief Appends one validated live point to the embedded map. */
+    void livePointAdded(const QVariantMap &point);
+
+    /** @brief Requests that the embedded map clear all flight data. */
+    void clearRequested();
+
+    /** @brief Requests that the embedded map fit the complete path. */
+    void fitRequested();
+
+    /** @brief Requests that the embedded map center on the current point. */
+    void centerRequested();
+
+    /** @brief Requests a camera-follow state change. */
+    void followRequested(bool enabled);
+
+public:
+    /** @brief Publishes a theme without evaluating JavaScript source code. */
+    void publishTheme(const QVariantMap &theme) { emit themeChanged(theme); }
+
+    /** @brief Publishes a replay session without evaluating JavaScript source code. */
+    void publishSession(const QVariantMap &session) { emit sessionLoaded(session); }
+
+    /** @brief Publishes a replay position without evaluating JavaScript source code. */
+    void publishTrailLength(int trailLength, const QVariantMap &currentPoint) {
+        emit trailLengthChanged(trailLength, currentPoint);
+    }
+
+    /** @brief Publishes a live point without evaluating JavaScript source code. */
+    void publishLivePoint(const QVariantMap &point) { emit livePointAdded(point); }
+
+    /** @brief Publishes a map-clear command. */
+    void requestClear() { emit clearRequested(); }
+
+    /** @brief Publishes a fit-path command. */
+    void requestFit() { emit fitRequested(); }
+
+    /** @brief Publishes a center-current command. */
+    void requestCenter() { emit centerRequested(); }
+
+    /** @brief Publishes a camera-follow command. */
+    void requestFollow(bool enabled) { emit followRequested(enabled); }
 
 public slots:
     /** @brief Called from JS to push updated position stats to C++. */

@@ -17,6 +17,8 @@
 
 #include <QWidget>
 
+#include <QString>
+
 class QCheckBox;
 class QCloseEvent;
 class QComboBox;
@@ -72,6 +74,9 @@ private:
 
     void loadFromSettings();
     void saveToSettings();
+
+    /** @brief Start a non-blocking validated skin import operation. */
+    void startSkinImport(const QString &archive_path, bool replace_existing);
 
     /** @brief Rebuilds the page-local stylesheet from the active theme palette. */
     void refreshStyleSheet();

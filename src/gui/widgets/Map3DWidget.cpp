@@ -3,18 +3,21 @@
 #include "services/preview/FlightPreviewCache.h"
 
 #include <QApplication>
+#include <QDesktopServices>
 #include <QDir>
 #include <QEvent>
 #include <QFile>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QKeyEvent>
-#include <QNetworkReply>
-#include <QNetworkRequest>
+#include <QLabel>
 #include <QNativeGestureEvent>
+#include <QPushButton>
+#include <QRegularExpression>
+#include <QSet>
 #include <QStandardPaths>
+#include <QTimer>
+#include <QUrl>
 #include <QVBoxLayout>
+#include <QVariantList>
 #include <QWebChannel>
 #include <QWebEngineProfile>
 #include <QWebEnginePage>
@@ -29,9 +32,38 @@
 
 namespace {
 
+constexpr double kMaxAbsMapAltitude = 10'000'000.0;
+constexpr double kMaxAbsMapTime = 1.0e15;
+constexpr double kMaxMapDistance = 1.0e12;
+constexpr int kMaxMapSampleCount = 10'000'000;
+
+bool isFiniteWithin(double value, double absoluteLimit) {
+    return std::isfinite(value) && std::abs(value) <= absoluteLimit;
+}
+
 bool isValidCoord(double lat, double lon) {
     return std::isfinite(lat) && std::isfinite(lon)
         && std::abs(lat) <= 90.0 && std::abs(lon) <= 180.0;
+}
+
+bool isValidMapPoint(const FlightSample &sample, double displayTime) {
+    return isValidCoord(sample.coordinates.latitude, sample.coordinates.longitude)
+        && isFiniteWithin(sample.altitude, kMaxAbsMapAltitude)
+        && isFiniteWithin(displayTime, kMaxAbsMapTime);
+}
+
+QVariantMap mapPointPayload(const FlightSample &sample, int sampleIndex, double displayTime) {
+    if (!isValidMapPoint(sample, displayTime)) {
+        return {};
+    }
+
+    return {
+        {QStringLiteral("idx"), sampleIndex},
+        {QStringLiteral("lat"), sample.coordinates.latitude},
+        {QStringLiteral("lon"), sample.coordinates.longitude},
+        {QStringLiteral("alt"), sample.altitude},
+        {QStringLiteral("ts"), displayTime},
+    };
 }
 
 /**
@@ -137,15 +169,45 @@ private:
     }
 };
 
+/** @brief Keeps external attribution links out of the privileged map page. */
+class LockedMapPage : public QWebEnginePage {
+public:
+    explicit LockedMapPage(QWebEngineProfile *profile, QObject *parent = nullptr)
+        : QWebEnginePage(profile, parent) {}
+
+protected:
+    bool acceptNavigationRequest(
+        const QUrl &url,
+        NavigationType type,
+        bool isMainFrame) override {
+        if (!isMainFrame) {
+            return true;
+        }
+
+        const QString scheme = url.scheme().toLower();
+        if (scheme == QStringLiteral("qrc")
+            || scheme == QStringLiteral("data")
+            || scheme == QStringLiteral("about")) {
+            return true;
+        }
+
+        if (type == QWebEnginePage::NavigationTypeLinkClicked
+            && scheme == QStringLiteral("https")) {
+            QDesktopServices::openUrl(url);
+        }
+        return false;
+    }
+};
+
 } // namespace
 
 /**
  * @class TileCacheInterceptor
- * @brief Intercepts outgoing tile requests to serve from local disk cache.
+ * @brief Restricts embedded-map network access to approved tile providers.
  *
- * Tiles fetched from the network are cached to disk on first access.
- * Subsequent loads serve the cached copy without hitting the network.
- * The cache directory lives under QStandardPaths::CacheLocation / "map_tiles".
+ * Qt WebEngine's HTTP cache stores successful responses on disk. This
+ * interceptor blocks all HTTP traffic and permits HTTPS only to an exact list
+ * of map/elevation tile hosts.
  */
 class TileCacheInterceptor : public QWebEngineUrlRequestInterceptor {
     Q_OBJECT
@@ -161,18 +223,90 @@ public:
 
     void interceptRequest(QWebEngineUrlRequestInfo &info) override {
         const QUrl url = info.requestUrl();
-        if (url.host().contains(QStringLiteral("basemaps.cartocdn.com"))
-            || url.host().contains(QStringLiteral("tile"))) {
-            info.setHttpHeader("Cache-Control", "max-age=604800");
+        const QString scheme = url.scheme().toLower();
+        if (scheme != QStringLiteral("http") && scheme != QStringLiteral("https")) {
+            // qrc:, data:, and blob: resources are local to the embedded map.
+            return;
         }
+
+        const int port = url.port(-1);
+        const bool approved = scheme == QStringLiteral("https")
+            && (port == -1 || port == 443)
+            && url.userInfo().isEmpty()
+            && url.query().isEmpty()
+            && url.fragment().isEmpty()
+            && isApprovedTileRequest(url, info.resourceType());
+        info.block(!approved);
     }
 
     /** @brief Returns the path to the tile cache directory. */
     [[nodiscard]] QString cacheDir() const { return m_cacheDir; }
 
 private:
+    static bool isApprovedTileRequest(
+        const QUrl &url,
+        QWebEngineUrlRequestInfo::ResourceType resourceType) {
+        const QString host = url.host().toLower();
+        const QString path = url.path(QUrl::FullyEncoded);
+
+        static const QSet<QString> cartoHosts = {
+            QStringLiteral("a.basemaps.cartocdn.com"),
+            QStringLiteral("b.basemaps.cartocdn.com"),
+            QStringLiteral("c.basemaps.cartocdn.com"),
+            QStringLiteral("d.basemaps.cartocdn.com"),
+        };
+        static const QSet<QString> topoHosts = {
+            QStringLiteral("a.tile.opentopomap.org"),
+            QStringLiteral("b.tile.opentopomap.org"),
+            QStringLiteral("c.tile.opentopomap.org"),
+        };
+        static const QRegularExpression cartoPath(
+            QStringLiteral(R"(^/(?:dark_all|voyager)/\d+/\d+/\d+(?:@2x)?\.png$)"));
+        static const QRegularExpression topoPath(
+            QStringLiteral(R"(^/\d+/\d+/\d+\.png$)"));
+        static const QRegularExpression arcGisPath(QStringLiteral(
+            R"(^/ArcGIS/rest/services/World_Imagery/MapServer/tile/\d+/\d+/\d+$)"));
+        static const QRegularExpression terrariumPath(QStringLiteral(
+            R"(^/elevation-tiles-prod/terrarium/\d+/\d+/\d+\.png$)"));
+
+        if (resourceType == QWebEngineUrlRequestInfo::ResourceTypeImage) {
+            return (cartoHosts.contains(host) && cartoPath.match(path).hasMatch())
+                || (topoHosts.contains(host) && topoPath.match(path).hasMatch())
+                || (host == QStringLiteral("server.arcgisonline.com")
+                    && arcGisPath.match(path).hasMatch())
+                || (host == QStringLiteral("s3.amazonaws.com")
+                    && terrariumPath.match(path).hasMatch());
+        }
+        return false;
+    }
+
     QString m_cacheDir;
 };
+
+namespace {
+
+struct MapProfileResources {
+    QWebEngineProfile *profile = nullptr;
+    TileCacheInterceptor *interceptor = nullptr;
+};
+
+MapProfileResources &sharedMapProfileResources() {
+    static MapProfileResources resources = []() {
+        auto *owner = QApplication::instance();
+        auto *profile = new QWebEngineProfile(QStringLiteral("CosmoSoftMap"), owner);
+        auto *interceptor = new TileCacheInterceptor(profile);
+        const QString cacheRoot = interceptor->cacheDir();
+        profile->setPersistentStoragePath(cacheRoot + QStringLiteral("/profile"));
+        profile->setCachePath(cacheRoot + QStringLiteral("/http"));
+        profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
+        profile->setHttpCacheMaximumSize(128 * 1024 * 1024);
+        profile->setUrlRequestInterceptor(interceptor);
+        return MapProfileResources{profile, interceptor};
+    }();
+    return resources;
+}
+
+} // namespace
 
 Map3DWidget::Map3DWidget(QWidget *parent)
     : QWidget(parent)
@@ -181,18 +315,13 @@ Map3DWidget::Map3DWidget(QWidget *parent)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    m_tileCache = new TileCacheInterceptor(this);
+    auto &mapProfile = sharedMapProfileResources();
+    m_tileCache = mapProfile.interceptor;
 
-    auto *profile = new QWebEngineProfile(this);
-    profile->setPersistentStoragePath(m_tileCache->cacheDir());
-    profile->setHttpCacheType(QWebEngineProfile::DiskHttpCache);
-    profile->setHttpCacheMaximumSize(256 * 1024 * 1024);
-    profile->setUrlRequestInterceptor(m_tileCache);
-
-    auto *page = new QWebEnginePage(profile, this);
+    auto *page = new LockedMapPage(mapProfile.profile, this);
     page->settings()->setAttribute(QWebEngineSettings::WebGLEnabled, true);
     page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
-    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, true);
+    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, false);
 
     m_bridge = new Map3DBridge(this);
     m_channel = new QWebChannel(this);
@@ -212,50 +341,125 @@ Map3DWidget::Map3DWidget(QWidget *parent)
     m_webView->setZoomFactor(1.0);
     layout->addWidget(m_webView);
 
-    QFile htmlFile(QStringLiteral(":/map/map3d.html"));
-    if (htmlFile.open(QIODevice::ReadOnly)) {
-        const QString html = QString::fromUtf8(htmlFile.readAll());
-        page->setHtml(html, QUrl(QStringLiteral("qrc:///map/")));
-    }
+    m_loadError = new QWidget(this);
+    auto *errorLayout = new QVBoxLayout(m_loadError);
+    errorLayout->setContentsMargins(24, 24, 24, 24);
+    errorLayout->addStretch();
+    m_loadErrorLabel = new QLabel(m_loadError);
+    m_loadErrorLabel->setAlignment(Qt::AlignCenter);
+    m_loadErrorLabel->setWordWrap(true);
+    m_loadErrorLabel->setAccessibleName(tr("Map loading error"));
+    errorLayout->addWidget(m_loadErrorLabel);
+    m_retryButton = new QPushButton(tr("Retry map"), m_loadError);
+    m_retryButton->setAccessibleName(tr("Retry loading the map"));
+    errorLayout->addWidget(m_retryButton, 0, Qt::AlignHCenter);
+    errorLayout->addStretch();
+    m_loadError->hide();
+    layout->addWidget(m_loadError);
+
+    m_readyWatchdog = new QTimer(this);
+    m_readyWatchdog->setSingleShot(true);
+    m_readyWatchdog->setInterval(5000);
+
+    connect(m_retryButton, &QPushButton::clicked,
+            this, &Map3DWidget::loadMapPage);
+    connect(m_readyWatchdog, &QTimer::timeout, this, [this]() {
+        showMapLoadError(tr("The map did not finish initializing. Try loading it again."));
+    });
+    connect(page, &QWebEnginePage::loadFinished,
+            this, &Map3DWidget::onMapLoadFinished);
 
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
             this, &Map3DWidget::pushThemeToMap);
+
+    loadMapPage();
 }
 
-void Map3DWidget::runJs(const QString &js) {
-    if (m_webView && m_webView->page()) {
-        m_webView->page()->runJavaScript(js);
+void Map3DWidget::loadMapPage() {
+    m_readyWatchdog->stop();
+    m_mapReady = false;
+    m_loadAttemptActive = true;
+    m_sessionPending = m_session && !m_session->samples.empty();
+    m_loadError->hide();
+    m_webView->show();
+
+    QFile htmlFile(QStringLiteral(":/map/map3d.html"));
+    if (!htmlFile.open(QIODevice::ReadOnly)) {
+        showMapLoadError(tr("The embedded map resource could not be opened."));
+        return;
+    }
+
+    const QString html = QString::fromUtf8(htmlFile.readAll());
+    m_webView->page()->setHtml(html, QUrl(QStringLiteral("qrc:///map/")));
+}
+
+void Map3DWidget::onMapLoadFinished(bool succeeded) {
+    // A timed-out or superseded attempt may still emit loadFinished.  Keep the
+    // retry placeholder authoritative until the user starts a fresh attempt.
+    if (!m_loadAttemptActive) {
+        return;
+    }
+    if (!succeeded) {
+        showMapLoadError(tr("The map failed to load. Check the application resources and try again."));
+        return;
+    }
+
+    m_loadError->hide();
+    m_webView->show();
+    if (!m_mapReady && m_loadAttemptActive) {
+        m_readyWatchdog->start();
     }
 }
 
+void Map3DWidget::showMapLoadError(const QString &message) {
+    m_readyWatchdog->stop();
+    m_mapReady = false;
+    m_loadAttemptActive = false;
+    m_webView->hide();
+    m_loadErrorLabel->setText(message);
+    m_loadError->show();
+}
+
 void Map3DWidget::onMapReady() {
+    m_readyWatchdog->stop();
+    if (!m_loadAttemptActive) {
+        return;
+    }
+    if (m_mapReady) {
+        return;
+    }
+    m_loadAttemptActive = false;
     m_mapReady = true;
     pushThemeToMap();
     if (m_sessionPending) {
         sendPendingSession();
     }
     if (!m_liveSamples.empty()) {
-        for (const auto &s : m_liveSamples) {
-            if (isValidCoord(s.coordinates.latitude, s.coordinates.longitude)) {
-                runJs(QStringLiteral("addPoint(%1,%2,%3,%4)")
-                    .arg(s.coordinates.latitude, 0, 'f', 9)
-                    .arg(s.coordinates.longitude, 0, 'f', 9)
-                    .arg(s.altitude, 0, 'f', 2)
-                    .arg(s.timestamp));
+        for (int i = 0; i < static_cast<int>(m_liveSamples.size()); ++i) {
+            const auto &sample = m_liveSamples[static_cast<std::size_t>(i)];
+            const QVariantMap point = mapPointPayload(
+                sample, i, static_cast<double>(sample.timestamp));
+            if (!point.isEmpty()) {
+                m_bridge->publishLivePoint(point);
             }
         }
     }
+    m_bridge->requestFollow(m_followEnabled);
 }
 
 void Map3DWidget::pushThemeToMap() {
     if (!m_mapReady) return;
     const auto &p = cosmo::ThemeManager::instance().palette();
-    const auto json = QStringLiteral(
-        R"({"bg_base":"%1","bg_dark":"%2","bg_panel":"%3","text_primary":"%4",)"
-        R"("text_dim":"%5","text_muted":"%6","border_subtle":"%7","accent_link":"%8"})")
-        .arg(p.bg_base, p.bg_dark, p.bg_panel, p.text_primary,
-             p.text_dim, p.text_muted, p.border_subtle, p.accent_link);
-    runJs(QStringLiteral("applyTheme(%1)").arg(json));
+    m_bridge->publishTheme({
+        {QStringLiteral("bg_base"), p.bg_base},
+        {QStringLiteral("bg_dark"), p.bg_dark},
+        {QStringLiteral("bg_panel"), p.bg_panel},
+        {QStringLiteral("text_primary"), p.text_primary},
+        {QStringLiteral("text_dim"), p.text_dim},
+        {QStringLiteral("text_muted"), p.text_muted},
+        {QStringLiteral("border_subtle"), p.border_subtle},
+        {QStringLiteral("accent_link"), p.accent_link},
+    });
 }
 
 void Map3DWidget::setReplaySession(
@@ -267,7 +471,7 @@ void Map3DWidget::setReplaySession(
 
     if (!m_session || m_session->samples.empty()) {
         if (m_mapReady) {
-            runJs(QStringLiteral("clearAll()"));
+            m_bridge->requestClear();
         }
         emit positionStatsChanged(0, 0, 0, -1, -1, 0, 0, 0, 0, 0);
         return;
@@ -284,24 +488,22 @@ void Map3DWidget::sendPendingSession() {
     m_sessionPending = false;
     if (!m_session || m_session->samples.empty()) return;
 
-    const auto appendPoint = [this](QJsonArray &array, int sampleIndex) {
+    const auto appendPoint = [this](QVariantList &array, int sampleIndex) {
         if (sampleIndex < 0 || sampleIndex >= static_cast<int>(m_session->samples.size())) {
             return;
         }
         const auto &s = m_session->samples[static_cast<std::size_t>(sampleIndex)];
-        QJsonObject obj;
-        obj[QStringLiteral("idx")] = sampleIndex;
-        obj[QStringLiteral("lat")] = s.coordinates.latitude;
-        obj[QStringLiteral("lon")] = s.coordinates.longitude;
-        obj[QStringLiteral("alt")] = s.altitude;
-        obj[QStringLiteral("ts")] = m_preview
+        const double displayTime = m_preview
             ? m_preview->displaySecondAt(sampleIndex)
             : static_cast<double>(s.timestamp) / 1000.0;
-        array.append(obj);
+        const QVariantMap point = mapPointPayload(s, sampleIndex, displayTime);
+        if (!point.isEmpty()) {
+            array.append(point);
+        }
     };
 
-    QJsonArray path2d;
-    QJsonArray path3d;
+    QVariantList path2d;
+    QVariantList path3d;
     if (m_preview) {
         for (const int sampleIndex : m_preview->map2DIndices()) {
             appendPoint(path2d, sampleIndex);
@@ -311,44 +513,30 @@ void Map3DWidget::sendPendingSession() {
         }
     } else {
         for (int i = 0; i < static_cast<int>(m_session->samples.size()); ++i) {
-            const auto &s = m_session->samples[static_cast<std::size_t>(i)];
-            if (isValidCoord(s.coordinates.latitude, s.coordinates.longitude)) {
-                appendPoint(path2d, i);
-                appendPoint(path3d, i);
-            }
+            appendPoint(path2d, i);
+            appendPoint(path3d, i);
         }
     }
 
-    QJsonObject payload;
-    payload[QStringLiteral("total")] = static_cast<int>(m_session->samples.size());
-    payload[QStringLiteral("path")] = path2d;
-    payload[QStringLiteral("path3d")] = path3d;
-    const QByteArray jsonBytes = QJsonDocument(payload).toJson(QJsonDocument::Compact);
-    const QString json = QString::fromUtf8(jsonBytes);
-
-    runJs(QStringLiteral("loadSession(%1)").arg(json));
+    m_bridge->publishSession({
+        {QStringLiteral("total"), static_cast<int>(m_session->samples.size())},
+        {QStringLiteral("path"), path2d},
+        {QStringLiteral("path3d"), path3d},
+    });
 }
 
 void Map3DWidget::setReplayTrailLength(int trailLength) {
     if (!m_session || m_session->samples.empty() || !m_mapReady) return;
-    QJsonObject current;
+    QVariantMap current;
     const int idx = std::clamp(trailLength - 1, 0, static_cast<int>(m_session->samples.size()) - 1);
     if (trailLength > 0 && (!m_preview || m_preview->gpsSampleValid(idx))) {
         const auto &s = m_session->samples[static_cast<std::size_t>(idx)];
-        if (isValidCoord(s.coordinates.latitude, s.coordinates.longitude)) {
-            current[QStringLiteral("idx")] = idx;
-            current[QStringLiteral("lat")] = s.coordinates.latitude;
-            current[QStringLiteral("lon")] = s.coordinates.longitude;
-            current[QStringLiteral("alt")] = s.altitude;
-            current[QStringLiteral("ts")] = m_preview
-                ? m_preview->displaySecondAt(idx)
-                : static_cast<double>(s.timestamp) / 1000.0;
-        }
+        const double displayTime = m_preview
+            ? m_preview->displaySecondAt(idx)
+            : static_cast<double>(s.timestamp) / 1000.0;
+        current = mapPointPayload(s, idx, displayTime);
     }
-    const QString currentJson = current.isEmpty()
-        ? QStringLiteral("null")
-        : QString::fromUtf8(QJsonDocument(current).toJson(QJsonDocument::Compact));
-    runJs(QStringLiteral("setTrailLength(%1,%2)").arg(trailLength).arg(currentJson));
+    m_bridge->publishTrailLength(trailLength, current);
 }
 
 void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
@@ -358,12 +546,11 @@ void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
 
     if (!m_mapReady) return;
 
-    if (isValidCoord(sample.coordinates.latitude, sample.coordinates.longitude)) {
-        runJs(QStringLiteral("addPoint(%1,%2,%3,%4)")
-            .arg(sample.coordinates.latitude, 0, 'f', 9)
-            .arg(sample.coordinates.longitude, 0, 'f', 9)
-            .arg(sample.altitude, 0, 'f', 2)
-            .arg(sample.timestamp));
+    const QVariantMap point = mapPointPayload(
+        sample, static_cast<int>(m_liveSamples.size()) - 1,
+        static_cast<double>(sample.timestamp));
+    if (!point.isEmpty()) {
+        m_bridge->publishLivePoint(point);
     }
 }
 
@@ -374,27 +561,27 @@ void Map3DWidget::onSessionReset() {
     m_sessionPending = false;
 
     if (m_mapReady) {
-        runJs(QStringLiteral("clearAll()"));
+        m_bridge->requestClear();
     }
     emit positionStatsChanged(0, 0, 0, -1, -1, 0, 0, 0, 0, 0);
 }
 
 void Map3DWidget::fitPath() {
     if (m_mapReady) {
-        runJs(QStringLiteral("fitCamera()"));
+        m_bridge->requestFit();
     }
 }
 
 void Map3DWidget::centerOnCurrent() {
     if (m_mapReady) {
-        runJs(QStringLiteral("centerOnCurrent()"));
+        m_bridge->requestCenter();
     }
 }
 
 void Map3DWidget::setCameraFollow(bool enabled) {
     m_followEnabled = enabled;
     if (m_mapReady) {
-        runJs(QStringLiteral("followRocket(%1)").arg(enabled ? "true" : "false"));
+        m_bridge->requestFollow(enabled);
     }
 }
 
@@ -404,6 +591,20 @@ void Map3DWidget::onBridgeStatsUpdated(double lat, double lon, double alt,
                                         int totalSamples, int validGpsSamples,
                                         double launchLat, double launchLon)
 {
+    const bool countsValid = totalSamples >= 0 && totalSamples <= kMaxMapSampleCount
+        && validGpsSamples >= 0 && validGpsSamples <= totalSamples;
+    const bool statsValid = isValidCoord(lat, lon)
+        && isValidCoord(launchLat, launchLon)
+        && isFiniteWithin(alt, kMaxAbsMapAltitude)
+        && std::isfinite(distFromLaunch) && distFromLaunch >= -1.0
+        && distFromLaunch <= kMaxMapDistance
+        && std::isfinite(bearing) && bearing >= -1.0 && bearing <= 360.0
+        && std::isfinite(pathLength) && pathLength >= 0.0
+        && pathLength <= kMaxMapDistance
+        && countsValid;
+    if (!statsValid) {
+        return;
+    }
     emit positionStatsChanged(lat, lon, alt, distFromLaunch, bearing,
                               pathLength, totalSamples, validGpsSamples,
                               launchLat, launchLon);

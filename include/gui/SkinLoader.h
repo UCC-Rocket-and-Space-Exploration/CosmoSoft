@@ -19,6 +19,30 @@
 
 namespace cosmo {
 
+/**
+ * @brief Outcome of a validated custom-skin archive import.
+ */
+enum class SkinImportStatus {
+    Imported,
+    AlreadyExists,
+    Failed,
+};
+
+/**
+ * @brief Structured result returned by the detailed skin importer.
+ */
+struct SkinImportResult {
+    SkinImportStatus status = SkinImportStatus::Failed;
+    std::optional<CosmoTheme> theme;
+    QString error_message;
+    QString target_path;
+
+    /** @return true when a validated skin was installed successfully. */
+    [[nodiscard]] bool succeeded() const {
+        return status == SkinImportStatus::Imported && theme.has_value();
+    }
+};
+
 class SkinLoader {
 public:
     /**
@@ -40,6 +64,22 @@ public:
                                                    const QString &dest_dir);
 
     /**
+     * @brief Validate, stage, and install a .cosmo archive with rollback.
+     *
+     * The complete archive is validated before the destination is changed.
+     * Existing skins are never replaced unless @p replace_existing is true.
+     *
+     * @param archive_path Path to the .cosmo or .zip file.
+     * @param dest_dir Application directory containing imported skins.
+     * @param replace_existing Whether an existing skin with the same ID may be replaced.
+     * @return Detailed import status, target path, theme, or failure message.
+     */
+    static SkinImportResult importArchiveDetailed(
+        const QString &archive_path,
+        const QString &dest_dir,
+        bool replace_existing = false);
+
+    /**
      * @brief Load a previously-imported custom skin from its extracted directory.
      * @param skin_dir Directory containing theme.json and textures/.
      * @return Parsed CosmoTheme or nullopt on failure.
@@ -55,7 +95,9 @@ public:
 
 private:
     static std::optional<CosmoTheme> parseThemeJson(const QByteArray &json,
-                                                    const QString &base_path);
+                                                    const QString &base_path,
+                                                    QString *error_message = nullptr,
+                                                    bool enforce_contrast = true);
 };
 
 } // namespace cosmo

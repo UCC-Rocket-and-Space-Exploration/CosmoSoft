@@ -13,18 +13,23 @@
 #include <QFont>
 #include <QFormLayout>
 #include <QFrame>
+#include <QFutureWatcher>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSettings>
 #include <QShowEvent>
+#include <QSignalBlocker>
 #include <QStackedWidget>
 #include <QSysInfo>
 #include <QVBoxLayout>
+
+#include <QtConcurrent/QtConcurrentRun>
 
 using namespace Qt::StringLiterals;
 
@@ -546,12 +551,72 @@ void SettingsPage::onImportSkin() {
         u"CosmoSoft Skins (*.cosmo);;Zip Archives (*.zip)"_s);
     if (path.isEmpty()) return;
 
-    const auto dest = cosmo::ThemeManager::skinsDirectory();
-    auto theme = cosmo::SkinLoader::importArchive(path, dest);
-    if (!theme) return;
+    startSkinImport(path, false);
+}
 
-    m_skinCombo->addItem(theme->name, theme->id);
-    m_skinCombo->setCurrentIndex(m_skinCombo->count() - 1);
+void SettingsPage::startSkinImport(const QString &archive_path, bool replace_existing) {
+    if (m_importSkinBtn) {
+        m_importSkinBtn->setEnabled(false);
+        m_importSkinBtn->setText(u"Importing…"_s);
+    }
+
+    const auto dest = cosmo::ThemeManager::skinsDirectory();
+    auto *watcher = new QFutureWatcher<cosmo::SkinImportResult>(this);
+    connect(watcher, &QFutureWatcher<cosmo::SkinImportResult>::finished,
+            this, [this, watcher, archive_path]() {
+        const cosmo::SkinImportResult result = watcher->result();
+        watcher->deleteLater();
+
+        if (m_importSkinBtn) {
+            m_importSkinBtn->setEnabled(true);
+            m_importSkinBtn->setText(u"Import .cosmo skin…"_s);
+        }
+
+        if (result.status == cosmo::SkinImportStatus::AlreadyExists) {
+            QMessageBox prompt(QMessageBox::Question,
+                               u"Replace installed skin?"_s,
+                               result.error_message,
+                               QMessageBox::Cancel,
+                               this);
+            auto *replace_button = prompt.addButton(u"Replace"_s, QMessageBox::AcceptRole);
+            prompt.setDefaultButton(QMessageBox::Cancel);
+            prompt.exec();
+            if (prompt.clickedButton() == replace_button) {
+                startSkinImport(archive_path, true);
+            }
+            return;
+        }
+
+        if (!result.succeeded()) {
+            QMessageBox::warning(
+                this,
+                u"Could not import skin"_s,
+                result.error_message.isEmpty()
+                    ? u"The selected archive is not a valid CosmoSoft skin."_s
+                    : result.error_message);
+            return;
+        }
+
+        const auto &theme = *result.theme;
+        int skin_index = m_skinCombo->findData(theme.id);
+        {
+            const QSignalBlocker blocker(m_skinCombo);
+            if (skin_index < 0) {
+                m_skinCombo->addItem(theme.name, theme.id);
+                skin_index = m_skinCombo->count() - 1;
+            } else {
+                m_skinCombo->setItemText(skin_index, theme.name);
+            }
+            m_skinCombo->setCurrentIndex(skin_index);
+        }
+        cosmo::ThemeManager::instance().setActiveSkin(theme);
+    });
+
+    watcher->setFuture(QtConcurrent::run(
+        [archive_path, dest, replace_existing]() {
+            return cosmo::SkinLoader::importArchiveDetailed(
+                archive_path, dest, replace_existing);
+        }));
 }
 
 // ── Persistence ──────────────────────────────────────────────────────────────
