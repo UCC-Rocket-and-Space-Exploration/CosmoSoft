@@ -10,29 +10,34 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QKeyEvent>
-#include <QNetworkReply>
-#include <QNetworkRequest>
+#include <QLabel>
 #include <QNativeGestureEvent>
 #include <QStandardPaths>
 #include <QVBoxLayout>
+
+#if __has_include(<QWebChannel>) && __has_include(<QWebEngineProfile>) && __has_include(<QWebEnginePage>) && __has_include(<QWebEngineSettings>) && __has_include(<QWebEngineUrlRequestInterceptor>) && __has_include(<QWebEngineView>)
+#define COSMO_HAS_WEBENGINE 1
 #include <QWebChannel>
 #include <QWebEngineProfile>
 #include <QWebEnginePage>
 #include <QWebEngineSettings>
 #include <QWebEngineUrlRequestInterceptor>
 #include <QWebEngineView>
+#else
+#define COSMO_HAS_WEBENGINE 0
+#endif
 #include <QWidget>
 
 #include <algorithm>
 #include <cmath>
 #include <utility>
 
-namespace {
-
-bool isValidCoord(double lat, double lon) {
+static bool isValidCoord(double lat, double lon) {
     return std::isfinite(lat) && std::isfinite(lon)
         && std::abs(lat) <= 90.0 && std::abs(lon) <= 180.0;
 }
+
+#if COSMO_HAS_WEBENGINE
 
 /**
  * @class LockedMapWebView
@@ -136,8 +141,6 @@ private:
         }
     }
 };
-
-} // namespace
 
 /**
  * @class TileCacheInterceptor
@@ -408,5 +411,87 @@ void Map3DWidget::onBridgeStatsUpdated(double lat, double lon, double alt,
                               pathLength, totalSamples, validGpsSamples,
                               launchLat, launchLon);
 }
+
+#else
+
+Map3DWidget::Map3DWidget(QWidget *parent)
+    : QWidget(parent)
+{
+    auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+
+    auto *label = new QLabel(QStringLiteral("3D map unavailable in this build"), this);
+    label->setAlignment(Qt::AlignCenter);
+    layout->addWidget(label);
+
+    const auto applyFallbackTheme = [this, label]() {
+        label->setStyleSheet(QStringLiteral(
+            "QLabel { background-color: %1; color: %2; border: 1px solid %3; }")
+            .arg(cosmo::ThemeManager::instance().palette().bg_panel)
+            .arg(cosmo::ThemeManager::instance().palette().text_muted)
+            .arg(cosmo::ThemeManager::instance().palette().border_subtle));
+    };
+    applyFallbackTheme();
+    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+            this, applyFallbackTheme);
+}
+
+void Map3DWidget::runJs(const QString &) {}
+
+void Map3DWidget::onMapReady() {}
+
+void Map3DWidget::pushThemeToMap() {}
+
+void Map3DWidget::setReplaySession(
+    std::shared_ptr<const FlightSession> session,
+    std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview) {
+    m_session = std::move(session);
+    m_preview = std::move(preview);
+    m_liveSamples.clear();
+
+    if (!m_session || m_session->samples.empty()) {
+        emit positionStatsChanged(0, 0, 0, -1, -1, 0, 0, 0, 0, 0);
+    }
+}
+
+void Map3DWidget::sendPendingSession() {}
+
+void Map3DWidget::setReplayTrailLength(int) {}
+
+void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
+    if (!m_session) {
+        m_liveSamples.push_back(sample);
+    }
+}
+
+void Map3DWidget::onSessionReset() {
+    m_session.reset();
+    m_preview.reset();
+    m_liveSamples.clear();
+    m_sessionPending = false;
+    emit positionStatsChanged(0, 0, 0, -1, -1, 0, 0, 0, 0, 0);
+}
+
+void Map3DWidget::fitPath() {}
+
+void Map3DWidget::centerOnCurrent() {}
+
+void Map3DWidget::setCameraFollow(bool enabled) {
+    m_followEnabled = enabled;
+}
+
+void Map3DWidget::onBridgeStatsUpdated(double lat, double lon, double alt,
+                                       double distFromLaunch, double bearing,
+                                       double pathLength,
+                                       int totalSamples, int validGpsSamples,
+                                       double launchLat, double launchLon)
+{
+    emit positionStatsChanged(lat, lon, alt, distFromLaunch, bearing,
+                              pathLength, totalSamples, validGpsSamples,
+                              launchLat, launchLon);
+}
+
+#endif
 
 #include "Map3DWidget.moc"

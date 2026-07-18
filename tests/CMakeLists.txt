@@ -22,6 +22,7 @@ target_include_directories(cosmo-tests PRIVATE
 target_link_libraries(cosmo-tests PRIVATE
     Catch2::Catch2WithMain
     import
+    cosmo-backend
 )
 
 target_compile_definitions(cosmo-tests PRIVATE

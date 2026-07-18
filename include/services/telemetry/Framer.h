@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "domain/Frame.h"
+
 #define Kilobyte 1024
 
 //TODO

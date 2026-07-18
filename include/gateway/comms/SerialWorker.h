@@ -4,13 +4,11 @@
 #include <functional>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
-#include "IBuffer.h"
-#include "services/RingBuffer.h"
-#include "../../domain/FlightSample.h"
-#include "../../gateway/comms/IComms.h"
 #include "gateway/comms/ISerialPortScanner.h"
+#include "gateway/comms/IComms.h"
 
 //To avoid blocking the UI when fetching serial data, we need to use Qt's signals and slots technique for async data fetching
 //TODO complete refactor; make async if possible, include error handling & logging, parsing, etc.
@@ -20,8 +18,12 @@ class SerialWorker {
     using ErrorCallback = std::function<void(const std::string&)>;
 
 public:
-
-    explicit SerialWorker(IComms* comms, IBuffer* buffer, ErrorCallback onError) : m_connectedPort(comms), m_buffer(buffer), m_onError(std::move(onError)), m_running(false) {};
+    explicit SerialWorker(IComms* comms, DataCallback onData, ErrorCallback onError)
+        : m_connectedPort(comms),
+          m_scanner(nullptr),
+          m_onData(std::move(onData)),
+          m_onError(std::move(onError)),
+          m_running(false) {}
     ~SerialWorker();
 
     bool start();
@@ -29,7 +31,6 @@ public:
 
 private:
     void run() const;
-    IBuffer* m_buffer;
     std::thread m_workerThread;
     std::atomic<bool> m_running;
 
