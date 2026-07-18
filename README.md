@@ -17,7 +17,16 @@ The app builds and runs with:
 
 **`.telem` files:** Lines are hex-decoded and fed through the telemetry **Framer** / **Parser**. Those layers are still **stubs**, so `.telem` replay will not produce samples until binary framing and decoding are implemented.
 
-**Live serial:** Connect from the connection bar; bytes flow through `ParserWorker` → `Framer` → `Parser`. Until parsing is implemented, decoded live samples may not appear in the UI.
+**Live serial:** Connect from the connection bar; the current newline-delimited
+CSV stream is decoded off the UI thread by `LineTelemetryDecodeWorker` and
+delivered to the model in bounded batches. Complete valid rows appear in the
+dashboard and Live Telemetry page. The binary `Framer` / `Parser` path remains
+reserved for the future hardware protocol.
+
+Serial discovery has platform-matched implementations: Linux device nodes
+(`ttyUSB`, `ttyACM`, `ttyS`), macOS callout/TTY nodes (`cu.*`, `tty.*`), and
+Windows registry COM ports. Windows serial changes require validation in
+Windows CI and on representative hardware in addition to macOS/Linux testing.
 
 ## Theming
 

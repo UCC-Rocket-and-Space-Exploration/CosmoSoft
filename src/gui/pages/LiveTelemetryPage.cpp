@@ -2,6 +2,7 @@
 
 #include "gui/FlightDataModel.h"
 #include "gui/LayoutHelpers.h"
+#include "gui/TelemetryMath.h"
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
 #include "gui/widgets/Map3DWidget.h"
@@ -55,8 +56,10 @@ LiveTelemetryPage::LiveTelemetryPage(FlightDataModel *model, QWidget *parent)
     refreshStyleSheet();
 
     if (m_model) {
-        connect(m_model, &FlightDataModel::sampleUpdated, this, &LiveTelemetryPage::onSampleUpdated);
-        connect(m_model, &FlightDataModel::sampleUpdated, m_mapWidget, &Map3DWidget::onSampleUpdated);
+        connect(m_model, &FlightDataModel::liveSamplesReceived,
+                this, &LiveTelemetryPage::onLiveSamplesReceived);
+        connect(m_model, &FlightDataModel::liveSamplesReceived,
+                m_mapWidget, &Map3DWidget::onLiveSamplesReceived);
         connect(m_model, &FlightDataModel::sessionReset, this, &LiveTelemetryPage::resetLiveState);
         connect(m_model, &FlightDataModel::sessionReset, m_mapWidget, &Map3DWidget::onSessionReset);
         connect(m_model, &FlightDataModel::bytesReceivedChanged,
@@ -249,17 +252,28 @@ void LiveTelemetryPage::refreshStyleSheet() {
     }
 }
 
-void LiveTelemetryPage::onSampleUpdated(const FlightSample &sample) {
-    double velocity = std::numeric_limits<double>::quiet_NaN();
-    if (m_havePreviousSample) {
-        const double dt = static_cast<double>(sample.timestamp - m_previousSample.timestamp) / 1000.0;
-        if (dt > 0.0) {
-            velocity = (sample.altitude - m_previousSample.altitude) / dt;
-        }
+void LiveTelemetryPage::onLiveSamplesReceived(const QVector<FlightSample> &samples) {
+    if (samples.isEmpty()) {
+        return;
     }
-    m_previousSample = sample;
-    m_havePreviousSample = true;
-    ++m_sampleCount;
+
+    double velocity = std::numeric_limits<double>::quiet_NaN();
+    for (const auto &sample : samples) {
+        velocity = std::numeric_limits<double>::quiet_NaN();
+        if (m_havePreviousSample) {
+            if (const auto calculated = cosmo::gui::verticalVelocityMetersPerSecond(
+                    m_previousSample, sample)) {
+                velocity = *calculated;
+            }
+        }
+        m_previousSample = sample;
+        m_havePreviousSample = true;
+    }
+
+    const FlightSample &sample = samples.constLast();
+    const qsizetype availableCount = static_cast<qsizetype>(
+        std::numeric_limits<int>::max() - m_sampleCount);
+    m_sampleCount += static_cast<int>(std::min(samples.size(), availableCount));
 
     if (m_metricTiles[0]) m_metricTiles[0]->setValue(formatMetric(sample.altitude, u"m"_s, 1));
     if (m_metricTiles[1]) m_metricTiles[1]->setValue(formatSignedMetric(velocity, u"m/s"_s, 1));

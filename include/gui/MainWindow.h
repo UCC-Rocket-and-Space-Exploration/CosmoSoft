@@ -4,8 +4,8 @@
  *
  * MainWindow owns the mission toolbar, connection bar, telemetry strip, and the
  * page stack (DashboardPage).  It also owns the
- * live-telemetry pipeline (SerialWorker → BlockingQueue → line CSV decoder →
- * FlightDataModel) and the replay pipeline (FlightReplayController).
+ * live-telemetry pipeline (SerialWorker → bounded decoder worker → batched
+ * FlightDataModel updates) and the replay pipeline (FlightReplayController).
  *
  * Responsibilities:
  *  - Serial port management: scan, connect, disconnect.
@@ -22,21 +22,22 @@
 #include <QMainWindow>
 #include <QString>
 
+#include <atomic>
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include "domain/FlightSession.h"
-#include "services/BlockingQueue.h"
 #include "services/preview/FlightPreviewCache.h"
-#include "services/telemetry/LineTelemetryDecoder.h"
 
 class QAction;
 class QComboBox;
 class QGraphicsDropShadowEffect;
 class QLabel;
 class QMenu;
+class QProgressDialog;
 class QPushButton;
 class QStackedWidget;
 class QTimer;
@@ -46,9 +47,13 @@ class SettingsPage;
 class FlightDataModel;
 class FlightReplayController;
 class FlightLogManager;
-class ParserWorker;
 class SerialWorker;
 class IComms;
+
+namespace cosmo::telemetry {
+class LineTelemetryBatchMailbox;
+class LineTelemetryDecodeWorker;
+}
 
 /** @brief Top-level application window. */
 class MainWindow : public QMainWindow {
@@ -84,7 +89,6 @@ private slots:
     void onConnectLiveDevice(const QString &portName, int baud);
     void onDisconnectLiveDevice();
     void onStartLiveDemo();
-    void drainLiveTelemetryQueue();
 
 private:
     void setupActions();
@@ -96,6 +100,7 @@ private:
     void setupPages();
     void openSettingsWindow();
     void applyReplayTelemetrySample(int trailLength);
+    void cancelFlightLogLoad(bool showStatus);
 
     /**
      * @brief Load a flight log asynchronously, showing a progress dialog.
@@ -124,7 +129,7 @@ private:
     void startSerial(const QString &portName, int baud);
     void stopSerial();
     void prepareLiveSession(const QString &context);
-    void clearRawQueue();
+    void drainLiveTelemetryBatches(std::uint64_t generation);
 
     // ── Menu bar ─────────────────────────────────────────────────────────────
     QMenu *m_recentFilesMenu = nullptr;
@@ -161,14 +166,23 @@ private:
     std::shared_ptr<const FlightSession> m_loadedSession;
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_loadedPreview;
 
+    // Each asynchronous operation has an independent generation. Completion
+    // handlers accept results only from the most recently started generation.
+    std::uint64_t m_loadGeneration = 0;
+    std::uint64_t m_exportGeneration = 0;
+    std::uint64_t m_scanGeneration = 0;
+    std::shared_ptr<std::atomic_bool> m_loadCancelFlag;
+    std::shared_ptr<std::atomic_bool> m_scanCancelFlag;
+    QProgressDialog *m_loadProgress = nullptr;
+    bool m_exportInProgress = false;
+
     // ── Live-telemetry pipeline ───────────────────────────────────────────────
-    BlockingQueue<std::vector<uint8_t>> m_rawQueue{512};
-    std::unique_ptr<ParserWorker>  m_parserWorker;
-    std::unique_ptr<SerialWorker>  m_serialWorker;
-    std::unique_ptr<IComms>        m_comms;
-    cosmo::telemetry::LineTelemetryDecoder m_lineDecoder;
+    std::unique_ptr<cosmo::telemetry::LineTelemetryBatchMailbox> m_liveBatchMailbox;
+    std::unique_ptr<cosmo::telemetry::LineTelemetryDecodeWorker> m_lineDecodeWorker;
+    std::unique_ptr<SerialWorker> m_serialWorker;
+    std::unique_ptr<IComms> m_comms;
+    std::uint64_t m_liveGeneration = 0;
     QString m_serialPortSummary;
-    std::size_t m_lastMalformedLineCount = 0;
 
     // ── Timers ────────────────────────────────────────────────────────────────
     QTimer *m_replayTelemetryCoalesceTimer = nullptr;

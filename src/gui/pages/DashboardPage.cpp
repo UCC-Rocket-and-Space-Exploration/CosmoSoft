@@ -14,7 +14,7 @@
  * them; the splitter state is persisted in QSettings.
  *
  * Two data sources are supported:
- *  - Live mode  — samples arrive via onSampleUpdated() from the serial worker.
+ *  - Live mode  — samples arrive in batches from the serial decoder worker.
  *    They are stored in m_liveSamples (bounded to kMaxLiveBufferSamples) and
  *    chart redraws are coalesced by m_liveChartCoalesceTimer (50 ms).
  *  - Replay mode — a FlightSession is set via setReplaySession(); the trail
@@ -500,7 +500,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
     };
     if (m_model) {
-        connect(m_model, &FlightDataModel::sampleUpdated, this, showDataView);
+        connect(m_model, &FlightDataModel::displayedSampleChanged, this, showDataView);
     }
 
     chartColumn->addWidget(chartFrame, 1);
@@ -541,10 +541,13 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     rootLayout->addWidget(m_replayBar);
 
     if (m_model) {
-        connect(m_model, &FlightDataModel::sampleUpdated, this, &DashboardPage::onSampleUpdated);
+        connect(m_model, &FlightDataModel::displayedSampleChanged,
+                this, &DashboardPage::onDisplayedSampleChanged);
+        connect(m_model, &FlightDataModel::liveSamplesReceived,
+                this, &DashboardPage::onLiveSamplesReceived);
         connect(m_model, &FlightDataModel::sessionReset,  this, &DashboardPage::onSessionReset);
-        connect(m_model, &FlightDataModel::sampleUpdated,
-                m_mapWidget, &Map3DWidget::onSampleUpdated);
+        connect(m_model, &FlightDataModel::liveSamplesReceived,
+                m_mapWidget, &Map3DWidget::onLiveSamplesReceived);
         connect(m_model, &FlightDataModel::sessionReset,
                 m_mapWidget, &Map3DWidget::onSessionReset);
     }
@@ -1440,7 +1443,7 @@ void DashboardPage::buildChartFromSampleIndices(
         const bool en = m_metricEnabled[static_cast<std::size_t>(mi)];
         series->setVisible(en);
         if (en) {
-            applySeriesPointDisplay(series, pts.size(), nEn);
+            applySeriesPointDisplay(series, series->count(), nEn);
             series->setName(metricTitle(mi));
         }
     }
@@ -1543,18 +1546,25 @@ void DashboardPage::zoomChartAxesAtCenter(bool zoomIn) {
     m_preserveChartAxes = true;
 }
 
-void DashboardPage::onSampleUpdated(const FlightSample &sample) {
+void DashboardPage::onDisplayedSampleChanged(const FlightSample &sample) {
     if (m_tracesPanel) m_tracesPanel->updateLiveValues(sample);
+}
 
+void DashboardPage::onLiveSamplesReceived(const QVector<FlightSample> &samples) {
     if (!m_model || m_model->replayMode()) {
         return;
     }
-    m_liveSamples.push_back(sample);
-    if (static_cast<int>(m_liveSamples.size()) > kMaxLiveBufferSamples) {
+
+    for (const auto &sample : samples) {
+        m_liveSamples.push_back(sample);
+    }
+    while (static_cast<int>(m_liveSamples.size()) > kMaxLiveBufferSamples) {
         m_liveSamples.pop_front();
     }
     if (m_replayBar) m_replayBar->setLiveSampleCount(static_cast<int>(m_liveSamples.size()));
-    scheduleLiveChartRebuild();
+    if (!samples.isEmpty()) {
+        scheduleLiveChartRebuild();
+    }
 }
 
 void DashboardPage::showChartLoadingIndicator() {

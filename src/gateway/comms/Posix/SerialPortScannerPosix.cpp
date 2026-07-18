@@ -1,45 +1,42 @@
 #include "gateway/comms/Posix/SerialPortScannerPosix.h"
 
 #include <fcntl.h>
-#include <glob.h>
+#include <filesystem>
 #include <string>
+#include <string_view>
+#include <system_error>
+#include <utility>
 #include <unistd.h>
 #include <vector>
 
+#include "gateway/comms/detail/SerialPortScannerUtils.h"
+
 std::vector<std::string> SerialPortScannerPosix::enumeratePorts() {
-    const char* patterns[] = {
-        "/dev/ttyUSB*",   // Linux USB-to-serial
-        "/dev/ttyACM*",   // Linux CDC-ACM devices (e.g. Arduino)
-        "/dev/ttyS*",     // Linux legacy serial
-        //"/dev/pts/*",   //internal loopback virtual ports, for testing only
-    };
+    constexpr std::string_view DEVICE_DIRECTORY = "/dev";
+    std::vector<std::string> ports;
+    std::error_code error;
+    std::filesystem::directory_iterator iterator(
+        DEVICE_DIRECTORY,
+        std::filesystem::directory_options::skip_permission_denied,
+        error);
+    const std::filesystem::directory_iterator end;
 
-    std::vector<std::string> possiblePorts;
-
-    for (const char* p : patterns) {
-        glob_t g{};
-        if (glob(p, 0, nullptr, &g) == 0) {
-            for (size_t i = 0; i < g.gl_pathc; ++i) { //gl_pathc = number of paths matching the pattern
-                possiblePorts.emplace_back(g.gl_pathv[i]); //gl.pathv = ponter to the list of matched paths
-                //using emplace_back instead of push_back is a best practice
-            }
+    while (!error && iterator != end) {
+        const std::filesystem::path &path = iterator->path();
+        if (cosmo::serial::detail::is_supported_posix_port_name(path.filename().string())) {
+            ports.emplace_back(path.string());
         }
-        globfree(&g); //frees memory used by glob
+        iterator.increment(error);
     }
 
-    std::vector<std::string> accessiblePorts;
-    for (const std::string& port : possiblePorts) {
-        if (tryOpenPort(port)) {
-            accessiblePorts.emplace_back(port);
-        }
-    }
-
-    return accessiblePorts;
+    return cosmo::serial::detail::sort_and_deduplicate_ports(std::move(ports));
 }
 
-bool SerialPortScannerPosix::tryOpenPort(const std::string& portName) {
-    const int fd = ::open(portName.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
-    if (fd < 0) return false;
+bool SerialPortScannerPosix::tryOpenPort(const std::string &port_name) {
+    const int fd = ::open(port_name.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC);
+    if (fd < 0) {
+        return false;
+    }
     ::close(fd);
     return true;
 }

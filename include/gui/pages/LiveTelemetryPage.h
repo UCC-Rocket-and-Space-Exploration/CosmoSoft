@@ -13,6 +13,7 @@
 
 #include <QString>
 #include <QStringList>
+#include <QVector>
 #include <QWidget>
 
 #include <array>
@@ -74,7 +75,7 @@ signals:
 
 private slots:
     void refreshStyleSheet();
-    void onSampleUpdated(const FlightSample &sample);
+    void onLiveSamplesReceived(const QVector<FlightSample> &samples);
     void onBytesReceivedChanged(qint64 totalBytes);
     void onConnectClicked();
 

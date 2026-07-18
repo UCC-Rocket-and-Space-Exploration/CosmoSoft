@@ -2,6 +2,7 @@
 #define COSMO_SOFT_DASHBOARDPAGE_H
 
 #include <QWidget>
+#include <QVector>
 
 #include <array>
 #include <deque>
@@ -38,7 +39,7 @@ class TracesPanel;
  *
  * Supports two operating modes controlled by FlightDataModel::replayMode():
  *
- *  **Live mode** — FlightDataModel emits sampleUpdated(); samples are buffered
+ *  **Live mode** — FlightDataModel emits liveSamplesReceived(); samples are buffered
  *  in m_liveSamples (capped at kMaxLiveBufferSamples) and the chart is rebuilt
  *  at most once per 50 ms via the live coalesce timer.
  *
@@ -88,7 +89,8 @@ protected:
     void paintEvent(QPaintEvent *event) override;
 
 private slots:
-    void onSampleUpdated(const FlightSample &sample);
+    void onDisplayedSampleChanged(const FlightSample &sample);
+    void onLiveSamplesReceived(const QVector<FlightSample> &samples);
     void onSessionReset();
     void onResetChartZoom();
     void onChartVisualOptionsToggled();

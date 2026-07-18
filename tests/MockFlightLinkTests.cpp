@@ -6,8 +6,10 @@
 #include "services/telemetry/LineTelemetryDecoder.h"
 
 #include <array>
+#include <cmath>
 #include <cstdlib>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -200,6 +202,24 @@ TEST_CASE("FlightPreviewCache builds monotonic display time without mutating raw
         REQUIRE(cache->displaySeconds()[i] > cache->displaySeconds()[i - 1]);
     }
     REQUIRE(cache->durationSeconds() == Catch::Approx(1.6));
+}
+
+TEST_CASE("FlightPreviewCache safely corrects extreme timestamp transitions", "[preview]") {
+    FlightSession session;
+    session.samples.resize(3);
+    session.samples[0].timestamp = std::numeric_limits<long>::lowest();
+    session.samples[1].timestamp = std::numeric_limits<long>::max();
+    session.samples[2].timestamp = std::numeric_limits<long>::lowest();
+
+    const auto cache = cosmo::preview::FlightPreviewCache::build(session);
+
+    REQUIRE(cache);
+    REQUIRE(cache->correctedTimelineUsed());
+    REQUIRE(cache->timestampDiscontinuityCount() == 2);
+    REQUIRE(cache->displaySeconds().size() == 3);
+    REQUIRE(std::isfinite(cache->durationSeconds()));
+    REQUIRE(cache->displaySeconds()[1] > cache->displaySeconds()[0]);
+    REQUIRE(cache->displaySeconds()[2] > cache->displaySeconds()[1]);
 }
 
 TEST_CASE("FlightPreviewCache chart indices cap point count and preserve spikes", "[preview]") {

@@ -9,8 +9,14 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(cosmo-tests
+    FileLoadCancellationTests.cpp
+    FlightLogManagerAtomicExportTests.cpp
+    LineTelemetryPipelineTests.cpp
+    LineTelemetryBatchMailboxTests.cpp
     MockFlightLinkTests.cpp
     SampleFileLoaderTests.cpp
+    SerialPortScannerHardeningTests.cpp
+    SerialWorkerLifecycleTests.cpp
     SkinLoaderTests.cpp
     "${CMAKE_SOURCE_DIR}/assets/resources.qrc"
         include/SerialWriter.h

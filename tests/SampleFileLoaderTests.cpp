@@ -3,7 +3,10 @@
 
 #include "services/import/SampleFileLoader.h"
 
+#include <QTemporaryDir>
+
 #include <array>
+#include <fstream>
 #include <string>
 
 namespace {
@@ -58,4 +61,29 @@ TEST_CASE("SampleFileLoader loads corrected telemetry CSV coordinates", "[import
     const FlightSample &first = session.samples.front();
     REQUIRE(first.coordinates.latitude == Catch::Approx(54.303349));
     REQUIRE(first.coordinates.longitude == Catch::Approx(-5.582283));
+}
+
+TEST_CASE("SampleFileLoader skips malformed and unsafe numeric CSV rows", "[import]") {
+    QTemporaryDir temporary;
+    REQUIRE(temporary.isValid());
+    const std::string path = temporary.filePath(QStringLiteral("unsafe.csv")).toStdString();
+    {
+        std::ofstream output(path);
+        REQUIRE(output.good());
+        output << "time_ms,altitude_m,temperature_c,latitude,longitude\n"
+               << "0,10,20,51.9,-8.5\n"
+               << "1junk,11,21,51.9,-8.5\n"
+               << "2,1e300,22,51.9,-8.5\n"
+               << "3,13,nan,51.9,-8.5\n"
+               << "4,14,24,91,-8.5\n";
+    }
+
+    FlightSession session;
+    const auto error = SampleFileLoader::loadTheseusCsv(path, session);
+
+    INFO(error.value_or("no error"));
+    REQUIRE_FALSE(error);
+    REQUIRE(session.samples.size() == 1);
+    REQUIRE(session.samples.front().timestamp == 0);
+    REQUIRE(session.samples.front().altitude == Catch::Approx(10.0));
 }

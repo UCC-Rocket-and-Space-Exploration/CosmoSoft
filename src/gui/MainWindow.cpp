@@ -20,8 +20,9 @@
 #include "services/flight/FakeFlightLink.h"
 #include "services/persistence/FlightLogManager.h"
 #include "services/telemetry/Framer.h"
+#include "services/telemetry/LineTelemetryBatchMailbox.h"
+#include "services/telemetry/LineTelemetryDecodeWorker.h"
 #include "services/telemetry/Parser.h"
-#include "services/telemetry/ParserWorker.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -36,6 +37,7 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QFont>
+#include <QPointer>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QSettings>
@@ -57,10 +59,14 @@
 
 #include <QtConcurrent/QtConcurrentRun>
 
-#include <chrono>
+#include <atomic>
+#include <exception>
+#include <limits>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
+#include <vector>
 
 using namespace Qt::StringLiterals;
 
@@ -70,26 +76,113 @@ struct FlightLogLoadResult {
     std::optional<std::string> error;
     std::shared_ptr<const FlightSession> session;
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview;
+    bool canceled = false;
 };
 
-[[nodiscard]] FlightLogLoadResult loadFlightLogAtPath(const QString &path) {
+struct SerialPortScanResult {
+    std::optional<std::string> error;
+    std::vector<std::string> ports;
+    bool canceled = false;
+};
+
+[[nodiscard]] bool cancellationRequested(const std::shared_ptr<std::atomic_bool> &flag) {
+    return flag && flag->load(std::memory_order_relaxed);
+}
+
+[[nodiscard]] FlightLogLoadResult loadFlightLogAtPath(
+    const QString &path,
+    const std::shared_ptr<std::atomic_bool> &cancelFlag) {
     FlightLogLoadResult r;
-    FlightSession session;
-    if (path.endsWith(u".telem", Qt::CaseInsensitive)) {
-        Framer framer;
-        Parser parser;
-        r.error = SampleFileLoader::loadTelemFile(path.toStdString(), session, framer, parser);
-    } else if (path.endsWith(u".xlsx", Qt::CaseInsensitive)) {
-        r.error = SampleFileLoader::loadXlsx(path.toStdString(), session);
-    } else {
-        r.error = SampleFileLoader::loadTheseusCsv(path.toStdString(), session);
+    if (cancellationRequested(cancelFlag)) {
+        r.canceled = true;
+        return r;
     }
-    if (!r.error) {
-        auto loadedSession = std::make_shared<FlightSession>(std::move(session));
-        r.preview = cosmo::preview::FlightPreviewCache::build(*loadedSession);
-        r.session = std::move(loadedSession);
+
+    try {
+        const cosmo::CancellationCheck cancellationCheck = [cancelFlag] {
+            return cancellationRequested(cancelFlag);
+        };
+        FlightSession session;
+        SampleFileLoader::LoadResult loadResult;
+        if (path.endsWith(u".telem", Qt::CaseInsensitive)) {
+            Framer framer;
+            Parser parser;
+            loadResult = SampleFileLoader::loadTelemFile(
+                path.toStdString(), session, framer, parser, cancellationCheck);
+        } else if (path.endsWith(u".xlsx", Qt::CaseInsensitive)) {
+            loadResult = SampleFileLoader::loadXlsx(
+                path.toStdString(), session, cancellationCheck);
+        } else {
+            loadResult = SampleFileLoader::loadTheseusCsv(
+                path.toStdString(), session, cancellationCheck);
+        }
+        r.error = std::move(loadResult.error);
+        if (loadResult.canceled || cancellationRequested(cancelFlag)) {
+            r.canceled = true;
+            return r;
+        }
+        if (!r.error) {
+            auto loadedSession = std::make_shared<FlightSession>(std::move(session));
+            r.preview = cosmo::preview::FlightPreviewCache::build(
+                *loadedSession, cancellationCheck);
+            if (!r.preview || cancellationRequested(cancelFlag)) {
+                r.preview.reset();
+                r.canceled = true;
+                return r;
+            }
+            r.session = std::move(loadedSession);
+        }
+    } catch (const std::exception &e) {
+        r.error = std::string("Unexpected error while loading flight log: ") + e.what();
+    } catch (const std::string &message) {
+        r.error = message;
+    } catch (const char *message) {
+        r.error = message ? message : "Unexpected error while loading flight log.";
     }
     return r;
+}
+
+[[nodiscard]] SerialPortScanResult scanSerialPorts(
+    const std::shared_ptr<std::atomic_bool> &cancelFlag) {
+    SerialPortScanResult result;
+    if (cancellationRequested(cancelFlag)) {
+        result.canceled = true;
+        return result;
+    }
+
+    try {
+        auto scanner = SerialPortScannerFactory::createSerialPortScanner();
+        if (scanner) {
+            result.ports = scanner->enumeratePorts();
+        }
+    } catch (const std::exception &e) {
+        result.error = e.what();
+    } catch (const std::string &message) {
+        result.error = message;
+    } catch (const char *message) {
+        result.error = message ? message : "Serial device scan failed.";
+    }
+
+    result.canceled = cancellationRequested(cancelFlag);
+    if (result.canceled) {
+        result.ports.clear();
+    }
+    return result;
+}
+
+[[nodiscard]] bool exportFlightSessionAtPath(
+    const QString &path,
+    const std::shared_ptr<const FlightSession> &session) {
+    if (!session) {
+        return false;
+    }
+    try {
+        FlightLogManager manager;
+        manager.setOutputPath(path.toStdString());
+        return manager.exportSessionToCsv(*session);
+    } catch (const std::exception &) {
+        return false;
+    }
 }
 
 QPushButton* createActionButton(QWidget *parent, const QString &tooltip, const QString &iconName) {
@@ -127,7 +220,9 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent),
       m_flightModel(std::make_unique<FlightDataModel>(this)),
       m_replay(std::make_unique<FlightReplayController>(this)),
-      m_logManager(std::make_unique<FlightLogManager>()) {
+      m_logManager(std::make_unique<FlightLogManager>()),
+      m_liveBatchMailbox(
+          std::make_unique<cosmo::telemetry::LineTelemetryBatchMailbox>()) {
     setWindowTitle(u"CosmoSoft"_s);
     setWindowIcon(QIcon(u":/images/Logo_rounded.png"_s));
 
@@ -172,6 +267,13 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 MainWindow::~MainWindow() {
+    cancelFlightLogLoad(false);
+    ++m_exportGeneration;
+    ++m_scanGeneration;
+    if (m_scanCancelFlag) {
+        m_scanCancelFlag->store(true, std::memory_order_relaxed);
+        m_scanCancelFlag.reset();
+    }
     QSettings(kSettingsOrg, kSettingsApp).setValue(kSettingsWindowMainGeo, saveGeometry());
     stopFakeTransmission(false);
     stopSerial();
@@ -697,7 +799,7 @@ void MainWindow::updateMissionClock() {
 // NOTE: Serial port functionality commented out for future live mode
 /*
 void MainWindow::refreshSerialPorts() {
-    std::unique_ptr<ISerialPortScanner> scanner(SerialPortScannerFactory::createSerialPortScanner());
+    auto scanner = SerialPortScannerFactory::createSerialPortScanner();
     if (!scanner || !m_portCombo) {
         return;
     }
@@ -870,18 +972,60 @@ void MainWindow::onOpenReplayFile() {
 }
 
 void MainWindow::loadFlightLogAsync(const QString &path) {
-    auto *progress = new QProgressDialog(u"Loading flight log…"_s, QString(), 0, 0, this);
+    cancelFlightLogLoad(false);
+    const std::uint64_t generation = ++m_loadGeneration;
+    auto cancelFlag = std::make_shared<std::atomic_bool>(false);
+    m_loadCancelFlag = cancelFlag;
+
+    auto *progress = new QProgressDialog(u"Loading flight log…"_s, u"Cancel"_s, 0, 0, this);
     progress->setWindowModality(Qt::WindowModal);
     progress->setMinimumDuration(0);
-    progress->setCancelButton(nullptr);
+    progress->setAutoClose(false);
+    progress->setAutoReset(false);
+    m_loadProgress = progress;
+    if (m_openLogBtn) {
+        m_openLogBtn->setEnabled(false);
+    }
+    connect(progress, &QObject::destroyed, this, [this, progress]() {
+        if (m_loadProgress == progress) {
+            m_loadProgress = nullptr;
+        }
+    });
+    connect(progress, &QProgressDialog::canceled, this, [this, generation]() {
+        if (generation == m_loadGeneration) {
+            cancelFlightLogLoad(true);
+        }
+    });
     progress->show();
 
+    const QPointer<QProgressDialog> guardedProgress(progress);
     auto *watcher = new QFutureWatcher<FlightLogLoadResult>(this);
-    connect(watcher, &QFutureWatcher<FlightLogLoadResult>::finished, this, [this, watcher, path, progress]() {
-        progress->close();
-        progress->deleteLater();
+    connect(watcher, &QFutureWatcher<FlightLogLoadResult>::finished, this,
+            [this, watcher, path, generation, guardedProgress]() {
+        if (guardedProgress) {
+            if (m_loadProgress == guardedProgress) {
+                m_loadProgress = nullptr;
+            }
+            guardedProgress->disconnect(this);
+            guardedProgress->close();
+            guardedProgress->deleteLater();
+        }
+
+        if (generation != m_loadGeneration) {
+            watcher->deleteLater();
+            return;
+        }
+
         FlightLogLoadResult r = watcher->result();
         watcher->deleteLater();
+        m_loadCancelFlag.reset();
+        if (m_openLogBtn) {
+            m_openLogBtn->setEnabled(true);
+        }
+        if (r.canceled) {
+            showStatusMessage(u"Flight-log loading canceled."_s, 2500);
+            return;
+        }
         if (r.error) {
             QMessageBox::warning(this, u"Could not load log"_s,
                                  QString::fromStdString(*r.error));
@@ -905,10 +1049,32 @@ void MainWindow::loadFlightLogAsync(const QString &path) {
         showStatusMessage(loadMsg, 4000);
         appendToLog(false, loadMsg);
     });
-    const QFuture<FlightLogLoadResult> future = QtConcurrent::run([path]() {
-        return loadFlightLogAtPath(path);
+    const QFuture<FlightLogLoadResult> future = QtConcurrent::run([path, cancelFlag]() {
+        return loadFlightLogAtPath(path, cancelFlag);
     });
     watcher->setFuture(future);
+}
+
+void MainWindow::cancelFlightLogLoad(bool showStatus) {
+    const bool hadActiveLoad = static_cast<bool>(m_loadCancelFlag);
+    ++m_loadGeneration;
+    if (m_loadCancelFlag) {
+        m_loadCancelFlag->store(true, std::memory_order_relaxed);
+        m_loadCancelFlag.reset();
+    }
+    if (m_loadProgress) {
+        auto *progress = m_loadProgress;
+        m_loadProgress = nullptr;
+        progress->disconnect(this);
+        progress->close();
+        progress->deleteLater();
+    }
+    if (m_openLogBtn) {
+        m_openLogBtn->setEnabled(true);
+    }
+    if (showStatus && hadActiveLoad) {
+        showStatusMessage(u"Flight-log loading canceled."_s, 2500);
+    }
 }
 
 void MainWindow::onClearFlightData() {
@@ -925,6 +1091,7 @@ void MainWindow::onClearFlightData() {
             return;
         }
     }
+    cancelFlightLogLoad(false);
     stopFakeTransmission(false);
     stopSerial();
     m_logManager->clear();
@@ -991,14 +1158,19 @@ void MainWindow::onThemeChanged() {
 }
 
 void MainWindow::onExportSession() {
-    const FlightSession *session = nullptr;
-    if (m_flightModel && m_flightModel->replayMode() && m_loadedSession) {
-        session = m_loadedSession.get();
-    } else {
-        session = &m_logManager->session();
+    if (m_exportInProgress) {
+        showStatusMessage(u"A session export is already in progress."_s, 2500);
+        return;
     }
 
-    if (!session || session->samples.empty()) {
+    std::shared_ptr<const FlightSession> session;
+    if (m_flightModel && m_flightModel->replayMode() && m_loadedSession) {
+        session = m_loadedSession;
+    }
+
+    const FlightSession &liveSession = m_logManager->session();
+    const bool hasSamples = session ? !session->samples.empty() : !liveSession.samples.empty();
+    if (!hasSamples) {
         showStatusMessage(u"No samples to export — connect a serial port or load a log first."_s, 4000);
         return;
     }
@@ -1012,35 +1184,103 @@ void MainWindow::onExportSession() {
         return;
     }
 
-    m_logManager->setOutputPath(path.toStdString());
-    if (m_logManager->exportSessionToCsv(*session)) {
-        const QString exportMsg = QStringLiteral("Session exported to %1").arg(path);
-        showStatusMessage(exportMsg, 4000);
-        appendToLog(false, exportMsg);
-    } else {
-        const QString exportErrMsg = QStringLiteral("Export failed — could not write to %1").arg(path);
-        showStatusMessage(exportErrMsg, 5000);
-        appendToLog(true, exportErrMsg);
+    if (!session) {
+        try {
+            // Live telemetry remains mutable on the GUI thread, so export a
+            // stable snapshot rather than reading it from the worker thread.
+            session = std::make_shared<FlightSession>(liveSession);
+        } catch (const std::exception &) {
+            const QString message = u"Export failed — could not snapshot the session."_s;
+            showStatusMessage(message, 5000);
+            appendToLog(true, message);
+            return;
+        }
     }
+
+    const std::uint64_t generation = ++m_exportGeneration;
+    m_exportInProgress = true;
+    if (m_exportBtn) {
+        m_exportBtn->setEnabled(false);
+    }
+    showStatusMessage(QStringLiteral("Exporting session to %1…").arg(path));
+
+    auto *watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, path, generation]() {
+        if (generation != m_exportGeneration) {
+            watcher->deleteLater();
+            return;
+        }
+
+        const bool succeeded = watcher->result();
+        watcher->deleteLater();
+        m_exportInProgress = false;
+        if (m_exportBtn) {
+            m_exportBtn->setEnabled(true);
+        }
+        if (succeeded) {
+            const QString exportMsg = QStringLiteral("Session exported to %1").arg(path);
+            showStatusMessage(exportMsg, 4000);
+            appendToLog(false, exportMsg);
+        } else {
+            const QString exportErrMsg = QStringLiteral("Export failed — could not write to %1").arg(path);
+            showStatusMessage(exportErrMsg, 5000);
+            appendToLog(true, exportErrMsg);
+        }
+    });
+    watcher->setFuture(QtConcurrent::run([path, session]() {
+        return exportFlightSessionAtPath(path, session);
+    }));
 }
 
 void MainWindow::onScanLiveDevices() {
-    std::unique_ptr<ISerialPortScanner> scanner(SerialPortScannerFactory::createSerialPortScanner());
-    QStringList ports;
-    if (scanner) {
-        for (const auto &port : scanner->enumeratePorts()) {
+    if (m_scanCancelFlag) {
+        m_scanCancelFlag->store(true, std::memory_order_relaxed);
+    }
+    const std::uint64_t generation = ++m_scanGeneration;
+    auto cancelFlag = std::make_shared<std::atomic_bool>(false);
+    m_scanCancelFlag = cancelFlag;
+    showStatusMessage(u"Scanning for serial devices…"_s);
+
+    auto *watcher = new QFutureWatcher<SerialPortScanResult>(this);
+    connect(watcher, &QFutureWatcher<SerialPortScanResult>::finished, this,
+            [this, watcher, generation]() {
+        if (generation != m_scanGeneration) {
+            watcher->deleteLater();
+            return;
+        }
+
+        SerialPortScanResult result = watcher->result();
+        watcher->deleteLater();
+        m_scanCancelFlag.reset();
+        if (result.canceled) {
+            return;
+        }
+        if (result.error) {
+            const QString message = QStringLiteral("Serial device scan failed: %1")
+                                        .arg(QString::fromStdString(*result.error));
+            showStatusMessage(message, 5000);
+            appendToLog(true, message);
+            return;
+        }
+
+        QStringList ports;
+        for (const auto &port : result.ports) {
             ports.append(QString::fromStdString(port));
         }
-    }
-    if (m_liveTelemetryPage) {
-        m_liveTelemetryPage->setAvailablePorts(ports);
-    }
+        if (m_liveTelemetryPage) {
+            m_liveTelemetryPage->setAvailablePorts(ports);
+        }
 
-    const QString msg = ports.isEmpty()
-        ? u"No serial devices found."_s
-        : QStringLiteral("Found %1 serial device(s).").arg(ports.size());
-    showStatusMessage(msg, 2500);
-    appendToLog(false, msg);
+        const QString message = ports.isEmpty()
+            ? u"No serial devices found."_s
+            : QStringLiteral("Found %1 serial device(s).").arg(ports.size());
+        showStatusMessage(message, 2500);
+        appendToLog(false, message);
+    });
+    watcher->setFuture(QtConcurrent::run([cancelFlag]() {
+        return scanSerialPorts(cancelFlag);
+    }));
 }
 
 void MainWindow::onConnectLiveDevice(const QString &portName, int baud) {
@@ -1053,6 +1293,7 @@ void MainWindow::onDisconnectLiveDevice() {
 }
 
 void MainWindow::prepareLiveSession(const QString &context) {
+    cancelFlightLogLoad(false);
     m_replay->stop();
     m_loadedSession.reset();
     m_loadedPreview.reset();
@@ -1061,9 +1302,6 @@ void MainWindow::prepareLiveSession(const QString &context) {
     m_flightModel->setReplayMode(false);
     m_flightModel->resetByteCounter();
     m_flightModel->resetSession();
-    m_lineDecoder.reset();
-    m_lastMalformedLineCount = 0;
-    clearRawQueue();
     if (m_flightDataPage) {
         m_flightDataPage->setReplaySession(nullptr, nullptr);
     }
@@ -1071,12 +1309,6 @@ void MainWindow::prepareLiveSession(const QString &context) {
         m_liveTelemetryPage->resetLiveState();
     }
     updateBreadcrumb(context);
-}
-
-void MainWindow::clearRawQueue() {
-    std::vector<uint8_t> chunk;
-    while (m_rawQueue.pop_for(chunk, std::chrono::milliseconds(0))) {
-    }
 }
 
 void MainWindow::startSerial(const QString &portName, int baud) {
@@ -1101,31 +1333,70 @@ void MainWindow::startSerial(const QString &portName, int baud) {
     m_serialPortSummary = QStringLiteral("%1 @ %2").arg(portName).arg(baud);
     prepareLiveSession(m_serialPortSummary);
 
+    const std::uint64_t generation = ++m_liveGeneration;
+    m_lineDecodeWorker = std::make_unique<cosmo::telemetry::LineTelemetryDecodeWorker>(
+        [this, generation](cosmo::telemetry::LineTelemetryBatch batch) mutable {
+            if (m_liveBatchMailbox->push(generation, std::move(batch))) {
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, generation]() { drainLiveTelemetryBatches(generation); },
+                    Qt::QueuedConnection);
+            }
+        },
+        cosmo::telemetry::LineTelemetryWorkerConfig{},
+        [this, generation](const std::string &error) {
+            const QString message = QStringLiteral("Telemetry decoder delivery failed: %1")
+                                        .arg(QString::fromStdString(error));
+            QMetaObject::invokeMethod(
+                this,
+                [this, generation, message]() {
+                    if (generation == m_liveGeneration) {
+                        onParserError(message);
+                        stopSerial();
+                    }
+                },
+                Qt::QueuedConnection);
+        });
+
+    if (!m_lineDecodeWorker->start()) {
+        showStatusMessage(u"Telemetry decoder failed to start."_s, 5000);
+        appendToLog(true, u"Telemetry decoder failed to start."_s);
+        m_lineDecodeWorker.reset();
+        m_comms->close();
+        m_comms.reset();
+        m_serialPortSummary.clear();
+        return;
+    }
+
     m_serialWorker = std::make_unique<SerialWorker>(
         m_comms.get(),
         [this](std::vector<uint8_t> chunk) {
-            const qint64 n = static_cast<qint64>(chunk.size());
-            m_rawQueue.push(std::move(chunk));
-            FlightDataModel *model = m_flightModel.get();
-            QMetaObject::invokeMethod(
-                model,
-                "addBytesReceived",
-                Qt::QueuedConnection,
-                Q_ARG(qint64, n));
+            if (m_lineDecodeWorker) {
+                m_lineDecodeWorker->enqueueChunk(std::move(chunk));
+            }
+        },
+        [this, generation](const std::string &err) {
+            const QString msg = QString::fromStdString(err);
             QMetaObject::invokeMethod(
                 this,
-                "drainLiveTelemetryQueue",
+                [this, generation, msg]() {
+                    if (generation == m_liveGeneration) {
+                        onParserError(msg);
+                        stopSerial();
+                        showStatusMessage(u"Live telemetry disconnected after a serial failure."_s, 5000);
+                    }
+                },
                 Qt::QueuedConnection);
-        },
-        [this](const std::string &err) {
-            const QString msg = QString::fromStdString(err);
-            QMetaObject::invokeMethod(this, "onParserError", Qt::QueuedConnection, Q_ARG(QString, msg));
         });
 
     if (!m_serialWorker->start()) {
         showStatusMessage(u"Serial reader failed to start."_s, 5000);
         appendToLog(true, u"Serial reader failed to start."_s);
         m_serialWorker.reset();
+        m_lineDecodeWorker->stop();
+        m_lineDecodeWorker.reset();
+        drainLiveTelemetryBatches(generation);
+        ++m_liveGeneration;
         if (m_comms) {
             m_comms->close();
         }
@@ -1151,34 +1422,62 @@ void MainWindow::startSerial(const QString &portName, int baud) {
     appendToLog(false, connectMsg);
 }
 
-void MainWindow::drainLiveTelemetryQueue() {
-    std::vector<uint8_t> chunk;
-    while (m_rawQueue.pop_for(chunk, std::chrono::milliseconds(0))) {
-        const auto samples = m_lineDecoder.ingest(chunk.data(), chunk.size());
-        for (const auto &sample : samples) {
+void MainWindow::drainLiveTelemetryBatches(const std::uint64_t generation) {
+    if (generation != m_liveGeneration || !m_liveBatchMailbox) {
+        return;
+    }
+
+    auto result = m_liveBatchMailbox->take(generation);
+    for (auto &batch : result.batches) {
+        constexpr auto kMaxByteCount = static_cast<std::uint64_t>(
+            std::numeric_limits<qint64>::max());
+        const qint64 receivedBytes = static_cast<qint64>(
+            batch.receivedBytes > kMaxByteCount
+                ? kMaxByteCount
+                : batch.receivedBytes);
+        m_flightModel->addBytesReceived(receivedBytes);
+
+        FlightSampleBatch samples;
+        samples.reserve(static_cast<qsizetype>(batch.samples.size()));
+        for (auto &sample : batch.samples) {
             m_logManager->appendSample(sample);
-            m_flightModel->appendSample(sample);
+            samples.append(std::move(sample));
+        }
+        m_flightModel->appendLiveBatch(samples);
+
+        if (batch.malformedLines > 0) {
+            onParserError(
+                QStringLiteral("Skipped %1 malformed live telemetry row(s).")
+                    .arg(static_cast<qulonglong>(batch.malformedLines)));
+        }
+        if (batch.droppedChunks > 0 || batch.droppedBytes > 0) {
+            onParserError(
+                QStringLiteral(
+                    "Dropped %1 queued telemetry chunk(s) (%2 bytes) while decoding.")
+                    .arg(static_cast<qulonglong>(batch.droppedChunks))
+                    .arg(static_cast<qulonglong>(batch.droppedBytes)));
         }
     }
 
-    const std::size_t malformed = m_lineDecoder.malformedLineCount();
-    if (malformed > m_lastMalformedLineCount) {
-        const QString msg = QStringLiteral("Skipped %1 malformed live telemetry row(s).")
-                                .arg(malformed - m_lastMalformedLineCount);
-        m_lastMalformedLineCount = malformed;
-        onParserError(msg);
+    if (result.discardedDecodedSamples > 0) {
+        onParserError(
+            QStringLiteral("Dropped %1 decoded telemetry sample(s) while the GUI was busy.")
+                .arg(static_cast<qulonglong>(result.discardedDecodedSamples)));
     }
 }
 
 void MainWindow::stopSerial() {
+    const std::uint64_t generation = m_liveGeneration;
     if (m_serialWorker) {
         m_serialWorker->stop();
         m_serialWorker.reset();
     }
-    if (m_parserWorker) {
-        m_parserWorker->stop();
-        m_parserWorker.reset();
+    if (m_lineDecodeWorker) {
+        m_lineDecodeWorker->stop();
+        m_lineDecodeWorker.reset();
     }
+    drainLiveTelemetryBatches(generation);
+    ++m_liveGeneration;
     if (m_comms) {
         m_comms->close();
         m_comms.reset();

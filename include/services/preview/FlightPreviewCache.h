@@ -3,6 +3,7 @@
 
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
+#include "services/Cancellation.h"
 
 #include <algorithm>
 #include <array>
@@ -37,10 +38,30 @@ public:
     /** @brief Build a preview cache for @p session without modifying raw samples. */
     [[nodiscard]] static std::shared_ptr<const FlightPreviewCache> build(const FlightSession &session)
     {
+        return build(session, cosmo::CancellationCheck{});
+    }
+
+    /**
+     * @brief Build a preview cache while cooperatively observing cancellation.
+     * @param session Raw flight session that remains unmodified.
+     * @param cancellation_check Callback polled throughout preprocessing loops.
+     * @return Immutable preview cache, or nullptr when cancellation was requested.
+     */
+    [[nodiscard]] static std::shared_ptr<const FlightPreviewCache> build(
+        const FlightSession &session,
+        const cosmo::CancellationCheck &cancellation_check)
+    {
+        cosmo::detail::CancellationState cancellation(cancellation_check);
+        if (cancellation.poll()) {
+            return {};
+        }
         auto cache = std::shared_ptr<FlightPreviewCache>(new FlightPreviewCache());
-        cache->buildTimeline(session.samples);
-        cache->buildMetricRanges(session.samples);
-        cache->buildGpsIndices(session.samples);
+        if (!cache->buildTimeline(session.samples, cancellation)
+            || !cache->buildMetricRanges(session.samples, cancellation)
+            || !cache->buildGpsIndices(session.samples, cancellation)
+            || cancellation.poll()) {
+            return {};
+        }
         return cache;
     }
 
@@ -254,13 +275,13 @@ private:
         case 2: return s.pressure;
         case 3: {
             const double x = s.acceleration.x, y = s.acceleration.y, z = s.acceleration.z;
-            return std::sqrt(x * x + y * y + z * z);
+            return std::hypot(x, y, z);
         }
         case 4: return s.batteryVoltage;
         case 5: return s.rssi;
         case 6: {
             const double x = s.angularVelocity.x, y = s.angularVelocity.y, z = s.angularVelocity.z;
-            return std::sqrt(x * x + y * y + z * z);
+            return std::hypot(x, y, z);
         }
         case 7: return s.coordinates.latitude;
         case 8: return s.coordinates.longitude;
@@ -268,20 +289,28 @@ private:
         }
     }
 
-    void buildTimeline(const std::vector<FlightSample> &samples)
+    [[nodiscard]] bool buildTimeline(
+        const std::vector<FlightSample> &samples,
+        cosmo::detail::CancellationState &cancellation)
     {
         m_displaySeconds.clear();
         m_displaySeconds.reserve(samples.size());
         if (samples.empty()) {
-            return;
+            return !cancellation.poll();
         }
 
         std::vector<long> positiveDeltas;
         positiveDeltas.reserve(samples.size());
         for (std::size_t i = 1; i < samples.size(); ++i) {
-            const long dt = samples[i].timestamp - samples[i - 1].timestamp;
-            if (dt > 0) {
-                positiveDeltas.push_back(dt);
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
+            const long double rawDelta = static_cast<long double>(samples[i].timestamp)
+                - static_cast<long double>(samples[i - 1].timestamp);
+            const long double maximum = static_cast<long double>(
+                std::numeric_limits<long>::max());
+            if (rawDelta > 0.0L && rawDelta <= maximum) {
+                positiveDeltas.push_back(static_cast<long>(rawDelta));
             }
         }
 
@@ -292,29 +321,48 @@ private:
         } else {
             m_medianPositiveDeltaMs = 1;
         }
+        if (cancellation.poll()) {
+            return false;
+        }
 
         m_displaySeconds.push_back(0.0);
-        long long elapsedMs = 0;
+        long double elapsedMs = 0.0L;
         for (std::size_t i = 1; i < samples.size(); ++i) {
-            long dt = samples[i].timestamp - samples[i - 1].timestamp;
-            if (dt <= 0) {
-                dt = m_medianPositiveDeltaMs;
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
+            const long double rawDelta = static_cast<long double>(samples[i].timestamp)
+                - static_cast<long double>(samples[i - 1].timestamp);
+            const long double maximum = static_cast<long double>(
+                std::numeric_limits<long>::max());
+            long double displayDelta = rawDelta;
+            if (rawDelta <= 0.0L || rawDelta > maximum) {
+                displayDelta = static_cast<long double>(m_medianPositiveDeltaMs);
                 ++m_timestampDiscontinuityCount;
                 m_correctedTimelineUsed = true;
             }
-            elapsedMs += dt;
-            m_displaySeconds.push_back(static_cast<double>(elapsedMs) / 1000.0);
+            elapsedMs += displayDelta;
+            m_displaySeconds.push_back(static_cast<double>(elapsedMs / 1000.0L));
         }
+        return !cancellation.poll();
     }
 
-    void buildMetricRanges(const std::vector<FlightSample> &samples)
+    [[nodiscard]] bool buildMetricRanges(
+        const std::vector<FlightSample> &samples,
+        cosmo::detail::CancellationState &cancellation)
     {
         for (auto &range : m_metricRanges) {
             range = {std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()};
         }
         for (const FlightSample &sample : samples) {
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
             for (int mi = 0; mi < kMetricCount; ++mi) {
                 const double value = sampleValueForMetric(sample, mi);
+                if (!std::isfinite(value)) {
+                    continue;
+                }
                 auto &range = m_metricRanges[static_cast<std::size_t>(mi)];
                 range.first = std::min(range.first, value);
                 range.second = std::max(range.second, value);
@@ -325,12 +373,18 @@ private:
                 range = {0.0, 0.0};
             }
         }
+        return !cancellation.poll();
     }
 
-    void buildGpsIndices(const std::vector<FlightSample> &samples)
+    [[nodiscard]] bool buildGpsIndices(
+        const std::vector<FlightSample> &samples,
+        cosmo::detail::CancellationState &cancellation)
     {
         bool hasRealCoordinate = false;
         for (const FlightSample &sample : samples) {
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
             const double lat = sample.coordinates.latitude;
             const double lon = sample.coordinates.longitude;
             if (finiteCoordinate(lat, lon) && !zeroCoordinate(lat, lon)) {
@@ -340,6 +394,9 @@ private:
         }
 
         for (int i = 0; i < static_cast<int>(samples.size()); ++i) {
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
             const FlightSample &sample = samples[static_cast<std::size_t>(i)];
             const double lat = sample.coordinates.latitude;
             const double lon = sample.coordinates.longitude;
@@ -354,6 +411,7 @@ private:
 
         m_map2DIndices = cappedIndices(m_validGpsIndices, kMap2DPointBudget);
         m_map3DIndices = cappedIndices(m_validGpsIndices, kMap3DPointBudget);
+        return !cancellation.poll();
     }
 
     static std::vector<int> cappedIndices(const std::vector<int> &source, int maxPoints)

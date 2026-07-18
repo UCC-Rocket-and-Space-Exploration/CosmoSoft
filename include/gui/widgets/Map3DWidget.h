@@ -8,7 +8,7 @@
  * QWebChannel bridge object (Map3DBridge).
  *
  * Supports:
- *  - Live mode: samples pushed one at a time via onSampleUpdated().
+ *  - Live mode: samples pushed in batches via onLiveSamplesReceived().
  *  - Replay mode: full session loaded via setReplaySession(), trail controlled
  *    by setReplayTrailLength().
  *  - Camera follow: auto-tracks the rocket entity during replay.
@@ -19,6 +19,7 @@
 #define COSMO_SOFT_MAP3DWIDGET_H
 
 #include <QWidget>
+#include <QVector>
 #include <QVariantMap>
 
 #include <memory>
@@ -84,6 +85,9 @@ signals:
 public slots:
     /** @brief Appends a live sample; ignored while a replay session is loaded. */
     void onSampleUpdated(const FlightSample &sample);
+
+    /** @brief Appends a batch of live samples with one Qt signal delivery. */
+    void onLiveSamplesReceived(const QVector<FlightSample> &samples);
 
     /** @brief Clears all data and resets to idle state. */
     void onSessionReset();

@@ -540,17 +540,25 @@ void Map3DWidget::setReplayTrailLength(int trailLength) {
 }
 
 void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
+    onLiveSamplesReceived(QVector<FlightSample>{sample});
+}
+
+void Map3DWidget::onLiveSamplesReceived(const QVector<FlightSample> &samples) {
     if (m_session) return;
 
-    m_liveSamples.push_back(sample);
+    for (const auto &sample : samples) {
+        m_liveSamples.push_back(sample);
 
-    if (!m_mapReady) return;
+        if (!m_mapReady) {
+            continue;
+        }
 
-    const QVariantMap point = mapPointPayload(
-        sample, static_cast<int>(m_liveSamples.size()) - 1,
-        static_cast<double>(sample.timestamp));
-    if (!point.isEmpty()) {
-        m_bridge->publishLivePoint(point);
+        const QVariantMap point = mapPointPayload(
+            sample, static_cast<int>(m_liveSamples.size()) - 1,
+            static_cast<double>(sample.timestamp));
+        if (!point.isEmpty()) {
+            m_bridge->publishLivePoint(point);
+        }
     }
 }
 

@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 using namespace Qt::StringLiterals;
 
@@ -85,7 +86,9 @@ QLineSeries *firstVisibleNonEmptyLineSeries(QChart *chart)
  */
 int nearestIndexByX(const QList<QPointF> &pts, double tx)
 {
-    const int n = pts.size();
+    const qsizetype boundedSize = std::min(
+        pts.size(), static_cast<qsizetype>(std::numeric_limits<int>::max()));
+    const int n = static_cast<int>(boundedSize);
     if (n <= 0) return -1;
     if (n == 1) return 0;
     int lo = 0, hi = n - 1;
@@ -448,7 +451,7 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
 
     QString text;
     if (hoverDetail)
-        text = hoverDetail(p.x(), idx + 1, pts.size());
+        text = hoverDetail(p.x(), idx + 1, closestSeries->count());
     else
         text = QStringLiteral("t=%1 s · #%2 / %3").arg(p.x(), 0, 'f', 3).arg(idx + 1).arg(pts.size());
 

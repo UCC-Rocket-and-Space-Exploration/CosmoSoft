@@ -13,11 +13,13 @@
 #include "domain/FlightSample.h"
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -27,6 +29,12 @@ namespace cosmo::telemetry {
 
 /** @brief Number of numeric columns in the live CSV telemetry row. */
 inline constexpr std::size_t kLiveTelemetryCsvFieldCount = 16;
+
+/** @brief Maximum buffered bytes accepted for one live telemetry line. */
+inline constexpr std::size_t kMaxLiveTelemetryLineBytes = 64U * 1024U;
+
+/** @brief Generous absolute bound for numeric live telemetry fields. */
+inline constexpr double kMaxLiveTelemetryMagnitude = 1.0e12;
 
 /** @brief CSV header emitted by the current text telemetry stream. */
 inline constexpr std::string_view kLiveTelemetryCsvHeader =
@@ -84,23 +92,47 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
         return std::nullopt;
     }
 
-    const auto cells = splitTelemetryCsvCells(clean);
-    if (cells.size() != kLiveTelemetryCsvFieldCount) {
-        return std::nullopt;
-    }
+    std::array<double, kLiveTelemetryCsvFieldCount> values{};
+    std::size_t cellStart = 0;
+    for (std::size_t index = 0; index < values.size(); ++index) {
+        const std::size_t separator = clean.find(',', cellStart);
+        const bool isLastCell = index + 1 == values.size();
+        if ((!isLastCell && separator == std::string::npos)
+            || (isLastCell && separator != std::string::npos)) {
+            return std::nullopt;
+        }
 
-    std::vector<double> values;
-    values.reserve(cells.size());
-    for (const auto &cell : cells) {
-        auto parsed = parseFiniteDouble(cell);
+        const std::size_t cellEnd = isLastCell ? clean.size() : separator;
+        auto parsed = parseFiniteDouble(
+            std::string_view(clean).substr(cellStart, cellEnd - cellStart));
         if (!parsed) {
             return std::nullopt;
         }
-        values.push_back(*parsed);
+        values[index] = *parsed;
+        cellStart = cellEnd + 1;
+    }
+
+    if (std::any_of(values.begin(), values.end(), [](const double value) {
+            return std::abs(value) > kMaxLiveTelemetryMagnitude;
+        })) {
+        return std::nullopt;
+    }
+
+    const double timestampMilliseconds = values[0] * 1000.0;
+    if (!std::isfinite(timestampMilliseconds)
+        // Strict bounds avoid rounding a double representation of LONG_MAX
+        // into an out-of-range integer on platforms where long has 64 bits.
+        || timestampMilliseconds <= static_cast<double>(std::numeric_limits<long>::lowest())
+        || timestampMilliseconds >= static_cast<double>(std::numeric_limits<long>::max())
+        || values[13] < -90.0
+        || values[13] > 90.0
+        || values[14] < -180.0
+        || values[14] > 180.0) {
+        return std::nullopt;
     }
 
     FlightSample sample{};
-    sample.timestamp = static_cast<long>(std::llround(values[0] * 1000.0));
+    sample.timestamp = static_cast<long>(std::llround(timestampMilliseconds));
     sample.temperature = values[1];
     sample.pressure = values[2];
     sample.altitude = values[3];
@@ -121,14 +153,37 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
  */
 class LineTelemetryDecoder {
 public:
+    /**
+     * @brief Construct a line decoder with a bounded partial-line buffer.
+     * @param maxLineBytes Maximum bytes accepted before a line is discarded.
+     */
+    explicit LineTelemetryDecoder(std::size_t maxLineBytes = kMaxLiveTelemetryLineBytes)
+        : m_maxLineBytes(std::max<std::size_t>(1, maxLineBytes)) {
+        m_pending.reserve(std::min<std::size_t>(m_maxLineBytes, 1024));
+    }
+
     /** @brief Reset pending partial line and malformed-line count. */
     void reset() {
         m_pending.clear();
         m_malformedLines = 0;
+        m_discardingDamagedLine = false;
     }
 
     /** @brief Return the cumulative number of malformed non-empty rows seen. */
     [[nodiscard]] std::size_t malformedLineCount() const { return m_malformedLines; }
+
+    /**
+     * @brief Invalidate a line spanning a known byte-stream gap.
+     *
+     * Pending prefix bytes are cleared and subsequent bytes are ignored through
+     * the next newline so separated fragments can never be spliced together.
+     * Queue-drop counters report the gap, so this does not increment the
+     * malformed-line counter.
+     */
+    void notifyDataGap() {
+        m_pending.clear();
+        m_discardingDamagedLine = true;
+    }
 
     /**
      * @brief Ingest a raw byte chunk and return all complete decoded samples.
@@ -141,21 +196,46 @@ public:
             return samples;
         }
 
-        m_pending.append(reinterpret_cast<const char *>(data), size);
-        std::size_t lineStart = 0;
-        while (true) {
-            const std::size_t lineEnd = m_pending.find('\n', lineStart);
-            if (lineEnd == std::string::npos) {
-                break;
+        for (std::size_t index = 0; index < size; ++index) {
+            const char byte = static_cast<char>(data[index]);
+
+            if (m_discardingDamagedLine) {
+                if (byte == '\n') {
+                    m_discardingDamagedLine = false;
+                }
+                continue;
             }
 
-            processLine(std::string_view(m_pending).substr(lineStart, lineEnd - lineStart), samples);
-            lineStart = lineEnd + 1;
-        }
+            if (byte == '\n') {
+                processLine(m_pending, samples);
+                m_pending.clear();
+                continue;
+            }
 
-        if (lineStart > 0) {
-            m_pending.erase(0, lineStart);
+            if (m_pending.size() >= m_maxLineBytes) {
+                m_pending.clear();
+                m_discardingDamagedLine = true;
+                ++m_malformedLines;
+                continue;
+            }
+
+            m_pending.push_back(byte);
         }
+        return samples;
+    }
+
+    /**
+     * @brief Finish the stream and decode a final row without a trailing newline.
+     * @return Zero or one decoded samples. A truncated non-empty row increments
+     * malformedLineCount().
+     */
+    std::vector<FlightSample> finish() {
+        std::vector<FlightSample> samples;
+        if (!m_discardingDamagedLine && !m_pending.empty()) {
+            processLine(m_pending, samples);
+        }
+        m_pending.clear();
+        m_discardingDamagedLine = false;
         return samples;
     }
 
@@ -176,6 +256,8 @@ private:
 
     std::string m_pending;
     std::size_t m_malformedLines = 0;
+    std::size_t m_maxLineBytes;
+    bool m_discardingDamagedLine = false;
 };
 
 } // namespace cosmo::telemetry
