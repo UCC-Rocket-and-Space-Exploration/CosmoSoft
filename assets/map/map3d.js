@@ -20,6 +20,7 @@ let activeLayer = "map";
 let tileLayerMap = null, tileLayerLight = null, tileLayerTerrain = null, tileLayerSat = null;
 let currentThemeDark = true;
 let hostVisible = true;
+let imperialUnits = false;
 let pathDataDirty = true, path3dDataDirty = true;
 
 // ── 3D state ───────────────────────────────────────────────────────
@@ -61,8 +62,17 @@ function validC(lat,lon){
     && !(Math.abs(lat)<1e-9&&Math.abs(lon)<1e-9);
 }
 function validAltitude(alt){return Number.isFinite(alt)&&Math.abs(alt)<=MAX_ABS_ALTITUDE;}
-function fmtAlt(m){return m>=1000?(m/1000).toFixed(1)+" km":m.toFixed(0)+" m";}
-function fmtDist(m){return m>=1000?(m/1000).toFixed(2)+" km":m.toFixed(0)+" m";}
+function fmtAlt(m){
+  if(imperialUnits)return (m*3.280839895013123).toFixed(0)+" ft";
+  return Math.abs(m)>=1000?(m/1000).toFixed(1)+" km":m.toFixed(0)+" m";
+}
+function fmtDist(m){
+  if(imperialUnits){
+    const feet=m*3.280839895013123;
+    return Math.abs(feet)>=5280?(feet/5280).toFixed(2)+" mi":feet.toFixed(0)+" ft";
+  }
+  return Math.abs(m)>=1000?(m/1000).toFixed(2)+" km":m.toFixed(0)+" m";
+}
 function sampleIdx(indices, i){return Number.isFinite(indices[i])?indices[i]:i;}
 
 function parseHexColor(color) {
@@ -1361,6 +1371,15 @@ window.setHostVisible = function(visible){
   }
 };
 
+window.setImperialUnits = function(enabled){
+  const nextImperial=Boolean(enabled);
+  if(imperialUnits===nextImperial)return;
+  imperialUnits=nextImperial;
+  // Reformat the current bounded display snapshots without changing raw SI
+  // path geometry, sample selection, or source telemetry.
+  updateEntities(trailLen,currentExactPoint);
+};
+
 /* ── Init ────────────────────────────────────────────────────────── */
 /* ── Theme switching (received through the typed QWebChannel bridge) ── */
 window.applyTheme = function(paletteJson) {
@@ -1446,6 +1465,8 @@ function init() {
         if (signal && typeof signal.connect === "function") signal.connect(handler);
       };
       connectSignal(bridge.themeChanged, theme => window.applyTheme(theme));
+      connectSignal(bridge.unitSystemChanged,
+        imperial => window.setImperialUnits(Boolean(imperial)));
       connectSignal(bridge.sessionLoaded, session => window.loadSession(session));
       connectSignal(bridge.trailLengthChanged,
         (length, currentPoint) => window.setTrailLength(length, currentPoint));

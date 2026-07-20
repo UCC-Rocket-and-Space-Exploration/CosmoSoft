@@ -276,6 +276,11 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     : QWidget(parent),
       m_model(model),
       m_replay(replay) {
+    const QSettings unitSettings(kSettingsOrg, kSettingsApp);
+    m_imperialUnits = unitSettings.value(kSettingsUnitSystem, kUnitSystemMetric)
+                          .toString()
+                          .compare(QString::fromLatin1(kUnitSystemImperial),
+                                   Qt::CaseInsensitive) == 0;
     setObjectName(u"dashboardPage"_s);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAutoFillBackground(false);
@@ -315,6 +320,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     // ── Traces panel (left side of splitter) ─────────────────────────────────
     m_tracesPanel = new TracesPanel(this);
+    m_tracesPanel->setImperialUnits(m_imperialUnits);
     m_metricEnabled = m_tracesPanel->enabledMetrics();
     connect(m_tracesPanel, &TracesPanel::enabledMetricsChanged, this,
             [this](const std::array<bool, kMetricCount> &enabled) {
@@ -363,7 +369,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     for (int i = 0; i < kMetricCount; ++i) {
         auto *series = new QLineSeries();
-        series->setName(metricTitle(i));
+        series->setName(metricDisplayTitle(i, m_imperialUnits));
         const QColor col = metricColor(i);
         series->setColor(col);
         series->setPen(QPen(col, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
@@ -476,6 +482,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_viewStack->addWidget(m_chartView);   // index 0 — telemetry chart
 
     m_mapWidget = new Map3DWidget(m_viewStack);
+    m_mapWidget->setImperialUnits(m_imperialUnits);
     m_mapWidget->setAccessibleName(u"Flight path map"_s);
     m_mapWidget->setAccessibleDescription(u"Interactive map showing the flight path and GPS coordinates"_s);
     m_viewStack->addWidget(m_mapWidget);   // index 1 — 3D flight path map
@@ -583,6 +590,25 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             this, &DashboardPage::applyChartTheme);
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
             this, &DashboardPage::refreshPageStyleSheet);
+}
+
+void DashboardPage::setImperialUnits(bool imperial) {
+    if (m_imperialUnits == imperial) {
+        return;
+    }
+    m_imperialUnits = imperial;
+    if (m_tracesPanel) {
+        m_tracesPanel->setImperialUnits(imperial);
+    }
+    if (m_mapWidget) {
+        m_mapWidget->setImperialUnits(imperial);
+    }
+    for (int metricIndex = 0; metricIndex < kMetricCount; ++metricIndex) {
+        if (auto *series = m_lineSeries[static_cast<std::size_t>(metricIndex)]) {
+            series->setName(metricDisplayTitle(metricIndex, m_imperialUnits));
+        }
+    }
+    refreshAllSeriesFromData();
 }
 
 void DashboardPage::applyChartTheme() {
@@ -826,12 +852,26 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
         if (!sample) return;
         QString text;
         text += QStringLiteral("Time: %1 ms\n").arg(sample->timestamp);
-        text += QStringLiteral("Altitude: %1 m\n").arg(sample->altitude, 0, 'f', 2);
-        text += QStringLiteral("Temperature: %1 °C\n").arg(sample->temperature, 0, 'f', 1);
-        text += QStringLiteral("Pressure: %1 Pa\n").arg(sample->pressure, 0, 'f', 1);
-        const auto &a = sample->acceleration;
-        const double accel = std::sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
-        text += QStringLiteral("Acceleration: %1 m/s²\n").arg(accel, 0, 'f', 2);
+        const auto appendDisplayMetric = [this, sample, &text](
+                                             const QString &label,
+                                             int metricIndex) {
+            const double siValue = sampleValueForMetric(*sample, metricIndex);
+            text += QStringLiteral("%1: %2")
+                        .arg(label, formatMetricDisplayValue(
+                                        metricIndex, siValue, m_imperialUnits));
+            if (std::isfinite(siValue)) {
+                const QString unit = metricDisplayUnitShort(
+                    metricIndex, m_imperialUnits);
+                if (!unit.isEmpty()) {
+                    text += u' ' + unit;
+                }
+            }
+            text += u'\n';
+        };
+        appendDisplayMetric(u"Altitude"_s, 0);
+        appendDisplayMetric(u"Temperature"_s, 1);
+        appendDisplayMetric(u"Pressure"_s, 2);
+        appendDisplayMetric(u"Acceleration"_s, 3);
         text += QStringLiteral("Battery: %1 V\n").arg(sample->batteryVoltage, 0, 'f', 2);
         if (std::isfinite(sample->coordinates.latitude) && std::abs(sample->coordinates.latitude) > 1e-9) {
             text += QStringLiteral("Latitude: %1\n").arg(sample->coordinates.latitude, 0, 'f', 8);
@@ -1159,12 +1199,13 @@ QString DashboardPage::formatMultiMetricHover(double tSec, int displayPointIndex
         if (!m_metricEnabled[static_cast<std::size_t>(mi)]) {
             continue;
         }
-        const double v = sampleValueForMetric(*sp, mi);
-        const QString valueText = std::isfinite(v)
-            ? formatMetricValuePretty(mi, v)
+        const double siValue = sampleValueForMetric(*sp, mi);
+        const QString valueText = std::isfinite(siValue)
+            ? formatMetricDisplayValue(mi, siValue, m_imperialUnits)
             : u"—"_s;
         lines << QStringLiteral("  • %1: %2 %3")
-                     .arg(metricQuantityName(mi), valueText, metricAxisUnitShort(mi));
+                     .arg(metricQuantityName(mi), valueText,
+                          metricDisplayUnitShort(mi, m_imperialUnits));
     }
     return lines.join(u"\n"_s);
 }
@@ -1632,7 +1673,8 @@ void DashboardPage::buildChartFromSampleIndices(
             if (!m_metricEnabled[static_cast<std::size_t>(mi)]) {
                 continue;
             }
-            const double y = sampleValueForMetric(s, mi);
+            const double y = metricDisplayValue(
+                mi, sampleValueForMetric(s, mi), m_imperialUnits);
             if (!std::isfinite(y)) {
                 continue;
             }
@@ -1686,7 +1728,8 @@ void DashboardPage::buildChartFromSampleIndices(
         pts.reserve(plotN);
         for (const PlotSample &plotSample : plotSamples) {
             const FlightSample &s = samples[static_cast<std::size_t>(plotSample.sampleIndex)];
-            double y = sampleValueForMetric(s, mi);
+            double y = metricDisplayValue(
+                mi, sampleValueForMetric(s, mi), m_imperialUnits);
             if (!std::isfinite(y) || !hasFiniteRange) {
                 continue;
             }
@@ -1703,7 +1746,7 @@ void DashboardPage::buildChartFromSampleIndices(
         series->setVisible(!pts.isEmpty());
         if (!pts.isEmpty()) {
             applySeriesPointDisplay(series, series->count(), nEn);
-            series->setName(metricTitle(mi));
+            series->setName(metricDisplayTitle(mi, m_imperialUnits));
         }
     }
 
@@ -1752,15 +1795,20 @@ void DashboardPage::buildChartFromSampleIndices(
     };
 
     if (nEn == 1 && onlyMi >= 0) {
-        m_axisY->setTitleText(metricAxisUnitShort(onlyMi));
-        m_chart->setTitle(metricTitle(onlyMi));
+        m_axisY->setTitleText(metricDisplayUnitShort(onlyMi, m_imperialUnits));
+        m_chart->setTitle(metricDisplayTitle(onlyMi, m_imperialUnits));
         if (!m_preserveChartAxes) {
             applyFiniteAxisRange(m_axisY, onlyMi);
         }
     } else if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
-        m_axisY->setTitleText(metricAxisUnitShort(dualMi[0]));
-        if (m_axisY2) m_axisY2->setTitleText(metricAxisUnitShort(dualMi[1]));
-        m_chart->setTitle(QStringLiteral("%1 vs %2").arg(metricTitle(dualMi[0]), metricTitle(dualMi[1])));
+        m_axisY->setTitleText(metricDisplayUnitShort(dualMi[0], m_imperialUnits));
+        if (m_axisY2) {
+            m_axisY2->setTitleText(metricDisplayUnitShort(dualMi[1], m_imperialUnits));
+        }
+        m_chart->setTitle(
+            QStringLiteral("%1 vs %2")
+                .arg(metricDisplayTitle(dualMi[0], m_imperialUnits),
+                     metricDisplayTitle(dualMi[1], m_imperialUnits)));
         if (!m_preserveChartAxes) {
             for (int d = 0; d < 2; ++d) {
                 auto *ax = (d == 0) ? m_axisY : m_axisY2;

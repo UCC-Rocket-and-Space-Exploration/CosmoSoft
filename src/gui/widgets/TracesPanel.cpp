@@ -19,6 +19,8 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <cmath>
+
 using namespace Qt::StringLiterals;
 
 namespace {
@@ -190,7 +192,7 @@ TracesPanel::TracesPanel(QWidget *parent)
         auto *cb = new TraceCheckBox(MetricDefs::metricTraceShortName(i), row);
         cb->setObjectName(u"traceCheck"_s);
         cb->setToolTip(QStringLiteral("%1 — click anywhere on the row to toggle")
-                           .arg(MetricDefs::metricTitle(i)));
+                           .arg(MetricDefs::metricDisplayTitle(i, m_imperialUnits)));
         m_metricChecks[static_cast<std::size_t>(i)] = cb;
 
         auto *valLabel = new QLabel(u"—"_s, row);
@@ -394,14 +396,39 @@ void TracesPanel::setMetricDataStates(const std::array<bool, kMetricCount> &hasD
     }
 }
 
+void TracesPanel::setImperialUnits(bool imperial)
+{
+    if (m_imperialUnits == imperial) {
+        return;
+    }
+    m_imperialUnits = imperial;
+    for (int i = 0; i < kMetricCount; ++i) {
+        if (auto *check = m_metricChecks[static_cast<std::size_t>(i)]) {
+            check->setToolTip(
+                QStringLiteral("%1 — click anywhere on the row to toggle")
+                    .arg(MetricDefs::metricDisplayTitle(i, m_imperialUnits)));
+        }
+    }
+    if (m_haveLatestSample) {
+        updateLiveValues(m_latestSample);
+    }
+}
+
 void TracesPanel::updateLiveValues(const FlightSample &sample)
 {
+    m_latestSample = sample;
+    m_haveLatestSample = true;
     for (int i = 0; i < kMetricCount; ++i) {
         auto *lbl = m_traceValueLabels[static_cast<std::size_t>(i)];
         if (!lbl) continue;
-        const double v    = MetricDefs::sampleValueForMetric(sample, i);
-        const QString val = MetricDefs::formatMetricValuePretty(i, v);
-        const QString unit = MetricDefs::metricAxisUnitShort(i);
+        const double siValue = MetricDefs::sampleValueForMetric(sample, i);
+        if (!std::isfinite(siValue)) {
+            lbl->setText(u"—"_s);
+            continue;
+        }
+        const QString val = MetricDefs::formatMetricDisplayValue(
+            i, siValue, m_imperialUnits);
+        const QString unit = MetricDefs::metricDisplayUnitShort(i, m_imperialUnits);
         lbl->setText(unit.isEmpty() ? val : val + u' ' + unit);
     }
 }

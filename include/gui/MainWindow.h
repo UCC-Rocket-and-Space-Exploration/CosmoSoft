@@ -3,7 +3,7 @@
  * @brief Top-level application window for CosmoSoft.
  *
  * MainWindow owns the mission toolbar, connection bar, telemetry strip, and the
- * page stack (DashboardPage).  It also owns the
+ * page stack (Dashboard, Live Telemetry, and Event Log). It also owns the
  * live-telemetry pipeline (SerialWorker → bounded decoder worker → batched
  * FlightDataModel updates) and the replay pipeline (FlightReplayController).
  *
@@ -23,8 +23,8 @@
 #include <QString>
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
-#include <deque>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -45,6 +45,7 @@ class QTimer;
 class QToolBar;
 class QToolButton;
 class DashboardPage;
+class EventLogPage;
 class LiveTelemetryPage;
 class SettingsPage;
 class FlightDataModel;
@@ -123,11 +124,14 @@ private:
     void loadFlightLogAsync(const QString &path);
 
     /**
-     * @brief Appends a log entry to the persistent in-memory buffer.
-     * @param isError When true the entry is rendered as an error (red).
+     * @brief Appends a semantic entry to the bounded Event Log page.
+     * @param isError When true the entry uses the active theme's error style.
      * @param text    Human-readable message.
      */
     void appendToLog(bool isError, const QString &text);
+
+    /** @brief Play a rate-limited platform alert when UI sounds are enabled. */
+    void playErrorFeedback();
 
     void addRecentFile(const QString &path);
     void rebuildRecentFilesMenu();
@@ -147,11 +151,13 @@ private:
     QAction *m_openSettingsAction    = nullptr;
     QAction *m_dashboardAction       = nullptr;
     QAction *m_liveTelemetryAction   = nullptr;
+    QAction *m_eventLogAction        = nullptr;
 
     // ── Page stack ────────────────────────────────────────────────────────────
     QStackedWidget     *m_pages             = nullptr;
     DashboardPage      *m_flightDataPage    = nullptr;
     LiveTelemetryPage  *m_liveTelemetryPage = nullptr;
+    EventLogPage        *m_eventLogPage      = nullptr;
     SettingsPage       *m_settingsWindow    = nullptr;
 
     // ── Toolbar labels ────────────────────────────────────────────────────────
@@ -164,6 +170,7 @@ private:
     QWidget *m_brandBlock = nullptr;
     QToolButton *m_liveNavButton = nullptr;
     QToolButton *m_dashboardNavButton = nullptr;
+    QToolButton *m_eventLogNavButton = nullptr;
     QToolButton *m_settingsNavButton = nullptr;
     int m_toolbarLayoutMode = -1;
 
@@ -208,12 +215,9 @@ private:
     std::vector<qint64> m_fakeTransmissionByteCounts;
     std::size_t m_fakeTransmissionIndex = 0;
 
-    /**
-     * Persistent log buffer.  Every entry is stored here so that the settings
-     * window can be closed and reopened without losing history.  The bool is
-     * true for errors, false for informational entries.
-     */
-    std::deque<std::pair<bool, QString>> m_logEntries;
+    bool m_uiSoundsEnabled = true;
+    bool m_hasPlayedErrorFeedback = false;
+    std::chrono::steady_clock::time_point m_lastErrorFeedback;
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

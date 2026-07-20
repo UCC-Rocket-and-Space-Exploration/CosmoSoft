@@ -72,6 +72,13 @@ public:
     /** @brief Enables or disables automatic camera tracking of the rocket. */
     void setCameraFollow(bool enabled);
 
+    /**
+     * @brief Selects metric or imperial units for map text and overlays.
+     *
+     * Map coordinates and altitude geometry remain in their raw SI form.
+     */
+    void setImperialUnits(bool imperial);
+
 signals:
     /**
      * @brief Emitted when automatic camera tracking actually changes state.
@@ -128,6 +135,7 @@ private:
     void sendPendingTrailLength();
     void scheduleMapUpdate();
     void compactLiveHistory();
+    void pushUnitSystemToMap();
 
 protected:
     /** @brief Lazily initializes and catches up the embedded map when shown. */
@@ -158,6 +166,7 @@ private:
     bool m_trailUpdatePending = false;
     bool m_followUpdatePending = true;
     bool m_followEnabled  = false;
+    bool m_imperialUnits = false;
     int m_pendingTrailLength = 0;
     int m_lastPublishedLiveIndex = -1;
     int m_publishedLive3DPointCount = 0;
@@ -193,6 +202,9 @@ signals:
     /** @brief Sends a validated theme palette to the embedded map. */
     void themeChanged(const QVariantMap &theme);
 
+    /** @brief Selects metric or imperial formatting in the embedded map. */
+    void unitSystemChanged(bool imperial);
+
     /** @brief Sends a complete replay-session payload to the embedded map. */
     void sessionLoaded(const QVariantMap &session);
 
@@ -220,6 +232,9 @@ signals:
 public:
     /** @brief Publishes a theme without evaluating JavaScript source code. */
     void publishTheme(const QVariantMap &theme) { emit themeChanged(theme); }
+
+    /** @brief Publishes a fixed unit-system boolean without JavaScript injection. */
+    void publishImperialUnits(bool imperial) { emit unitSystemChanged(imperial); }
 
     /** @brief Publishes a replay session without evaluating JavaScript source code. */
     void publishSession(const QVariantMap &session) { emit sessionLoaded(session); }

@@ -7,7 +7,7 @@
  *
  * Sections (sidebar):
  *  - Appearance  — Skin picker.
- *  - Data        — UI sounds toggle.
+ *  - Data        — Measurement units and interface feedback sounds.
  *  - Developer   — Debug mode toggle, system info, developer reference.
  *  - About       — Application version, description, license, repository link.
  */
@@ -47,6 +47,18 @@ public:
 
 signals:
     /**
+     * @brief Emitted after the user selects a different display unit system.
+     * @param imperial true for imperial units; false for metric (SI) units.
+     */
+    void unitSystemChanged(bool imperial);
+
+    /**
+     * @brief Emitted after the user enables or disables interface feedback sounds.
+     * @param enabled New feedback-sound preference.
+     */
+    void uiSoundsEnabledChanged(bool enabled);
+
+    /**
      * @brief Emitted when the debug mode toggle changes.
      * @param enabled New debug mode state.
      */
@@ -63,6 +75,7 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
 private slots:
+    void onUnitSystemSelectionChanged(int index);
     void onSoundsToggled(bool enabled);
     void onDebugModeToggled(bool enabled);
     void onSkinChanged(int index);
@@ -97,8 +110,9 @@ private:
     QComboBox   *m_skinCombo     = nullptr;
     QPushButton *m_importSkinBtn = nullptr;
 
-    QGroupBox *m_soundGroup    = nullptr;
-    QCheckBox *m_uiSoundsCheck = nullptr;
+    QComboBox *m_unitSystemCombo = nullptr;
+    QGroupBox *m_soundGroup      = nullptr;
+    QCheckBox *m_uiSoundsCheck   = nullptr;
 
     // ── Developer section ─────────────────────────────────────────────────────
     QCheckBox *m_debugModeCheck = nullptr;

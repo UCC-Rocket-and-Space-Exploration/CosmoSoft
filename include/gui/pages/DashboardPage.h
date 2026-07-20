@@ -69,6 +69,13 @@ public:
     explicit DashboardPage(FlightDataModel *model, FlightReplayController *replay, QWidget *parent = nullptr);
 
     /**
+     * @brief Selects metric or imperial presentation units for dashboard views.
+     *
+     * Stored flight samples and preview selection remain in their raw SI form.
+     */
+    void setImperialUnits(bool imperial);
+
+    /**
      * Switches to replay mode and loads @p session.
      * Resets the scrubber, rebuilds the chart from the full session, and
      * positions the replay controller at the end (most recent sample).
@@ -234,6 +241,7 @@ private:
     int m_replayChartBuiltBucket = -1;      ///< Preview bucket at last replay rebuild.
 
     int m_lastReplayTrailLength = 0;  ///< Most recent trail length from the controller.
+    bool m_imperialUnits = false;     ///< True when telemetry is presented in imperial units.
 
     /** Circular live-telemetry buffer, bounded to kMaxLiveBufferSamples. */
     std::deque<FlightSample> m_liveSamples;

@@ -13,18 +13,25 @@
 #ifndef COSMO_SOFT_EVENTLOGPAGE_H
 #define COSMO_SOFT_EVENTLOGPAGE_H
 
+#include <QDateTime>
+#include <QString>
 #include <QWidget>
+
+#include <cstddef>
+#include <deque>
 
 class QPlainTextEdit;
 class QPushButton;
+class QTextCursor;
 
 /**
  * @class EventLogPage
  * @brief Presents a monospace, timestamped log of session events and errors.
  *
- * The widget owns a QPlainTextEdit in read-only mode.  New entries are prefixed
- * with a local timestamp (HH:mm:ss) and coloured red for errors or grey for
- * informational events.  A "Clear" button at the bottom empties the log.
+ * The widget owns a QPlainTextEdit in read-only mode. New entries are retained
+ * as timestamp, message, and severity data so their colours can be rebuilt when
+ * the active theme changes. At most 2,000 entries are retained. A "Clear"
+ * button empties both the retained entries and the rendered log.
  */
 class EventLogPage : public QWidget {
     Q_OBJECT
@@ -51,8 +58,26 @@ private slots:
     void refreshStyleSheet();
 
 private:
+    enum class Severity {
+        Information,
+        Error,
+    };
+
+    struct LogEntry {
+        QDateTime timestamp;
+        QString text;
+        Severity severity = Severity::Information;
+    };
+
+    static constexpr std::size_t kMaxRetainedEntries = 2000U;
+
+    void append(const QString &text, Severity severity);
+    void renderEntry(const LogEntry &entry, QTextCursor &cursor);
+    void rebuildLog();
+
     QPlainTextEdit *m_log       = nullptr;
     QPushButton    *m_clearBtn  = nullptr;
+    std::deque<LogEntry> m_entries;
 };
 
 #endif // COSMO_SOFT_EVENTLOGPAGE_H

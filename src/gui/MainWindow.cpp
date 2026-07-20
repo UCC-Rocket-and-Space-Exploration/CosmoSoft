@@ -14,6 +14,7 @@
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
 #include "gui/pages/DashboardPage.h"
+#include "gui/pages/EventLogPage.h"
 #include "gui/pages/LiveTelemetryPage.h"
 #include "gui/pages/SettingsPage.h"
 #include "services/import/SampleFileLoader.h"
@@ -253,6 +254,9 @@ MainWindow::MainWindow(QWidget *parent)
           std::make_unique<cosmo::telemetry::LineTelemetryBatchMailbox>()) {
     setWindowTitle(u"CosmoSoft"_s);
     setWindowIcon(QIcon(u":/images/Logo_rounded.png"_s));
+    m_uiSoundsEnabled = QSettings(kSettingsOrg, kSettingsApp)
+                            .value(kSettingsSoundsEnabled, true)
+                            .toBool();
 
     setupActions();
     setupMenuBar();
@@ -322,11 +326,33 @@ void MainWindow::onParserError(const QString &message) {
 }
 
 void MainWindow::appendToLog(bool isError, const QString &text) {
-    constexpr std::size_t kMaxLogEntries = 2000;
-    if (m_logEntries.size() >= kMaxLogEntries) {
-        m_logEntries.pop_front();
+    if (m_eventLogPage) {
+        if (isError) {
+            m_eventLogPage->appendError(text);
+        } else {
+            m_eventLogPage->appendEntry(text);
+        }
     }
-    m_logEntries.emplace_back(isError, text);
+    if (isError) {
+        playErrorFeedback();
+    }
+}
+
+void MainWindow::playErrorFeedback() {
+    if (!m_uiSoundsEnabled) {
+        return;
+    }
+
+    constexpr auto kMinimumAlertInterval = std::chrono::milliseconds(1500);
+    const auto now = std::chrono::steady_clock::now();
+    if (m_hasPlayedErrorFeedback
+        && now - m_lastErrorFeedback < kMinimumAlertInterval) {
+        return;
+    }
+
+    QApplication::beep();
+    m_lastErrorFeedback = now;
+    m_hasPlayedErrorFeedback = true;
 }
 
 void MainWindow::setupActions() {
@@ -355,6 +381,12 @@ void MainWindow::setupActions() {
     m_liveTelemetryAction->setShortcut(QKeySequence(u"Ctrl+2"_s));
     m_liveTelemetryAction->setCheckable(true);
     pageGroup->addAction(m_liveTelemetryAction);
+
+    m_eventLogAction = new QAction(u"Event Log"_s, this);
+    m_eventLogAction->setToolTip(u"Show session events and errors."_s);
+    m_eventLogAction->setShortcut(QKeySequence(u"Ctrl+3"_s));
+    m_eventLogAction->setCheckable(true);
+    pageGroup->addAction(m_eventLogAction);
 }
 
 void MainWindow::setupMenuBar() {
@@ -374,6 +406,7 @@ void MainWindow::setupMenuBar() {
     auto *viewMenu = mb->addMenu(u"&View"_s);
     viewMenu->addAction(m_dashboardAction);
     viewMenu->addAction(m_liveTelemetryAction);
+    viewMenu->addAction(m_eventLogAction);
     viewMenu->addSeparator();
     viewMenu->addAction(m_openSettingsAction);
 
@@ -409,7 +442,9 @@ void MainWindow::rebuildRecentFilesMenu() {
         const QString display = QFileInfo(filePath).fileName();
         m_recentFilesMenu->addAction(display, this, [this, filePath]() {
             if (!QFileInfo::exists(filePath)) {
-                showStatusMessage(QStringLiteral("File not found: %1").arg(filePath), 4000);
+                const QString message = QStringLiteral("File not found: %1").arg(filePath);
+                showStatusMessage(message, 4000);
+                appendToLog(true, message);
                 return;
             }
             QSettings rs(kSettingsOrg, kSettingsApp);
@@ -675,6 +710,7 @@ void MainWindow::setupToolbar() {
 
     m_liveNavButton = makeNavButton(m_liveTelemetryAction, navContainer);
     m_dashboardNavButton = makeNavButton(m_dashboardAction, navContainer);
+    m_eventLogNavButton = makeNavButton(m_eventLogAction, navContainer);
     m_settingsNavButton = makeNavButton(
         m_openSettingsAction,
         navContainer,
@@ -683,6 +719,7 @@ void MainWindow::setupToolbar() {
         QSize(44, 44));
     navLayout->addWidget(m_liveNavButton);
     navLayout->addWidget(m_dashboardNavButton);
+    navLayout->addWidget(m_eventLogNavButton);
     navLayout->addWidget(m_settingsNavButton);
 
     contentLayout->addWidget(navContainer);
@@ -726,6 +763,9 @@ void MainWindow::updateToolbarLayout() {
     }
     if (m_dashboardNavButton) {
         m_dashboardNavButton->setText(compact ? u"Replay"_s : m_dashboardAction->text());
+    }
+    if (m_eventLogNavButton) {
+        m_eventLogNavButton->setText(compact ? u"Log"_s : m_eventLogAction->text());
     }
     if (m_toolbarContent && m_toolbarContent->layout()) {
         m_toolbarContent->layout()->setSpacing(compact ? Theme::kSpaceBase : Theme::kSpaceXl);
@@ -872,6 +912,9 @@ void MainWindow::setupPages() {
     m_liveTelemetryPage = new LiveTelemetryPage(m_flightModel.get(), this);
     m_pages->addWidget(m_liveTelemetryPage);
 
+    m_eventLogPage = new EventLogPage(m_pages);
+    m_pages->addWidget(m_eventLogPage);
+
     m_pages->setCurrentWidget(m_flightDataPage);
 
     connect(m_dashboardAction, &QAction::triggered, this, [this]() {
@@ -892,6 +935,13 @@ void MainWindow::setupPages() {
         }
         m_pages->setCurrentWidget(m_liveTelemetryPage);
         updateBreadcrumb(m_serialPortSummary.isEmpty() ? u"Live Telemetry"_s : m_serialPortSummary);
+    });
+    connect(m_eventLogAction, &QAction::triggered, this, [this]() {
+        if (m_replayTelemetryCoalesceTimer) {
+            m_replayTelemetryCoalesceTimer->stop();
+        }
+        m_pages->setCurrentWidget(m_eventLogPage);
+        updateBreadcrumb(u"Event Log"_s);
     });
 
     connect(m_liveTelemetryPage, &LiveTelemetryPage::scanDevicesRequested,
@@ -925,6 +975,13 @@ void MainWindow::openSettingsWindow() {
                 m_openSettingsAction->setChecked(false);
             }
         });
+
+        connect(m_settingsWindow, &SettingsPage::unitSystemChanged,
+                m_flightDataPage, &DashboardPage::setImperialUnits);
+        connect(m_settingsWindow, &SettingsPage::unitSystemChanged,
+                m_liveTelemetryPage, &LiveTelemetryPage::setImperialUnits);
+        connect(m_settingsWindow, &SettingsPage::uiSoundsEnabledChanged,
+                this, [this](bool enabled) { m_uiSoundsEnabled = enabled; });
     }
 
     m_settingsWindow->show();
@@ -1196,8 +1253,9 @@ void MainWindow::loadFlightLogAsync(const QString &path) {
             return;
         }
         if (r.error) {
-            QMessageBox::warning(this, u"Could not load log"_s,
-                                 QString::fromStdString(*r.error));
+            const QString message = QString::fromStdString(*r.error);
+            QMessageBox::warning(this, u"Could not load log"_s, message);
+            appendToLog(true, message);
             return;
         }
         m_loadedSession = std::move(r.session);

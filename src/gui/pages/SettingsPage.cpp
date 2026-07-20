@@ -167,8 +167,41 @@ QWidget *SettingsPage::buildDataSection() {
     auto *inner = new QWidget;
     auto *layout = new QVBoxLayout(inner);
     layout->setContentsMargins(20, 20, 20, 20);
-    layout->setSpacing(20);
+    layout->setSpacing(16);
 
+    // ── Unit system ────────────────────────────────────────────────────────────────────────────
+    auto *unitsGroup = new QGroupBox(u"Measurement units"_s, inner);
+    auto *unitsLayout = new QFormLayout(unitsGroup);
+    unitsLayout->setContentsMargins(16, 20, 16, 16);
+    unitsLayout->setHorizontalSpacing(12);
+    unitsLayout->setVerticalSpacing(10);
+    unitsLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+
+    auto *unitSystemLabel = new QLabel(u"&Unit system"_s, unitsGroup);
+    unitSystemLabel->setObjectName(u"fieldLabel"_s);
+
+    m_unitSystemCombo = new QComboBox(unitsGroup);
+    m_unitSystemCombo->addItem(
+        u"Metric (SI)"_s, QString::fromLatin1(kUnitSystemMetric));
+    m_unitSystemCombo->addItem(
+        u"Imperial"_s, QString::fromLatin1(kUnitSystemImperial));
+    m_unitSystemCombo->setAccessibleName(u"Measurement unit system"_s);
+    m_unitSystemCombo->setAccessibleDescription(
+        u"Select metric or imperial units for displayed telemetry values."_s);
+    m_unitSystemCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    unitSystemLabel->setBuddy(m_unitSystemCombo);
+    connect(m_unitSystemCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsPage::onUnitSystemSelectionChanged);
+    unitsLayout->addRow(unitSystemLabel, m_unitSystemCombo);
+
+    auto *unitHint = new QLabel(
+        u"Changes displayed telemetry values; stored flight data remains in SI units."_s,
+        unitsGroup);
+    unitHint->setWordWrap(true);
+    unitHint->setObjectName(u"mutedLabel"_s);
+    unitsLayout->addRow(unitHint);
+
+    layout->addWidget(unitsGroup);
 
     // ── Sound group ───────────────────────────────────────────────────────────
     m_soundGroup = new QGroupBox(u"Sound"_s, inner);
@@ -178,11 +211,16 @@ QWidget *SettingsPage::buildDataSection() {
 
     m_uiSoundsCheck = new QCheckBox(u"Enable &UI sounds"_s, m_soundGroup);
     m_uiSoundsCheck->setChecked(true);
+    m_uiSoundsCheck->setAccessibleName(u"Enable interface feedback sounds"_s);
+    m_uiSoundsCheck->setAccessibleDescription(
+        u"Allow short, rate-limited feedback sounds for important errors."_s);
     connect(m_uiSoundsCheck, &QCheckBox::toggled, this, &SettingsPage::onSoundsToggled);
     soundLayout->addWidget(m_uiSoundsCheck);
 
     auto *soundHint = new QLabel(
-        u"Reserved for future alerts and feedback tones."_s, m_soundGroup);
+        u"Plays a short system feedback tone for important errors; repeated alerts are "
+        u"rate-limited."_s,
+        m_soundGroup);
     soundHint->setWordWrap(true);
     soundHint->setObjectName(u"mutedLabel"_s);
     soundLayout->addWidget(soundHint);
@@ -295,7 +333,8 @@ QWidget *SettingsPage::buildDeveloperSection() {
         u"  paths/replayDir             Last replay directory\n"
         u"  ui/dashboardSplitterState   Dashboard splitter\n"
         u"  ui/fontPointSize            App font pt size\n"
-        u"  ui/soundsEnabled            Sounds toggle\n"
+        u"  ui/unitSystem               metric | imperial\n"
+        u"  ui/soundsEnabled            Feedback-sound toggle\n"
         u"  ui/debugMode                Debug mode toggle\n"
         u"  ui/settingsActiveTab        Last active settings tab\n"
         u"\n"
@@ -547,9 +586,24 @@ void SettingsPage::onThemeChanged() {
 
 // ── Slot implementations ─────────────────────────────────────────────────────
 
+void SettingsPage::onUnitSystemSelectionChanged(int index) {
+    if (!m_unitSystemCombo || index < 0) {
+        return;
+    }
+
+    const bool imperial =
+        m_unitSystemCombo->itemData(index).toString()
+        == QLatin1StringView(kUnitSystemImperial);
+    QSettings s(kSettingsOrg, kSettingsApp);
+    s.setValue(kSettingsUnitSystem,
+               QString::fromLatin1(imperial ? kUnitSystemImperial : kUnitSystemMetric));
+    emit unitSystemChanged(imperial);
+}
+
 void SettingsPage::onSoundsToggled(bool enabled) {
     QSettings s(kSettingsOrg, kSettingsApp);
     s.setValue(kSettingsSoundsEnabled, enabled);
+    emit uiSoundsEnabledChanged(enabled);
 }
 
 void SettingsPage::onDebugModeToggled(bool enabled) {
@@ -667,7 +721,19 @@ void SettingsPage::closeEvent(QCloseEvent *event) {
 void SettingsPage::loadFromSettings() {
     QSettings s(kSettingsOrg, kSettingsApp);
 
+    if (m_unitSystemCombo) {
+        const QString storedUnitSystem =
+            s.value(kSettingsUnitSystem, QString::fromLatin1(kUnitSystemMetric)).toString();
+        int unitIndex = m_unitSystemCombo->findData(storedUnitSystem);
+        if (unitIndex < 0) {
+            unitIndex = m_unitSystemCombo->findData(QString::fromLatin1(kUnitSystemMetric));
+        }
+        const QSignalBlocker blocker(m_unitSystemCombo);
+        m_unitSystemCombo->setCurrentIndex(unitIndex);
+    }
+
     if (m_uiSoundsCheck) {
+        const QSignalBlocker blocker(m_uiSoundsCheck);
         m_uiSoundsCheck->setChecked(s.value(kSettingsSoundsEnabled, true).toBool());
     }
 
@@ -694,6 +760,14 @@ void SettingsPage::loadFromSettings() {
 
 void SettingsPage::saveToSettings() {
     QSettings s(kSettingsOrg, kSettingsApp);
+    if (m_unitSystemCombo) {
+        const bool imperial =
+            m_unitSystemCombo->currentData().toString()
+            == QLatin1StringView(kUnitSystemImperial);
+        s.setValue(kSettingsUnitSystem,
+                   QString::fromLatin1(
+                       imperial ? kUnitSystemImperial : kUnitSystemMetric));
+    }
     if (m_uiSoundsCheck) {
         s.setValue(kSettingsSoundsEnabled, m_uiSoundsCheck->isChecked());
     }

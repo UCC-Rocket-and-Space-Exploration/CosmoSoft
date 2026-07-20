@@ -477,6 +477,7 @@ void Map3DWidget::onMapReady() {
     if (isVisible()) {
         m_bridge->publishHostVisibility(true);
         pushThemeToMap();
+        pushUnitSystemToMap();
         scheduleMapUpdate();
     } else {
         m_bridge->publishHostVisibility(false);
@@ -506,6 +507,13 @@ void Map3DWidget::pushThemeToMap() {
     });
 }
 
+void Map3DWidget::pushUnitSystemToMap() {
+    if (!m_mapReady || !isVisible() || !m_bridge) {
+        return;
+    }
+    m_bridge->publishImperialUnits(m_imperialUnits);
+}
+
 void Map3DWidget::showEvent(QShowEvent *event) {
     QWidget::showEvent(event);
     ensureMapInitialized();
@@ -520,6 +528,7 @@ void Map3DWidget::showEvent(QShowEvent *event) {
     if (m_mapReady) {
         m_bridge->publishHostVisibility(true);
         pushThemeToMap();
+        pushUnitSystemToMap();
         scheduleMapUpdate();
     }
 }
@@ -814,6 +823,14 @@ void Map3DWidget::setCameraFollow(bool enabled) {
     m_followUpdatePending = true;
     scheduleMapUpdate();
     emit cameraFollowChanged(enabled);
+}
+
+void Map3DWidget::setImperialUnits(bool imperial) {
+    if (m_imperialUnits == imperial) {
+        return;
+    }
+    m_imperialUnits = imperial;
+    pushUnitSystemToMap();
 }
 
 void Map3DWidget::onBridgeFollowChanged(bool enabled) {

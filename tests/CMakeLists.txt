@@ -14,6 +14,7 @@ add_executable(cosmo-tests
     FlightReplayControllerTests.cpp
     LineTelemetryPipelineTests.cpp
     LineTelemetryBatchMailboxTests.cpp
+    MetricDisplayUnitTests.cpp
     MockFlightLinkTests.cpp
     SampleFileLoaderTests.cpp
     SerialPortScannerHardeningTests.cpp

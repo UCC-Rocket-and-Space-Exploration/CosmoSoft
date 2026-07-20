@@ -48,6 +48,14 @@ public:
      */
     void setMetricDataStates(const std::array<bool, kMetricCount> &hasData);
 
+    /**
+     * @brief Selects metric or imperial presentation units.
+     *
+     * Incoming FlightSample values remain SI; only labels and formatted
+     * readouts are converted.
+     */
+    void setImperialUnits(bool imperial);
+
 signals:
     /** Emitted whenever any checkbox changes. The array always has at least one true. */
     void enabledMetricsChanged(std::array<bool, kMetricCount> enabled);
@@ -73,6 +81,9 @@ private:
     std::array<QLabel *,    kMetricCount> m_traceSwatches{};
     std::array<QFrame *,    kMetricCount> m_traceRows{};
     std::array<bool,        kMetricCount> m_metricEnabled{};
+    FlightSample m_latestSample;
+    bool m_haveLatestSample = false;
+    bool m_imperialUnits = false;
     QFrame *m_secondaryGroupSeparator = nullptr;
     /** Row index where the secondary group starts (after separator). */
     static constexpr int kSecondaryGroupFirst = 6;

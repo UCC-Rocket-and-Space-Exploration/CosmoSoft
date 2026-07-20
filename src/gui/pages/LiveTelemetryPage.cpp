@@ -2,10 +2,12 @@
 
 #include "gui/FlightDataModel.h"
 #include "gui/LayoutHelpers.h"
+#include "gui/SettingsKeys.h"
 #include "gui/TelemetryMath.h"
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
 #include "gui/widgets/Map3DWidget.h"
+#include "gui/widgets/MetricDefs.h"
 #include "gui/widgets/StatTileWidget.h"
 
 #include <QComboBox>
@@ -17,6 +19,7 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
+#include <QSettings>
 #include <QSignalBlocker>
 #include <QShowEvent>
 #include <QSizePolicy>
@@ -47,6 +50,16 @@ namespace {
         .arg(value >= 0.0 ? u"+"_s : QString())
         .arg(value, 0, 'f', precision)
         .arg(unit);
+}
+
+[[nodiscard]] QString formatDisplayMetric(
+    int metricIndex, double siValue, bool imperial) {
+    if (!std::isfinite(siValue)) {
+        return u"-NA-"_s;
+    }
+    return QStringLiteral("%1 %2")
+        .arg(MetricDefs::formatMetricDisplayValue(metricIndex, siValue, imperial),
+             MetricDefs::metricDisplayUnitShort(metricIndex, imperial));
 }
 
 [[nodiscard]] double relativeLuminance(const QColor &color) {
@@ -84,6 +97,11 @@ namespace {
 
 LiveTelemetryPage::LiveTelemetryPage(FlightDataModel *model, QWidget *parent)
     : QWidget(parent), m_model(model) {
+    const QSettings unitSettings(kSettingsOrg, kSettingsApp);
+    m_imperialUnits = unitSettings.value(kSettingsUnitSystem, kUnitSystemMetric)
+                          .toString()
+                          .compare(QString::fromLatin1(kUnitSystemImperial),
+                                   Qt::CaseInsensitive) == 0;
     setObjectName(u"liveTelemetryPage"_s);
     buildUi();
     resetMetricTiles();
@@ -102,6 +120,17 @@ LiveTelemetryPage::LiveTelemetryPage(FlightDataModel *model, QWidget *parent)
 
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
             this, &LiveTelemetryPage::refreshStyleSheet);
+}
+
+void LiveTelemetryPage::setImperialUnits(bool imperial) {
+    if (m_imperialUnits == imperial) {
+        return;
+    }
+    m_imperialUnits = imperial;
+    if (m_mapWidget) {
+        m_mapWidget->setImperialUnits(imperial);
+    }
+    refreshTelemetryDisplay();
 }
 
 void LiveTelemetryPage::setAvailablePorts(const QStringList &ports) {
@@ -426,6 +455,7 @@ QFrame *LiveTelemetryPage::buildMapPanel() {
     layout->addLayout(header);
 
     m_mapWidget = new Map3DWidget(panel);
+    m_mapWidget->setImperialUnits(m_imperialUnits);
     m_mapWidget->setMinimumHeight(180);
     m_mapWidget->setAccessibleName(u"Live flight path map"_s);
     m_mapWidget->setAccessibleDescription(u"Interactive map showing live rocket telemetry coordinates"_s);
@@ -754,16 +784,21 @@ void LiveTelemetryPage::refreshTelemetryDisplay() {
     if (m_haveLatestDisplaySample) {
         const auto &sample = m_latestDisplaySample;
         if (m_metricTiles[0]) {
-            m_metricTiles[0]->setValue(formatMetric(sample.altitude, u"m"_s, 1));
+            m_metricTiles[0]->setValue(
+                formatDisplayMetric(0, sample.altitude, m_imperialUnits));
         }
         if (m_metricTiles[1]) {
-            m_metricTiles[1]->setValue(formatSignedMetric(m_latestVelocity, u"m/s"_s, 1));
+            m_metricTiles[1]->setValue(formatSignedMetric(
+                MetricDefs::verticalSpeedDisplayValue(m_latestVelocity, m_imperialUnits),
+                MetricDefs::verticalSpeedDisplayUnit(m_imperialUnits), 1));
         }
         if (m_metricTiles[2]) {
-            m_metricTiles[2]->setValue(formatMetric(sample.temperature, u"C"_s, 1));
+            m_metricTiles[2]->setValue(
+                formatDisplayMetric(1, sample.temperature, m_imperialUnits));
         }
         if (m_metricTiles[3]) {
-            m_metricTiles[3]->setValue(formatMetric(sample.pressure, u"Pa"_s, 0));
+            m_metricTiles[3]->setValue(
+                formatDisplayMetric(2, sample.pressure, m_imperialUnits));
         }
         if (m_metricTiles[4]) {
             m_metricTiles[4]->setValue(formatMetric(sample.batteryVoltage, u"V"_s, 2));

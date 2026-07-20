@@ -64,6 +64,13 @@ public:
     /** @brief Clear samples, metric values, map state, and counters. */
     void resetLiveState();
 
+    /**
+     * @brief Selects metric or imperial presentation units for live telemetry.
+     *
+     * Incoming samples and vertical-speed calculations remain in SI units.
+     */
+    void setImperialUnits(bool imperial);
+
 signals:
     /** @brief User requested serial device scanning. */
     void scanDevicesRequested();
@@ -143,6 +150,7 @@ private:
     FlightSample m_latestDisplaySample;
     double m_latestVelocity = 0.0;
     bool m_haveLatestDisplaySample = false;
+    bool m_imperialUnits = false;
 };
 
 #endif // COSMO_SOFT_LIVETELEMETRYPAGE_H
