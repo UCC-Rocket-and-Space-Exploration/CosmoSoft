@@ -19,7 +19,13 @@
 #pragma once
 
 #include <QChartView>
+#include <QList>
+#include <QPointF>
+#include <QPointer>
+#include <QVector>
+
 #include <functional>
+#include <vector>
 
 class QLabel;
 class QValueAxis;
@@ -54,6 +60,17 @@ public:
      */
     void setChart(QChart *c);
 
+    /**
+     * @brief Replaces the sorted X-coordinate lookup used by hover hit testing.
+     *
+     * The values correspond one-for-one with the owning dashboard's logical
+     * hover sample map and are cached until the next chart rebuild.
+     */
+    void setHoverXValues(QVector<double> values);
+
+    /** @brief Invalidates cached visible-series points after a chart mutation. */
+    void invalidateHoverSeriesCache();
+
 protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
@@ -70,6 +87,12 @@ private:
     void panAxesByPixels(const QPoint &delta);
     static void zoomAxisAtFocal(QValueAxis *ax, double focal, double spanScale);
     void refreshHoverOverlayStyleSheet();
+    void rebuildHoverSeriesCache();
+
+    struct HoverSeriesCacheEntry {
+        QPointer<QObject> series;
+        QList<QPointF> points;
+    };
 
     QChart  *m_chartPtr          = nullptr;
     bool     m_panning           = false;
@@ -78,6 +101,10 @@ private:
 
     QWidget *m_crosshairOverlay = nullptr;  ///< ChartCrosshairOverlay instance (type defined in .cpp).
     QLabel  *m_hoverOverlay     = nullptr;  ///< Floating text bubble that follows the cursor.
+
+    QVector<double> m_hoverXValues;
+    std::vector<HoverSeriesCacheEntry> m_hoverSeriesCache;
+    bool m_hoverSeriesCacheDirty = true;
 
     int      m_hoverThrottleCounter = 0;    ///< Skips N hover updates during pan for performance.
 };

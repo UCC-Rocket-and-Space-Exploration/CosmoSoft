@@ -56,6 +56,9 @@ public:
             return {};
         }
         auto cache = std::shared_ptr<FlightPreviewCache>(new FlightPreviewCache());
+        cache->m_sourceSessionIdentity = reinterpret_cast<std::uintptr_t>(
+            std::addressof(session));
+        cache->m_sourceSampleCount = session.samples.size();
         if (!cache->buildTimeline(session.samples, cancellation)
             || !cache->buildMetricRanges(session.samples, cancellation)
             || !cache->buildGpsIndices(session.samples, cancellation)
@@ -67,6 +70,20 @@ public:
 
     /** @brief Returns corrected monotonic display seconds for every raw sample. */
     [[nodiscard]] const std::vector<double> &displaySeconds() const { return m_displaySeconds; }
+
+    /**
+     * @brief Returns true when this cache was built from this exact session object.
+     *
+     * Preview selections are session-specific even when two sessions contain
+     * the same number of samples. Callers should reject or ignore a cache that
+     * does not match before using its timeline or cached chart selections.
+     */
+    [[nodiscard]] bool wasBuiltFor(const FlightSession &session) const noexcept
+    {
+        return m_sourceSessionIdentity
+                == reinterpret_cast<std::uintptr_t>(std::addressof(session))
+            && m_sourceSampleCount == session.samples.size();
+    }
 
     /** @brief Returns corrected display seconds for @p sampleIndex, clamped to valid range. */
     [[nodiscard]] double displaySecondAt(int sampleIndex) const
@@ -178,6 +195,9 @@ public:
         int maxPoints,
         const std::array<bool, kMetricCount> &enabled) const
     {
+        if (!wasBuiltFor(session)) {
+            return {};
+        }
         const int n = static_cast<int>(session.samples.size());
         begin = std::clamp(begin, 0, n);
         end = std::clamp(end, begin, n);
@@ -244,6 +264,9 @@ private:
     static constexpr std::size_t kMaxCachedChartSelections = 64;
 
     FlightPreviewCache() = default;
+
+    std::uintptr_t m_sourceSessionIdentity = 0;
+    std::size_t m_sourceSampleCount = 0;
 
     static bool finiteCoordinate(double lat, double lon)
     {
@@ -473,15 +496,26 @@ private:
             const FlightSample &sample = samples[static_cast<std::size_t>(i)];
             for (std::size_t m = 0; m < metricCount; ++m) {
                 const double value = sampleValueForMetric(sample, enabledMetrics[m]);
+                if (!std::isfinite(value)) {
+                    continue;
+                }
                 metricMin[m] = std::min(metricMin[m], value);
                 metricMax[m] = std::max(metricMax[m], value);
             }
         }
 
         std::vector<double> metricScale(metricCount, 1.0);
+        std::vector<bool> metricUsable(metricCount, false);
         for (std::size_t m = 0; m < metricCount; ++m) {
             const double span = metricMax[m] - metricMin[m];
-            metricScale[m] = span > 1e-15 ? 1.0 / span : 1.0;
+            metricUsable[m] = std::isfinite(metricMin[m]) && std::isfinite(metricMax[m]);
+            if (!metricUsable[m]) {
+                metricMin[m] = 0.0;
+                metricMax[m] = 0.0;
+                metricScale[m] = 1.0;
+                continue;
+            }
+            metricScale[m] = std::isfinite(span) && span > 1e-15 ? 1.0 / span : 1.0;
         }
 
         idx.reserve(static_cast<std::size_t>(maxPoints));
@@ -510,40 +544,59 @@ private:
 
             double avgX = 0.0;
             std::vector<double> avgY(metricCount, 0.0);
+            std::vector<int> avgCounts(metricCount, 0);
             for (int i = nextBucketStart; i < nextBucketEnd; ++i) {
                 const FlightSample &sample = samples[static_cast<std::size_t>(i)];
                 avgX += m_displaySeconds[static_cast<std::size_t>(i)];
                 for (std::size_t m = 0; m < metricCount; ++m) {
-                    avgY[m] += (sampleValueForMetric(sample, enabledMetrics[m]) - metricMin[m]) * metricScale[m];
+                    const double value = sampleValueForMetric(sample, enabledMetrics[m]);
+                    if (!metricUsable[m] || !std::isfinite(value)) {
+                        continue;
+                    }
+                    avgY[m] += (value - metricMin[m]) * metricScale[m];
+                    ++avgCounts[m];
                 }
             }
             avgX /= static_cast<double>(nextBucketCount);
-            for (double &value : avgY) {
-                value /= static_cast<double>(nextBucketCount);
+            for (std::size_t m = 0; m < metricCount; ++m) {
+                if (avgCounts[m] > 0) {
+                    avgY[m] /= static_cast<double>(avgCounts[m]);
+                }
             }
 
             const FlightSample &previousSample = samples[static_cast<std::size_t>(previousSelected)];
             const double previousX = m_displaySeconds[static_cast<std::size_t>(previousSelected)];
-            int bestIndex = bucketStart;
+            int bestIndex = -1;
             double bestArea = -1.0;
 
             for (int i = bucketStart; i < bucketEnd; ++i) {
                 const FlightSample &sample = samples[static_cast<std::size_t>(i)];
                 const double currentX = m_displaySeconds[static_cast<std::size_t>(i)];
                 double maxArea = 0.0;
+                bool hasFiniteMetric = false;
                 for (std::size_t m = 0; m < metricCount; ++m) {
                     const int metric = enabledMetrics[m];
-                    const double previousY = (sampleValueForMetric(previousSample, metric) - metricMin[m]) * metricScale[m];
-                    const double currentY = (sampleValueForMetric(sample, metric) - metricMin[m]) * metricScale[m];
+                    const double previousValue = sampleValueForMetric(previousSample, metric);
+                    const double currentValue = sampleValueForMetric(sample, metric);
+                    if (!metricUsable[m] || avgCounts[m] == 0
+                        || !std::isfinite(previousValue) || !std::isfinite(currentValue)) {
+                        continue;
+                    }
+                    hasFiniteMetric = true;
+                    const double previousY = (previousValue - metricMin[m]) * metricScale[m];
+                    const double currentY = (currentValue - metricMin[m]) * metricScale[m];
                     const double area = std::abs(
                         (previousX - avgX) * (currentY - previousY)
                         - (previousX - currentX) * (avgY[m] - previousY));
                     maxArea = std::max(maxArea, area);
                 }
-                if (maxArea > bestArea) {
+                if (hasFiniteMetric && maxArea > bestArea) {
                     bestArea = maxArea;
                     bestIndex = i;
                 }
+            }
+            if (bestIndex < 0) {
+                bestIndex = bucketStart + (bucketEnd - bucketStart) / 2;
             }
             idx.push_back(bestIndex);
             previousSelected = bestIndex;

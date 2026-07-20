@@ -7,12 +7,14 @@
 #include <QDir>
 #include <QEvent>
 #include <QFile>
+#include <QHideEvent>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QNativeGestureEvent>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSet>
+#include <QShowEvent>
 #include <QStandardPaths>
 #include <QTimer>
 #include <QUrl>
@@ -28,6 +30,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <utility>
 
 namespace {
@@ -36,6 +39,66 @@ constexpr double kMaxAbsMapAltitude = 10'000'000.0;
 constexpr double kMaxAbsMapTime = 1.0e15;
 constexpr double kMaxMapDistance = 1.0e12;
 constexpr int kMaxMapSampleCount = 10'000'000;
+constexpr int kMapUpdateIntervalMs = 50;
+constexpr int kLiveHistoryCompactTarget =
+    cosmo::preview::FlightPreviewCache::kMap3DPointBudget;
+constexpr int kLive3DCompactTarget =
+    cosmo::preview::FlightPreviewCache::kMap3DPointBudget / 2;
+
+[[nodiscard]] std::vector<std::size_t> cappedSourceIndices(
+    std::size_t sourceSize,
+    int pointBudget) {
+    if (sourceSize == 0U || pointBudget <= 0) {
+        return {};
+    }
+
+    const std::size_t budget = static_cast<std::size_t>(pointBudget);
+    const std::size_t outputSize = std::min(sourceSize, budget);
+    std::vector<std::size_t> indices;
+    indices.reserve(outputSize);
+    if (sourceSize <= budget || outputSize == 1U) {
+        for (std::size_t index = 0; index < outputSize; ++index) {
+            indices.push_back(index);
+        }
+        return indices;
+    }
+
+    const std::size_t sourceLast = sourceSize - 1U;
+    const std::size_t outputLast = outputSize - 1U;
+    const std::size_t quotient = sourceLast / outputLast;
+    const std::size_t remainder = sourceLast % outputLast;
+    for (std::size_t index = 0; index < outputSize; ++index) {
+        indices.push_back(quotient * index + (remainder * index) / outputLast);
+    }
+    return indices;
+}
+
+[[nodiscard]] std::vector<int> cappedSampleIndices(
+    const std::vector<int> &source,
+    int pointBudget) {
+    std::vector<int> result;
+    const auto positions = cappedSourceIndices(source.size(), pointBudget);
+    result.reserve(positions.size());
+    for (const std::size_t position : positions) {
+        result.push_back(source[position]);
+    }
+    return result;
+}
+
+[[nodiscard]] std::vector<int> cappedSequentialSampleIndices(
+    std::size_t sourceSize,
+    int pointBudget) {
+    std::vector<int> result;
+    const auto positions = cappedSourceIndices(sourceSize, pointBudget);
+    result.reserve(positions.size());
+    for (const std::size_t position : positions) {
+        if (position > static_cast<std::size_t>((std::numeric_limits<int>::max)())) {
+            break;
+        }
+        result.push_back(static_cast<int>(position));
+    }
+    return result;
+}
 
 bool isFiniteWithin(double value, double absoluteLimit) {
     return std::isfinite(value) && std::abs(value) <= absoluteLimit;
@@ -52,8 +115,15 @@ bool isValidMapPoint(const FlightSample &sample, double displayTime) {
         && isFiniteWithin(displayTime, kMaxAbsMapTime);
 }
 
+bool isUsableMapPoint(const FlightSample &sample, double displayTime) {
+    const double latitude = sample.coordinates.latitude;
+    const double longitude = sample.coordinates.longitude;
+    return isValidMapPoint(sample, displayTime)
+        && (std::abs(latitude) >= 1.0e-9 || std::abs(longitude) >= 1.0e-9);
+}
+
 QVariantMap mapPointPayload(const FlightSample &sample, int sampleIndex, double displayTime) {
-    if (!isValidMapPoint(sample, displayTime)) {
+    if (!isUsableMapPoint(sample, displayTime)) {
         return {};
     }
 
@@ -315,32 +385,6 @@ Map3DWidget::Map3DWidget(QWidget *parent)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    auto &mapProfile = sharedMapProfileResources();
-    m_tileCache = mapProfile.interceptor;
-
-    auto *page = new LockedMapPage(mapProfile.profile, this);
-    page->settings()->setAttribute(QWebEngineSettings::WebGLEnabled, true);
-    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
-    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, false);
-
-    m_bridge = new Map3DBridge(this);
-    m_channel = new QWebChannel(this);
-    m_channel->registerObject(QStringLiteral("map3dBridge"), m_bridge);
-    page->setWebChannel(m_channel);
-
-    connect(m_bridge, &Map3DBridge::statsUpdated,
-            this, &Map3DWidget::onBridgeStatsUpdated);
-    connect(m_bridge, &Map3DBridge::ready,
-            this, &Map3DWidget::onMapReady);
-    connect(m_bridge, &Map3DBridge::followChanged,
-            this, &Map3DWidget::setCameraFollow);
-
-    m_webView = new LockedMapWebView(this);
-    m_webView->setContextMenuPolicy(Qt::NoContextMenu);
-    m_webView->setPage(page);
-    m_webView->setZoomFactor(1.0);
-    layout->addWidget(m_webView);
-
     m_loadError = new QWidget(this);
     auto *errorLayout = new QVBoxLayout(m_loadError);
     errorLayout->setContentsMargins(24, 24, 24, 24);
@@ -361,25 +405,66 @@ Map3DWidget::Map3DWidget(QWidget *parent)
     m_readyWatchdog->setSingleShot(true);
     m_readyWatchdog->setInterval(5000);
 
+    m_updateTimer = new QTimer(this);
+    m_updateTimer->setSingleShot(true);
+    m_updateTimer->setInterval(kMapUpdateIntervalMs);
+
     connect(m_retryButton, &QPushButton::clicked,
             this, &Map3DWidget::loadMapPage);
     connect(m_readyWatchdog, &QTimer::timeout, this, [this]() {
         showMapLoadError(tr("The map did not finish initializing. Try loading it again."));
     });
-    connect(page, &QWebEnginePage::loadFinished,
-            this, &Map3DWidget::onMapLoadFinished);
+    connect(m_updateTimer, &QTimer::timeout,
+            this, &Map3DWidget::flushPendingUpdates);
 
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
             this, &Map3DWidget::pushThemeToMap);
 
-    loadMapPage();
+}
+
+void Map3DWidget::ensureMapInitialized() {
+    if (m_webView) {
+        return;
+    }
+
+    auto &mapProfile = sharedMapProfileResources();
+    m_tileCache = mapProfile.interceptor;
+
+    auto *page = new LockedMapPage(mapProfile.profile, this);
+    page->settings()->setAttribute(QWebEngineSettings::WebGLEnabled, true);
+    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessRemoteUrls, true);
+    page->settings()->setAttribute(QWebEngineSettings::LocalContentCanAccessFileUrls, false);
+
+    m_bridge = new Map3DBridge(this);
+    m_channel = new QWebChannel(this);
+    m_channel->registerObject(QStringLiteral("map3dBridge"), m_bridge);
+    page->setWebChannel(m_channel);
+
+    connect(m_bridge, &Map3DBridge::statsUpdated,
+            this, &Map3DWidget::onBridgeStatsUpdated);
+    connect(m_bridge, &Map3DBridge::ready,
+            this, &Map3DWidget::onMapReady);
+    connect(m_bridge, &Map3DBridge::followChanged,
+            this, &Map3DWidget::setCameraFollow);
+    connect(page, &QWebEnginePage::loadFinished,
+            this, &Map3DWidget::onMapLoadFinished);
+
+    m_webView = new LockedMapWebView(this);
+    m_webView->setContextMenuPolicy(Qt::NoContextMenu);
+    m_webView->setPage(page);
+    m_webView->setZoomFactor(1.0);
+    static_cast<QVBoxLayout *>(layout())->insertWidget(0, m_webView);
 }
 
 void Map3DWidget::loadMapPage() {
+    ensureMapInitialized();
     m_readyWatchdog->stop();
     m_mapReady = false;
     m_loadAttemptActive = true;
     m_sessionPending = m_session && !m_session->samples.empty();
+    m_liveSnapshotPending = !m_liveSamples.empty();
+    m_liveUpdatePending = m_liveTotalSamples > 0;
+    m_followUpdatePending = true;
     m_loadError->hide();
     m_webView->show();
 
@@ -406,7 +491,7 @@ void Map3DWidget::onMapLoadFinished(bool succeeded) {
 
     m_loadError->hide();
     m_webView->show();
-    if (!m_mapReady && m_loadAttemptActive) {
+    if (!m_mapReady && m_loadAttemptActive && isVisible()) {
         m_readyWatchdog->start();
     }
 }
@@ -415,7 +500,9 @@ void Map3DWidget::showMapLoadError(const QString &message) {
     m_readyWatchdog->stop();
     m_mapReady = false;
     m_loadAttemptActive = false;
-    m_webView->hide();
+    if (m_webView) {
+        m_webView->hide();
+    }
     m_loadErrorLabel->setText(message);
     m_loadError->show();
 }
@@ -430,25 +517,19 @@ void Map3DWidget::onMapReady() {
     }
     m_loadAttemptActive = false;
     m_mapReady = true;
-    pushThemeToMap();
-    if (m_sessionPending) {
-        sendPendingSession();
+    m_liveSnapshotPending = !m_liveSamples.empty();
+    m_liveUpdatePending = m_liveTotalSamples > 0;
+    if (isVisible()) {
+        m_bridge->publishHostVisibility(true);
+        pushThemeToMap();
+        scheduleMapUpdate();
+    } else {
+        m_bridge->publishHostVisibility(false);
     }
-    if (!m_liveSamples.empty()) {
-        for (int i = 0; i < static_cast<int>(m_liveSamples.size()); ++i) {
-            const auto &sample = m_liveSamples[static_cast<std::size_t>(i)];
-            const QVariantMap point = mapPointPayload(
-                sample, i, static_cast<double>(sample.timestamp));
-            if (!point.isEmpty()) {
-                m_bridge->publishLivePoint(point);
-            }
-        }
-    }
-    m_bridge->requestFollow(m_followEnabled);
 }
 
 void Map3DWidget::pushThemeToMap() {
-    if (!m_mapReady) return;
+    if (!m_mapReady || !isVisible()) return;
     const auto &p = cosmo::ThemeManager::instance().palette();
     m_bridge->publishTheme({
         {QStringLiteral("bg_base"), p.bg_base},
@@ -462,26 +543,66 @@ void Map3DWidget::pushThemeToMap() {
     });
 }
 
+void Map3DWidget::showEvent(QShowEvent *event) {
+    QWidget::showEvent(event);
+    ensureMapInitialized();
+    if (!m_mapReady && !m_loadAttemptActive) {
+        loadMapPage();
+    } else if (!m_mapReady && m_loadAttemptActive) {
+        m_readyWatchdog->start();
+    }
+
+    m_liveSnapshotPending = !m_liveSamples.empty();
+    m_liveUpdatePending = m_liveUpdatePending || m_liveTotalSamples > 0;
+    if (m_mapReady) {
+        m_bridge->publishHostVisibility(true);
+        pushThemeToMap();
+        scheduleMapUpdate();
+    }
+}
+
+void Map3DWidget::hideEvent(QHideEvent *event) {
+    m_updateTimer->stop();
+    m_readyWatchdog->stop();
+    if (m_mapReady) {
+        m_bridge->publishHostVisibility(false);
+    }
+    QWidget::hideEvent(event);
+}
+
 void Map3DWidget::setReplaySession(
     std::shared_ptr<const FlightSession> session,
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview) {
     m_session = std::move(session);
-    m_preview = std::move(preview);
+    const bool previewMatchesSession = m_session
+        && preview
+        && preview->wasBuiltFor(*m_session)
+        && preview->displaySeconds().size() == m_session->samples.size();
+    m_preview = previewMatchesSession ? std::move(preview) : nullptr;
     m_liveSamples.clear();
+    m_liveTotalSamples = 0;
+    m_lastPublishedLiveIndex = -1;
+    m_publishedLive3DPointCount = 0;
+    m_liveUpdatePending = false;
+    m_liveSnapshotPending = true;
 
     if (!m_session || m_session->samples.empty()) {
-        if (m_mapReady) {
-            m_bridge->requestClear();
-        }
+        m_sessionPending = false;
+        m_trailUpdatePending = false;
+        m_clearPending = true;
+        scheduleMapUpdate();
         emit positionStatsChanged(0, 0, 0, -1, -1, 0, 0, 0, 0, 0);
         return;
     }
 
-    if (m_mapReady) {
-        sendPendingSession();
-    } else {
-        m_sessionPending = true;
-    }
+    m_clearPending = false;
+    m_sessionPending = true;
+    const std::size_t sampleCount = std::min(
+        m_session->samples.size(),
+        static_cast<std::size_t>(kMaxMapSampleCount));
+    m_pendingTrailLength = static_cast<int>(sampleCount);
+    m_trailUpdatePending = true;
+    scheduleMapUpdate();
 }
 
 void Map3DWidget::sendPendingSession() {
@@ -489,7 +610,8 @@ void Map3DWidget::sendPendingSession() {
     if (!m_session || m_session->samples.empty()) return;
 
     const auto appendPoint = [this](QVariantList &array, int sampleIndex) {
-        if (sampleIndex < 0 || sampleIndex >= static_cast<int>(m_session->samples.size())) {
+        if (sampleIndex < 0
+            || static_cast<std::size_t>(sampleIndex) >= m_session->samples.size()) {
             return;
         }
         const auto &s = m_session->samples[static_cast<std::size_t>(sampleIndex)];
@@ -502,41 +624,75 @@ void Map3DWidget::sendPendingSession() {
         }
     };
 
-    QVariantList path2d;
-    QVariantList path3d;
+    std::vector<int> path2dIndices;
+    std::vector<int> path3dIndices;
     if (m_preview) {
-        for (const int sampleIndex : m_preview->map2DIndices()) {
-            appendPoint(path2d, sampleIndex);
-        }
-        for (const int sampleIndex : m_preview->map3DIndices()) {
-            appendPoint(path3d, sampleIndex);
-        }
+        path2dIndices = cappedSampleIndices(
+            m_preview->map2DIndices(),
+            cosmo::preview::FlightPreviewCache::kMap2DPointBudget);
+        path3dIndices = cappedSampleIndices(
+            m_preview->map3DIndices(),
+            cosmo::preview::FlightPreviewCache::kMap3DPointBudget);
     } else {
-        for (int i = 0; i < static_cast<int>(m_session->samples.size()); ++i) {
-            appendPoint(path2d, i);
-            appendPoint(path3d, i);
-        }
+        const std::size_t boundedSourceSize = std::min(
+            m_session->samples.size(),
+            static_cast<std::size_t>(kMaxMapSampleCount));
+        path2dIndices = cappedSequentialSampleIndices(
+            boundedSourceSize,
+            cosmo::preview::FlightPreviewCache::kMap2DPointBudget);
+        path3dIndices = cappedSequentialSampleIndices(
+            boundedSourceSize,
+            cosmo::preview::FlightPreviewCache::kMap3DPointBudget);
     }
 
+    QVariantList path2d;
+    QVariantList path3d;
+    path2d.reserve(static_cast<qsizetype>(path2dIndices.size()));
+    path3d.reserve(static_cast<qsizetype>(path3dIndices.size()));
+    for (const int sampleIndex : path2dIndices) {
+        appendPoint(path2d, sampleIndex);
+    }
+    for (const int sampleIndex : path3dIndices) {
+        appendPoint(path3d, sampleIndex);
+    }
+
+    const std::size_t boundedTotal = std::min(
+        m_session->samples.size(),
+        static_cast<std::size_t>(kMaxMapSampleCount));
     m_bridge->publishSession({
-        {QStringLiteral("total"), static_cast<int>(m_session->samples.size())},
+        {QStringLiteral("total"), static_cast<int>(boundedTotal)},
         {QStringLiteral("path"), path2d},
         {QStringLiteral("path3d"), path3d},
     });
 }
 
 void Map3DWidget::setReplayTrailLength(int trailLength) {
-    if (!m_session || m_session->samples.empty() || !m_mapReady) return;
+    if (!m_session || m_session->samples.empty()) return;
+    const std::size_t boundedSize = std::min(
+        m_session->samples.size(),
+        static_cast<std::size_t>(kMaxMapSampleCount));
+    m_pendingTrailLength = std::clamp(trailLength, 0, static_cast<int>(boundedSize));
+    m_trailUpdatePending = true;
+    scheduleMapUpdate();
+}
+
+void Map3DWidget::sendPendingTrailLength() {
+    m_trailUpdatePending = false;
+    if (!m_session || m_session->samples.empty()) return;
+
     QVariantMap current;
-    const int idx = std::clamp(trailLength - 1, 0, static_cast<int>(m_session->samples.size()) - 1);
-    if (trailLength > 0 && (!m_preview || m_preview->gpsSampleValid(idx))) {
+    const int sessionLast = static_cast<int>(std::min(
+        m_session->samples.size() - 1U,
+        static_cast<std::size_t>(kMaxMapSampleCount - 1)));
+    const int idx = std::clamp(m_pendingTrailLength - 1, 0, sessionLast);
+    if (m_pendingTrailLength > 0 && (!m_preview || m_preview->gpsSampleValid(idx))) {
         const auto &s = m_session->samples[static_cast<std::size_t>(idx)];
         const double displayTime = m_preview
             ? m_preview->displaySecondAt(idx)
             : static_cast<double>(s.timestamp) / 1000.0;
         current = mapPointPayload(s, idx, displayTime);
     }
-    m_bridge->publishTrailLength(trailLength, current);
+    m_bridge->publishTrailLength(m_pendingTrailLength, current);
 }
 
 void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
@@ -546,50 +702,180 @@ void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
 void Map3DWidget::onLiveSamplesReceived(const QVector<FlightSample> &samples) {
     if (m_session) return;
 
+    bool totalChanged = false;
     for (const auto &sample : samples) {
-        m_liveSamples.push_back(sample);
-
-        if (!m_mapReady) {
-            continue;
+        if (m_liveTotalSamples >= kMaxMapSampleCount) {
+            break;
         }
+        const int sampleIndex = m_liveTotalSamples;
+        ++m_liveTotalSamples;
+        totalChanged = true;
+        if (isUsableMapPoint(sample, static_cast<double>(sample.timestamp))) {
+            m_liveSamples.push_back({sample, sampleIndex});
+        }
+        compactLiveHistory();
+    }
+    if (totalChanged) {
+        m_liveUpdatePending = true;
+        scheduleMapUpdate();
+    }
+}
 
-        const QVariantMap point = mapPointPayload(
-            sample, static_cast<int>(m_liveSamples.size()) - 1,
-            static_cast<double>(sample.timestamp));
-        if (!point.isEmpty()) {
-            m_bridge->publishLivePoint(point);
+void Map3DWidget::compactLiveHistory() {
+    const std::size_t pointBudget = static_cast<std::size_t>(
+        cosmo::preview::FlightPreviewCache::kMap2DPointBudget);
+    if (m_liveSamples.size() <= pointBudget) {
+        return;
+    }
+
+    std::vector<IndexedLiveSample> compacted;
+    const auto positions = cappedSourceIndices(m_liveSamples.size(), kLiveHistoryCompactTarget);
+    compacted.reserve(positions.size());
+    for (const std::size_t position : positions) {
+        compacted.push_back(std::move(m_liveSamples[position]));
+    }
+    m_liveSamples = std::move(compacted);
+    m_liveSnapshotPending = true;
+}
+
+void Map3DWidget::sendPendingLiveSamples() {
+    bool replace = m_liveSnapshotPending;
+    if (!replace) {
+        int pending3DPoints = 0;
+        for (const auto &entry : m_liveSamples) {
+            if (entry.sampleIndex > m_lastPublishedLiveIndex) {
+                ++pending3DPoints;
+            }
+        }
+        if (m_publishedLive3DPointCount + pending3DPoints
+            > cosmo::preview::FlightPreviewCache::kMap3DPointBudget) {
+            replace = true;
         }
     }
+    QVariantList path2d;
+    QVariantList path3d;
+
+    if (replace) {
+        path2d.reserve(static_cast<qsizetype>(m_liveSamples.size()));
+        for (const auto &entry : m_liveSamples) {
+            const QVariantMap point = mapPointPayload(
+                entry.sample,
+                entry.sampleIndex,
+                static_cast<double>(entry.sample.timestamp));
+            if (!point.isEmpty()) {
+                path2d.append(point);
+            }
+        }
+
+        const auto positions3d = cappedSourceIndices(
+            m_liveSamples.size(),
+            kLive3DCompactTarget);
+        path3d.reserve(static_cast<qsizetype>(positions3d.size()));
+        for (const std::size_t position : positions3d) {
+            const auto &entry = m_liveSamples[position];
+            const QVariantMap point = mapPointPayload(
+                entry.sample,
+                entry.sampleIndex,
+                static_cast<double>(entry.sample.timestamp));
+            if (!point.isEmpty()) {
+                path3d.append(point);
+            }
+        }
+    } else {
+        for (const auto &entry : m_liveSamples) {
+            if (entry.sampleIndex <= m_lastPublishedLiveIndex) {
+                continue;
+            }
+            const QVariantMap point = mapPointPayload(
+                entry.sample,
+                entry.sampleIndex,
+                static_cast<double>(entry.sample.timestamp));
+            if (!point.isEmpty()) {
+                path2d.append(point);
+                path3d.append(point);
+            }
+        }
+    }
+
+    m_bridge->publishLiveBatch({
+        {QStringLiteral("replace"), replace},
+        {QStringLiteral("total"), m_liveTotalSamples},
+        {QStringLiteral("path"), path2d},
+        {QStringLiteral("path3d"), path3d},
+    });
+    m_lastPublishedLiveIndex = m_liveTotalSamples - 1;
+    if (replace) {
+        m_publishedLive3DPointCount = static_cast<int>(path3d.size());
+    } else {
+        m_publishedLive3DPointCount += static_cast<int>(path3d.size());
+    }
+    m_liveSnapshotPending = false;
+    m_liveUpdatePending = false;
 }
 
 void Map3DWidget::onSessionReset() {
     m_session.reset();
     m_preview.reset();
     m_liveSamples.clear();
+    m_liveTotalSamples = 0;
+    m_lastPublishedLiveIndex = -1;
+    m_publishedLive3DPointCount = 0;
     m_sessionPending = false;
+    m_liveUpdatePending = false;
+    m_liveSnapshotPending = true;
+    m_trailUpdatePending = false;
+    m_clearPending = true;
 
-    if (m_mapReady) {
-        m_bridge->requestClear();
-    }
+    scheduleMapUpdate();
     emit positionStatsChanged(0, 0, 0, -1, -1, 0, 0, 0, 0, 0);
 }
 
 void Map3DWidget::fitPath() {
-    if (m_mapReady) {
+    if (m_mapReady && isVisible()) {
         m_bridge->requestFit();
     }
 }
 
 void Map3DWidget::centerOnCurrent() {
-    if (m_mapReady) {
+    if (m_mapReady && isVisible()) {
         m_bridge->requestCenter();
     }
 }
 
 void Map3DWidget::setCameraFollow(bool enabled) {
     m_followEnabled = enabled;
-    if (m_mapReady) {
-        m_bridge->requestFollow(enabled);
+    m_followUpdatePending = true;
+    scheduleMapUpdate();
+}
+
+void Map3DWidget::scheduleMapUpdate() {
+    if (!m_mapReady || !isVisible() || m_updateTimer->isActive()) {
+        return;
+    }
+    m_updateTimer->start();
+}
+
+void Map3DWidget::flushPendingUpdates() {
+    if (!m_mapReady || !isVisible()) {
+        return;
+    }
+
+    if (m_clearPending) {
+        m_bridge->requestClear();
+        m_clearPending = false;
+    }
+    if (m_sessionPending) {
+        sendPendingSession();
+    }
+    if (!m_session && m_liveUpdatePending) {
+        sendPendingLiveSamples();
+    }
+    if (m_session && m_trailUpdatePending) {
+        sendPendingTrailLength();
+    }
+    if (m_followUpdatePending) {
+        m_bridge->requestFollow(m_followEnabled);
+        m_followUpdatePending = false;
     }
 }
 

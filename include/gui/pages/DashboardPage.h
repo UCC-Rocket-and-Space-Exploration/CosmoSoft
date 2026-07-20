@@ -1,8 +1,9 @@
 #ifndef COSMO_SOFT_DASHBOARDPAGE_H
 #define COSMO_SOFT_DASHBOARDPAGE_H
 
-#include <QWidget>
+#include <QElapsedTimer>
 #include <QVector>
+#include <QWidget>
 
 #include <array>
 #include <deque>
@@ -20,6 +21,7 @@ class QLabel;
 class QLineSeries;
 class QPaintEvent;
 class QPushButton;
+class QShowEvent;
 class QStackedWidget;
 class QProgressBar;
 class QTimer;
@@ -31,6 +33,7 @@ class FlightDataModel;
 class FlightReplayController;
 class Map3DWidget;
 class ReplayBar;
+class TelemetryChartView;
 class TracesPanel;
 
 /**
@@ -41,18 +44,18 @@ class TracesPanel;
  *
  *  **Live mode** — FlightDataModel emits liveSamplesReceived(); samples are buffered
  *  in m_liveSamples (capped at kMaxLiveBufferSamples) and the chart is rebuilt
- *  at most once per 50 ms via the live coalesce timer.
+ *  at most 20 times per second by the shared render scheduler.
  *
  *  **Replay mode** — A FlightSession is loaded via setReplaySession() and the
  *  visible trail is controlled by setReplayTrailLength() which is called by
- *  MainWindow on every FlightReplayController tick.  Chart redraws are coalesced
- *  to ≈ 30 fps so timeline scrubbing stays smooth.
+ *  MainWindow on every FlightReplayController tick. Chart work is capped at
+ *  ≈ 30 fps and deferred while its view is hidden.
  *
- * When the sample count exceeds kMaxChartDisplayPoints the chart uses uniform
- * decimation; the mapping from display-point index back to original sample is
+ * When the sample count exceeds kMaxChartDisplayPoints the chart uses LTTB
+ * reduction; the mapping from display-point index back to original sample is
  * stored in m_hoverSampleIndexMap to keep hover readouts accurate.
  *
- * When two or more metrics are enabled the Y axis is normalised to [0, 1] so
+ * When three or more metrics are enabled the Y axis is normalised to [0, 1] so
  * all traces overlay on the same scale (the axis title changes to "Normalized").
  */
 class DashboardPage : public QWidget {
@@ -87,6 +90,7 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private slots:
     void onDisplayedSampleChanged(const FlightSample &sample);
@@ -98,13 +102,18 @@ private slots:
 private:
     // ── Replay chart management ───────────────────────────────────────────────
     void applyReplayControllerPosition(int trailLength);
-    void scheduleReplayChartRebuild();   ///< Restart the 33 ms coalesce timer.
-    void flushReplayChartRebuild();      ///< Cancel timer and rebuild immediately.
+    void scheduleReplayChartRebuild();   ///< Mark replay chart data dirty.
+    void flushReplayChartRebuild();      ///< Flush the latest visible replay state.
     void rebuildReplayCharts(int trailLength);
 
     // ── Live chart management ─────────────────────────────────────────────────
-    void scheduleLiveChartRebuild();     ///< Restart the 50 ms coalesce timer.
+    void scheduleLiveChartRebuild();     ///< Mark live chart data dirty.
     void rebuildLiveSeriesFromHistory();
+
+    // ── Shared chart render scheduler ─────────────────────────────────────
+    void scheduleRenderPass();
+    void processScheduledUpdates(bool forceImmediate = false);
+    [[nodiscard]] bool graphViewIsActive() const;
 
     // ── Chart helpers ─────────────────────────────────────────────────────────
 
@@ -148,8 +157,8 @@ private:
     QLabel      *m_sessionInfoLabel  = nullptr;  ///< Session metadata summary.
 
     // ── Chart ─────────────────────────────────────────────────────────────────
-    QChart     *m_chart     = nullptr;
-    QChartView *m_chartView = nullptr;
+    QChart             *m_chart     = nullptr;
+    TelemetryChartView *m_chartView = nullptr;
     std::array<QLineSeries *, kMetricCount> m_lineSeries{};
     QValueAxis *m_axisX  = nullptr;
     QValueAxis *m_axisY  = nullptr;
@@ -195,9 +204,16 @@ private:
     void clearEventMarkers();
     void redrawEventMarkers();
 
-    // ── Chart update coalescing ───────────────────────────────────────────────
-    QTimer *m_liveChartCoalesceTimer   = nullptr;  ///< 50 ms, single-shot.
-    QTimer *m_replayChartCoalesceTimer = nullptr;  ///< 33 ms, single-shot.
+    // ── Bounded chart scheduling ─────────────────────────────────────────────
+    static constexpr int kLiveChartIntervalMs = 50;
+    static constexpr int kInteractiveIntervalMs = 33;
+
+    QTimer *m_renderSchedulerTimer = nullptr;  ///< The only chart render timer.
+    QElapsedTimer m_renderClock;
+    qint64 m_lastLiveChartRenderMs = -kLiveChartIntervalMs;
+    qint64 m_lastReplayChartRenderMs = -kInteractiveIntervalMs;
+    bool m_liveChartDirty = false;
+    bool m_replayChartDirty = false;
 
     /**
      * When true, rebuildReplayCharts / rebuildLiveSeriesFromHistory skip the

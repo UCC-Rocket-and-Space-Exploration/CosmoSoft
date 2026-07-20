@@ -22,6 +22,7 @@ class QComboBox;
 class QFrame;
 class QLabel;
 class QPushButton;
+class QShowEvent;
 class QToolButton;
 class QVBoxLayout;
 class FlightDataModel;
@@ -73,6 +74,10 @@ signals:
     /** @brief User requested deterministic fake live telemetry. */
     void startDemoRequested();
 
+protected:
+    /** @brief Refresh deferred telemetry presentation when the page becomes visible. */
+    void showEvent(QShowEvent *event) override;
+
 private slots:
     void refreshStyleSheet();
     void onLiveSamplesReceived(const QVector<FlightSample> &samples);
@@ -88,6 +93,7 @@ private:
     QPushButton *createPanelButton(const QString &text, QWidget *parent);
     QToolButton *createMapToolButton(const QString &text, QWidget *parent);
     void refreshDeviceRows();
+    void refreshTelemetryDisplay();
     void resetMetricTiles();
     void updateLastPacketLabel();
     [[nodiscard]] QString selectedPort() const;
@@ -116,6 +122,9 @@ private:
     qint64 m_totalBytes = 0;
     FlightSample m_previousSample;
     bool m_havePreviousSample = false;
+    FlightSample m_latestDisplaySample;
+    double m_latestVelocity = 0.0;
+    bool m_haveLatestDisplaySample = false;
 };
 
 #endif // COSMO_SOFT_LIVETELEMETRYPAGE_H

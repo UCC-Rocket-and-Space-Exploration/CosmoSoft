@@ -37,6 +37,8 @@ class QWebChannel;
 class QLabel;
 class QPushButton;
 class QTimer;
+class QHideEvent;
+class QShowEvent;
 class Map3DBridge;
 class TileCacheInterceptor;
 
@@ -101,12 +103,31 @@ private slots:
     void onMapReady();
     void onMapLoadFinished(bool succeeded);
     void pushThemeToMap();
+    void flushPendingUpdates();
 
 private:
+    struct IndexedLiveSample {
+        FlightSample sample;
+        int sampleIndex = 0;
+    };
+
+    void ensureMapInitialized();
     void loadMapPage();
     void showMapLoadError(const QString &message);
     void sendPendingSession();
+    void sendPendingLiveSamples();
+    void sendPendingTrailLength();
+    void scheduleMapUpdate();
+    void compactLiveHistory();
 
+protected:
+    /** @brief Lazily initializes and catches up the embedded map when shown. */
+    void showEvent(QShowEvent *event) override;
+
+    /** @brief Suspends map updates and 3D animation while hidden. */
+    void hideEvent(QHideEvent *event) override;
+
+private:
     QWebEngineView       *m_webView   = nullptr;
     QWebChannel          *m_channel   = nullptr;
     Map3DBridge          *m_bridge    = nullptr;
@@ -115,15 +136,25 @@ private:
     QLabel               *m_loadErrorLabel = nullptr;
     QPushButton          *m_retryButton = nullptr;
     QTimer               *m_readyWatchdog = nullptr;
+    QTimer               *m_updateTimer = nullptr;
 
     std::shared_ptr<const FlightSession> m_session;
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
     bool m_mapReady   = false;
     bool m_loadAttemptActive = false;
     bool m_sessionPending = false;
+    bool m_clearPending = false;
+    bool m_liveUpdatePending = false;
+    bool m_liveSnapshotPending = true;
+    bool m_trailUpdatePending = false;
+    bool m_followUpdatePending = true;
     bool m_followEnabled  = false;
+    int m_pendingTrailLength = 0;
+    int m_lastPublishedLiveIndex = -1;
+    int m_publishedLive3DPointCount = 0;
+    int m_liveTotalSamples = 0;
 
-    std::vector<FlightSample> m_liveSamples;
+    std::vector<IndexedLiveSample> m_liveSamples;
 };
 
 /**
@@ -159,8 +190,11 @@ signals:
     /** @brief Updates the replay trail and its exact current point. */
     void trailLengthChanged(int trailLength, const QVariantMap &currentPoint);
 
-    /** @brief Appends one validated live point to the embedded map. */
-    void livePointAdded(const QVariantMap &point);
+    /** @brief Appends or replaces a bounded batch of validated live points. */
+    void liveBatchAdded(const QVariantMap &batch);
+
+    /** @brief Notifies the page whether its host widget is visible. */
+    void hostVisibilityChanged(bool visible);
 
     /** @brief Requests that the embedded map clear all flight data. */
     void clearRequested();
@@ -186,8 +220,11 @@ public:
         emit trailLengthChanged(trailLength, currentPoint);
     }
 
-    /** @brief Publishes a live point without evaluating JavaScript source code. */
-    void publishLivePoint(const QVariantMap &point) { emit livePointAdded(point); }
+    /** @brief Publishes one bounded live batch without evaluating JavaScript source code. */
+    void publishLiveBatch(const QVariantMap &batch) { emit liveBatchAdded(batch); }
+
+    /** @brief Publishes host visibility so the renderer can suspend animation. */
+    void publishHostVisibility(bool visible) { emit hostVisibilityChanged(visible); }
 
     /** @brief Publishes a map-clear command. */
     void requestClear() { emit clearRequested(); }

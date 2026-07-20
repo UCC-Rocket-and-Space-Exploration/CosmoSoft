@@ -19,9 +19,12 @@ let activeView = "2d";
 let activeLayer = "map";
 let tileLayerMap = null, tileLayerLight = null, tileLayerTerrain = null, tileLayerSat = null;
 let currentThemeDark = true;
+let hostVisible = true;
+let pathDataDirty = true, path3dDataDirty = true;
 
 // ── 3D state ───────────────────────────────────────────────────────
 let scene3d, camera3d, renderer3d, controls3d, animId3d = null;
+let renderFramesRemaining3d = 0;
 let pathLine3d, trailLine3d, ghostLine3d;
 let launchSphere3d, rocketSphere3d, rocketGlow3d;
 let groundGrid3d, groundMesh3d;
@@ -39,6 +42,8 @@ let groundLoadGeneration = 0;
 const MAX_ABS_ALTITUDE = 10000000;
 const MAX_ABS_TIMESTAMP = 1e15;
 const MAX_MAP_SAMPLE_COUNT = 10000000;
+const MAX_2D_POINTS = 10000;
+const MAX_3D_POINTS = 5000;
 
 function hDist(a1,o1,a2,o2) {
   const dl=(a2-a1)*D2R*0.5, doo=(o2-o1)*D2R*0.5;
@@ -59,6 +64,41 @@ function validAltitude(alt){return Number.isFinite(alt)&&Math.abs(alt)<=MAX_ABS_
 function fmtAlt(m){return m>=1000?(m/1000).toFixed(1)+" km":m.toFixed(0)+" m";}
 function fmtDist(m){return m>=1000?(m/1000).toFixed(2)+" km":m.toFixed(0)+" m";}
 function sampleIdx(indices, i){return Number.isFinite(indices[i])?indices[i]:i;}
+
+function cappedPositions(length, budget) {
+  if (length <= 0 || budget <= 0) return [];
+  const count = Math.min(length, budget);
+  if (count === length) return Array.from({length: count}, (_, index) => index);
+  if (count === 1) return [0];
+  const last = length - 1, denominator = count - 1;
+  const result = [];
+  for (let index = 0; index < count; index++) {
+    result.push(Math.floor(index * last / denominator));
+  }
+  return result;
+}
+
+function cappedRawPoints(points, budget) {
+  const source = Array.isArray(points) ? points : [];
+  return cappedPositions(source.length, budget).map(index => source[index]);
+}
+
+function cap2DSeries() {
+  if (allPos.length <= MAX_2D_POINTS) return;
+  const selected = cappedPositions(allPos.length, MAX_2D_POINTS);
+  allPos = selected.map(index => allPos[index]);
+  allAlt = selected.map(index => allAlt[index]);
+  allTs = selected.map(index => allTs[index]);
+  allIdx = selected.map(index => allIdx[index]);
+}
+
+function cap3DSeries() {
+  if (allPos3d.length <= MAX_3D_POINTS) return;
+  const selected = cappedPositions(allPos3d.length, MAX_3D_POINTS);
+  allPos3d = selected.map(index => allPos3d[index]);
+  allAlt3d = selected.map(index => allAlt3d[index]);
+  allIdx3d = selected.map(index => allIdx3d[index]);
+}
 
 function setFollowing(enabled, notifyBridge) {
   following = !!enabled;
@@ -213,6 +253,7 @@ function apply3DTheme() {
   const info = document.getElementById("info3d");
   if (info) info.style.color = currentThemePalette?.text_dim || (isDark ? "#9fb4c8" : "#1f3142");
   updateLineMaterialResolution();
+  request3DRender(2);
 }
 
 /* ── Leaflet 2D ──────────────────────────────────────────────────── */
@@ -321,7 +362,10 @@ function init3D() {
   controls3d.maxPolarAngle = Math.PI * 0.48;
   controls3d.addEventListener("start", () => {
     if (following) setFollowing(false, true);
+    request3DRender(12);
   });
+  controls3d.addEventListener("change", () => request3DRender(2));
+  controls3d.addEventListener("end", () => request3DRender(12));
 
   // ground plane grid
   groundGrid3d = new THREE.GridHelper(4000, 80, 0x1a2030, 0x111822);
@@ -377,6 +421,7 @@ function init3D() {
 
   resize3D();
   apply3DTheme();
+  request3DRender(2);
 }
 
 function resize3D() {
@@ -388,14 +433,25 @@ function resize3D() {
   renderer3d.setSize(w, h);
   updateLineMaterialResolution();
   needsUpdate3d = true;
+  request3DRender(2);
+}
+
+function request3DRender(frames = 1) {
+  needsUpdate3d = true;
+  renderFramesRemaining3d = Math.max(renderFramesRemaining3d, Math.max(1, frames));
+  if (!hostVisible || document.hidden || activeView !== "3d" || !renderer3d
+      || animId3d !== null) return;
+  animId3d = requestAnimationFrame(animate3D);
 }
 
 function animate3D() {
-  animId3d = requestAnimationFrame(animate3D);
-  update3DFollowCamera();
-  controls3d.update();
+  animId3d = null;
+  if (!hostVisible || document.hidden || activeView !== "3d" || !renderer3d) return;
 
-  // pulse the rocket glow
+  const followChanged = update3DFollowCamera();
+  const controlsChanged = controls3d.update();
+
+  // Pulse briefly after data/camera changes, then leave the renderer idle.
   if (rocketGlow3d && rocketGlow3d.visible) {
     const t = performance.now() * 0.002;
     const s = 1.0 + 0.3 * Math.sin(t);
@@ -403,7 +459,14 @@ function animate3D() {
     rocketGlow3d.material.opacity = 0.08 + 0.06 * Math.sin(t);
   }
 
-  renderer3d.render(scene3d, camera3d);
+  if (needsUpdate3d || followChanged || controlsChanged || renderFramesRemaining3d > 0) {
+    renderer3d.render(scene3d, camera3d);
+  }
+  needsUpdate3d = false;
+  renderFramesRemaining3d = Math.max(0, renderFramesRemaining3d - 1);
+  if (animId3d === null && (renderFramesRemaining3d > 0 || followChanged || controlsChanged)) {
+    animId3d = requestAnimationFrame(animate3D);
+  }
 }
 
 function update3DEntities() {
@@ -424,14 +487,19 @@ function update3DEntities() {
     rocketSphere3d.visible = false;
     rocketGlow3d.visible = false;
     document.getElementById("info3d").textContent = "";
+    path3dDataDirty = false;
+    request3DRender(2);
     return;
   }
 
   const refLat = allValid[0].lat, refLon = allValid[0].lon;
 
   // ghost (full path)
-  const ghostPts = toLocal3D(allValid, allValidAlt, refLat, refLon);
-  updateWideLine(ghostLine3d, ghostPts);
+  if (path3dDataDirty) {
+    const ghostPts = toLocal3D(allValid, allValidAlt, refLat, refLon);
+    updateWideLine(ghostLine3d, ghostPts);
+    path3dDataDirty = false;
+  }
 
   // trail (active)
   const trailValid = [], trailAlt = [];
@@ -495,6 +563,7 @@ function update3DEntities() {
     rocketSphere3d.visible = false;
     rocketGlow3d.visible = false;
   }
+  request3DRender(following ? 12 : 2);
 }
 
 function currentRocket3DPoint() {
@@ -549,6 +618,7 @@ function center3DCameraOnRocket() {
   controls3d.minDistance = Math.max(4, distance * 0.08);
   controls3d.maxDistance = Math.max(8000, pathSize * 8);
   controls3d.update();
+  request3DRender(12);
   return true;
 }
 
@@ -577,6 +647,7 @@ function fit3DPath() {
   controls3d.maxDistance = Math.max(8000, maxDim * 10);
   camera3d.position.copy(center).add(new THREE.Vector3(0.65, 0.55, 0.50).normalize().multiplyScalar(distance));
   controls3d.update();
+  request3DRender(12);
 }
 
 function fit3DCamera() {
@@ -591,15 +662,18 @@ function set3DCameraDistance(scale) {
   const dir = offset.lengthSq() < 1e-6 ? cameraViewDirection() : offset.normalize();
   camera3d.position.copy(controls3d.target).add(dir.multiplyScalar(next));
   controls3d.update();
+  request3DRender(12);
 }
 
 function update3DFollowCamera() {
-  if (!following || activeView !== "3d" || !camera3d || !controls3d) return;
+  if (!following || activeView !== "3d" || !camera3d || !controls3d) return false;
   const target = currentRocket3DPoint();
-  if (!target) return;
+  if (!target) return false;
+  if (controls3d.target.distanceToSquared(target) < 1e-4) return false;
   const offset = camera3d.position.clone().sub(controls3d.target);
   controls3d.target.lerp(target, 0.18);
   camera3d.position.copy(controls3d.target).add(offset);
+  return true;
 }
 
 /* ── 3D ground tile rendering ────────────────────────────────────── */
@@ -822,6 +896,8 @@ function applyGroundTexture() {
   groundMesh3d.material = new THREE.MeshLambertMaterial({ map: groundTexture, side: THREE.DoubleSide });
   groundMesh3d.rotation.set(0, 0, 0);
   groundMesh3d.position.set(cx, 0, cz);
+  path3dDataDirty = true;
+  request3DRender(2);
 }
 
 async function switchGround3D(mode, force = false) {
@@ -855,6 +931,7 @@ async function switchGround3D(mode, force = false) {
     groundMesh3d.position.set(0, -0.5, 0);
     scene3d.fog = new THREE.FogExp2(0x080a10, 0.00015);
     scene3d.background = new THREE.Color(0x080a10);
+    path3dDataDirty = true;
     apply3DTheme();
     update3DEntities();
     return;
@@ -863,6 +940,7 @@ async function switchGround3D(mode, force = false) {
   groundGrid3d.visible = false;
   scene3d.fog = null;
   scene3d.background = new THREE.Color(mode === "sat" ? 0x0a1520 : 0x88aacc);
+  request3DRender(2);
   const textureReady = await buildGroundTexture(mode, generation);
   if (!textureReady || generation !== groundLoadGeneration) return;
   const elevationReady = await fetchElevationGrid(groundTexBounds, generation);
@@ -901,7 +979,7 @@ function switchView(mode) {
     resize3D();
     update3DEntities();
     if (!center3DCameraOnRocket()) fit3DPath();
-    if (!animId3d) animate3D();
+    request3DRender(2);
   } else {
     mapEl.style.display = "block";
     v3El.style.display = "none";
@@ -911,8 +989,9 @@ function switchView(mode) {
     btn3.setAttribute("aria-pressed", "false");
     if (lsEl) lsEl.style.display = "flex";
     if (g3El) g3El.style.display = "none";
-    if (animId3d) { cancelAnimationFrame(animId3d); animId3d = null; }
-    setTimeout(() => map.invalidateSize(), 50);
+    if (animId3d !== null) { cancelAnimationFrame(animId3d); animId3d = null; }
+    renderFramesRemaining3d = 0;
+    setTimeout(() => { if (hostVisible) map.invalidateSize(); }, 50);
   }
 }
 
@@ -1006,9 +1085,14 @@ function updateEntities(tLen, exactPoint) {
     }
   }
 
-  const allValid=[];
-  for(let i=0;i<allPos.length;i++){if(validC(allPos[i].lat,allPos[i].lon))allValid.push([allPos[i].lat,allPos[i].lon]);}
-  pathLine.setLatLngs(allValid);
+  if(pathDataDirty){
+    const allValid=[];
+    for(let i=0;i<allPos.length;i++){
+      if(validC(allPos[i].lat,allPos[i].lon))allValid.push([allPos[i].lat,allPos[i].lon]);
+    }
+    pathLine.setLatLngs(allValid);
+    pathDataDirty=false;
+  }
 
   if(vp.length===0){
     trailLine.setLatLngs([]);launchMarker.setOpacity(0);rocketMarker.setOpacity(0);
@@ -1096,6 +1180,17 @@ document.addEventListener("keydown", function(e) {
   }
 });
 
+document.addEventListener("visibilitychange", function(){
+  if(document.hidden){
+    if(animId3d!==null){cancelAnimationFrame(animId3d);animId3d=null;}
+    renderFramesRemaining3d=0;
+    return;
+  }
+  if(!hostVisible)return;
+  if(activeView==="3d")request3DRender(2);
+  else if(map)map.invalidateSize();
+});
+
 /* ── API from C++ ────────────────────────────────────────────────── */
 function normalizePoint(raw, fallbackIndex) {
   if (!raw || typeof raw !== "object") return null;
@@ -1113,17 +1208,46 @@ function invalidateGroundData() {
   groundLoadGeneration++;
   groundTexBounds = null;
   groundElevGrid = null;
+  path3dDataDirty = true;
 }
 
-window.addPoint = function(pointOrLat,lon,alt,ts){
-  const point = (pointOrLat && typeof pointOrLat === "object")
-    ? pointOrLat : {lat:pointOrLat,lon,alt,ts};
-  const normalized = normalizePoint(point, allPos.length);
-  if (!normalized) return;
-  const { lat, lon: longitude, alt: altitude, ts: timestamp, idx } = normalized;
-  allPos.push({lat,lon:longitude});allAlt.push(altitude);allTs.push(timestamp);allIdx.push(idx);
-  allPos3d.push({lat,lon:longitude});allAlt3d.push(altitude);allIdx3d.push(idx);
-  totalRawSamples=allPos.length;trailLen=allPos.length;
+window.addPoints = function(payload){
+  let batch;
+  try { batch=(typeof payload==="string")?JSON.parse(payload):payload; }
+  catch (_) { return; }
+  if (!batch || typeof batch !== "object") return;
+
+  const replace=Boolean(batch.replace);
+  const path=cappedRawPoints(batch.path,MAX_2D_POINTS);
+  const path3d=cappedRawPoints(batch.path3d,MAX_3D_POINTS);
+  if(replace){
+    allPos=[];allAlt=[];allTs=[];allIdx=[];
+    allPos3d=[];allAlt3d=[];allIdx3d=[];currentExactPoint=null;
+  }
+
+  const fallback2d=allPos.length;
+  for(let i=0;i<path.length;i++){
+    const r=normalizePoint(path[i],fallback2d+i);if(!r)continue;
+    allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
+  }
+  const fallback3d=allPos3d.length;
+  for(let i=0;i<path3d.length;i++){
+    const r=normalizePoint(path3d[i],fallback3d+i);if(!r)continue;
+    allPos3d.push({lat:r.lat,lon:r.lon});allAlt3d.push(r.alt);allIdx3d.push(r.idx);
+  }
+  cap2DSeries();
+  cap3DSeries();
+
+  const declaredTotal=Number(batch.total);
+  if(Number.isSafeInteger(declaredTotal) && declaredTotal >= 0
+      && declaredTotal <= MAX_MAP_SAMPLE_COUNT){
+    totalRawSamples=replace?declaredTotal:Math.max(totalRawSamples,declaredTotal);
+  } else {
+    totalRawSamples=Math.min(MAX_MAP_SAMPLE_COUNT,Math.max(totalRawSamples,allPos.length));
+  }
+  trailLen=totalRawSamples;
+  pathDataDirty=true;
+  path3dDataDirty=true;
   updateEntities(trailLen,null);
 };
 window.loadSession = function(payload){
@@ -1131,11 +1255,14 @@ window.loadSession = function(payload){
   try { s=(typeof payload==="string")?JSON.parse(payload):payload; }
   catch (_) { return; }
   if (!s || typeof s !== "object") return;
-  const path=Array.isArray(s)?s:(s.path||[]);
-  const path3d=Array.isArray(s)?s:(s.path3d||path);
-  const declaredTotal=Number(Array.isArray(s)?path.length:s.total);
+  const sourcePath=Array.isArray(s)?s:(s.path||[]);
+  const sourcePath3d=Array.isArray(s)?s:(s.path3d||sourcePath);
+  const path=cappedRawPoints(sourcePath,MAX_2D_POINTS);
+  const path3d=cappedRawPoints(sourcePath3d,MAX_3D_POINTS);
+  const declaredTotal=Number(Array.isArray(s)?sourcePath.length:s.total);
   totalRawSamples=Number.isSafeInteger(declaredTotal) && declaredTotal >= 0
-    && declaredTotal <= MAX_MAP_SAMPLE_COUNT ? declaredTotal : Math.min(path.length, MAX_MAP_SAMPLE_COUNT);
+    && declaredTotal <= MAX_MAP_SAMPLE_COUNT
+    ? declaredTotal : Math.min(sourcePath.length, MAX_MAP_SAMPLE_COUNT);
   allPos=[];allAlt=[];allTs=[];allIdx=[];
   allPos3d=[];allAlt3d=[];allIdx3d=[];currentExactPoint=null;
   for(let i=0;i<path.length;i++){
@@ -1146,6 +1273,10 @@ window.loadSession = function(payload){
     const r=normalizePoint(path3d[i],i);if(!r)continue;
     allPos3d.push({lat:r.lat,lon:r.lon});allAlt3d.push(r.alt);allIdx3d.push(r.idx);
   }
+  cap2DSeries();
+  cap3DSeries();
+  pathDataDirty=true;
+  path3dDataDirty=true;
   invalidateGroundData();
   trailLen=totalRawSamples;
   updateEntities(trailLen,null);
@@ -1188,6 +1319,7 @@ window.clearAll = function(){
   invalidateGroundData();
   allPos=[];allAlt=[];allTs=[];allIdx=[];trailLen=0;
   allPos3d=[];allAlt3d=[];allIdx3d=[];totalRawSamples=0;currentExactPoint=null;
+  pathDataDirty=true;path3dDataDirty=true;
   pathLine.setLatLngs([]);trailLine.setLatLngs([]);
   launchMarker.setOpacity(0);rocketMarker.setOpacity(0);
   document.getElementById("statsOverlay").style.display="none";
@@ -1195,6 +1327,29 @@ window.clearAll = function(){
   if(scene3d)update3DEntities();
   if(activeView==="3d"&&ground3dMode!=="box")void switchGround3D("box",true);
   if(bridge && typeof bridge.onStatsUpdated === "function")bridge.onStatsUpdated(0,0,0,-1,-1,0,0,0,0,0);
+};
+
+window.setHostVisible = function(visible){
+  hostVisible=Boolean(visible);
+  if(!hostVisible){
+    if(animId3d!==null){cancelAnimationFrame(animId3d);animId3d=null;}
+    renderFramesRemaining3d=0;
+    groundLoadGeneration++;
+    return;
+  }
+
+  if(activeView==="2d"){
+    setTimeout(()=>{if(hostVisible && map)map.invalidateSize();},0);
+    return;
+  }
+  if(scene3d){
+    resize3D();
+    update3DEntities();
+    if(ground3dMode!=="box" && (!groundTexBounds || !groundElevGrid)){
+      void switchGround3D(ground3dMode,true);
+    }
+    request3DRender(2);
+  }
 };
 
 /* ── Init ────────────────────────────────────────────────────────── */
@@ -1278,7 +1433,9 @@ function init() {
       connectSignal(bridge.sessionLoaded, session => window.loadSession(session));
       connectSignal(bridge.trailLengthChanged,
         (length, currentPoint) => window.setTrailLength(length, currentPoint));
-      connectSignal(bridge.livePointAdded, point => window.addPoint(point));
+      connectSignal(bridge.liveBatchAdded, batch => window.addPoints(batch));
+      connectSignal(bridge.hostVisibilityChanged,
+        visible => window.setHostVisible(Boolean(visible)));
       connectSignal(bridge.clearRequested, () => window.clearAll());
       connectSignal(bridge.fitRequested, () => window.fitCamera());
       connectSignal(bridge.centerRequested, () => window.centerOnCurrent());

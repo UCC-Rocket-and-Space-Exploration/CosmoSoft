@@ -246,6 +246,9 @@ MainWindow::MainWindow(QWidget *parent)
         if (m_replayTelemetryCoalesceTimer) {
             m_replayTelemetryCoalesceTimer->stop();
         }
+        if (!m_flightDataPage || !m_flightDataPage->isVisible()) {
+            return;
+        }
         const int idx = m_replay ? m_replay->index() : 0;
         if (idx <= 0) {
             m_flightModel->setDisplayedSample(FlightSample{});
@@ -727,9 +730,20 @@ void MainWindow::setupPages() {
 
     connect(m_dashboardAction, &QAction::triggered, this, [this]() {
         m_pages->setCurrentWidget(m_flightDataPage);
+        if (m_flightModel && m_flightModel->replayMode() && m_replay) {
+            const int replayIndex = m_replay->index();
+            if (replayIndex <= 0) {
+                m_flightModel->setDisplayedSample(FlightSample{});
+            } else {
+                applyReplayTelemetrySample(replayIndex);
+            }
+        }
         updateBreadcrumb();
     });
     connect(m_liveTelemetryAction, &QAction::triggered, this, [this]() {
+        if (m_replayTelemetryCoalesceTimer) {
+            m_replayTelemetryCoalesceTimer->stop();
+        }
         m_pages->setCurrentWidget(m_liveTelemetryPage);
         updateBreadcrumb(m_serialPortSummary.isEmpty() ? u"Live Telemetry"_s : m_serialPortSummary);
     });
@@ -826,19 +840,25 @@ void MainWindow::refreshSerialPorts() {
 */
 
 void MainWindow::onReplayPositionChanged(int trailLength) {
+    m_pendingReplayTelemetryTrail = trailLength;
     if (trailLength <= 0) {
         if (m_replayTelemetryCoalesceTimer) {
             m_replayTelemetryCoalesceTimer->stop();
         }
-        m_flightModel->setDisplayedSample(FlightSample{});
+        if (m_flightDataPage && m_flightDataPage->isVisible()) {
+            m_flightModel->setDisplayedSample(FlightSample{});
+        }
         return;
     }
     if (!m_loadedSession || trailLength > static_cast<int>(m_loadedSession->samples.size())) {
         return;
     }
-    m_pendingReplayTelemetryTrail = trailLength;
+    if (!m_flightDataPage || !m_flightDataPage->isVisible()) {
+        return;
+    }
     if (m_replay && m_replay->isPlaying()) {
-        if (m_replayTelemetryCoalesceTimer) {
+        if (m_replayTelemetryCoalesceTimer
+            && !m_replayTelemetryCoalesceTimer->isActive()) {
             m_replayTelemetryCoalesceTimer->start();
         }
         return;
@@ -854,7 +874,9 @@ void MainWindow::applyReplayTelemetrySample(int trailLength) {
 }
 
 void MainWindow::applyPendingReplayTelemetryStrip() {
-    applyReplayTelemetrySample(m_pendingReplayTelemetryTrail);
+    if (m_flightDataPage && m_flightDataPage->isVisible()) {
+        applyReplayTelemetrySample(m_pendingReplayTelemetryTrail);
+    }
 }
 
 void MainWindow::refreshFakeTransmissionButton() {

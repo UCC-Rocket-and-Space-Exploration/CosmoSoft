@@ -16,14 +16,14 @@
  * Two data sources are supported:
  *  - Live mode  — samples arrive in batches from the serial decoder worker.
  *    They are stored in m_liveSamples (bounded to kMaxLiveBufferSamples) and
- *    chart redraws are coalesced by m_liveChartCoalesceTimer (50 ms).
+ *    chart redraws are capped at 20 Hz by the shared render scheduler.
  *  - Replay mode — a FlightSession is set via setReplaySession(); the trail
  *    length (number of samples to show) is updated via setReplayTrailLength()
- *    on every controller tick. Chart redraws are coalesced by
- *    m_replayChartCoalesceTimer (33 ms) so scrolling the scrubber stays smooth.
+ *    on every controller tick. Chart updates are capped at 30 Hz so scrolling
+ *    the scrubber stays smooth.
  *
  * When more than kMaxChartDisplayPoints samples are present the chart uses
- * uniform decimation (sampleIndicesForChartDisplay) to keep rendering fast.
+ * LTTB reduction (sampleIndicesForChartDisplay) to keep rendering fast.
  * m_hoverSampleIndexMap maps each decimated display-point index back to its
  * original logical sample index so hover readouts always show accurate values.
  */
@@ -65,6 +65,7 @@
 #include <QProgressBar>
 #include <QScrollArea>
 #include <QSettings>
+#include <QShowEvent>
 #include <QStackedWidget>
 
 #include "gui/SettingsKeys.h"
@@ -167,14 +168,24 @@ static_assert(
         const FlightSample &s = samples[static_cast<std::size_t>(i)];
         for (std::size_t m = 0; m < nEmi; ++m) {
             const double v = sampleValueForMetric(s, emi[m]);
+            if (!std::isfinite(v)) {
+                continue;
+            }
             mMin[m] = std::min(mMin[m], v);
             mMax[m] = std::max(mMax[m], v);
         }
     }
     std::vector<double> mScale(nEmi);
+    std::vector<bool> metricUsable(nEmi, false);
     for (std::size_t m = 0; m < nEmi; ++m) {
         const double range = mMax[m] - mMin[m];
-        mScale[m] = (range > 1e-15) ? (1.0 / range) : 1.0;
+        metricUsable[m] = std::isfinite(mMin[m]) && std::isfinite(mMax[m]);
+        if (!metricUsable[m]) {
+            mMin[m] = 0.0;
+            mScale[m] = 1.0;
+            continue;
+        }
+        mScale[m] = std::isfinite(range) && range > 1e-15 ? (1.0 / range) : 1.0;
     }
 
     idx.reserve(static_cast<std::size_t>(maxPts));
@@ -201,14 +212,25 @@ static_assert(
 
         double avgX = 0.0;
         std::vector<double> avgY(nEmi, 0.0);
+        std::vector<int> avgCounts(nEmi, 0);
         for (int i = nbStart; i < nbEnd; ++i) {
             const FlightSample &s = samples[static_cast<std::size_t>(i)];
             avgX += chartXSeconds(tRef, s.timestamp, sessionElapsed);
-            for (std::size_t m = 0; m < nEmi; ++m)
-                avgY[m] += (sampleValueForMetric(s, emi[m]) - mMin[m]) * mScale[m];
+            for (std::size_t m = 0; m < nEmi; ++m) {
+                const double value = sampleValueForMetric(s, emi[m]);
+                if (!metricUsable[m] || !std::isfinite(value)) {
+                    continue;
+                }
+                avgY[m] += (value - mMin[m]) * mScale[m];
+                ++avgCounts[m];
+            }
         }
         avgX /= nbCount;
-        for (auto &v : avgY) v /= nbCount;
+        for (std::size_t m = 0; m < nEmi; ++m) {
+            if (avgCounts[m] > 0) {
+                avgY[m] /= static_cast<double>(avgCounts[m]);
+            }
+        }
 
         const double prevX = chartXSeconds(tRef, samples[static_cast<std::size_t>(prevSelected)].timestamp, sessionElapsed);
 
@@ -218,15 +240,24 @@ static_assert(
             const FlightSample &s = samples[static_cast<std::size_t>(i)];
             const double curX = chartXSeconds(tRef, s.timestamp, sessionElapsed);
             double maxArea = 0.0;
+            bool hasFiniteMetric = false;
             for (std::size_t m = 0; m < nEmi; ++m) {
-                const double prevY = (sampleValueForMetric(samples[static_cast<std::size_t>(prevSelected)], emi[m]) - mMin[m]) * mScale[m];
-                const double curY  = (sampleValueForMetric(s, emi[m]) - mMin[m]) * mScale[m];
+                const double previousValue = sampleValueForMetric(
+                    samples[static_cast<std::size_t>(prevSelected)], emi[m]);
+                const double currentValue = sampleValueForMetric(s, emi[m]);
+                if (!metricUsable[m] || avgCounts[m] == 0
+                    || !std::isfinite(previousValue) || !std::isfinite(currentValue)) {
+                    continue;
+                }
+                hasFiniteMetric = true;
+                const double prevY = (previousValue - mMin[m]) * mScale[m];
+                const double curY  = (currentValue - mMin[m]) * mScale[m];
                 const double area  = std::abs(
                     (prevX - avgX) * (curY - prevY)
                     - (prevX - curX) * (avgY[m] - prevY));
                 maxArea = std::max(maxArea, area);
             }
-            if (maxArea > bestArea) {
+            if (hasFiniteMetric && maxArea > bestArea) {
                 bestArea = maxArea;
                 bestIdx  = i;
             }
@@ -404,29 +435,15 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
     });
 
-    // Live-mode coalesce timer: samples may arrive faster than the display can
-    // keep up.  scheduleLiveChartRebuild() restarts this single-shot timer on
-    // every incoming sample; the chart only redraws when the timer fires (i.e.
-    // after a 50 ms quiet period), keeping the GUI thread free.
-    m_liveChartCoalesceTimer = new QTimer(this);
-    m_liveChartCoalesceTimer->setSingleShot(true);
-    connect(m_liveChartCoalesceTimer, &QTimer::timeout, this, [this]() {
-        rebuildLiveSeriesFromHistory();
-            hideChartLoadingIndicator();
-    });
-
-    // Replay coalesce timer: scrubbing the timeline fires setReplayTrailLength()
-    // at high frequency.  At ~33 ms (≈ 30 fps) redraws are fast enough to feel
-    // live but cheap enough not to saturate Qt Charts.  flushReplayChartRebuild()
-    // bypasses the timer for immediate updates on pause/stop.
-    m_replayChartCoalesceTimer = new QTimer(this);
-    m_replayChartCoalesceTimer->setSingleShot(true);
-    m_replayChartCoalesceTimer->setInterval(33);
-    connect(m_replayChartCoalesceTimer, &QTimer::timeout, this, [this]() {
-        if (m_model && m_model->replayMode() && m_session && !m_session->samples.empty()) {
-            rebuildReplayCharts(m_lastReplayTrailLength);
-        }
-        hideChartLoadingIndicator();
+    // One deadline-aware scheduler owns all expensive chart work.
+    // It is a rate limiter (never restarted by every incoming batch), so a
+    // continuous stream cannot starve rendering as the former debounce did.
+    m_renderClock.start();
+    m_renderSchedulerTimer = new QTimer(this);
+    m_renderSchedulerTimer->setSingleShot(true);
+    m_renderSchedulerTimer->setTimerType(Qt::PreciseTimer);
+    connect(m_renderSchedulerTimer, &QTimer::timeout, this, [this]() {
+        processScheduledUpdates();
     });
 
     auto *tcv = new TelemetryChartView(m_chart, chartFrame);
@@ -480,6 +497,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         m_viewStack->setCurrentIndex(0);
         m_mapViewBtn->setChecked(false);
         updateToolbarForView();
+        processScheduledUpdates(true);
     });
     connect(m_mapViewBtn, &QPushButton::clicked, this, [this](bool checked) {
         if (!checked) {
@@ -489,6 +507,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         m_viewStack->setCurrentIndex(1);
         m_graphViewBtn->setChecked(false);
         updateToolbarForView();
+        hideChartLoadingIndicator();
+        processScheduledUpdates(true);
     });
 
     auto showDataView = [this]() {
@@ -497,6 +517,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             if (m_graphViewBtn) m_graphViewBtn->setChecked(true);
             if (m_mapViewBtn) m_mapViewBtn->setChecked(false);
             updateToolbarForView();
+            processScheduledUpdates(true);
         }
     };
     if (m_model) {
@@ -1010,8 +1031,9 @@ void DashboardPage::onChartVisualOptionsToggled() {
     const int nEn = countEnabledMetrics();
     for (int mi = 0; mi < kMetricCount; ++mi) {
         auto *s = m_lineSeries[static_cast<std::size_t>(mi)];
-        if (s && m_metricEnabled[static_cast<std::size_t>(mi)])
+        if (s && m_metricEnabled[static_cast<std::size_t>(mi)]) {
             applySeriesPointDisplay(s, s->count(), nEn);
+        }
     }
 }
 
@@ -1064,8 +1086,10 @@ QString DashboardPage::formatMultiMetricHover(double tSec, int displayPointIndex
             sp = &m_session->samples[static_cast<std::size_t>(si)];
         }
     } else {
-        if (si >= 0 && si < static_cast<int>(m_liveSamples.size())) {
-            sp = &m_liveSamples[static_cast<std::size_t>(si)];
+        // Hover indices belong to the immutable snapshot used for the most
+        // recent chart build. The live deque may have shifted since then.
+        if (si >= 0 && si < static_cast<int>(m_liveChartScratch.size())) {
+            sp = &m_liveChartScratch[static_cast<std::size_t>(si)];
         }
     }
     if (!sp) {
@@ -1082,8 +1106,11 @@ QString DashboardPage::formatMultiMetricHover(double tSec, int displayPointIndex
             continue;
         }
         const double v = sampleValueForMetric(*sp, mi);
+        const QString valueText = std::isfinite(v)
+            ? formatMetricValuePretty(mi, v)
+            : u"—"_s;
         lines << QStringLiteral("  • %1: %2 %3")
-                     .arg(metricQuantityName(mi), formatMetricValuePretty(mi, v), metricAxisUnitShort(mi));
+                     .arg(metricQuantityName(mi), valueText, metricAxisUnitShort(mi));
     }
     return lines.join(u"\n"_s);
 }
@@ -1092,11 +1119,15 @@ void DashboardPage::setReplaySession(
     std::shared_ptr<const FlightSession> session,
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview) {
     m_preserveChartAxes = false;
-    if (m_replayChartCoalesceTimer) m_replayChartCoalesceTimer->stop();
-    if (m_liveChartCoalesceTimer)   m_liveChartCoalesceTimer->stop();
+    if (m_renderSchedulerTimer) m_renderSchedulerTimer->stop();
 
     m_session = std::move(session);
-    m_preview = std::move(preview);
+    const bool previewMatchesSession = m_session && preview
+        && preview->wasBuiltFor(*m_session)
+        && preview->displaySeconds().size() == m_session->samples.size();
+    m_preview = previewMatchesSession ? std::move(preview) : nullptr;
+    m_liveChartDirty = false;
+    m_replayChartDirty = true;
     if (m_tracesPanel) {
         m_tracesPanel->setMetricsOffered(traceOfferMaskForSession(m_session.get()));
     }
@@ -1129,14 +1160,16 @@ void DashboardPage::setReplaySession(
 
     if (n > 0) {
         m_lastReplayTrailLength = n;
+        m_replayChartBuiltTrailLength = -1;
         m_replayChartBuiltBucket = -1;
-        rebuildReplayCharts(n);
         if (m_replay) m_replay->setPosition(n);
     } else {
         m_lastReplayTrailLength = 0;
+        m_replayChartBuiltTrailLength = -1;
         m_replayChartBuiltBucket = -1;
-        rebuildReplayCharts(0);
     }
+    processScheduledUpdates(true);
+    scheduleRenderPass();
 }
 
 /**
@@ -1158,6 +1191,10 @@ void DashboardPage::applyReplayControllerPosition(int trailLength) {
         if (m_preview) {
             const int bucket = m_preview->replayBucket(trailLength, chartPointBudget());
             if (bucket == m_replayChartBuiltBucket) {
+                if (!isVisible() || !graphViewIsActive()) {
+                    m_replayChartDirty = true;
+                }
+                scheduleRenderPass();
                 return;
             }
             m_replayChartBuiltBucket = bucket;
@@ -1166,17 +1203,17 @@ void DashboardPage::applyReplayControllerPosition(int trailLength) {
         return;
     }
     if (m_model && m_model->replayMode() && trailLength == m_replayChartBuiltTrailLength) {
+        scheduleRenderPass();
         return;  // chart already correct; ReplayBar updates its own labels via positionChanged
     }
-    rebuildReplayCharts(trailLength);
+    scheduleReplayChartRebuild();
 }
 
-/** Restarts the 33 ms coalesce timer; the chart rebuilds once it fires. */
+/** Marks replay data dirty; the shared scheduler enforces the 30 Hz cap. */
 void DashboardPage::scheduleReplayChartRebuild() {
-    showChartLoadingIndicator();
-    if (m_replayChartCoalesceTimer) {
-        m_replayChartCoalesceTimer->start();
-    }
+    m_replayChartDirty = true;
+    if (graphViewIsActive() && isVisible()) showChartLoadingIndicator();
+    scheduleRenderPass();
 }
 
 /**
@@ -1186,11 +1223,9 @@ void DashboardPage::scheduleReplayChartRebuild() {
  * without waiting for the timer to fire.
  */
 void DashboardPage::flushReplayChartRebuild() {
-    if (m_replayChartCoalesceTimer) {
-        m_replayChartCoalesceTimer->stop();
-    }
     if (m_model && m_model->replayMode()) {
-        rebuildReplayCharts(m_lastReplayTrailLength);
+        m_replayChartDirty = true;
+        processScheduledUpdates(true);
     }
 }
 
@@ -1200,25 +1235,102 @@ void DashboardPage::setReplayTrailLength(int trailLength) {
 
 void DashboardPage::refreshAllSeriesFromData() {
     m_preserveChartAxes = false;
-    if (m_model && m_model->replayMode() && m_session && !m_session->samples.empty()) {
-        rebuildReplayCharts(m_lastReplayTrailLength);
+    if (m_model && m_model->replayMode()) {
+        m_replayChartDirty = true;
     } else {
-        rebuildLiveSeriesFromHistory();
+        m_liveChartDirty = true;
     }
+    processScheduledUpdates(true);
+    scheduleRenderPass();
     if (m_followToggle && !m_followToggle->isChecked())
         m_preserveChartAxes = true;
+}
+
+bool DashboardPage::graphViewIsActive() const {
+    return m_viewStack && m_viewStack->currentIndex() == 0;
+}
+
+void DashboardPage::scheduleRenderPass() {
+    if (!m_renderSchedulerTimer) {
+        return;
+    }
+    if (!isVisible()) {
+        m_renderSchedulerTimer->stop();
+        return;
+    }
+
+    const qint64 now = m_renderClock.elapsed();
+    qint64 delayMs = std::numeric_limits<qint64>::max();
+    const auto consider = [&](bool dirty, qint64 lastRenderMs, int intervalMs) {
+        if (!dirty) {
+            return;
+        }
+        const qint64 elapsed = std::max<qint64>(0, now - lastRenderMs);
+        delayMs = std::min(delayMs, std::max<qint64>(0, intervalMs - elapsed));
+    };
+
+    if (graphViewIsActive()) {
+        const bool replayMode = m_model && m_model->replayMode();
+        consider(replayMode ? m_replayChartDirty : m_liveChartDirty,
+                 replayMode ? m_lastReplayChartRenderMs : m_lastLiveChartRenderMs,
+                 replayMode ? kInteractiveIntervalMs : kLiveChartIntervalMs);
+    }
+    if (delayMs == std::numeric_limits<qint64>::max()) {
+        m_renderSchedulerTimer->stop();
+        return;
+    }
+    const int boundedDelay = static_cast<int>(std::min<qint64>(
+        delayMs, std::numeric_limits<int>::max()));
+    if (m_renderSchedulerTimer->isActive()
+        && m_renderSchedulerTimer->remainingTime() <= boundedDelay) {
+        return;
+    }
+    m_renderSchedulerTimer->start(boundedDelay);
+}
+
+void DashboardPage::processScheduledUpdates(bool forceImmediate) {
+    if (m_renderSchedulerTimer) {
+        m_renderSchedulerTimer->stop();
+    }
+    if (!isVisible()) {
+        return;
+    }
+
+    const qint64 now = m_renderClock.elapsed();
+    if (graphViewIsActive()) {
+        const bool replayMode = m_model && m_model->replayMode();
+        const qint64 lastRender = replayMode
+            ? m_lastReplayChartRenderMs
+            : m_lastLiveChartRenderMs;
+        const int interval = replayMode
+            ? kInteractiveIntervalMs
+            : kLiveChartIntervalMs;
+        const bool due = forceImmediate || now - lastRender >= interval;
+        bool &dirty = replayMode ? m_replayChartDirty : m_liveChartDirty;
+        if (dirty && due) {
+            dirty = false;
+            if (replayMode) {
+                rebuildReplayCharts(m_lastReplayTrailLength);
+                m_lastReplayChartRenderMs = m_renderClock.elapsed();
+            } else {
+                rebuildLiveSeriesFromHistory();
+                m_lastLiveChartRenderMs = m_renderClock.elapsed();
+            }
+            hideChartLoadingIndicator();
+        }
+    }
+
+    scheduleRenderPass();
 }
 
 /**
  * Rebuilds all chart series from the first @p trailLength samples of m_session.
  *
  * Design notes:
- * - Decimation: if trailLength > kMaxChartDisplayPoints the samples are thinned
- *   to kMaxChartDisplayPoints uniformly spaced indices.  The mapping is stored in
- *   m_hoverSampleIndexMap for accurate hover readouts.
- * - Normalization: when more than one metric is enabled each series is scaled to
- *   [0, 1] using its own min/max so all traces fit the same Y axis.  A single
- *   enabled metric gets the raw SI axis instead.
+ * - Reduction: if trailLength > kMaxChartDisplayPoints, LTTB keeps a bounded
+ *   representative set. The original indices remain in m_hoverSampleIndexMap.
+ * - Normalization: with three or more enabled metrics, each series is scaled to
+ *   [0, 1]. One metric uses its raw axis and two metrics use separate raw axes.
  * - m_replayChartBuiltTrailLength guards against redundant rebuilds during
  *   playback: if the trail hasn't changed since the last build the function is
  *   a no-op (only labels are updated).
@@ -1230,23 +1342,25 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         return;
     }
 
-    for (int mi = 0; mi < kMetricCount; ++mi) {
-        if (m_lineSeries[static_cast<std::size_t>(mi)]) {
-            m_lineSeries[static_cast<std::size_t>(mi)]->clear();
-            m_lineSeries[static_cast<std::size_t>(mi)]->setVisible(false);
-        }
-    }
+    if (m_chartView) m_chartView->invalidateHoverSeriesCache();
 
     if (!m_session || trailLength <= 0 || m_session->samples.empty()) {
+        for (QLineSeries *series : m_lineSeries) {
+            if (series) {
+                series->clear();
+                series->setVisible(false);
+            }
+        }
         m_preserveChartAxes = false;
         m_hoverSampleIndexMap.clear();
         m_hoverLogicalSampleCount = 0;
+        if (m_chartView) m_chartView->setHoverXValues({});
         m_replayChartBuiltTrailLength = 0;
         m_replayChartBuiltBucket = 0;
         m_axisX->setRange(0, 10);
         m_axisY->setRange(-1, 1);
         m_chart->setTitle(u"Flight data"_s);
-            return;
+        return;
     }
 
     const auto &samples = m_session->samples;
@@ -1255,9 +1369,10 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
     if (end <= 0) {
         m_hoverSampleIndexMap.clear();
         m_hoverLogicalSampleCount = 0;
+        if (m_chartView) m_chartView->setHoverXValues({});
         m_replayChartBuiltTrailLength = 0;
         m_replayChartBuiltBucket = 0;
-            return;
+        return;
     }
 
     m_replayChartBuiltTrailLength = end;
@@ -1281,12 +1396,9 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
 
 void DashboardPage::onSessionReset() {
     m_preserveChartAxes = false;
-    if (m_liveChartCoalesceTimer) {
-        m_liveChartCoalesceTimer->stop();
-    }
-    if (m_replayChartCoalesceTimer) {
-        m_replayChartCoalesceTimer->stop();
-    }
+    if (m_renderSchedulerTimer) m_renderSchedulerTimer->stop();
+    m_liveChartDirty = false;
+    m_replayChartDirty = false;
     m_hoverSampleIndexMap.clear();
     m_hoverLogicalSampleCount = 0;
     m_replayChartBuiltTrailLength = -1;
@@ -1299,6 +1411,10 @@ void DashboardPage::onSessionReset() {
             m_lineSeries[static_cast<std::size_t>(mi)]->setVisible(false);
         }
     }
+    if (m_chartView) {
+        m_chartView->setHoverXValues({});
+        m_chartView->invalidateHoverSeriesCache();
+    }
     if (m_axisX) {
         m_axisX->setRange(0, 10);
     }
@@ -1309,41 +1425,41 @@ void DashboardPage::onSessionReset() {
         m_chart->setTitle(u"Flight data"_s);
     }
     if (m_replayBar) m_replayBar->setLiveSampleCount(0);
-    if (m_model && !m_model->replayMode()) {
-        rebuildLiveSeriesFromHistory();
-    }
+    if (m_model && !m_model->replayMode()) m_liveChartDirty = true;
     if (m_viewStack && m_liveSamples.empty() && (!m_session || m_session->samples.empty())) {
         m_viewStack->setCurrentIndex(2);
     }
+    scheduleRenderPass();
 }
 
 /**
  * Rebuilds all chart series from m_liveSamples (live telemetry mode).
  *
- * Same decimation and normalization logic as rebuildReplayCharts().  Called by
- * m_liveChartCoalesceTimer so it fires at most once per 50 ms even when samples
- * arrive faster.
+ * Same decimation and normalization logic as rebuildReplayCharts(). Called by
+ * the shared scheduler at no more than 20 Hz.
  */
 void DashboardPage::rebuildLiveSeriesFromHistory() {
     if (!m_axisX || !m_axisY) {
         return;
     }
 
-    for (int mi = 0; mi < kMetricCount; ++mi) {
-        if (m_lineSeries[static_cast<std::size_t>(mi)]) {
-            m_lineSeries[static_cast<std::size_t>(mi)]->clear();
-            m_lineSeries[static_cast<std::size_t>(mi)]->setVisible(false);
-        }
-    }
+    if (m_chartView) m_chartView->invalidateHoverSeriesCache();
 
     if (m_liveSamples.empty()) {
+        for (QLineSeries *series : m_lineSeries) {
+            if (series) {
+                series->clear();
+                series->setVisible(false);
+            }
+        }
         m_preserveChartAxes = false;
         m_hoverSampleIndexMap.clear();
         m_hoverLogicalSampleCount = 0;
+        if (m_chartView) m_chartView->setHoverXValues({});
         m_axisX->setRange(0, 10);
         m_axisY->setRange(-1, 1);
         m_chart->setTitle(u"Flight data"_s);
-            return;
+        return;
     }
 
     m_liveChartScratch.assign(m_liveSamples.begin(), m_liveSamples.end());
@@ -1359,18 +1475,26 @@ void DashboardPage::buildChartFromSamples(const std::vector<FlightSample> &sampl
     if (samples.empty() || end <= 0) {
         return;
     }
+    const int boundedSampleCount = static_cast<int>(std::min<std::size_t>(
+        samples.size(), static_cast<std::size_t>(std::numeric_limits<int>::max())));
+    const int boundedEnd = std::clamp(end, 0, boundedSampleCount);
+    if (boundedEnd <= 0) {
+        return;
+    }
     const long tRef = samples.front().timestamp;
-    const bool sessionElapsed = useSessionElapsedTimeAxis(samples.front().timestamp, samples.back().timestamp);
+    const bool sessionElapsed = useSessionElapsedTimeAxis(
+        samples.front().timestamp,
+        samples[static_cast<std::size_t>(boundedEnd - 1)].timestamp);
     const std::vector<int> plotIdx = lttbIndicesForChartDisplay(
-        samples, end, chartPointBudget(), m_metricEnabled, tRef, sessionElapsed);
-    buildChartFromSampleIndices(samples, plotIdx, end);
+        samples, boundedEnd, chartPointBudget(), m_metricEnabled, tRef, sessionElapsed);
+    buildChartFromSampleIndices(samples, plotIdx, boundedEnd);
 }
 
 void DashboardPage::buildChartFromSampleIndices(
     const std::vector<FlightSample> &samples,
     const std::vector<int> &sampleIndices,
     int logicalSampleCount) {
-    if (sampleIndices.empty() || samples.empty()) {
+    if (samples.empty()) {
         return;
     }
 
@@ -1385,14 +1509,62 @@ void DashboardPage::buildChartFromSampleIndices(
         return chartXSeconds(tRef, samples[static_cast<std::size_t>(sampleIndex)].timestamp, sessionElapsed);
     };
 
-    m_axisX->setTitleText(usePreviewTime || sessionElapsed ? u"Session time (s)"_s : u"Flight time (s)"_s);
+    struct PlotSample {
+        double x = 0.0;
+        int sampleIndex = 0;
+    };
+    std::vector<PlotSample> plotSamples;
+    plotSamples.reserve(sampleIndices.size());
+    for (const int sampleIndex : sampleIndices) {
+        if (sampleIndex < 0
+            || static_cast<std::size_t>(sampleIndex) >= samples.size()) {
+            continue;
+        }
+        const double x = xForIndex(sampleIndex);
+        if (std::isfinite(x)) {
+            plotSamples.push_back({x, sampleIndex});
+        }
+    }
+    std::stable_sort(
+        plotSamples.begin(), plotSamples.end(),
+        [](const PlotSample &left, const PlotSample &right) {
+            return left.x < right.x;
+        });
+
+    m_axisX->setTitleText(usePreviewTime || sessionElapsed
+        ? u"Session time (s)"_s
+        : u"Flight time (s)"_s);
+    m_hoverSampleIndexMap.clear();
+    m_hoverSampleIndexMap.reserve(plotSamples.size());
+    QVector<double> hoverXValues;
+    hoverXValues.reserve(static_cast<qsizetype>(std::min<std::size_t>(
+        plotSamples.size(), static_cast<std::size_t>(std::numeric_limits<qsizetype>::max()))));
+    for (const PlotSample &plotSample : plotSamples) {
+        m_hoverSampleIndexMap.push_back(plotSample.sampleIndex);
+        hoverXValues.append(plotSample.x);
+    }
+    m_hoverLogicalSampleCount = std::max(0, logicalSampleCount);
+    if (m_chartView) m_chartView->setHoverXValues(std::move(hoverXValues));
+
+    if (plotSamples.empty()) {
+        for (QLineSeries *series : m_lineSeries) {
+            if (series) {
+                series->clear();
+                series->setVisible(false);
+            }
+        }
+        if (!m_preserveChartAxes) {
+            m_axisX->setRange(0.0, 10.0);
+            m_axisY->setRange(-1.0, 1.0);
+        }
+        if (m_axisY2) m_axisY2->setVisible(false);
+        if (m_chartView) m_chartView->invalidateHoverSeriesCache();
+        return;
+    }
+
     const int nEn = countEnabledMetrics();
-
-    m_hoverSampleIndexMap = sampleIndices;
-    m_hoverLogicalSampleCount = logicalSampleCount;
-
-    double xMin = xForIndex(sampleIndices.front());
-    double xMax = xForIndex(sampleIndices.back());
+    const double xMin = plotSamples.front().x;
+    const double xMax = plotSamples.back().x;
 
     std::array<double, kMetricCount> yMin{};
     std::array<double, kMetricCount> yMax{};
@@ -1400,10 +1572,16 @@ void DashboardPage::buildChartFromSampleIndices(
         yMin[static_cast<std::size_t>(mi)] = std::numeric_limits<double>::infinity();
         yMax[static_cast<std::size_t>(mi)] = -std::numeric_limits<double>::infinity();
     }
-    for (int si : sampleIndices) {
-        const FlightSample &s = samples[static_cast<std::size_t>(si)];
+    for (const PlotSample &plotSample : plotSamples) {
+        const FlightSample &s = samples[static_cast<std::size_t>(plotSample.sampleIndex)];
         for (int mi = 0; mi < kMetricCount; ++mi) {
+            if (!m_metricEnabled[static_cast<std::size_t>(mi)]) {
+                continue;
+            }
             const double y = sampleValueForMetric(s, mi);
+            if (!std::isfinite(y)) {
+                continue;
+            }
             auto &lo = yMin[static_cast<std::size_t>(mi)];
             auto &hi = yMax[static_cast<std::size_t>(mi)];
             lo = std::min(lo, y);
@@ -1424,25 +1602,52 @@ void DashboardPage::buildChartFromSampleIndices(
         }
     }
 
-    const int plotN = static_cast<int>(sampleIndices.size());
+    const qsizetype plotN = static_cast<qsizetype>(std::min<std::size_t>(
+        plotSamples.size(), static_cast<std::size_t>(std::numeric_limits<qsizetype>::max())));
     for (int mi = 0; mi < kMetricCount; ++mi) {
         auto *series = m_lineSeries[static_cast<std::size_t>(mi)];
+        if (!series) {
+            continue;
+        }
+        const bool enabled = m_metricEnabled[static_cast<std::size_t>(mi)];
+        if (!enabled) {
+            series->clear();
+            series->setVisible(false);
+            series->setPointLabelsVisible(false);
+            series->setPointsVisible(false);
+            continue;
+        }
+
         const double lo = yMin[static_cast<std::size_t>(mi)];
         const double hi = yMax[static_cast<std::size_t>(mi)];
-        const double span = std::max(hi - lo, 1e-12);
+        const bool hasFiniteRange = std::isfinite(lo) && std::isfinite(hi);
+        const double scale = hasFiniteRange
+            ? std::max({std::abs(lo), std::abs(hi), 1.0})
+            : 1.0;
+        const double scaledLo = lo / scale;
+        const double scaledHi = hi / scale;
+        const double scaledSpan = scaledHi - scaledLo;
 
         QList<QPointF> pts;
         pts.reserve(plotN);
-        for (int si : sampleIndices) {
-            const FlightSample &s = samples[static_cast<std::size_t>(si)];
+        for (const PlotSample &plotSample : plotSamples) {
+            const FlightSample &s = samples[static_cast<std::size_t>(plotSample.sampleIndex)];
             double y = sampleValueForMetric(s, mi);
-            if (nEn > 2) y = (y - lo) / span;
-            pts.append(QPointF(xForIndex(si), y));
+            if (!std::isfinite(y) || !hasFiniteRange) {
+                continue;
+            }
+            if (nEn > 2) {
+                y = std::abs(scaledSpan) > 1e-15
+                    ? ((y / scale) - scaledLo) / scaledSpan
+                    : 0.5;
+            }
+            if (std::isfinite(y)) {
+                pts.append(QPointF(plotSample.x, y));
+            }
         }
         series->replace(pts);
-        const bool en = m_metricEnabled[static_cast<std::size_t>(mi)];
-        series->setVisible(en);
-        if (en) {
+        series->setVisible(!pts.isEmpty());
+        if (!pts.isEmpty()) {
             applySeriesPointDisplay(series, series->count(), nEn);
             series->setName(metricTitle(mi));
         }
@@ -1466,18 +1671,37 @@ void DashboardPage::buildChartFromSampleIndices(
         }
     }
 
-    const double spanX = std::max(xMax - xMin, 1e-9);
+    const double rawSpanX = xMax - xMin;
+    const double spanX = std::isfinite(rawSpanX) ? std::max(rawSpanX, 1e-9) : 1.0;
     const double xPad = std::max(spanX * 0.02, 0.05);
+
+    const auto applyFiniteAxisRange = [&](QValueAxis *axis, int metricIndex) {
+        if (!axis || metricIndex < 0 || metricIndex >= kMetricCount) {
+            return;
+        }
+        const double rangeLow = yMin[static_cast<std::size_t>(metricIndex)];
+        const double rangeHigh = yMax[static_cast<std::size_t>(metricIndex)];
+        if (!std::isfinite(rangeLow) || !std::isfinite(rangeHigh)) {
+            axis->setRange(-1.0, 1.0);
+            return;
+        }
+        const double magnitude = std::max({std::abs(rangeLow), std::abs(rangeHigh), 1.0});
+        const double scaledSpan = (rangeHigh / magnitude) - (rangeLow / magnitude);
+        const double padding = std::max(scaledSpan * magnitude * 0.08, magnitude * 1e-6);
+        const double axisLow = rangeLow - padding;
+        const double axisHigh = rangeHigh + padding;
+        if (std::isfinite(axisLow) && std::isfinite(axisHigh) && axisLow < axisHigh) {
+            axis->setRange(axisLow, axisHigh);
+        } else {
+            axis->setRange(-1.0, 1.0);
+        }
+    };
 
     if (nEn == 1 && onlyMi >= 0) {
         m_axisY->setTitleText(metricAxisUnitShort(onlyMi));
         m_chart->setTitle(metricTitle(onlyMi));
         if (!m_preserveChartAxes) {
-            const double rLo = yMin[static_cast<std::size_t>(onlyMi)];
-            const double rHi = yMax[static_cast<std::size_t>(onlyMi)];
-            const double rSpan = std::max(rHi - rLo, 1e-9);
-            const double p = rSpan * 0.08 + std::max(std::abs(rHi) * 1e-6, 1e-3);
-            m_axisY->setRange(rLo - p, rHi + p);
+            applyFiniteAxisRange(m_axisY, onlyMi);
         }
     } else if (nEn == 2 && dualMi[0] >= 0 && dualMi[1] >= 0) {
         m_axisY->setTitleText(metricAxisUnitShort(dualMi[0]));
@@ -1487,13 +1711,13 @@ void DashboardPage::buildChartFromSampleIndices(
             for (int d = 0; d < 2; ++d) {
                 auto *ax = (d == 0) ? m_axisY : m_axisY2;
                 if (!ax) continue;
-                const double rLo = yMin[static_cast<std::size_t>(dualMi[d])];
-                const double rHi = yMax[static_cast<std::size_t>(dualMi[d])];
-                const double rSpan = std::max(rHi - rLo, 1e-9);
-                const double p = rSpan * 0.08 + std::max(std::abs(rHi) * 1e-6, 1e-3);
-                ax->setRange(rLo - p, rHi + p);
+                applyFiniteAxisRange(ax, dualMi[d]);
             }
         }
+    } else if (nEn == 0) {
+        m_axisY->setTitleText({});
+        m_chart->setTitle(u"Flight data"_s);
+        if (!m_preserveChartAxes) m_axisY->setRange(-1.0, 1.0);
     } else {
         m_axisY->setTitleText(u"Normalized"_s);
         m_chart->setTitle(u"Multi-trace overlay"_s);
@@ -1502,25 +1726,32 @@ void DashboardPage::buildChartFromSampleIndices(
         }
     }
     if (!m_preserveChartAxes) {
-        m_axisX->setRange(xMin - xPad, xMax + xPad);
+        const double axisXMin = xMin - xPad;
+        const double axisXMax = xMax + xPad;
+        if (std::isfinite(axisXMin) && std::isfinite(axisXMax) && axisXMin < axisXMax) {
+            m_axisX->setRange(axisXMin, axisXMax);
+        } else {
+            m_axisX->setRange(0.0, 10.0);
+        }
     }
 
     if (m_tracesPanel) {
         std::array<bool, kMetricCount> hasData{};
-        for (int i = 0; i < kMetricCount; ++i)
-            hasData[static_cast<std::size_t>(i)] = m_lineSeries[static_cast<std::size_t>(i)]
-                                                   && m_lineSeries[static_cast<std::size_t>(i)]->count() > 0;
+        for (int i = 0; i < kMetricCount; ++i) {
+            const bool enabled = m_metricEnabled[static_cast<std::size_t>(i)];
+            hasData[static_cast<std::size_t>(i)] = !enabled
+                || (m_lineSeries[static_cast<std::size_t>(i)]
+                    && m_lineSeries[static_cast<std::size_t>(i)]->count() > 0);
+        }
         m_tracesPanel->setMetricDataStates(hasData);
     }
+    if (m_chartView) m_chartView->invalidateHoverSeriesCache();
 }
 
 void DashboardPage::scheduleLiveChartRebuild() {
-    showChartLoadingIndicator();
-    if (m_liveChartCoalesceTimer) {
-        m_liveChartCoalesceTimer->start(50);
-    } else {
-        rebuildLiveSeriesFromHistory();
-        }
+    m_liveChartDirty = true;
+    if (graphViewIsActive() && isVisible()) showChartLoadingIndicator();
+    scheduleRenderPass();
 }
 
 void DashboardPage::zoomChartAxesAtCenter(bool zoomIn) {
@@ -1547,6 +1778,9 @@ void DashboardPage::zoomChartAxesAtCenter(bool zoomIn) {
 }
 
 void DashboardPage::onDisplayedSampleChanged(const FlightSample &sample) {
+    if (!isVisible()) {
+        return;
+    }
     if (m_tracesPanel) m_tracesPanel->updateLiveValues(sample);
 }
 
@@ -1587,6 +1821,7 @@ void DashboardPage::clearEventMarkers() {
     }
     m_markerSeries.clear();
     m_eventMarkers.clear();
+    if (m_chartView) m_chartView->invalidateHoverSeriesCache();
 }
 
 void DashboardPage::redrawEventMarkers() {
@@ -1611,6 +1846,15 @@ void DashboardPage::redrawEventMarkers() {
         line->attachAxis(m_axisY);
         m_markerSeries.push_back(line);
     }
+    if (m_chartView) m_chartView->invalidateHoverSeriesCache();
+}
+
+void DashboardPage::showEvent(QShowEvent *event) {
+    QWidget::showEvent(event);
+    if (m_model && m_tracesPanel) {
+        m_tracesPanel->updateLiveValues(m_model->latestSample());
+    }
+    processScheduledUpdates(true);
 }
 
 void DashboardPage::paintEvent(QPaintEvent *event) {

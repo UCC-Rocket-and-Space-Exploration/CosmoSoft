@@ -160,8 +160,10 @@ inline bool useSessionElapsedTimeAxis(long tFirstMs, long tLastMs)
  */
 inline double chartXSeconds(long refFirstMs, long tMs, bool sessionElapsed)
 {
-    if (sessionElapsed) return static_cast<double>(tMs - refFirstMs) / 1000.0;
-    return static_cast<double>(tMs) / 1000.0;
+    const long double milliseconds = sessionElapsed
+        ? static_cast<long double>(tMs) - static_cast<long double>(refFirstMs)
+        : static_cast<long double>(tMs);
+    return static_cast<double>(milliseconds / 1000.0L);
 }
 
 /** Formats an integer using the system locale's grouping separator. */

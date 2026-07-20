@@ -16,6 +16,7 @@
 #include <QList>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QShowEvent>
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -61,7 +62,6 @@ LiveTelemetryPage::LiveTelemetryPage(FlightDataModel *model, QWidget *parent)
         connect(m_model, &FlightDataModel::liveSamplesReceived,
                 m_mapWidget, &Map3DWidget::onLiveSamplesReceived);
         connect(m_model, &FlightDataModel::sessionReset, this, &LiveTelemetryPage::resetLiveState);
-        connect(m_model, &FlightDataModel::sessionReset, m_mapWidget, &Map3DWidget::onSessionReset);
         connect(m_model, &FlightDataModel::bytesReceivedChanged,
                 this, &LiveTelemetryPage::onBytesReceivedChanged);
     }
@@ -121,6 +121,8 @@ void LiveTelemetryPage::resetLiveState() {
     m_sampleCount = 0;
     m_totalBytes = 0;
     m_havePreviousSample = false;
+    m_haveLatestDisplaySample = false;
+    m_latestVelocity = 0.0;
     resetMetricTiles();
     updateLastPacketLabel();
     if (m_mapWidget) {
@@ -257,37 +259,47 @@ void LiveTelemetryPage::onLiveSamplesReceived(const QVector<FlightSample> &sampl
         return;
     }
 
-    double velocity = std::numeric_limits<double>::quiet_NaN();
-    for (const auto &sample : samples) {
-        velocity = std::numeric_limits<double>::quiet_NaN();
-        if (m_havePreviousSample) {
-            if (const auto calculated = cosmo::gui::verticalVelocityMetersPerSecond(
-                    m_previousSample, sample)) {
-                velocity = *calculated;
-            }
-        }
-        m_previousSample = sample;
-        m_havePreviousSample = true;
+    const FlightSample &sample = samples.constLast();
+    const FlightSample *velocityPrevious = nullptr;
+    if (samples.size() >= 2) {
+        velocityPrevious = &samples[samples.size() - 2];
+    } else if (m_havePreviousSample) {
+        velocityPrevious = &m_previousSample;
     }
 
-    const FlightSample &sample = samples.constLast();
+    double velocity = std::numeric_limits<double>::quiet_NaN();
+    if (velocityPrevious) {
+        if (const auto calculated = cosmo::gui::verticalVelocityMetersPerSecond(
+                *velocityPrevious, sample)) {
+            velocity = *calculated;
+        }
+    }
+    m_previousSample = sample;
+    m_havePreviousSample = true;
+
     const qsizetype availableCount = static_cast<qsizetype>(
         std::numeric_limits<int>::max() - m_sampleCount);
     m_sampleCount += static_cast<int>(std::min(samples.size(), availableCount));
 
-    if (m_metricTiles[0]) m_metricTiles[0]->setValue(formatMetric(sample.altitude, u"m"_s, 1));
-    if (m_metricTiles[1]) m_metricTiles[1]->setValue(formatSignedMetric(velocity, u"m/s"_s, 1));
-    if (m_metricTiles[2]) m_metricTiles[2]->setValue(formatMetric(sample.temperature, u"C"_s, 1));
-    if (m_metricTiles[3]) m_metricTiles[3]->setValue(formatMetric(sample.pressure, u"Pa"_s, 0));
-    if (m_metricTiles[4]) m_metricTiles[4]->setValue(formatMetric(sample.batteryVoltage, u"V"_s, 2));
-    if (m_metricTiles[5]) m_metricTiles[5]->setValue(formatMetric(sample.rssi, u"dBm"_s, 1));
+    m_latestDisplaySample = sample;
+    m_latestVelocity = velocity;
+    m_haveLatestDisplaySample = true;
 
-    updateLastPacketLabel();
+    if (isVisible()) {
+        refreshTelemetryDisplay();
+    }
 }
 
 void LiveTelemetryPage::onBytesReceivedChanged(qint64 totalBytes) {
     m_totalBytes = totalBytes;
-    updateLastPacketLabel();
+    if (isVisible()) {
+        updateLastPacketLabel();
+    }
+}
+
+void LiveTelemetryPage::showEvent(QShowEvent *event) {
+    QWidget::showEvent(event);
+    refreshTelemetryDisplay();
 }
 
 void LiveTelemetryPage::onConnectClicked() {
@@ -546,6 +558,32 @@ void LiveTelemetryPage::refreshDeviceRows() {
         layout->addWidget(label, 1);
         m_deviceRowsLayout->addWidget(row);
     }
+}
+
+void LiveTelemetryPage::refreshTelemetryDisplay() {
+    if (m_haveLatestDisplaySample) {
+        const auto &sample = m_latestDisplaySample;
+        if (m_metricTiles[0]) {
+            m_metricTiles[0]->setValue(formatMetric(sample.altitude, u"m"_s, 1));
+        }
+        if (m_metricTiles[1]) {
+            m_metricTiles[1]->setValue(formatSignedMetric(m_latestVelocity, u"m/s"_s, 1));
+        }
+        if (m_metricTiles[2]) {
+            m_metricTiles[2]->setValue(formatMetric(sample.temperature, u"C"_s, 1));
+        }
+        if (m_metricTiles[3]) {
+            m_metricTiles[3]->setValue(formatMetric(sample.pressure, u"Pa"_s, 0));
+        }
+        if (m_metricTiles[4]) {
+            m_metricTiles[4]->setValue(formatMetric(sample.batteryVoltage, u"V"_s, 2));
+        }
+        if (m_metricTiles[5]) {
+            m_metricTiles[5]->setValue(formatMetric(sample.rssi, u"dBm"_s, 1));
+        }
+    }
+
+    updateLastPacketLabel();
 }
 
 void LiveTelemetryPage::resetMetricTiles() {
