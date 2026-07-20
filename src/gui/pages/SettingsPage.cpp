@@ -305,11 +305,11 @@ QWidget *SettingsPage::buildDeveloperSection() {
     helperText->setAccessibleName(u"Developer reference"_s);
     helperText->setPlainText(
         u"\u2500\u2500\u2500 Workflow \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-        u"  1. Select serial port + baud on the Monitoring connection bar.\n"
+        u"  1. Open Live Telemetry and select a serial port + baud rate.\n"
         u"  2. Click Connect to start the live telemetry pipeline.\n"
-        u"  3. Or click Open log\u2026 to load a .telem / .csv / .xlsx flight log.\n"
-        u"  4. Switch to Flight data for charts and replay.\n"
-        u"  5. Click Export session\u2026 to write a timestamped text log.\n"
+        u"  3. Or use Open flight log to load a .telem / .csv / .xlsx log.\n"
+        u"  4. Switch to Dashboard for charts and replay.\n"
+        u"  5. Use Export session to write the selected session as CSV.\n"
         u"\n"
         u"\u2500\u2500\u2500 File formats \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
         u"  .telem   AltOS binary framed telemetry (Framer + Parser)\n"
@@ -317,10 +317,10 @@ QWidget *SettingsPage::buildDeveloperSection() {
         u"  .xlsx    Excel workbook with telemetry columns on the first worksheet\n"
         u"\n"
         u"\u2500\u2500\u2500 Architecture overview \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-        u"  SerialWorker  \u2192 BlockingQueue \u2192 ParserWorker\n"
-        u"                                   \u2193\n"
-        u"  FlightDataModel \u2190 appendSample (Qt::QueuedConnection)\n"
-        u"  FlightLogManager \u2190 appendSample (for export)\n"
+        u"  SerialWorker \u2192 LineTelemetryDecodeWorker (worker thread)\n"
+        u"                                    \u2193 bounded batches\n"
+        u"  LineTelemetryBatchMailbox \u2192 FlightDataModel (GUI thread)\n"
+        u"                              \u2514\u2192 FlightLogManager (export)\n"
         u"\n"
         u"\u2500\u2500\u2500 QSettings location (macOS) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
         u"  ~/Library/Preferences/CosmoSoft.cosmo-soft.plist\n"
@@ -332,17 +332,17 @@ QWidget *SettingsPage::buildDeveloperSection() {
         u"  serial/baud                 Last baud rate\n"
         u"  paths/replayDir             Last replay directory\n"
         u"  ui/dashboardSplitterState   Dashboard splitter\n"
-        u"  ui/fontPointSize            App font pt size\n"
+        u"  ui/fontPointSize            Startup font override (6-48 pt)\n"
         u"  ui/unitSystem               metric | imperial\n"
         u"  ui/soundsEnabled            Feedback-sound toggle\n"
         u"  ui/debugMode                Debug mode toggle\n"
         u"  ui/settingsActiveTab        Last active settings tab\n"
         u"\n"
         u"\u2500\u2500\u2500 Useful build commands \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-        u"  cmake --preset debug\n"
-        u"  cmake --build build/debug --target CosmoSoft -j\n"
-        u"  cmake --preset release\n"
-        u"  cmake --build build/release --target CosmoSoft -j\n"_s);
+        u"  cmake -S . -B build\n"
+        u"  cmake --build build --target cosmo-soft-bin --parallel\n"
+        u"  ctest --test-dir build --output-on-failure\n"
+        u"  ./build/cosmo-soft\n"_s);
     helperLayout->addWidget(helperText);
     layout->addWidget(helperGroup);
 

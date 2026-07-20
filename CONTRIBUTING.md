@@ -10,7 +10,9 @@ Thank you for your interest in contributing to CosmoSoft — an open-source desk
 
 - CMake 3.21 or newer
 - A C++20 compiler (GCC 11+, Clang 13+, MSVC 2022+)
-- Qt 6.2 or newer (`Core`, `Gui`, `Widgets`, `Charts`, `Concurrent`)
+- Qt 6.2 or newer (`Core`, `Gui`, `Widgets`, `Charts`, `Concurrent`,
+  `WebEngineWidgets`, `WebChannel`)
+- Zlib development files
 
 ### Build
 

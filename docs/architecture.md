@@ -1,6 +1,7 @@
 # Architecture & Build Quickstart
 
-1. Install Qt 6 (Core, Gui, Widgets, Charts modules) and CMake 3.21+.
+1. Install CMake 3.21+, Qt 6 (Core, Gui, Widgets, Charts, Concurrent,
+   WebEngineWidgets, WebChannel modules), and Zlib development files.
 2. From the repository root run:
    ```
    cmake -S . -B build
@@ -14,4 +15,3 @@
    ```
    rm -rf build
    ```
-   
