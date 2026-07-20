@@ -74,6 +74,14 @@ public:
 
 signals:
     /**
+     * @brief Emitted when automatic camera tracking actually changes state.
+     *
+     * This includes changes initiated by C++, the in-map control, or direct
+     * map interaction such as dragging while follow mode is active.
+     */
+    void cameraFollowChanged(bool enabled);
+
+    /**
      * @brief Emitted whenever the rocket position changes.
      *
      * Signal signature matches the former MapChartWidget for drop-in compatibility.
@@ -100,6 +108,7 @@ private slots:
                               double pathLength,
                               int totalSamples, int validGpsSamples,
                               double launchLat, double launchLon);
+    void onBridgeFollowChanged(bool enabled);
     void onMapReady();
     void onMapLoadFinished(bool succeeded);
     void pushThemeToMap();

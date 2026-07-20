@@ -20,8 +20,11 @@
 
 class QComboBox;
 class QFrame;
+class QGridLayout;
 class QLabel;
 class QPushButton;
+class QResizeEvent;
+class QScrollArea;
 class QShowEvent;
 class QToolButton;
 class QVBoxLayout;
@@ -78,6 +81,9 @@ protected:
     /** @brief Refresh deferred telemetry presentation when the page becomes visible. */
     void showEvent(QShowEvent *event) override;
 
+    /** @brief Reflow telemetry panels to match the available viewport width. */
+    void resizeEvent(QResizeEvent *event) override;
+
 private slots:
     void refreshStyleSheet();
     void onLiveSamplesReceived(const QVector<FlightSample> &samples);
@@ -96,11 +102,22 @@ private:
     void refreshTelemetryDisplay();
     void resetMetricTiles();
     void updateLastPacketLabel();
+    void updateResponsiveLayout();
+    void updateFollowButtonState(bool enabled);
     [[nodiscard]] QString selectedPort() const;
     [[nodiscard]] int selectedBaud() const;
 
     FlightDataModel *m_model = nullptr;
     Map3DWidget *m_mapWidget = nullptr;
+    QScrollArea *m_scrollArea = nullptr;
+    QWidget *m_scrollContent = nullptr;
+    QGridLayout *m_responsiveLayout = nullptr;
+    QGridLayout *m_metricsGrid = nullptr;
+    QFrame *m_mapPanel = nullptr;
+    QWidget *m_metricsPanel = nullptr;
+    QWidget *m_sideColumn = nullptr;
+    int m_responsiveMode = -1;
+    int m_metricColumnCount = 0;
 
     std::array<StatTileWidget *, 6> m_metricTiles{};
     QLabel *m_connectionStatusLabel = nullptr;
@@ -109,6 +126,7 @@ private:
     QLabel *m_lastPacketLabel = nullptr;
     QComboBox *m_portCombo = nullptr;
     QComboBox *m_baudCombo = nullptr;
+    QToolButton *m_followButton = nullptr;
     QPushButton *m_scanButton = nullptr;
     QPushButton *m_connectButton = nullptr;
     QPushButton *m_disconnectButton = nullptr;

@@ -15,6 +15,7 @@
 #include <cmath>
 
 #include "domain/FlightSample.h"
+#include "gui/Theme.h"
 
 namespace MetricDefs {
 
@@ -55,19 +56,8 @@ inline QString metricTraceShortName(int idx)
 /** Accent color for metric @p idx. */
 inline QColor metricColor(int idx)
 {
-    static const QColor colors[kMetricCount] = {
-        QColor("#5b9bd5"), // 0 Alt   – steel blue
-        QColor("#70c1a5"), // 1 Temp  – teal green
-        QColor("#f0b429"), // 2 Press – amber
-        QColor("#c084fc"), // 3 |a|   – purple
-        QColor("#e05252"), // 4 Batt  – red
-        QColor("#ff9f6b"), // 5 RSSI  – orange
-        QColor("#f472b6"), // 6 |ω|   – pink
-        QColor("#a3e635"), // 7 Lat   – lime green
-        QColor("#F8DE22"), // 8 Lon   – yellow
-    };
     if (idx < 0 || idx >= kMetricCount) return {};
-    return colors[idx];
+    return QColor(Theme::kTraceColor(idx));
 }
 
 /** Extracts the scalar value for metric @p idx from a sample. */

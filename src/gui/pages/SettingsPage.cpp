@@ -21,15 +21,20 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QScrollArea>
 #include <QSettings>
 #include <QShowEvent>
 #include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QSysInfo>
 #include <QVBoxLayout>
 
 #include <QtConcurrent/QtConcurrentRun>
+
+#include <algorithm>
 
 using namespace Qt::StringLiterals;
 
@@ -64,7 +69,7 @@ bool SettingsPage::debugModeEnabled() const {
 // ── Main layout ──────────────────────────────────────────────────────────────
 
 void SettingsPage::buildUi() {
-    setMinimumSize(560, 480);
+    setMinimumSize(440, 400);
 
     auto *root = new QHBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
@@ -73,7 +78,10 @@ void SettingsPage::buildUi() {
     // Sidebar navigation
     m_nav = new QListWidget(this);
     m_nav->setObjectName(u"settingsNav"_s);
-    m_nav->setFixedWidth(170);
+    m_nav->setAccessibleName(u"Settings sections"_s);
+    m_nav->setMinimumWidth(108);
+    m_nav->setMaximumWidth(152);
+    m_nav->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     m_nav->setFrameShape(QFrame::NoFrame);
     m_nav->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_nav->setSpacing(2);
@@ -101,6 +109,7 @@ void SettingsPage::buildUi() {
     root->addWidget(m_pages, 1);
 
     refreshStyleSheet();
+    updateResponsiveLayout();
 }
 
 // ── Appearance section ───────────────────────────────────────────────────────
@@ -108,7 +117,7 @@ void SettingsPage::buildUi() {
 QWidget *SettingsPage::buildAppearanceSection() {
     auto *inner = new QWidget;
     auto *layout = new QVBoxLayout(inner);
-    layout->setContentsMargins(28, 28, 28, 28);
+    layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(20);
 
     // ── Skin group ────────────────────────────────────────────────────────────
@@ -117,11 +126,13 @@ QWidget *SettingsPage::buildAppearanceSection() {
     skinLayout->setContentsMargins(16, 20, 16, 16);
     skinLayout->setSpacing(12);
 
-    auto *skinLabel = new QLabel(u"Active skin"_s, m_skinGroup);
+    auto *skinLabel = new QLabel(u"&Active skin"_s, m_skinGroup);
     skinLabel->setObjectName(u"fieldLabel"_s);
     skinLayout->addWidget(skinLabel);
 
     m_skinCombo = new QComboBox(m_skinGroup);
+    m_skinCombo->setAccessibleName(u"Active skin"_s);
+    skinLabel->setBuddy(m_skinCombo);
     const auto skins = cosmo::SkinLoader::discoverAll(cosmo::ThemeManager::skinsDirectory());
     for (const auto &skin : skins) {
         m_skinCombo->addItem(skin.name, skin.id);
@@ -138,6 +149,8 @@ QWidget *SettingsPage::buildAppearanceSection() {
     skinLayout->addWidget(m_skinCombo);
 
     m_importSkinBtn = new QPushButton(u"Import .cosmo skin\u2026"_s, m_skinGroup);
+    m_importSkinBtn->setAccessibleName(u"Import CosmoSoft skin"_s);
+    m_importSkinBtn->setFocusPolicy(Qt::TabFocus);
     m_importSkinBtn->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     connect(m_importSkinBtn, &QPushButton::clicked, this, &SettingsPage::onImportSkin);
     skinLayout->addWidget(m_importSkinBtn);
@@ -153,7 +166,7 @@ QWidget *SettingsPage::buildAppearanceSection() {
 QWidget *SettingsPage::buildDataSection() {
     auto *inner = new QWidget;
     auto *layout = new QVBoxLayout(inner);
-    layout->setContentsMargins(28, 28, 28, 28);
+    layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(20);
 
 
@@ -163,7 +176,7 @@ QWidget *SettingsPage::buildDataSection() {
     soundLayout->setContentsMargins(16, 20, 16, 16);
     soundLayout->setSpacing(10);
 
-    m_uiSoundsCheck = new QCheckBox(u"Enable UI sounds"_s, m_soundGroup);
+    m_uiSoundsCheck = new QCheckBox(u"Enable &UI sounds"_s, m_soundGroup);
     m_uiSoundsCheck->setChecked(true);
     connect(m_uiSoundsCheck, &QCheckBox::toggled, this, &SettingsPage::onSoundsToggled);
     soundLayout->addWidget(m_uiSoundsCheck);
@@ -185,11 +198,11 @@ QWidget *SettingsPage::buildDataSection() {
 QWidget *SettingsPage::buildDeveloperSection() {
     auto *inner = new QWidget;
     auto *layout = new QVBoxLayout(inner);
-    layout->setContentsMargins(28, 28, 28, 28);
+    layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(20);
 
     // ── Debug toggle ──────────────────────────────────────────────────────────
-    m_debugModeCheck = new QCheckBox(u"Enable debug mode"_s, inner);
+    m_debugModeCheck = new QCheckBox(u"Enable &debug mode"_s, inner);
     m_debugModeCheck->setObjectName(u"debugModeCheck"_s);
     m_debugModeCheck->setToolTip(
         u"Expose verbose system information and developer reference."_s);
@@ -235,7 +248,7 @@ QWidget *SettingsPage::buildDeveloperSection() {
 
     m_sysInfoLabel = new QLabel(sysText, m_sysInfoGroup);
     m_sysInfoLabel->setObjectName(u"sysInfoLabel"_s);
-    m_sysInfoLabel->setWordWrap(false);
+    m_sysInfoLabel->setWordWrap(true);
     m_sysInfoLabel->setTextInteractionFlags(
         Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     sysLayout->addWidget(m_sysInfoLabel);
@@ -250,7 +263,8 @@ QWidget *SettingsPage::buildDeveloperSection() {
     auto *helperText = new QPlainTextEdit(helperGroup);
     helperText->setObjectName(u"devReference"_s);
     helperText->setReadOnly(true);
-    helperText->setMinimumHeight(200);
+    helperText->setMinimumHeight(140);
+    helperText->setAccessibleName(u"Developer reference"_s);
     helperText->setPlainText(
         u"\u2500\u2500\u2500 Workflow \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
         u"  1. Select serial port + baud on the Monitoring connection bar.\n"
@@ -303,7 +317,7 @@ QWidget *SettingsPage::buildDeveloperSection() {
 QWidget *SettingsPage::buildAboutSection() {
     auto *inner = new QWidget;
     auto *layout = new QVBoxLayout(inner);
-    layout->setContentsMargins(32, 32, 32, 32);
+    layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(12);
 
     auto *appName = new QLabel(u"CosmoSoft"_s, inner);
@@ -342,6 +356,12 @@ QWidget *SettingsPage::buildAboutSection() {
     repoLabel->setObjectName(u"aboutLink"_s);
     repoLabel->setOpenExternalLinks(true);
     repoLabel->setTextFormat(Qt::RichText);
+    repoLabel->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    repoLabel->setFocusPolicy(Qt::StrongFocus);
+    repoLabel->setWordWrap(true);
+    repoLabel->setAccessibleName(u"CosmoSoft source repository"_s);
+    repoLabel->setAccessibleDescription(
+        u"Opens the CosmoSoft source repository in the default browser"_s);
     layout->addWidget(repoLabel);
 
     layout->addSpacing(24);
@@ -390,6 +410,12 @@ void SettingsPage::refreshStyleSheet() {
     QListWidget#settingsNav::item:hover:!selected {
         background-color: %9;
         color: %7;
+    }
+    QListWidget#settingsNav[compact="true"] {
+        padding: 8px 4px;
+    }
+    QListWidget#settingsNav[compact="true"]::item {
+        padding: 8px 6px;
     }
 
     /* ── Content area ────────────────────────────────────────── */
@@ -468,17 +494,6 @@ void SettingsPage::refreshStyleSheet() {
         color: %13;
         spacing: 10px;
     }
-    QCheckBox#debugModeCheck::indicator {
-        width: 18px;
-        height: 18px;
-        border: 1px solid %5;
-        border-radius: 3px;
-        background-color: %2;
-    }
-    QCheckBox#debugModeCheck::indicator:checked {
-        background-color: %13;
-        border-color: %13;
-    }
 
     /* ── Developer reference ─────────────────────────────────── */
     QPlainTextEdit#devReference {
@@ -493,6 +508,17 @@ void SettingsPage::refreshStyleSheet() {
     /* ── Dividers ────────────────────────────────────────────── */
     QFrame#divider {
         color: %3;
+    }
+
+    /* ── Keyboard focus ──────────────────────────────────────── */
+    QListWidget#settingsNav:focus,
+    QComboBox:focus,
+    QPushButton:focus,
+    QPlainTextEdit:focus,
+    QLabel#aboutLink:focus,
+    QCheckBox:focus {
+        border: 2px solid %16;
+        border-radius: %6px;
     }
 )"_s)
     .arg(Theme::kBgBase())          // %1
@@ -509,7 +535,8 @@ void SettingsPage::refreshStyleSheet() {
     .arg(Theme::kTextMid())         // %12
     .arg(Theme::kAccentLink())      // %13
     .arg(Theme::kFontMono)          // %14
-    .arg(Theme::kSuccess());        // %15
+    .arg(Theme::kSuccess())         // %15
+    .arg(Theme::kFocusRing());      // %16
 
     setStyleSheet(sheet);
 }
@@ -624,6 +651,12 @@ void SettingsPage::startSkinImport(const QString &archive_path, bool replace_exi
 void SettingsPage::showEvent(QShowEvent *event) {
     QWidget::showEvent(event);
     loadFromSettings();
+    updateResponsiveLayout();
+}
+
+void SettingsPage::resizeEvent(QResizeEvent *event) {
+    QWidget::resizeEvent(event);
+    updateResponsiveLayout();
 }
 
 void SettingsPage::closeEvent(QCloseEvent *event) {
@@ -671,4 +704,28 @@ void SettingsPage::saveToSettings() {
         s.setValue(kSettingsActiveTab, m_nav->currentRow());
     }
     s.setValue(kSettingsWindowSettingsGeo, saveGeometry());
+}
+
+void SettingsPage::updateResponsiveLayout() {
+    if (!m_nav) {
+        return;
+    }
+
+    constexpr int kMinSidebarWidth = 108;
+    constexpr int kMaxSidebarWidth = 152;
+    constexpr int kCompactWindowWidth = 640;
+    const int sidebarWidth = std::clamp(
+        width() / 4,
+        kMinSidebarWidth,
+        kMaxSidebarWidth);
+    m_nav->setFixedWidth(sidebarWidth);
+
+    const bool compact = width() < kCompactWindowWidth;
+    if (m_nav->property("compact").toBool() == compact) {
+        return;
+    }
+    m_nav->setProperty("compact", compact);
+    m_nav->style()->unpolish(m_nav);
+    m_nav->style()->polish(m_nav);
+    m_nav->update();
 }

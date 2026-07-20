@@ -5,12 +5,10 @@
 #include <QApplication>
 #include <QDesktopServices>
 #include <QDir>
-#include <QEvent>
 #include <QFile>
 #include <QHideEvent>
 #include <QKeyEvent>
 #include <QLabel>
-#include <QNativeGestureEvent>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSet>
@@ -26,6 +24,7 @@
 #include <QWebEngineSettings>
 #include <QWebEngineUrlRequestInterceptor>
 #include <QWebEngineView>
+#include <QWheelEvent>
 #include <QWidget>
 
 #include <algorithm>
@@ -136,106 +135,57 @@ QVariantMap mapPointPayload(const FlightSample &sample, int sampleIndex, double 
     };
 }
 
-/**
- * @class LockedMapWebView
- * @brief QWebEngineView variant that keeps the embedded map at page zoom 100%.
- */
-class LockedMapWebView : public QWebEngineView {
+/** @brief Web view that exposes predictable keyboard and modified-wheel page zoom. */
+class AccessibleMapWebView : public QWebEngineView {
 public:
-    explicit LockedMapWebView(QWidget *parent = nullptr)
-        : QWebEngineView(parent) {
-        if (auto *app = QApplication::instance()) {
-            app->installEventFilter(this);
-        }
-    }
-
-    ~LockedMapWebView() override {
-        if (auto *app = QApplication::instance()) {
-            app->removeEventFilter(this);
-        }
-    }
+    explicit AccessibleMapWebView(QWidget *parent = nullptr)
+        : QWebEngineView(parent) {}
 
 protected:
-    bool eventFilter(QObject *watched, QEvent *event) override {
-        if (shouldBlockPageZoom(watched, event)) {
-            resetZoomFactor();
-            event->accept();
-            return true;
+    void wheelEvent(QWheelEvent *event) override {
+        const bool zoomModifier = event->modifiers().testFlag(Qt::ControlModifier)
+            || event->modifiers().testFlag(Qt::MetaModifier);
+        const int verticalDelta = !event->angleDelta().isNull()
+            ? event->angleDelta().y()
+            : event->pixelDelta().y();
+        if (!zoomModifier || verticalDelta == 0) {
+            QWebEngineView::wheelEvent(event);
+            return;
         }
-        return QWebEngineView::eventFilter(watched, event);
-    }
 
-    bool event(QEvent *event) override {
-        if (shouldBlockPageZoom(this, event)) {
-            resetZoomFactor();
-            event->accept();
-            return true;
-        }
-        return QWebEngineView::event(event);
+        const double scale = verticalDelta > 0 ? 1.1 : 1.0 / 1.1;
+        setZoomFactor(std::clamp(zoomFactor() * scale, 0.5, 3.0));
+        event->accept();
     }
 
     void keyPressEvent(QKeyEvent *event) override {
-        if (isBrowserZoomShortcut(event)) {
-            resetZoomFactor();
-            event->accept();
+        const bool zoomModifier = event->modifiers().testFlag(Qt::ControlModifier)
+            || event->modifiers().testFlag(Qt::MetaModifier);
+        if (!zoomModifier) {
+            QWebEngineView::keyPressEvent(event);
             return;
         }
-        QWebEngineView::keyPressEvent(event);
-    }
 
-private:
-    [[nodiscard]] bool shouldBlockPageZoom(QObject *watched, QEvent *event) const {
-        if (!isMapTarget(watched)) {
-            return false;
-        }
-        switch (event->type()) {
-        case QEvent::NativeGesture: {
-            const auto *gesture = static_cast<QNativeGestureEvent *>(event);
-            return gesture->gestureType() == Qt::ZoomNativeGesture
-                || gesture->gestureType() == Qt::SmartZoomNativeGesture;
-        }
-        case QEvent::KeyPress:
-            return isBrowserZoomShortcut(static_cast<QKeyEvent *>(event));
-        default:
-            return false;
-        }
-    }
-
-    [[nodiscard]] bool isBrowserZoomShortcut(const QKeyEvent *event) const {
-        const bool hasZoomModifier =
-            event->modifiers().testFlag(Qt::ControlModifier)
-            || event->modifiers().testFlag(Qt::MetaModifier);
-        if (!hasZoomModifier) {
-            return false;
-        }
-
+        double nextZoom = zoomFactor();
         switch (event->key()) {
         case Qt::Key_0:
+            nextZoom = 1.0;
+            break;
         case Qt::Key_Equal:
-        case Qt::Key_Minus:
         case Qt::Key_Plus:
+            nextZoom = zoomFactor() * 1.1;
+            break;
+        case Qt::Key_Minus:
         case Qt::Key_Underscore:
-            return true;
+            nextZoom = zoomFactor() / 1.1;
+            break;
         default:
-            return false;
-        }
-    }
-
-    [[nodiscard]] bool isMapTarget(QObject *watched) const {
-        for (QObject *obj = watched; obj != nullptr; obj = obj->parent()) {
-            if (obj == this || obj == page()) {
-                return true;
-            }
+            QWebEngineView::keyPressEvent(event);
+            return;
         }
 
-        const auto *widget = qobject_cast<QWidget *>(watched);
-        return widget && (widget == this || isAncestorOf(widget));
-    }
-
-    void resetZoomFactor() {
-        if (!qFuzzyCompare(zoomFactor(), 1.0)) {
-            setZoomFactor(1.0);
-        }
+        setZoomFactor(std::clamp(nextZoom, 0.5, 3.0));
+        event->accept();
     }
 };
 
@@ -445,12 +395,17 @@ void Map3DWidget::ensureMapInitialized() {
     connect(m_bridge, &Map3DBridge::ready,
             this, &Map3DWidget::onMapReady);
     connect(m_bridge, &Map3DBridge::followChanged,
-            this, &Map3DWidget::setCameraFollow);
+            this, &Map3DWidget::onBridgeFollowChanged);
     connect(page, &QWebEnginePage::loadFinished,
             this, &Map3DWidget::onMapLoadFinished);
 
-    m_webView = new LockedMapWebView(this);
+    // Keep standard page zoom and pinch gestures available for low-vision
+    // users. Unmodified map zoom remains handled by Leaflet/OrbitControls.
+    m_webView = new AccessibleMapWebView(this);
     m_webView->setContextMenuPolicy(Qt::NoContextMenu);
+    m_webView->setAccessibleName(tr("Flight map content"));
+    m_webView->setAccessibleDescription(
+        tr("Use Control or Command with plus, minus, or scroll to resize map text."));
     m_webView->setPage(page);
     m_webView->setZoomFactor(1.0);
     static_cast<QVBoxLayout *>(layout())->insertWidget(0, m_webView);
@@ -538,8 +493,16 @@ void Map3DWidget::pushThemeToMap() {
         {QStringLiteral("text_primary"), p.text_primary},
         {QStringLiteral("text_dim"), p.text_dim},
         {QStringLiteral("text_muted"), p.text_muted},
+        {QStringLiteral("border_default"), p.border_default},
+        {QStringLiteral("border_light"), p.border_light},
         {QStringLiteral("border_subtle"), p.border_subtle},
+        {QStringLiteral("btn_hover"), p.btn_hover},
         {QStringLiteral("accent_link"), p.accent_link},
+        {QStringLiteral("focus_ring"), p.focus_ring},
+        {QStringLiteral("success"), p.success},
+        {QStringLiteral("warning"), p.warning},
+        {QStringLiteral("danger"), p.danger},
+        {QStringLiteral("info"), p.info},
     });
 }
 
@@ -843,9 +806,26 @@ void Map3DWidget::centerOnCurrent() {
 }
 
 void Map3DWidget::setCameraFollow(bool enabled) {
+    if (m_followEnabled == enabled) {
+        return;
+    }
+
     m_followEnabled = enabled;
     m_followUpdatePending = true;
     scheduleMapUpdate();
+    emit cameraFollowChanged(enabled);
+}
+
+void Map3DWidget::onBridgeFollowChanged(bool enabled) {
+    if (m_followEnabled == enabled) {
+        return;
+    }
+
+    // JavaScript has already applied this state. Treat the user interaction as
+    // authoritative and avoid echoing it through the web channel.
+    m_followEnabled = enabled;
+    m_followUpdatePending = false;
+    emit cameraFollowChanged(enabled);
 }
 
 void Map3DWidget::scheduleMapUpdate() {

@@ -49,7 +49,7 @@ public:
 
     /**
      * @brief Retrieve a cached texture pixmap for a named region.
-     * @param region One of: "sidebar", "toolbar", "panel", "chart_bg", "settings_bg"
+     * @param region Supported region name (currently only "panel").
      * @return Cached QPixmap (null pixmap if the region has no texture).
      */
     [[nodiscard]] QPixmap texture(const QString &region) const;

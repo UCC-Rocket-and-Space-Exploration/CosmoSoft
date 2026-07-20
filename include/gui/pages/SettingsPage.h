@@ -26,6 +26,7 @@ class QGroupBox;
 class QLabel;
 class QListWidget;
 class QPushButton;
+class QResizeEvent;
 class QShowEvent;
 class QStackedWidget;
 
@@ -55,6 +56,9 @@ protected:
     /** @brief Loads persisted settings and restores window geometry on show. */
     void showEvent(QShowEvent *event) override;
 
+    /** @brief Resize the navigation rail without starving settings content. */
+    void resizeEvent(QResizeEvent *event) override;
+
     /** @brief Saves current settings and window geometry before closing. */
     void closeEvent(QCloseEvent *event) override;
 
@@ -80,6 +84,9 @@ private:
 
     /** @brief Rebuilds the page-local stylesheet from the active theme palette. */
     void refreshStyleSheet();
+
+    /** @brief Adapt sidebar width and density to the current window width. */
+    void updateResponsiveLayout();
 
     // ── Navigation ────────────────────────────────────────────────────────────
     QListWidget   *m_nav   = nullptr;

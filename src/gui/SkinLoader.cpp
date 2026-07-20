@@ -7,7 +7,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QImage>
 #include <QImageReader>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
@@ -16,6 +18,7 @@
 #include <QTemporaryDir>
 #include <QUuid>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <tuple>
@@ -30,6 +33,9 @@ constexpr qsizetype kMaxThemeBytes = 256 * 1024;
 constexpr qsizetype kMaxImageBytes = 8 * 1024 * 1024;
 constexpr int kMaxImageDimension = 4096;
 constexpr quint64 kMaxDecodedImagePixels = 20ULL * 1024ULL * 1024ULL;
+constexpr double kMaxTextureOpacity = 0.20;
+constexpr double kMinimumTraceColorDeltaE = 10.0;
+constexpr std::size_t kTraceColorCount = 9;
 
 void assignError(QString *error_message, const QString &message) {
     if (error_message) {
@@ -76,18 +82,150 @@ double linearChannel(double channel) {
         : std::pow((channel + 0.055) / 1.055, 2.4);
 }
 
+const std::array<double, 256> &linearChannelLookup() {
+    static const std::array<double, 256> lookup = [] {
+        std::array<double, 256> values{};
+        for (std::size_t index = 0; index < values.size(); ++index) {
+            values[index] = linearChannel(static_cast<double>(index));
+        }
+        return values;
+    }();
+    return lookup;
+}
+
 double relativeLuminance(const QColor &color) {
-    return 0.2126 * linearChannel(color.red())
-        + 0.7152 * linearChannel(color.green())
-        + 0.0722 * linearChannel(color.blue());
+    const auto &lookup = linearChannelLookup();
+    return 0.2126 * lookup[static_cast<std::size_t>(color.red())]
+        + 0.7152 * lookup[static_cast<std::size_t>(color.green())]
+        + 0.0722 * lookup[static_cast<std::size_t>(color.blue())];
+}
+
+double contrastRatioFromLuminance(double foreground, double background) {
+    const double lighter = std::max(foreground, background);
+    const double darker = std::min(foreground, background);
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
+bool hasMinimumContrast(double foreground, double background, double minimum) {
+    const double lighter = std::max(foreground, background);
+    const double darker = std::min(foreground, background);
+    return lighter + 0.05 >= (minimum - 0.001) * (darker + 0.05);
+}
+
+double contrastRatio(const QColor &foreground, const QColor &background) {
+    return contrastRatioFromLuminance(
+        relativeLuminance(foreground), relativeLuminance(background));
 }
 
 double contrastRatio(const QString &foreground, const QString &background) {
-    const double foreground_luminance = relativeLuminance(QColor(foreground));
-    const double background_luminance = relativeLuminance(QColor(background));
-    const double lighter = std::max(foreground_luminance, background_luminance);
-    const double darker = std::min(foreground_luminance, background_luminance);
-    return (lighter + 0.05) / (darker + 0.05);
+    return contrastRatio(QColor(foreground), QColor(background));
+}
+
+struct LabColor {
+    double lightness = 0.0;
+    double a = 0.0;
+    double b = 0.0;
+};
+
+double labPivot(double component) {
+    constexpr double kEpsilon = 216.0 / 24389.0;
+    constexpr double kKappa = 24389.0 / 27.0;
+    return component > kEpsilon
+        ? std::cbrt(component)
+        : (kKappa * component + 16.0) / 116.0;
+}
+
+LabColor toLab(const QColor &color) {
+    const double red = linearChannel(color.red());
+    const double green = linearChannel(color.green());
+    const double blue = linearChannel(color.blue());
+
+    // D65 reference white and the standard sRGB-to-XYZ matrix.
+    const double x = (0.4124564 * red + 0.3575761 * green + 0.1804375 * blue)
+        / 0.95047;
+    const double y = 0.2126729 * red + 0.7151522 * green + 0.0721750 * blue;
+    const double z = (0.0193339 * red + 0.1191920 * green + 0.9503041 * blue)
+        / 1.08883;
+    const double fx = labPivot(x);
+    const double fy = labPivot(y);
+    const double fz = labPivot(z);
+    return {116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz)};
+}
+
+double colorDistance(const QColor &first, const QColor &second) {
+    const LabColor first_lab = toLab(first);
+    const LabColor second_lab = toLab(second);
+    const double lightness_delta = first_lab.lightness - second_lab.lightness;
+    const double a_delta = first_lab.a - second_lab.a;
+    const double b_delta = first_lab.b - second_lab.b;
+    return std::sqrt(lightness_delta * lightness_delta
+                     + a_delta * a_delta
+                     + b_delta * b_delta);
+}
+
+std::array<QString, kTraceColorCount> fallbackTraceColors(
+    const QString &base_background,
+    const QString &panel_background) {
+    static const std::array<QColor, kTraceColorCount> bright_colors = {
+        QColor(QStringLiteral("#5b9bd5")),
+        QColor(QStringLiteral("#70c1a5")),
+        QColor(QStringLiteral("#f0b429")),
+        QColor(QStringLiteral("#c084fc")),
+        QColor(QStringLiteral("#ff6b6b")),
+        QColor(QStringLiteral("#ff9f6b")),
+        QColor(QStringLiteral("#f472b6")),
+        QColor(QStringLiteral("#a3e635")),
+        QColor(QStringLiteral("#f8de22")),
+    };
+    static const std::array<QColor, kTraceColorCount> dark_colors = {
+        QColor(QStringLiteral("#1d5d90")),
+        QColor(QStringLiteral("#16705a")),
+        QColor(QStringLiteral("#8a5a00")),
+        QColor(QStringLiteral("#6d28d9")),
+        QColor(QStringLiteral("#b42318")),
+        QColor(QStringLiteral("#9a3e00")),
+        QColor(QStringLiteral("#a61e63")),
+        QColor(QStringLiteral("#3f6212")),
+        QColor(QStringLiteral("#665c00")),
+    };
+
+    std::array<QString, kTraceColorCount> colors;
+    const auto minimum_contrast = [&](const QColor &color) {
+        const QString canonical = canonicalColor(color);
+        return std::min(contrastRatio(canonical, base_background),
+                        contrastRatio(canonical, panel_background));
+    };
+    for (std::size_t index = 0; index < colors.size(); ++index) {
+        const QColor bright = bright_colors[index];
+        const QColor dark = dark_colors[index];
+        const double bright_contrast = minimum_contrast(bright);
+        const double dark_contrast = minimum_contrast(dark);
+        QColor candidate = bright_contrast >= dark_contrast ? bright : dark;
+
+        if (std::max(bright_contrast, dark_contrast) < 3.25) {
+            const QColor black(Qt::black);
+            const QColor white(Qt::white);
+            const QColor target = minimum_contrast(black) >= minimum_contrast(white)
+                ? black
+                : white;
+            for (int step = 1; step <= 20; ++step) {
+                const double amount = static_cast<double>(step) / 20.0;
+                const QColor adjusted = QColor::fromRgbF(
+                    static_cast<float>(candidate.redF() * (1.0 - amount)
+                                       + target.redF() * amount),
+                    static_cast<float>(candidate.greenF() * (1.0 - amount)
+                                       + target.greenF() * amount),
+                    static_cast<float>(candidate.blueF() * (1.0 - amount)
+                                       + target.blueF() * amount));
+                candidate = adjusted;
+                if (minimum_contrast(candidate) >= 3.25) {
+                    break;
+                }
+            }
+        }
+        colors[index] = canonicalColor(candidate);
+    }
+    return colors;
 }
 
 bool requireContrast(
@@ -110,13 +248,18 @@ bool requireContrast(
     return false;
 }
 
-bool validatePaletteContrast(const ColorPalette &palette, QString *error_message) {
-    const std::array<std::pair<QString, QString>, 5> primary_backgrounds{{
+bool validatePaletteContrast(
+    const ColorPalette &palette,
+    bool validate_trace_distances,
+    QString *error_message) {
+    const std::array<std::pair<QString, QString>, 7> primary_backgrounds{{
         {QStringLiteral("bg_base"), palette.bg_base},
         {QStringLiteral("bg_dark"), palette.bg_dark},
         {QStringLiteral("bg_panel"), palette.bg_panel},
         {QStringLiteral("bg_input"), palette.bg_input},
         {QStringLiteral("bg_button"), palette.bg_button},
+        {QStringLiteral("btn_hover"), palette.btn_hover},
+        {QStringLiteral("btn_pressed"), palette.btn_pressed},
     }};
     for (const auto &[key, color] : primary_backgrounds) {
         if (!requireContrast(
@@ -126,51 +269,140 @@ bool validatePaletteContrast(const ColorPalette &palette, QString *error_message
         }
     }
 
+    const std::array<std::pair<QString, QString>, 3> secondary_backgrounds{{
+        {QStringLiteral("bg_base"), palette.bg_base},
+        {QStringLiteral("bg_dark"), palette.bg_dark},
+        {QStringLiteral("bg_panel"), palette.bg_panel},
+    }};
     const std::array<std::pair<QString, QString>, 3> secondary_text{{
         {QStringLiteral("text_mid"), palette.text_mid},
         {QStringLiteral("text_muted"), palette.text_muted},
         {QStringLiteral("text_dim"), palette.text_dim},
     }};
-    for (const auto &[key, color] : secondary_text) {
-        if (!requireContrast(key, color, QStringLiteral("bg_base"), palette.bg_base,
-                             4.5, error_message)) {
-            return false;
-        }
-        for (const auto &[background_key, background] : primary_backgrounds) {
-            if (background_key == QStringLiteral("bg_base")) {
-                continue;
-            }
-            if (!requireContrast(key, color, background_key, background,
-                                 3.0, error_message)) {
+    for (const auto &[text_key, text_color] : secondary_text) {
+        for (const auto &[background_key, background] : secondary_backgrounds) {
+            if (!requireContrast(text_key, text_color, background_key, background,
+                                 4.5, error_message)) {
                 return false;
             }
         }
     }
 
-    const std::array<std::tuple<QString, QString, QString, QString>, 9> graphics{{
-        {QStringLiteral("accent_link"), palette.accent_link,
-         QStringLiteral("bg_base"), palette.bg_base},
-        {QStringLiteral("focus_ring"), palette.focus_ring,
-         QStringLiteral("bg_base"), palette.bg_base},
-        {QStringLiteral("success"), palette.success,
-         QStringLiteral("success_bg"), palette.success_bg},
-        {QStringLiteral("warning"), palette.warning,
-         QStringLiteral("warning_bg"), palette.warning_bg},
-        {QStringLiteral("info"), palette.info,
-         QStringLiteral("info_bg"), palette.info_bg},
-        {QStringLiteral("success"), palette.success,
-         QStringLiteral("bg_dark"), palette.bg_dark},
-        {QStringLiteral("warning"), palette.warning,
-         QStringLiteral("bg_dark"), palette.bg_dark},
-        {QStringLiteral("info"), palette.info,
-         QStringLiteral("bg_dark"), palette.bg_dark},
-        {QStringLiteral("danger"), palette.danger,
-         QStringLiteral("bg_base"), palette.bg_base},
-    }};
-    for (const auto &[foreground_key, foreground, background_key, background] : graphics) {
-        if (!requireContrast(foreground_key, foreground, background_key, background,
-                             3.0, error_message)) {
+    // QPalette::PlaceholderText is drawn on Base, while disabled text is
+    // drawn on input, button, panel, and window surfaces depending on widget.
+    const std::array<std::tuple<QString, QString, QString, QString>, 3>
+        input_and_button_text_pairs{{
+            {QStringLiteral("text_dim"), palette.text_dim,
+             QStringLiteral("bg_input"), palette.bg_input},
+            {QStringLiteral("text_muted"), palette.text_muted,
+             QStringLiteral("bg_input"), palette.bg_input},
+            {QStringLiteral("text_muted"), palette.text_muted,
+             QStringLiteral("bg_button"), palette.bg_button},
+        }};
+    for (const auto &[text_key, text_color, background_key, background]
+         : input_and_button_text_pairs) {
+        if (!requireContrast(text_key, text_color, background_key, background,
+                             4.5, error_message)) {
             return false;
+        }
+    }
+
+    // Links can be provided by QPalette on Window, Base, AlternateBase, and
+    // custom dark panels, so every surface on which link text is rendered is
+    // validated rather than only the top-level window background.
+    const std::array<std::pair<QString, QString>, 4> link_backgrounds{{
+        {QStringLiteral("bg_base"), palette.bg_base},
+        {QStringLiteral("bg_dark"), palette.bg_dark},
+        {QStringLiteral("bg_panel"), palette.bg_panel},
+        {QStringLiteral("bg_input"), palette.bg_input},
+    }};
+    for (const auto &[background_key, background] : link_backgrounds) {
+        if (!requireContrast(
+                QStringLiteral("accent_link"), palette.accent_link,
+                background_key, background, 4.5, error_message)) {
+            return false;
+        }
+    }
+
+    const std::array<std::tuple<QString, QString, QString, QString, double>, 18> ui_pairs{{
+        {QStringLiteral("text_primary"), palette.text_primary,
+         QStringLiteral("select_bg"), palette.select_bg, 4.5},
+        {QStringLiteral("danger"), palette.danger,
+         QStringLiteral("bg_base"), palette.bg_base, 4.5},
+        {QStringLiteral("error"), palette.error,
+         QStringLiteral("bg_dark"), palette.bg_dark, 4.5},
+        {QStringLiteral("success"), palette.success,
+         QStringLiteral("success_bg"), palette.success_bg, 4.5},
+        {QStringLiteral("warning"), palette.warning,
+         QStringLiteral("warning_bg"), palette.warning_bg, 4.5},
+        {QStringLiteral("info"), palette.info,
+         QStringLiteral("info_bg"), palette.info_bg, 4.5},
+        {QStringLiteral("focus_ring"), palette.focus_ring,
+         QStringLiteral("bg_base"), palette.bg_base, 3.0},
+        {QStringLiteral("focus_ring"), palette.focus_ring,
+         QStringLiteral("bg_input"), palette.bg_input, 3.0},
+        {QStringLiteral("focus_ring"), palette.focus_ring,
+         QStringLiteral("bg_button"), palette.bg_button, 3.0},
+        {QStringLiteral("focus_ring"), palette.focus_ring,
+         QStringLiteral("bg_panel"), palette.bg_panel, 3.0},
+        {QStringLiteral("accent_checkbox"), palette.accent_checkbox,
+         QStringLiteral("bg_input"), palette.bg_input, 3.0},
+        {QStringLiteral("border_default"), palette.border_default,
+         QStringLiteral("bg_base"), palette.bg_base, 3.0},
+        {QStringLiteral("border_default"), palette.border_default,
+         QStringLiteral("bg_input"), palette.bg_input, 3.0},
+        {QStringLiteral("border_default"), palette.border_default,
+         QStringLiteral("bg_panel"), palette.bg_panel, 3.0},
+        {QStringLiteral("border_light"), palette.border_light,
+         QStringLiteral("bg_button"), palette.bg_button, 3.0},
+        {QStringLiteral("border_panel"), palette.border_panel,
+         QStringLiteral("bg_panel"), palette.bg_panel, 3.0},
+        {QStringLiteral("select_bg"), palette.select_bg,
+         QStringLiteral("bg_base"), palette.bg_base, 3.0},
+        {QStringLiteral("accent_checkbox_border"), palette.accent_checkbox_border,
+         QStringLiteral("bg_input"), palette.bg_input, 3.0},
+    }};
+    for (const auto &[foreground_key, foreground, background_key, background, minimum] : ui_pairs) {
+        if (!requireContrast(foreground_key, foreground, background_key, background,
+                             minimum, error_message)) {
+            return false;
+        }
+    }
+
+    for (std::size_t index = 0; index < palette.trace_colors.size(); ++index) {
+        const QString key = QStringLiteral("trace_colors[%1]").arg(index);
+        if (!requireContrast(key, palette.trace_colors[index],
+                             QStringLiteral("bg_base"), palette.bg_base,
+                             3.0, error_message)
+            || !requireContrast(key, palette.trace_colors[index],
+                                QStringLiteral("bg_panel"), palette.bg_panel,
+                                3.0, error_message)) {
+            return false;
+        }
+    }
+
+    if (validate_trace_distances) {
+        // A 10-point CIE76 distance rejects both canonical duplicates and
+        // user-selected colors that are too close to identify as separate traces.
+        for (std::size_t first = 0; first < palette.trace_colors.size(); ++first) {
+            for (std::size_t second = first + 1;
+                 second < palette.trace_colors.size(); ++second) {
+                const double distance = colorDistance(
+                    QColor(palette.trace_colors[first]),
+                    QColor(palette.trace_colors[second]));
+                if (distance + 0.001 < kMinimumTraceColorDeltaE) {
+                    assignError(
+                        error_message,
+                        QStringLiteral(
+                            "Palette colors 'trace_colors[%1]' and 'trace_colors[%2]' "
+                            "are indistinguishable (%3 CIE76 Delta-E); at least %4 is required.")
+                            .arg(first)
+                            .arg(second)
+                            .arg(distance, 0, 'f', 2)
+                            .arg(kMinimumTraceColorDeltaE, 0, 'f', 1));
+                    return false;
+                }
+            }
         }
     }
     return true;
@@ -180,7 +412,8 @@ bool validatePng(
     const QByteArray &bytes,
     const QString &name,
     quint64 &decoded_pixels,
-    QString &error_message) {
+    QString &error_message,
+    QImage *decoded_image = nullptr) {
     static const QByteArray png_signature = QByteArray::fromHex("89504e470d0a1a0a");
     if (bytes.size() > kMaxImageBytes || !bytes.startsWith(png_signature)) {
         error_message = QStringLiteral("%1 is not a valid bounded PNG image.").arg(name);
@@ -209,6 +442,197 @@ bool validatePng(
     }
     decoded_pixels = static_cast<quint64>(decoded.width())
         * static_cast<quint64>(decoded.height());
+    if (decoded_image) {
+        *decoded_image = decoded;
+    }
+    return true;
+}
+
+bool readValidatedPng(
+    const QString &path,
+    const QString &display_name,
+    quint64 &decoded_pixels,
+    QImage *decoded_image,
+    QString &error_message) {
+    const QFileInfo image_info(path);
+    if (!image_info.exists() || !image_info.isFile() || image_info.isSymLink()) {
+        error_message = QStringLiteral("%1 must be a regular PNG file.").arg(display_name);
+        return false;
+    }
+
+    QFile image(path);
+    if (!image.open(QIODevice::ReadOnly)) {
+        error_message = QStringLiteral("Could not open image %1: %2")
+                            .arg(display_name, image.errorString());
+        return false;
+    }
+    const qint64 image_size = image.size();
+    if (image_size <= 0 || image_size > kMaxImageBytes) {
+        error_message = QStringLiteral("%1 is not a valid bounded PNG image.").arg(display_name);
+        return false;
+    }
+    const QByteArray bytes = image.read(kMaxImageBytes + 1);
+    if (bytes.size() != image_size) {
+        error_message = QStringLiteral("Could not read the complete image %1.").arg(display_name);
+        return false;
+    }
+
+    if (!validatePng(
+            bytes, display_name, decoded_pixels, error_message, decoded_image)) {
+        return false;
+    }
+    return true;
+}
+
+bool validateInstalledPng(
+    const QString &path,
+    const QString &display_name,
+    quint64 &decoded_pixel_total,
+    QString &error_message) {
+    quint64 image_pixels = 0;
+    if (!readValidatedPng(
+            path, display_name, image_pixels, nullptr, error_message)) {
+        return false;
+    }
+    if (image_pixels > kMaxDecodedImagePixels - decoded_pixel_total) {
+        error_message = QStringLiteral(
+            "Skin images exceed the 20-megapixel decoded-image budget.");
+        return false;
+    }
+    decoded_pixel_total += image_pixels;
+    return true;
+}
+
+bool validateInstalledThemeImages(
+    const CosmoTheme &theme,
+    const QString &skin_dir,
+    quint64 validated_panel_pixels,
+    QString &error_message) {
+    quint64 decoded_pixel_total = 0;
+    if (!theme.preview_path.isEmpty()
+        && !validateInstalledPng(
+            theme.preview_path,
+            QStringLiteral("preview.png"),
+            decoded_pixel_total,
+            error_message)) {
+        return false;
+    }
+
+    const QDir skin_directory(skin_dir);
+    for (auto it = theme.textures.paths.cbegin(); it != theme.textures.paths.cend(); ++it) {
+        if (it.key() == QStringLiteral("panel") && validated_panel_pixels > 0) {
+            if (validated_panel_pixels
+                > kMaxDecodedImagePixels - decoded_pixel_total) {
+                error_message = QStringLiteral(
+                    "Skin images exceed the 20-megapixel decoded-image budget.");
+                return false;
+            }
+            decoded_pixel_total += validated_panel_pixels;
+            continue;
+        }
+        const QString display_name = skin_directory.relativeFilePath(it.value());
+        if (!validateInstalledPng(
+                it.value(), display_name, decoded_pixel_total, error_message)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool validatePanelTextureContrast(
+    const CosmoTheme &theme,
+    const QString &skin_dir,
+    QString *error_message,
+    quint64 *validated_pixels) {
+    if (validated_pixels) {
+        *validated_pixels = 0;
+    }
+    const auto texture = theme.textures.paths.constFind(QStringLiteral("panel"));
+    if (texture == theme.textures.paths.cend()) {
+        return true;
+    }
+
+    const QString display_name = QDir(skin_dir).relativeFilePath(texture.value());
+    quint64 decoded_pixels = 0;
+    QImage decoded;
+    QString image_error;
+    if (!readValidatedPng(
+            texture.value(), display_name, decoded_pixels, &decoded, image_error)) {
+        assignError(error_message, image_error);
+        return false;
+    }
+    if (validated_pixels) {
+        *validated_pixels = decoded_pixels;
+    }
+    if (theme.textures.opacity <= 0.0) {
+        return true;
+    }
+
+    const QImage pixels = decoded.format() == QImage::Format_ARGB32
+        ? decoded
+        : decoded.convertToFormat(QImage::Format_ARGB32);
+    const QColor panel_background(theme.palette.bg_panel);
+    const std::array<std::tuple<QString, double, double>, 6> contrast_targets{{
+        {QStringLiteral("text_primary"),
+         relativeLuminance(QColor(theme.palette.text_primary)), 4.5},
+        {QStringLiteral("text_muted"),
+         relativeLuminance(QColor(theme.palette.text_muted)), 4.5},
+        {QStringLiteral("text_dim"),
+         relativeLuminance(QColor(theme.palette.text_dim)), 4.5},
+        {QStringLiteral("border_panel"),
+         relativeLuminance(QColor(theme.palette.border_panel)), 3.0},
+        {QStringLiteral("border_default"),
+         relativeLuminance(QColor(theme.palette.border_default)), 3.0},
+        {QStringLiteral("accent_link"),
+         relativeLuminance(QColor(theme.palette.accent_link)), 3.0},
+    }};
+    const auto &linear_channels = linearChannelLookup();
+    const double texture_opacity = theme.textures.opacity;
+    const int panel_red = panel_background.red();
+    const int panel_green = panel_background.green();
+    const int panel_blue = panel_background.blue();
+
+    for (int y = 0; y < pixels.height(); ++y) {
+        const auto *row = reinterpret_cast<const QRgb *>(pixels.constScanLine(y));
+        for (int x = 0; x < pixels.width(); ++x) {
+            const QRgb source = row[x];
+            const double alpha = texture_opacity
+                * static_cast<double>(qAlpha(source)) / 255.0;
+            const auto composite_channel = [alpha](
+                                               int source_channel,
+                                               int background_channel) {
+                return static_cast<std::size_t>(std::clamp(
+                    qRound(static_cast<double>(source_channel) * alpha
+                           + static_cast<double>(background_channel) * (1.0 - alpha)),
+                    0,
+                    255));
+            };
+            const double rendered_background_luminance =
+                0.2126 * linear_channels[composite_channel(qRed(source), panel_red)]
+                + 0.7152 * linear_channels[composite_channel(qGreen(source), panel_green)]
+                + 0.0722 * linear_channels[composite_channel(qBlue(source), panel_blue)];
+            for (const auto &[foreground_key, foreground_luminance, minimum]
+                 : contrast_targets) {
+                if (!hasMinimumContrast(
+                        foreground_luminance, rendered_background_luminance,
+                        minimum)) {
+                    const double ratio = contrastRatioFromLuminance(
+                        foreground_luminance, rendered_background_luminance);
+                    assignError(
+                        error_message,
+                        QStringLiteral(
+                            "Panel texture '%1' makes '%2' contrast %3:1 at pixel "
+                            "(%4,%5); at least %6:1 is required.")
+                            .arg(display_name, foreground_key)
+                            .arg(ratio, 0, 'f', 2)
+                            .arg(x)
+                            .arg(y)
+                            .arg(minimum, 0, 'f', 1));
+                    return false;
+                }
+            }
+        }
+    }
     return true;
 }
 
@@ -256,8 +680,12 @@ bool isPathInside(const QString &base_path, const QString &candidate_path) {
 std::optional<CosmoTheme> SkinLoader::parseThemeJson(const QByteArray &json,
                                                      const QString &base_path,
                                                      QString *error_message,
-                                                     bool enforce_contrast)
+                                                     bool enforce_contrast,
+                                                     quint64 *validated_panel_pixels)
 {
+    if (validated_panel_pixels) {
+        *validated_panel_pixels = 0;
+    }
     if (json.isEmpty() || json.size() > kMaxThemeBytes) {
         assignError(error_message, QStringLiteral("theme.json must contain 1 byte to 256 KiB."));
         return std::nullopt;
@@ -299,6 +727,7 @@ std::optional<CosmoTheme> SkinLoader::parseThemeJson(const QByteArray &json,
     }
 
     // Palette
+    bool trace_colors_supplied = false;
     if (root.contains(QStringLiteral("palette"))
         && !root.value(QStringLiteral("palette")).isObject()) {
         assignError(error_message, QStringLiteral("theme.json field 'palette' must be an object."));
@@ -361,32 +790,67 @@ std::optional<CosmoTheme> SkinLoader::parseThemeJson(const QByteArray &json,
                     QStringLiteral("Palette field '%1' is not a valid QColor value.").arg(key));
                 return std::nullopt;
             }
-            const bool opaque_foreground = key.startsWith(QStringLiteral("text_"))
-                || key == QStringLiteral("accent_link")
-                || key == QStringLiteral("accent_checkbox")
-                || key == QStringLiteral("accent_checkbox_border")
-                || key == QStringLiteral("danger")
-                || key == QStringLiteral("error")
-                || key == QStringLiteral("success")
-                || key == QStringLiteral("warning")
-                || key == QStringLiteral("info")
-                || key == QStringLiteral("focus_ring");
-            if (opaque_foreground && color.alpha() != 255) {
+            if (key != QStringLiteral("focus_ring_offset") && color.alpha() != 255) {
                 assignError(
                     error_message,
-                    QStringLiteral("Palette foreground '%1' must be opaque for reliable contrast.").arg(key));
+                    QStringLiteral("Palette color '%1' must be opaque for reliable contrast.").arg(key));
                 return std::nullopt;
             }
             p.*(field.value) = canonicalColor(color);
         }
+
+        if (pal.contains(QStringLiteral("trace_colors"))) {
+            trace_colors_supplied = true;
+            if (!pal.value(QStringLiteral("trace_colors")).isArray()) {
+                assignError(error_message,
+                            QStringLiteral("Palette field 'trace_colors' must be an array of 9 colors."));
+                return std::nullopt;
+            }
+            const QJsonArray trace_colors = pal.value(QStringLiteral("trace_colors")).toArray();
+            if (trace_colors.size() != static_cast<qsizetype>(kTraceColorCount)) {
+                assignError(error_message,
+                            QStringLiteral("Palette field 'trace_colors' must contain exactly 9 colors."));
+                return std::nullopt;
+            }
+            for (qsizetype index = 0; index < trace_colors.size(); ++index) {
+                if (!trace_colors[index].isString()) {
+                    assignError(
+                        error_message,
+                        QStringLiteral("Palette field 'trace_colors[%1]' must be a color string.")
+                            .arg(index));
+                    return std::nullopt;
+                }
+                const QColor color(trace_colors[index].toString().trimmed());
+                if (!color.isValid()) {
+                    assignError(
+                        error_message,
+                        QStringLiteral("Palette field 'trace_colors[%1]' is not a valid QColor value.")
+                            .arg(index));
+                    return std::nullopt;
+                }
+                if (color.alpha() != 255) {
+                    assignError(
+                        error_message,
+                        QStringLiteral("Palette color 'trace_colors[%1]' must be opaque for reliable contrast.")
+                            .arg(index));
+                    return std::nullopt;
+                }
+                p.trace_colors[static_cast<std::size_t>(index)] = canonicalColor(color);
+            }
+        } else {
+            p.trace_colors = fallbackTraceColors(p.bg_base, p.bg_panel);
+        }
     }
 
-    const std::array<std::pair<QString, QString>, 8> backgrounds{{
+    const std::array<std::pair<QString, QString>, 11> backgrounds{{
         {QStringLiteral("bg_base"), theme.palette.bg_base},
         {QStringLiteral("bg_dark"), theme.palette.bg_dark},
         {QStringLiteral("bg_panel"), theme.palette.bg_panel},
         {QStringLiteral("bg_input"), theme.palette.bg_input},
         {QStringLiteral("bg_button"), theme.palette.bg_button},
+        {QStringLiteral("btn_hover"), theme.palette.btn_hover},
+        {QStringLiteral("btn_pressed"), theme.palette.btn_pressed},
+        {QStringLiteral("select_bg"), theme.palette.select_bg},
         {QStringLiteral("success_bg"), theme.palette.success_bg},
         {QStringLiteral("warning_bg"), theme.palette.warning_bg},
         {QStringLiteral("info_bg"), theme.palette.info_bg},
@@ -397,7 +861,9 @@ std::optional<CosmoTheme> SkinLoader::parseThemeJson(const QByteArray &json,
             return std::nullopt;
         }
     }
-    if (enforce_contrast && !validatePaletteContrast(theme.palette, error_message)) {
+    if (enforce_contrast
+        && !validatePaletteContrast(
+            theme.palette, trace_colors_supplied, error_message)) {
         return std::nullopt;
     }
 
@@ -469,7 +935,7 @@ std::optional<CosmoTheme> SkinLoader::parseThemeJson(const QByteArray &json,
             assignError(error_message, QStringLiteral("texture_opacity must be between 0 and 1."));
             return std::nullopt;
         }
-        theme.textures.opacity = opacity;
+        theme.textures.opacity = std::min(opacity, kMaxTextureOpacity);
     }
 
     if (root.contains(QStringLiteral("texture_mode"))) {
@@ -490,6 +956,12 @@ std::optional<CosmoTheme> SkinLoader::parseThemeJson(const QByteArray &json,
         }
     }
 
+    if (enforce_contrast
+        && !validatePanelTextureContrast(
+            theme, base_path, error_message, validated_panel_pixels)) {
+        return std::nullopt;
+    }
+
     return theme;
 }
 
@@ -505,7 +977,7 @@ std::optional<CosmoTheme> SkinLoader::loadBuiltin(const QString &resource_prefix
     }
 
     QString error_message;
-    auto theme = parseThemeJson(f.readAll(), resource_prefix, &error_message, false);
+    auto theme = parseThemeJson(f.readAll(), resource_prefix, &error_message, true);
     if (!theme) {
         qWarning() << "SkinLoader: invalid built-in skin" << resource_prefix << error_message;
     }
@@ -532,7 +1004,13 @@ std::optional<CosmoTheme> SkinLoader::loadFromDirectory(const QString &skin_dir)
     }
 
     QString error_message;
-    auto theme = parseThemeJson(f.readAll(), skin_dir, &error_message);
+    quint64 validated_panel_pixels = 0;
+    auto theme = parseThemeJson(
+        f.readAll(), skin_dir, &error_message, true, &validated_panel_pixels);
+    if (theme && !validateInstalledThemeImages(
+            *theme, skin_dir, validated_panel_pixels, error_message)) {
+        theme.reset();
+    }
     if (!theme) {
         qWarning() << "SkinLoader: invalid custom skin" << skin_dir << error_message;
     }

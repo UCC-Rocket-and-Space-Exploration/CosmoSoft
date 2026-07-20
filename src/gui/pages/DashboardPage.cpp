@@ -355,9 +355,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         chartFrame);
     m_emptyStateLabel->setAlignment(Qt::AlignCenter);
     m_emptyStateLabel->setWordWrap(true);
-    m_emptyStateLabel->setStyleSheet(
-        QString(u"color: %1; font-size: 14px; padding: 40px; background: transparent; border: none;"_s)
-            .arg(Theme::kTextMuted()));
+    m_emptyStateLabel->setObjectName(u"chartEmptyState"_s);
 
     m_chart = new QChart();
     m_chart->setBackgroundRoundness(0);
@@ -407,34 +405,6 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         zoomChartAxesAtCenter(false);
     });
 
-    // Keyboard shortcuts for chart interactions.
-    auto *scZoomIn  = new QShortcut(QKeySequence(Qt::Key_Plus),  this);
-    auto *scZoomIn2 = new QShortcut(QKeySequence(Qt::Key_Equal), this);
-    auto *scZoomOut = new QShortcut(QKeySequence(Qt::Key_Minus), this);
-    auto *scFit     = new QShortcut(QKeySequence(Qt::Key_F),     this);
-    auto *scMarkers = new QShortcut(QKeySequence(Qt::Key_M),     this);
-    auto *scValues  = new QShortcut(QKeySequence(Qt::Key_V),     this);
-    auto *scTraces  = new QShortcut(QKeySequence(Qt::Key_T),     this);
-    connect(scZoomIn,  &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(true); });
-    connect(scZoomIn2, &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(true); });
-    connect(scZoomOut, &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(false); });
-    connect(scFit,     &QShortcut::activated, this, &DashboardPage::onResetChartZoom);
-    connect(scMarkers, &QShortcut::activated, this, [this]() {
-        if (m_showMarkersToggle) {
-            m_showMarkersToggle->setChecked(!m_showMarkersToggle->isChecked());
-        }
-    });
-    connect(scValues, &QShortcut::activated, this, [this]() {
-        if (m_showPointValuesToggle) {
-            m_showPointValuesToggle->setChecked(!m_showPointValuesToggle->isChecked());
-        }
-    });
-    connect(scTraces, &QShortcut::activated, this, [this]() {
-        if (m_tracesToggleBtn) {
-            m_tracesToggleBtn->setChecked(!m_tracesToggleBtn->isChecked());
-        }
-    });
-
     // One deadline-aware scheduler owns all expensive chart work.
     // It is a rate limiter (never restarted by every incoming batch), so a
     // continuous stream cannot starve rendering as the former debounce did.
@@ -466,6 +436,41 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     // no secondary label is needed in DashboardPage.
     tcv->hoverReadout = nullptr;
 
+    // Keep unmodified chart keys local to the chart surface. Window-scoped
+    // shortcuts steal ordinary input from the map and other application pages.
+    auto *scZoomIn  = new QShortcut(QKeySequence(Qt::Key_Plus),  m_chartView);
+    auto *scZoomIn2 = new QShortcut(QKeySequence(Qt::Key_Equal), m_chartView);
+    auto *scZoomOut = new QShortcut(QKeySequence(Qt::Key_Minus), m_chartView);
+    auto *scFit     = new QShortcut(QKeySequence(Qt::Key_F),     m_chartView);
+    auto *scMarkers = new QShortcut(QKeySequence(Qt::Key_M),     m_chartView);
+    auto *scValues  = new QShortcut(QKeySequence(Qt::Key_V),     m_chartView);
+    auto *scTraces  = new QShortcut(QKeySequence(Qt::Key_T),     m_chartView);
+    m_chartShortcuts = {
+        scZoomIn, scZoomIn2, scZoomOut, scFit, scMarkers, scValues, scTraces,
+    };
+    for (auto *shortcut : m_chartShortcuts) {
+        shortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    }
+    connect(scZoomIn,  &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(true); });
+    connect(scZoomIn2, &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(true); });
+    connect(scZoomOut, &QShortcut::activated, this, [this]() { zoomChartAxesAtCenter(false); });
+    connect(scFit,     &QShortcut::activated, this, &DashboardPage::onResetChartZoom);
+    connect(scMarkers, &QShortcut::activated, this, [this]() {
+        if (m_showMarkersToggle) {
+            m_showMarkersToggle->setChecked(!m_showMarkersToggle->isChecked());
+        }
+    });
+    connect(scValues, &QShortcut::activated, this, [this]() {
+        if (m_showPointValuesToggle) {
+            m_showPointValuesToggle->setChecked(!m_showPointValuesToggle->isChecked());
+        }
+    });
+    connect(scTraces, &QShortcut::activated, this, [this]() {
+        if (m_tracesToggleBtn) {
+            m_tracesToggleBtn->setChecked(!m_tracesToggleBtn->isChecked());
+        }
+    });
+
     // ── View stack (Graph / Map / Empty state switcher) ──────────────────────
     m_viewStack = new QStackedWidget(chartFrame);
     m_viewStack->addWidget(m_chartView);   // index 0 — telemetry chart
@@ -476,16 +481,15 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_viewStack->addWidget(m_mapWidget);   // index 1 — 3D flight path map
     m_viewStack->addWidget(m_emptyStateLabel); // index 2 — empty state
     m_viewStack->setCurrentIndex(2);
+    updateToolbarForView();
 
     chartFrameLayout->addWidget(m_viewStack, 1);
 
     m_chartLoadingBar = new QProgressBar(chartFrame);
+    m_chartLoadingBar->setObjectName(u"chartLoadingBar"_s);
     m_chartLoadingBar->setRange(0, 0);
     m_chartLoadingBar->setTextVisible(false);
     m_chartLoadingBar->setFixedHeight(3);
-    m_chartLoadingBar->setStyleSheet(
-        QString(u"QProgressBar { background: transparent; border: none; }"
-        u"QProgressBar::chunk { background: %1; }"_s).arg(Theme::kAccentLink()));
     m_chartLoadingBar->setVisible(false);
     chartFrameLayout->addWidget(m_chartLoadingBar, 0);
 
@@ -591,13 +595,27 @@ void DashboardPage::applyChartTheme() {
     const QColor gridCol(Theme::kBorderSubtle());
     const QPen gridPen(gridCol, 1, Qt::DotLine);
 
+    for (int metricIndex = 0; metricIndex < kMetricCount; ++metricIndex) {
+        auto *series = m_lineSeries[static_cast<std::size_t>(metricIndex)];
+        if (!series) {
+            continue;
+        }
+        const QColor color = metricColor(metricIndex);
+        series->setColor(color);
+        series->setPen(QPen(color, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    }
+
     m_chart->setBackgroundBrush(bg);
     m_chart->setBackgroundPen(Qt::NoPen);
     m_chart->setPlotAreaBackgroundBrush(plotBg);
     m_chart->setPlotAreaBackgroundVisible(true);
 
-    QFont axisFont(u"Red Hat Mono"_s, 9);
-    QFont titleFont(u"Red Hat Mono"_s, 12);
+    QFont axisFont = QApplication::font();
+    axisFont.setFamily(u"Red Hat Mono"_s);
+    QFont titleFont = axisFont;
+    if (titleFont.pointSizeF() > 0.0) {
+        titleFont.setPointSizeF(titleFont.pointSizeF() * 1.15);
+    }
     titleFont.setBold(true);
 
     m_chart->setTitleFont(titleFont);
@@ -852,6 +870,7 @@ QString DashboardPage::buildDashboardQss() {
     const auto btnPressed  = Theme::kBtnPressed();
     const auto accent      = Theme::kAccentLink();
     const auto bgInput     = Theme::kBgInput();
+    const auto checkedText = Theme::kBgBase();
 
     auto ss = QString(uR"(
         #dashboardPage { background-color: transparent; color: %1; }
@@ -908,7 +927,7 @@ QString DashboardPage::buildDashboardQss() {
         .arg(accent).arg(borderPanel).arg(Theme::kRadiusSm)
         .arg(bgButton).arg(textPri).arg(btnHov)
         .arg(borderLight).arg(btnPressed).arg(btnPressed)
-        .arg(textPri);  // %10 - checked button text color
+        .arg(checkedText);  // %10 - validated against the accent background
 
     ss += QString(uR"(
         QDoubleSpinBox { background-color: %1; color: %2; border: 1px solid %3; border-radius: %4px; padding: 4px 8px; min-height: 22px; }
@@ -946,7 +965,7 @@ QString DashboardPage::buildDashboardQss() {
         .arg(btnHov).arg(borderLight).arg(btnPressed)
         .arg(borderPanel).arg(Theme::kRadiusMd).arg(textMuted)
         .arg(Theme::kFontSizeSm).arg(accent).arg(textPri)
-        .arg(textPri);  // %10 - checked button text color
+        .arg(checkedText);  // %10 - validated against the accent background
 
     ss += QString(uR"(
         QToolButton#chartHelpBtn { font-weight: 700; font-size: %1px; min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; border: 1px solid %2; border-radius: 15px; background: %3; color: %4; padding: 0px; }
@@ -955,6 +974,36 @@ QString DashboardPage::buildDashboardQss() {
         .arg(Theme::kFontSizeMd).arg(borderPanel).arg(bgButton)
         .arg(textMuted).arg(textPri).arg(borderLight)
         .arg(btnHov);
+
+    ss += QString(uR"(
+        QLabel#chartEmptyState {
+            color: %1;
+            font-size: 14px;
+            padding: 40px;
+            background: transparent;
+            border: none;
+        }
+        QProgressBar#chartLoadingBar {
+            background: transparent;
+            border: none;
+        }
+        QProgressBar#chartLoadingBar::chunk {
+            background: %2;
+        }
+    )"_s).arg(textMuted).arg(accent);
+
+    ss += QString(uR"(
+        QToolButton#chartToggleBtn:focus,
+        QPushButton#chartZoomBtn:focus,
+        QPushButton#chartToolbarBtn:focus,
+        QPushButton#viewSwitchBtn:focus,
+        QToolButton#chartHelpBtn:focus,
+        QDoubleSpinBox:focus,
+        QSlider:focus,
+        #telemetryChartView:focus {
+            border: 2px solid %1;
+        }
+    )"_s).arg(Theme::kFocusRing());
 
     return ss;
 }
@@ -1011,6 +1060,11 @@ void DashboardPage::updateToolbarForView() {
     if (m_actionGroup)    m_actionGroup->setVisible(graphMode);
     if (m_chartHelpBtn)   m_chartHelpBtn->setVisible(graphMode);
     if (m_tracesToggleBtn) m_tracesToggleBtn->setVisible(graphMode);
+    for (auto *shortcut : m_chartShortcuts) {
+        if (shortcut) {
+            shortcut->setEnabled(graphMode);
+        }
+    }
 }
 
 int DashboardPage::countEnabledMetrics() const {

@@ -132,6 +132,7 @@ TelemetryChartView::TelemetryChartView(QChart *c, QWidget *parent)
     setMinimumHeight(280);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setMouseTracking(true);
+    setFocusPolicy(Qt::StrongFocus);
     setContextMenuPolicy(Qt::NoContextMenu);
     setDragMode(QGraphicsView::NoDrag);
 

@@ -15,6 +15,13 @@
     --alt-bg: rgba(12,14,20,0.95);
     --stats-bg: rgba(8,10,16,0.90);
     --subtle-line: rgba(255,255,255,0.08);
+    --focus: #6ab0de;
+    --path: rgba(60,100,140,0.50);
+    --trail: #4fa5de;
+    --rocket: #ff7a30;
+    --rocket-border: #ffaa55;
+    --launch: #44cc77;
+    --launch-border: #22aa55;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -83,7 +90,7 @@
   }
   #btnLocate    { top: 10px; right: 10px; }
   #btnFit       { top: 52px; right: 10px; font-size: 13px; font-weight: 600; }
-  #btnFollow    { top: 94px; right: 10px; font-size: 11px; font-weight: 600; }
+  #btnFollow    { top: 94px; right: 10px; font-size: 12px; font-weight: 600; }
   #btnZoomIn    { bottom: 100px; right: 10px; font-weight: 700; }
   #btnZoomOut   { bottom: 100px; right: 52px; font-weight: 700; }
 
@@ -130,7 +137,7 @@
   }
   .ls-btn {
     padding: 5px 10px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
@@ -163,7 +170,7 @@
     z-index: 1000;
     background: var(--stats-bg);
     backdrop-filter: blur(10px);
-    font-size: 11px;
+    font-size: 12px;
     padding: 10px 14px;
     border-radius: 8px;
     border: 1px solid var(--subtle-line);
@@ -173,7 +180,7 @@
     min-width: 200px;
     display: none;
   }
-  #statsOverlay .st { color: var(--text-muted); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; margin-top: 5px; }
+  #statsOverlay .st { color: var(--text-muted); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 5px; }
   #statsOverlay .st:first-child { margin-top: 0; }
   #statsOverlay .sv { color: var(--text-primary); }
   #statsOverlay .sd { border-top: 1px solid var(--subtle-line); margin-top: 5px; padding-top: 5px; }
@@ -181,7 +188,7 @@
   /* ── 3D view labels ────────────────────────────────────────────── */
   #info3d {
     position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
-    z-index: 1000; color: var(--text-dim); font-size: 10px; pointer-events: none;
+    z-index: 1000; color: var(--text-dim); font-size: 11px; pointer-events: none;
     text-align: center; white-space: nowrap;
   }
 
@@ -197,7 +204,7 @@
     border-radius: 4px 0 0 0;
     background: var(--stats-bg);
     color: var(--text-muted);
-    font-size: 9px;
+    font-size: 11px;
     line-height: 1.35;
     text-align: right;
   }
@@ -209,14 +216,14 @@
     color: var(--text-muted);
     border: 1px solid var(--subtle-line);
     border-radius: 4px 0 0 0;
-    font-size: 9px;
+    font-size: 11px;
     padding: 2px 5px;
   }
   .leaflet-control-attribution a { color: var(--text-primary); }
 
   button:focus-visible,
   .leaflet-control-attribution a:focus-visible {
-    outline: 3px solid var(--accent);
+    outline: 3px solid var(--focus);
     outline-offset: -3px;
   }
 
@@ -225,7 +232,7 @@
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: rgba(255,122,48,0.18);
+    background: var(--rocket);
     animation: pulse 1.5s ease-out infinite;
   }
   .rocket-core {
@@ -235,17 +242,17 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #ff7a30;
-    border: 2px solid #ffaa55;
-    box-shadow: 0 0 10px rgba(255,122,48,0.5);
+    background: var(--rocket);
+    border: 2px solid var(--rocket-border);
+    box-shadow: 0 0 10px var(--rocket);
   }
   .launch-marker {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #44cc77;
-    border: 2px solid #22aa55;
-    box-shadow: 0 0 6px rgba(68,204,119,0.4);
+    background: var(--launch);
+    border: 2px solid var(--launch-border);
+    box-shadow: 0 0 6px var(--launch);
   }
 
   @keyframes pulse {
@@ -255,5 +262,13 @@
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition: none !important; }
-    .rocket-pulse { animation: none; }
+    .rocket-pulse {
+      inset: 4px;
+      animation: none;
+      transform: none;
+      background: transparent;
+      border: 1px solid var(--rocket);
+      opacity: 0.45;
+    }
+    .rocket-core { box-shadow: 0 0 3px var(--rocket); }
   }

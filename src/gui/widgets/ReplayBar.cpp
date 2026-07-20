@@ -9,12 +9,14 @@
 
 #include "domain/FlightSession.h"
 
+#include <QBoxLayout>
 #include <QColor>
 #include <QComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
+#include <QResizeEvent>
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QSlider>
@@ -27,6 +29,12 @@
 #include <utility>
 
 using namespace Qt::StringLiterals;
+
+namespace {
+
+constexpr int kCompactReplayBarWidth = 720;
+
+} // namespace
 
 // ── Construction ─────────────────────────────────────────────────────────────
 
@@ -86,35 +94,35 @@ ReplayBar::ReplayBar(FlightReplayController *replay,
 
     // Keyboard shortcuts scoped to this widget
     auto *spaceShortcut = new QShortcut(QKeySequence(Qt::Key_Space), this);
-    spaceShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    spaceShortcut->setContext(Qt::WidgetShortcut);
     connect(spaceShortcut, &QShortcut::activated, this, [this]() {
         if (!m_replay || !m_playPauseBtn || !m_playPauseBtn->isEnabled()) return;
         if (m_replay->isPlaying()) m_replay->pause(); else m_replay->play();
     });
 
     auto *leftShortcut = new QShortcut(QKeySequence(Qt::Key_Left), this);
-    leftShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    leftShortcut->setContext(Qt::WidgetShortcut);
     connect(leftShortcut, &QShortcut::activated, this, [this]() {
         if (m_stepBackBtn && m_stepBackBtn->isEnabled() && m_replaySlider)
             m_replaySlider->setValue(m_replaySlider->value() - 1);
     });
 
     auto *rightShortcut = new QShortcut(QKeySequence(Qt::Key_Right), this);
-    rightShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    rightShortcut->setContext(Qt::WidgetShortcut);
     connect(rightShortcut, &QShortcut::activated, this, [this]() {
         if (m_stepFwdBtn && m_stepFwdBtn->isEnabled() && m_replaySlider)
             m_replaySlider->setValue(m_replaySlider->value() + 1);
     });
 
     auto *homeShortcut = new QShortcut(QKeySequence(Qt::Key_Home), this);
-    homeShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    homeShortcut->setContext(Qt::WidgetShortcut);
     connect(homeShortcut, &QShortcut::activated, this, [this]() {
         if (m_jumpStartBtn && m_jumpStartBtn->isEnabled())
             m_jumpStartBtn->click();
     });
 
     auto *endShortcut = new QShortcut(QKeySequence(Qt::Key_End), this);
-    endShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    endShortcut->setContext(Qt::WidgetShortcut);
     connect(endShortcut, &QShortcut::activated, this, [this]() {
         if (m_jumpEndBtn && m_jumpEndBtn->isEnabled())
             m_jumpEndBtn->click();
@@ -152,6 +160,9 @@ void ReplayBar::applyThemeStyleSheet()
             background-color: %1;
             border: 1px solid %2;
             border-radius: %3px;
+        }
+        QFrame#replayBar:focus {
+            border: 2px solid %23;
         }
 
         /* Navigation button group container */
@@ -225,6 +236,11 @@ void ReplayBar::applyThemeStyleSheet()
             color: %9;
             border-color: %2;
         }
+        QToolButton#replaySkipBtn:focus,
+        QToolButton#replayPlayPauseBtn:focus,
+        QToolButton#replayTransportBtn:focus {
+            border: 2px solid %23;
+        }
 
         /* Enhanced slider - 8px groove */
         QSlider#replayScrubSlider::groove:horizontal {
@@ -256,6 +272,10 @@ void ReplayBar::applyThemeStyleSheet()
         QSlider#replayScrubSlider:disabled::handle:horizontal {
             background: %5;
         }
+        QSlider#replayScrubSlider:focus {
+            border: 1px solid %23;
+            border-radius: 4px;
+        }
 
         /* Speed combo */
         QComboBox#replaySpeedCombo {
@@ -273,6 +293,9 @@ void ReplayBar::applyThemeStyleSheet()
         QComboBox#replaySpeedCombo:hover {
             background: %6;
             border-color: %7;
+        }
+        QComboBox#replaySpeedCombo:focus {
+            border: 2px solid %23;
         }
         QComboBox#replaySpeedCombo::drop-down {
             border: none;
@@ -356,7 +379,8 @@ void ReplayBar::applyThemeStyleSheet()
         .arg(infoBg)            // %19
         .arg(QColor(bgPanel).lighter(105).name()) // %20 - nav group bg
         .arg(QColor(accent).lighter(140).name())  // %21 - slider gradient end
-        .arg(info));            // %22
+        .arg(info)              // %22
+        .arg(Theme::kFocusRing())); // %23
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -470,10 +494,11 @@ void ReplayBar::onReplayModeChanged(bool)
 void ReplayBar::buildUi()
 {
     setObjectName(u"replayBar"_s);
-    setFocusPolicy(Qt::ClickFocus);
+    setFocusPolicy(Qt::StrongFocus);
+    setAccessibleName(u"Replay controls"_s);
     setToolTip(
         u"Replay controls · Space: play/pause · Left/Right: step frame · "
-        u"Click here first to capture keys"_s);
+        u"Focus this panel to use replay shortcuts"_s);
 
     applyThemeStyleSheet();
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
@@ -484,8 +509,15 @@ void ReplayBar::buildUi()
                               Theme::kSpaceMd, Theme::kSpaceBase);
     outer->setSpacing(Theme::kSpaceSm);  // 6px between Row 1 and Row 2
 
-    // ── Row 1: transport buttons | slider | clock ─────────────────────────────
-    auto *transportRow = new QHBoxLayout();
+    // Transport controls and timeline share a row when space permits and stack
+    // at narrower widths so the slider never collapses behind fixed controls.
+    m_transportLayout = new QBoxLayout(QBoxLayout::LeftToRight);
+    m_transportLayout->setContentsMargins(0, 0, 0, 0);
+    m_transportLayout->setSpacing(Theme::kSpaceMd);
+
+    auto *transportControls = new QWidget(this);
+    transportControls->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    auto *transportRow = new QHBoxLayout(transportControls);
     transportRow->setContentsMargins(0, 0, 0, 0);
 
     auto setupBtn = [](QToolButton *b, const QString &objName, QSize iconSz) {
@@ -517,8 +549,8 @@ void ReplayBar::buildUi()
     m_playPauseBtn->setFocusPolicy(Qt::StrongFocus);
     m_playPauseBtn->setIconSize(QSize(20, 20));
     m_playPauseBtn->setFixedSize(40, 40);
-    m_playPauseBtn->setToolTip(u"Play / Pause  [Space]"_s);
-    m_playPauseBtn->setAccessibleName(u"Play or pause replay"_s);
+    m_playPauseBtn->setToolTip(u"Play replay  [Space]"_s);
+    m_playPauseBtn->setAccessibleName(u"Play replay"_s);
     m_playPauseBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
 
     m_stepFwdBtn = new QToolButton(this);
@@ -609,17 +641,22 @@ void ReplayBar::buildUi()
     }
     m_speedCombo->setCurrentIndex(3);
     transportRow->addWidget(m_speedCombo, 0, Qt::AlignVCenter);
-    transportRow->addSpacing(Theme::kSpaceBase);  // 8px
+    transportRow->addStretch(1);
 
-    // Timeline slider
-    transportRow->addWidget(m_replaySlider, 1, Qt::AlignVCenter);
-    transportRow->addSpacing(Theme::kSpaceBase);  // 8px
+    auto *timeline = new QWidget(this);
+    timeline->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    auto *timelineRow = new QHBoxLayout(timeline);
+    timelineRow->setContentsMargins(0, 0, 0, 0);
+    timelineRow->setSpacing(Theme::kSpaceBase);
 
-    // Clock labels
-    transportRow->addWidget(m_replayTimeLeftLabel, 0, Qt::AlignVCenter);
-    transportRow->addWidget(clockSep, 0, Qt::AlignVCenter);
-    transportRow->addWidget(m_replayTimeRightLabel, 0, Qt::AlignVCenter);
-    outer->addLayout(transportRow);
+    timelineRow->addWidget(m_replaySlider, 1, Qt::AlignVCenter);
+    timelineRow->addWidget(m_replayTimeLeftLabel, 0, Qt::AlignVCenter);
+    timelineRow->addWidget(clockSep, 0, Qt::AlignVCenter);
+    timelineRow->addWidget(m_replayTimeRightLabel, 0, Qt::AlignVCenter);
+
+    m_transportLayout->addWidget(transportControls);
+    m_transportLayout->addWidget(timeline, 1);
+    outer->addLayout(m_transportLayout);
 
     // ── Row 2: title tag | caption | speed combo ──────────────────────────────
     auto *metaRow = new QHBoxLayout();
@@ -650,6 +687,35 @@ void ReplayBar::buildUi()
 
     metaRow->addStretch(1);
     outer->addLayout(metaRow);
+
+    updateResponsiveLayout();
+}
+
+void ReplayBar::resizeEvent(QResizeEvent *event)
+{
+    QFrame::resizeEvent(event);
+    updateResponsiveLayout();
+}
+
+void ReplayBar::updateResponsiveLayout()
+{
+    if (!m_transportLayout) {
+        return;
+    }
+
+    const bool compact = width() < kCompactReplayBarWidth;
+    const auto direction = compact
+        ? QBoxLayout::TopToBottom
+        : QBoxLayout::LeftToRight;
+    if (m_transportLayout->direction() == direction) {
+        return;
+    }
+
+    m_transportLayout->setDirection(direction);
+    m_transportLayout->setSpacing(compact ? Theme::kSpaceSm : Theme::kSpaceMd);
+    m_transportLayout->setStretch(0, 0);
+    m_transportLayout->setStretch(1, compact ? 0 : 1);
+    updateGeometry();
 }
 
 void ReplayBar::updateLabels()
@@ -754,6 +820,10 @@ void ReplayBar::syncTransportChrome()
         m_playPauseBtn->setIcon(style()->standardIcon(
             isPlaying ? QStyle::SP_MediaPause : QStyle::SP_MediaPlay));
     }
+    const QString playPauseAction = isPlaying ? u"Pause replay"_s : u"Play replay"_s;
+    m_playPauseBtn->setAccessibleName(playPauseAction);
+    m_playPauseBtn->setToolTip(
+        QStringLiteral("%1  [Space]").arg(playPauseAction));
 
     m_playPauseBtn->setEnabled(canUse);
     if (m_stopBtn)      m_stopBtn->setEnabled(canUse);

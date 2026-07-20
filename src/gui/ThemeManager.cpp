@@ -4,11 +4,71 @@
 #include "gui/Theme.h"
 
 #include <QApplication>
+#include <QColor>
 #include <QDir>
+#include <QPalette>
 #include <QSettings>
 #include <QStandardPaths>
 
+#include <array>
+
 using namespace cosmo;
+
+namespace {
+
+QPalette applicationPalette(const ColorPalette &palette)
+{
+    QPalette result;
+    const std::array groups{QPalette::Active, QPalette::Inactive};
+    for (const QPalette::ColorGroup group : groups) {
+        result.setColor(group, QPalette::WindowText, QColor(palette.text_primary));
+        result.setColor(group, QPalette::Button, QColor(palette.bg_button));
+        result.setColor(group, QPalette::Light, QColor(palette.border_light));
+        result.setColor(group, QPalette::Midlight, QColor(palette.border_default));
+        result.setColor(group, QPalette::Dark, QColor(palette.bg_dark));
+        result.setColor(group, QPalette::Mid, QColor(palette.border_default));
+        result.setColor(group, QPalette::Text, QColor(palette.text_primary));
+        result.setColor(group, QPalette::BrightText, QColor(palette.danger));
+        result.setColor(group, QPalette::ButtonText, QColor(palette.text_primary));
+        result.setColor(group, QPalette::Base, QColor(palette.bg_input));
+        result.setColor(group, QPalette::Window, QColor(palette.bg_base));
+        result.setColor(group, QPalette::Shadow, QColor(palette.bg_dark));
+        result.setColor(group, QPalette::Highlight, QColor(palette.select_bg));
+        result.setColor(group, QPalette::HighlightedText, QColor(palette.text_primary));
+        result.setColor(group, QPalette::Link, QColor(palette.accent_link));
+        result.setColor(group, QPalette::LinkVisited, QColor(palette.accent_link));
+        result.setColor(group, QPalette::AlternateBase, QColor(palette.bg_panel));
+        result.setColor(group, QPalette::ToolTipBase, QColor(palette.bg_panel));
+        result.setColor(group, QPalette::ToolTipText, QColor(palette.text_primary));
+        result.setColor(group, QPalette::PlaceholderText, QColor(palette.text_dim));
+    }
+
+    result.setColor(QPalette::Disabled, QPalette::WindowText, QColor(palette.text_muted));
+    result.setColor(QPalette::Disabled, QPalette::Button, QColor(palette.bg_panel));
+    result.setColor(QPalette::Disabled, QPalette::Text, QColor(palette.text_muted));
+    result.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(palette.text_muted));
+    result.setColor(QPalette::Disabled, QPalette::Base, QColor(palette.bg_input));
+    result.setColor(QPalette::Disabled, QPalette::Window, QColor(palette.bg_base));
+    result.setColor(QPalette::Disabled, QPalette::Highlight, QColor(palette.bg_panel));
+    result.setColor(QPalette::Disabled, QPalette::HighlightedText, QColor(palette.text_muted));
+    result.setColor(QPalette::Disabled, QPalette::Link, QColor(palette.text_muted));
+    result.setColor(QPalette::Disabled, QPalette::LinkVisited, QColor(palette.text_muted));
+    result.setColor(QPalette::Disabled, QPalette::ToolTipBase, QColor(palette.bg_panel));
+    result.setColor(QPalette::Disabled, QPalette::ToolTipText, QColor(palette.text_muted));
+    result.setColor(QPalette::Disabled, QPalette::PlaceholderText, QColor(palette.text_dim));
+    return result;
+}
+
+void applyApplicationTheme(const ColorPalette &palette)
+{
+    if (!qApp) {
+        return;
+    }
+    qApp->setPalette(applicationPalette(palette));
+    qApp->setStyleSheet(ThemeManager::generateQss(palette));
+}
+
+} // namespace
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
 
@@ -36,9 +96,7 @@ void ThemeManager::setActiveSkin(const CosmoTheme &theme)
     m_active = theme;
 
     // Apply generated QSS globally
-    if (qApp) {
-        qApp->setStyleSheet(generateQss(m_active.palette));
-    }
+    applyApplicationTheme(m_active.palette);
 
     // Cache textures
     rebuildTextureCache();
@@ -78,9 +136,7 @@ void ThemeManager::loadPersistedSkin(const QString &custom_skins_dir)
 
     if (theme) {
         m_active = *theme;
-        if (qApp) {
-            qApp->setStyleSheet(generateQss(m_active.palette));
-        }
+        applyApplicationTheme(m_active.palette);
         rebuildTextureCache();
         emit themeChanged();
     }
@@ -116,7 +172,11 @@ QString ThemeManager::generateQss(const ColorPalette &p)
 QWidget {
     color: @TEXT_PRIMARY@;
     font-family: @FONT_MONO@;
-    line-height: 1.4;
+}
+
+QMainWindow, QDialog, QMessageBox {
+    background-color: @BG_BASE@;
+    color: @TEXT_PRIMARY@;
 }
 
 QPushButton {
@@ -128,14 +188,16 @@ QPushButton {
     background-color: @BG_BUTTON@;
     color: @TEXT_PRIMARY@;
     font-size: 12px;
-    line-height: 1.4;
-    letter-spacing: 0;
 }
 QPushButton:hover {
     background-color: @BTN_HOVER@;
 }
 QPushButton:pressed {
     background-color: @BTN_PRESSED@;
+}
+QPushButton:checked {
+    background-color: @SELECT_BG@;
+    border-color: @FOCUS_RING@;
 }
 QPushButton:disabled {
     color: @TEXT_MUTED@;
@@ -150,7 +212,6 @@ QComboBox {
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
-    line-height: 1.4;
 }
 QComboBox::drop-down {
     border: none;
@@ -170,7 +231,6 @@ QLineEdit {
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
-    line-height: 1.4;
 }
 
 QScrollBar:vertical {
@@ -206,18 +266,6 @@ QCheckBox {
     color: @TEXT_PRIMARY@;
     spacing: 8px;
     font-size: 12px;
-    line-height: 1.4;
-}
-QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border: 1px solid @BORDER_LIGHT@;
-    border-radius: 3px;
-    background-color: @BG_INPUT@;
-}
-QCheckBox::indicator:checked {
-    background-color: @ACCENT_CHECKBOX@;
-    border-color: @ACCENT_CHECKBOX_BORDER@;
 }
 
 QGroupBox {
@@ -229,7 +277,6 @@ QGroupBox {
     padding-top: 12px;
     background-color: @BG_PANEL@;
     font-size: 12px;
-    line-height: 1.4;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
@@ -252,9 +299,7 @@ QTabBar::tab {
     margin-right: 2px;
     border-radius: 4px 4px 0 0;
     font-size: 12px;
-    letter-spacing: 0.02em;
     min-width: 100px;
-    line-height: 1.4;
 }
 QTabBar::tab:selected {
     background-color: @BG_BASE@;
@@ -268,22 +313,16 @@ QTabBar::tab:hover:!selected {
 }
 
 QPushButton:focus, QToolButton:focus, QComboBox:focus, QLineEdit:focus,
-QCheckBox:focus, QSlider:focus {
-    outline: 2px solid @FOCUS_RING@;
-    outline-offset: 2px;
-    border-color: @FOCUS_RING@;
+QTextEdit:focus, QPlainTextEdit:focus, QAbstractSpinBox:focus,
+QAbstractItemView:focus, QSlider:focus {
+    border: 2px solid @FOCUS_RING@;
 }
-
-/* High-contrast focus for keyboard navigation */
-QPushButton:focus-visible, QToolButton:focus-visible, QComboBox:focus-visible,
-QLineEdit:focus-visible, QCheckBox:focus-visible, QSlider:focus-visible {
-    outline: 2px solid @FOCUS_RING@;
-    outline-offset: 2px;
+QCheckBox:focus, QRadioButton:focus {
+    border: 1px solid @FOCUS_RING@;
+    border-radius: 3px;
 }
-
 QTabBar::tab:focus {
-    outline: 2px solid @FOCUS_RING@;
-    outline-offset: -2px;
+    border: 2px solid @FOCUS_RING@;
 }
 
 QToolTip {
@@ -293,19 +332,159 @@ QToolTip {
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 11px;
-    line-height: 1.6;
 }
 
 QProgressBar {
     background-color: @BG_INPUT@;
+    color: @TEXT_PRIMARY@;
     border: 1px solid @BORDER_DEFAULT@;
     border-radius: 4px;
-    height: 8px;
+    min-height: 18px;
     text-align: center;
 }
 QProgressBar::chunk {
     background-color: @ACCENT_LINK@;
     border-radius: 3px;
+}
+)");
+
+    qss += QStringLiteral(R"(
+QLabel:disabled, QToolButton:disabled, QCheckBox:disabled,
+QRadioButton:disabled {
+    color: @TEXT_MUTED@;
+}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QAbstractSpinBox {
+    background-color: @BG_INPUT@;
+    color: @TEXT_PRIMARY@;
+    border: 1px solid @BORDER_DEFAULT@;
+    border-radius: 4px;
+    selection-background-color: @SELECT_BG@;
+    selection-color: @TEXT_PRIMARY@;
+}
+QTextEdit, QPlainTextEdit {
+    padding: 6px;
+}
+QAbstractSpinBox {
+    padding: 4px 8px;
+}
+QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled,
+QAbstractSpinBox:disabled, QComboBox:disabled {
+    background-color: @BG_PANEL@;
+    color: @TEXT_MUTED@;
+    border-color: @BORDER_SUBTLE@;
+}
+
+QAbstractItemView {
+    background-color: @BG_INPUT@;
+    alternate-background-color: @BG_PANEL@;
+    color: @TEXT_PRIMARY@;
+    border: 1px solid @BORDER_DEFAULT@;
+    selection-background-color: @SELECT_BG@;
+    selection-color: @TEXT_PRIMARY@;
+}
+QAbstractItemView::item:disabled {
+    color: @TEXT_MUTED@;
+}
+QHeaderView::section {
+    background-color: @BG_PANEL@;
+    color: @TEXT_PRIMARY@;
+    border: none;
+    border-right: 1px solid @BORDER_DEFAULT@;
+    border-bottom: 1px solid @BORDER_DEFAULT@;
+    padding: 6px 8px;
+}
+
+QMenuBar {
+    background-color: @BG_DARK@;
+    color: @TEXT_PRIMARY@;
+    border-bottom: 1px solid @BORDER_PANEL@;
+}
+QMenuBar::item {
+    background-color: transparent;
+    padding: 6px 10px;
+}
+QMenuBar::item:selected, QMenuBar::item:pressed {
+    background-color: @SELECT_BG@;
+    color: @TEXT_PRIMARY@;
+}
+QMenuBar::item:disabled {
+    color: @TEXT_MUTED@;
+}
+QMenu {
+    background-color: @BG_PANEL@;
+    color: @TEXT_PRIMARY@;
+    border: 1px solid @BORDER_DEFAULT@;
+    padding: 4px;
+}
+QMenu::item {
+    border-radius: 3px;
+    padding: 6px 28px 6px 10px;
+}
+QMenu::item:selected, QMenu::item:checked {
+    background-color: @SELECT_BG@;
+    color: @TEXT_PRIMARY@;
+}
+QMenu::item:disabled {
+    color: @TEXT_MUTED@;
+}
+QMenu::separator {
+    height: 1px;
+    background-color: @BORDER_DEFAULT@;
+    margin: 4px 8px;
+}
+
+QStatusBar {
+    background-color: @BG_DARK@;
+    color: @TEXT_MID@;
+    border-top: 1px solid @BORDER_PANEL@;
+}
+QStatusBar::item {
+    border: none;
+}
+
+QMessageBox {
+    background-color: @BG_BASE@;
+}
+QMessageBox QLabel {
+    color: @TEXT_PRIMARY@;
+}
+QMessageBox QPushButton, QDialogButtonBox QPushButton {
+    min-width: 88px;
+}
+
+QRadioButton {
+    color: @TEXT_PRIMARY@;
+    spacing: 8px;
+}
+
+QSlider::groove:horizontal {
+    height: 6px;
+    background-color: @BG_PANEL@;
+    border: 1px solid @BORDER_DEFAULT@;
+    border-radius: 3px;
+}
+QSlider::handle:horizontal {
+    width: 16px;
+    margin: -6px 0;
+    background-color: @ACCENT_CHECKBOX@;
+    border: 1px solid @ACCENT_CHECKBOX_BORDER@;
+    border-radius: 8px;
+}
+QSlider::handle:horizontal:hover {
+    border: 2px solid @FOCUS_RING@;
+}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
+    background-color: @BORDER_LIGHT@;
+}
+
+QProgressBar:disabled {
+    color: @TEXT_MUTED@;
+    border-color: @BORDER_SUBTLE@;
+}
+QProgressBar::chunk:disabled {
+    background-color: @BORDER_DEFAULT@;
 }
 )");
 
@@ -322,6 +501,7 @@ QProgressBar::chunk {
     qss.replace(QStringLiteral("@BG_PANEL@"), p.bg_panel);
     qss.replace(QStringLiteral("@BG_INPUT@"), p.bg_input);
     qss.replace(QStringLiteral("@BORDER_DEFAULT@"), p.border_default);
+    qss.replace(QStringLiteral("@BORDER_PANEL@"), p.border_panel);
     qss.replace(QStringLiteral("@BORDER_SUBTLE@"), p.border_subtle);
     qss.replace(QStringLiteral("@BORDER_LIGHT@"), p.border_light);
     qss.replace(QStringLiteral("@BTN_PRESSED@"), p.btn_pressed);

@@ -1,14 +1,23 @@
 #include "gui/SkinLoader.h"
+#include "gui/ThemeManager.h"
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <QDir>
 #include <QBuffer>
+#include <QColor>
 #include <QFile>
 #include <QFileInfo>
 #include <QImage>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSet>
 #include <QTemporaryDir>
 
+#include <algorithm>
+#include <array>
+#include <cmath>
 #include <optional>
 
 #include <zlib.h>
@@ -150,14 +159,77 @@ cosmo::SkinImportResult importThemeJson(const QByteArray &json) {
         QDir(temporary.path()).filePath(QStringLiteral("skins")));
 }
 
-QByteArray makePng(int width, int height) {
+QByteArray makePng(int width, int height, const QColor &fill = QColor(Qt::black)) {
     QImage image(width, height, QImage::Format_ARGB32);
-    image.fill(Qt::magenta);
+    image.fill(fill);
     QByteArray bytes;
     QBuffer output(&bytes);
     REQUIRE(output.open(QIODevice::WriteOnly));
     REQUIRE(image.save(&output, "PNG"));
     return bytes;
+}
+
+void overwriteFile(const QString &path, const QByteArray &contents) {
+    QFile output(path);
+    REQUIRE(output.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    REQUIRE(output.write(contents) == contents.size());
+    output.close();
+}
+
+double linearColorChannel(int channel) {
+    const double value = static_cast<double>(channel) / 255.0;
+    return value <= 0.04045
+        ? value / 12.92
+        : std::pow((value + 0.055) / 1.055, 2.4);
+}
+
+double colorLuminance(const QString &value) {
+    const QColor color(value);
+    REQUIRE(color.isValid());
+    return 0.2126 * linearColorChannel(color.red())
+        + 0.7152 * linearColorChannel(color.green())
+        + 0.0722 * linearColorChannel(color.blue());
+}
+
+double colorContrast(const QString &first, const QString &second) {
+    const double first_luminance = colorLuminance(first);
+    const double second_luminance = colorLuminance(second);
+    const double lighter = std::max(first_luminance, second_luminance);
+    const double darker = std::min(first_luminance, second_luminance);
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
+std::array<double, 3> colorLab(const QString &value) {
+    const QColor color(value);
+    REQUIRE(color.isValid());
+    const double red = linearColorChannel(color.red());
+    const double green = linearColorChannel(color.green());
+    const double blue = linearColorChannel(color.blue());
+    const double x = (0.4124564 * red + 0.3575761 * green + 0.1804375 * blue)
+        / 0.95047;
+    const double y = 0.2126729 * red + 0.7151522 * green + 0.0721750 * blue;
+    const double z = (0.0193339 * red + 0.1191920 * green + 0.9503041 * blue)
+        / 1.08883;
+    const auto pivot = [](double component) {
+        constexpr double kEpsilon = 216.0 / 24389.0;
+        constexpr double kKappa = 24389.0 / 27.0;
+        return component > kEpsilon
+            ? std::cbrt(component)
+            : (kKappa * component + 16.0) / 116.0;
+    };
+    const double fx = pivot(x);
+    const double fy = pivot(y);
+    const double fz = pivot(z);
+    return {116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz)};
+}
+
+double colorDistance(const QString &first, const QString &second) {
+    const auto first_lab = colorLab(first);
+    const auto second_lab = colorLab(second);
+    return std::sqrt(
+        std::pow(first_lab[0] - second_lab[0], 2.0)
+        + std::pow(first_lab[1] - second_lab[1], 2.0)
+        + std::pow(first_lab[2] - second_lab[2], 2.0));
 }
 
 } // namespace
@@ -370,12 +442,60 @@ TEST_CASE("SkinLoader enforces ZIP resource limits", "[gui][skin][security]") {
         const QString archive = writeArchive(
             temporary, QStringLiteral("pixel-budget.cosmo"),
             {{QByteArrayLiteral("theme.json"), QByteArrayLiteral(
-                R"({"textures":{"sidebar":"textures/one.png","toolbar":"textures/two.png"}})")},
-             {QByteArrayLiteral("textures/one.png"), makePng(3300, 3300)},
-             {QByteArrayLiteral("textures/two.png"), makePng(3300, 3300)}});
+                R"({"textures":{"panel":"textures/panel.png"}})")},
+             {QByteArrayLiteral("preview.png"), makePng(3300, 3300)},
+             {QByteArrayLiteral("textures/panel.png"), makePng(3300, 3300)}});
         const auto result = cosmo::SkinLoader::importArchiveDetailed(archive, destination);
         REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
         REQUIRE(result.error_message.contains(QStringLiteral("20-megapixel")));
+    }
+}
+
+TEST_CASE("SkinLoader revalidates installed skin images", "[gui][skin][security]") {
+    QTemporaryDir temporary;
+    REQUIRE(temporary.isValid());
+    const QString destination = QDir(temporary.path()).filePath(QStringLiteral("skins"));
+    const QByteArray theme = QByteArrayLiteral(
+        R"({"textures":{"panel":"textures/panel.png"}})");
+    const QString archive = writeArchive(
+        temporary,
+        QStringLiteral("installed.cosmo"),
+        {{QByteArrayLiteral("theme.json"), theme},
+         {QByteArrayLiteral("preview.png"), makePng(1, 1)},
+         {QByteArrayLiteral("textures/panel.png"), makePng(1, 1)}});
+    const auto imported = cosmo::SkinLoader::importArchiveDetailed(archive, destination);
+    REQUIRE(imported.succeeded());
+    const QString skin_dir = imported.target_path;
+    const QString preview_path = QDir(skin_dir).filePath(QStringLiteral("preview.png"));
+    const QString panel_path = QDir(skin_dir).filePath(QStringLiteral("textures/panel.png"));
+
+    SECTION("rejects a replaced non-PNG texture") {
+        overwriteFile(panel_path, QByteArrayLiteral("not a PNG"));
+        REQUIRE_FALSE(cosmo::SkinLoader::loadFromDirectory(skin_dir).has_value());
+    }
+
+    SECTION("rejects an oversized encoded image") {
+        QFile panel(panel_path);
+        REQUIRE(panel.open(QIODevice::ReadWrite));
+        REQUIRE(panel.resize(8 * 1024 * 1024 + 1));
+        panel.close();
+        REQUIRE_FALSE(cosmo::SkinLoader::loadFromDirectory(skin_dir).has_value());
+    }
+
+    SECTION("rejects excessive decoded dimensions") {
+        overwriteFile(panel_path, makePng(4097, 1));
+        REQUIRE_FALSE(cosmo::SkinLoader::loadFromDirectory(skin_dir).has_value());
+    }
+
+    SECTION("rejects a replacement that erases panel contrast") {
+        overwriteFile(panel_path, makePng(1, 1, QColor(Qt::white)));
+        REQUIRE_FALSE(cosmo::SkinLoader::loadFromDirectory(skin_dir).has_value());
+    }
+
+    SECTION("rejects an excessive cumulative decoded-image budget") {
+        overwriteFile(preview_path, makePng(3300, 3300));
+        overwriteFile(panel_path, makePng(3300, 3300));
+        REQUIRE_FALSE(cosmo::SkinLoader::loadFromDirectory(skin_dir).has_value());
     }
 }
 
@@ -407,6 +527,71 @@ TEST_CASE("SkinLoader rejects invalid custom theme values", "[gui][skin][securit
         REQUIRE(result.error_message.contains(QStringLiteral("between 0 and 1")));
     }
 
+    SECTION("insufficient selected-state contrast") {
+        const auto result = importThemeJson(
+            QByteArrayLiteral(R"({"palette":{"select_bg":"#202020"}})"));
+        REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
+        REQUIRE(result.error_message.contains(QStringLiteral("select_bg")));
+        REQUIRE(result.error_message.contains(QStringLiteral("contrast"), Qt::CaseInsensitive));
+    }
+
+    SECTION("insufficient trace contrast") {
+        const auto result = importThemeJson(QByteArrayLiteral(
+            R"({"palette":{"trace_colors":["#202020","#202020","#202020","#202020","#202020","#202020","#202020","#202020","#202020"]}})"));
+        REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
+        REQUIRE(result.error_message.contains(QStringLiteral("trace_colors[0]")));
+        REQUIRE(result.error_message.contains(QStringLiteral("contrast"), Qt::CaseInsensitive));
+    }
+
+    SECTION("duplicate trace colors") {
+        const auto result = importThemeJson(QByteArrayLiteral(
+            R"({"palette":{"trace_colors":["#5b9bd5","#5b9bd5","#f0b429","#c084fc","#ff6b6b","#ff9f6b","#f472b6","#a3e635","#f8de22"]}})"));
+        REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
+        REQUIRE(result.error_message.contains(QStringLiteral("trace_colors[0]")));
+        REQUIRE(result.error_message.contains(QStringLiteral("trace_colors[1]")));
+        REQUIRE(result.error_message.contains(
+            QStringLiteral("indistinguishable"), Qt::CaseInsensitive));
+    }
+
+    SECTION("perceptually indistinguishable trace colors") {
+        const auto result = importThemeJson(QByteArrayLiteral(
+            R"({"palette":{"trace_colors":["#5b9bd5","#5c9cd6","#f0b429","#c084fc","#ff6b6b","#ff9f6b","#f472b6","#a3e635","#f8de22"]}})"));
+        REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
+        REQUIRE(result.error_message.contains(QStringLiteral("CIE76")));
+        REQUIRE(result.error_message.contains(QStringLiteral("10.0")));
+    }
+
+    SECTION("trace palette has the required size") {
+        const auto result = importThemeJson(
+            QByteArrayLiteral(R"({"palette":{"trace_colors":["#ffffff"]}})"));
+        REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
+        REQUIRE(result.error_message.contains(QStringLiteral("exactly 9")));
+    }
+
+    SECTION("placeholder text must contrast with input backgrounds") {
+        const auto result = importThemeJson(
+            QByteArrayLiteral(R"({"palette":{"bg_input":"#6b6b6b"}})"));
+        REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
+        REQUIRE(result.error_message.contains(QStringLiteral("text_dim")));
+        REQUIRE(result.error_message.contains(QStringLiteral("bg_input")));
+    }
+
+    SECTION("disabled text must contrast with button backgrounds") {
+        const auto result = importThemeJson(
+            QByteArrayLiteral(R"({"palette":{"bg_button":"#6b6b6b"}})"));
+        REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
+        REQUIRE(result.error_message.contains(QStringLiteral("text_muted")));
+        REQUIRE(result.error_message.contains(QStringLiteral("bg_button")));
+    }
+
+    SECTION("links must contrast with panel backgrounds") {
+        const auto result = importThemeJson(
+            QByteArrayLiteral(R"({"palette":{"accent_link":"#8b8b8b"}})"));
+        REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
+        REQUIRE(result.error_message.contains(QStringLiteral("accent_link")));
+        REQUIRE(result.error_message.contains(QStringLiteral("bg_panel")));
+    }
+
     SECTION("unsafe texture reference") {
         const auto result = importThemeJson(
             QByteArrayLiteral(R"({"textures":{"panel":"../outside.png"}})"));
@@ -419,6 +604,72 @@ TEST_CASE("SkinLoader rejects invalid custom theme values", "[gui][skin][securit
             QByteArrayLiteral(R"({"textures":{"unbounded-alias":"textures/panel.png"}})"));
         REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
         REQUIRE(result.error_message.contains(QStringLiteral("region"), Qt::CaseInsensitive));
+    }
+}
+
+TEST_CASE("SkinLoader accepts recognized legacy texture regions", "[gui][skin][compatibility]") {
+    QTemporaryDir temporary;
+    REQUIRE(temporary.isValid());
+    const QString destination = QDir(temporary.path()).filePath(QStringLiteral("skins"));
+    const std::array<QString, 4> legacy_regions = {
+        QStringLiteral("sidebar"),
+        QStringLiteral("toolbar"),
+        QStringLiteral("chart_bg"),
+        QStringLiteral("settings_bg"),
+    };
+
+    for (const QString &region : legacy_regions) {
+        CAPTURE(region);
+        const QString texture_path = QStringLiteral("textures/%1.png").arg(region);
+        const QByteArray theme = QStringLiteral(
+            R"({"textures":{"%1":"%2"}})")
+                                     .arg(region, texture_path)
+                                     .toUtf8();
+        const QString archive = writeArchive(
+            temporary,
+            region + QStringLiteral(".cosmo"),
+            {{QByteArrayLiteral("theme.json"), theme},
+             {texture_path.toUtf8(), makePng(1, 1)}});
+        const auto result = cosmo::SkinLoader::importArchiveDetailed(archive, destination);
+        REQUIRE(result.succeeded());
+        REQUIRE(result.theme->textures.paths.contains(region));
+    }
+}
+
+TEST_CASE("SkinLoader caps custom background texture opacity", "[gui][skin][accessibility]") {
+    const auto result = importThemeJson(QByteArrayLiteral(R"({"texture_opacity":0.95})"));
+    REQUIRE(result.succeeded());
+    REQUIRE(result.theme->textures.opacity == 0.20);
+}
+
+TEST_CASE("SkinLoader validates rendered panel texture contrast", "[gui][skin][accessibility]") {
+    QTemporaryDir temporary;
+    REQUIRE(temporary.isValid());
+    const QString destination = QDir(temporary.path()).filePath(QStringLiteral("skins"));
+
+    SECTION("accepts a compatible texture") {
+        const QString archive = writeArchive(
+            temporary,
+            QStringLiteral("safe-panel.cosmo"),
+            {{QByteArrayLiteral("theme.json"), QByteArrayLiteral(
+                R"({"textures":{"panel":"textures/panel.png"},"texture_opacity":0.2})")},
+             {QByteArrayLiteral("textures/panel.png"), makePng(1, 1, QColor(Qt::black))}});
+        const auto result = cosmo::SkinLoader::importArchiveDetailed(archive, destination);
+        REQUIRE(result.succeeded());
+    }
+
+    SECTION("rejects a hostile solid texture") {
+        const QString archive = writeArchive(
+            temporary,
+            QStringLiteral("hostile-panel.cosmo"),
+            {{QByteArrayLiteral("theme.json"), QByteArrayLiteral(
+                R"({"textures":{"panel":"textures/panel.png"},"texture_opacity":0.2})")},
+             {QByteArrayLiteral("textures/panel.png"), makePng(1, 1, QColor(Qt::white))}});
+        const auto result = cosmo::SkinLoader::importArchiveDetailed(archive, destination);
+        REQUIRE(result.status == cosmo::SkinImportStatus::Failed);
+        REQUIRE(result.error_message.contains(QStringLiteral("Panel texture")));
+        REQUIRE(result.error_message.contains(QStringLiteral("contrast"), Qt::CaseInsensitive));
+        REQUIRE(result.error_message.contains(QStringLiteral("pixel"), Qt::CaseInsensitive));
     }
 }
 
@@ -442,4 +693,80 @@ TEST_CASE("SkinLoader trusted built-in themes remain loadable", "[gui][skin]") {
     const auto light = cosmo::SkinLoader::loadBuiltin(QStringLiteral(":/skins/light"));
     REQUIRE(dark.has_value());
     REQUIRE(light.has_value());
+
+    for (const auto *theme : {&*dark, &*light}) {
+        const auto &palette = theme->palette;
+        REQUIRE(colorContrast(palette.text_dim, palette.bg_input) >= 4.5);
+        REQUIRE(colorContrast(palette.text_muted, palette.bg_input) >= 4.5);
+        REQUIRE(colorContrast(palette.text_muted, palette.bg_button) >= 4.5);
+        for (const QString &background : {
+                 palette.bg_base, palette.bg_dark, palette.bg_panel, palette.bg_input}) {
+            REQUIRE(colorContrast(palette.accent_link, background) >= 4.5);
+        }
+
+        QSet<QString> unique_colors;
+        for (const QString &trace_color : theme->palette.trace_colors) {
+            const QColor color(trace_color);
+            REQUIRE(color.isValid());
+            REQUIRE(color.alpha() == 255);
+            REQUIRE(colorContrast(trace_color, theme->palette.bg_base) >= 3.0);
+            REQUIRE(colorContrast(trace_color, theme->palette.bg_panel) >= 3.0);
+            unique_colors.insert(trace_color);
+        }
+        REQUIRE(unique_colors.size() == 9);
+        for (std::size_t first = 0; first < palette.trace_colors.size(); ++first) {
+            for (std::size_t second = first + 1;
+                 second < palette.trace_colors.size(); ++second) {
+                REQUIRE(colorDistance(
+                    palette.trace_colors[first], palette.trace_colors[second]) >= 10.0);
+            }
+        }
+    }
+}
+
+TEST_CASE("SkinLoader supplies distinct trace colors to legacy skins", "[gui][skin][accessibility]") {
+    for (const QString &resource : {
+             QStringLiteral(":/skins/dark/theme.json"),
+             QStringLiteral(":/skins/light/theme.json")}) {
+        CAPTURE(resource);
+        QFile theme_file(resource);
+        REQUIRE(theme_file.open(QIODevice::ReadOnly));
+        QJsonDocument document = QJsonDocument::fromJson(theme_file.readAll());
+        REQUIRE(document.isObject());
+        QJsonObject root = document.object();
+        QJsonObject source_palette = root.value(QStringLiteral("palette")).toObject();
+        source_palette.remove(QStringLiteral("trace_colors"));
+        root.insert(QStringLiteral("palette"), source_palette);
+
+        const auto result = importThemeJson(
+            QJsonDocument(root).toJson(QJsonDocument::Compact));
+        REQUIRE(result.succeeded());
+        QSet<QString> unique_colors;
+        const auto &trace_colors = result.theme->palette.trace_colors;
+        for (const QString &trace_color : trace_colors) {
+            REQUIRE(colorContrast(trace_color, result.theme->palette.bg_base) >= 3.0);
+            REQUIRE(colorContrast(trace_color, result.theme->palette.bg_panel) >= 3.0);
+            unique_colors.insert(trace_color);
+        }
+        REQUIRE(unique_colors.size() == 9);
+        for (std::size_t first = 0; first < trace_colors.size(); ++first) {
+            for (std::size_t second = first + 1;
+                 second < trace_colors.size(); ++second) {
+                REQUIRE(colorDistance(trace_colors[first], trace_colors[second]) >= 10.0);
+            }
+        }
+    }
+}
+
+TEST_CASE("ThemeManager generates complete supported global styles", "[gui][theme]") {
+    const QString qss = cosmo::ThemeManager::generateQss(cosmo::ColorPalette{});
+    REQUIRE(qss.contains(QStringLiteral("QMenu")));
+    REQUIRE(qss.contains(QStringLiteral("QStatusBar")));
+    REQUIRE(qss.contains(QStringLiteral("QMessageBox")));
+    REQUIRE(qss.contains(QStringLiteral("QProgressBar")));
+    REQUIRE_FALSE(qss.contains(QStringLiteral("@")));
+    REQUIRE_FALSE(qss.contains(QStringLiteral("outline")));
+    REQUIRE_FALSE(qss.contains(QStringLiteral("focus-visible")));
+    REQUIRE_FALSE(qss.contains(QStringLiteral("line-height")));
+    REQUIRE_FALSE(qss.contains(QStringLiteral("Roboto Mono")));
 }

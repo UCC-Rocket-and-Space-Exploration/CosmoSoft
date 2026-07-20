@@ -24,6 +24,7 @@ class QPushButton;
 class QShowEvent;
 class QStackedWidget;
 class QProgressBar;
+class QShortcut;
 class QTimer;
 class QToolButton;
 class QValueAxis;
@@ -163,6 +164,7 @@ private:
     QValueAxis *m_axisX  = nullptr;
     QValueAxis *m_axisY  = nullptr;
     QValueAxis *m_axisY2 = nullptr;  ///< Secondary right-hand Y axis for dual-metric mode.
+    QVector<QShortcut *> m_chartShortcuts; ///< Shortcuts active only inside the graph view.
 
     // ── View switcher (Graph / Map) ───────────────────────────────────────────
     QStackedWidget *m_viewStack    = nullptr;

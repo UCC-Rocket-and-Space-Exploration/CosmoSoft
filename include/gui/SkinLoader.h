@@ -97,7 +97,8 @@ private:
     static std::optional<CosmoTheme> parseThemeJson(const QByteArray &json,
                                                     const QString &base_path,
                                                     QString *error_message = nullptr,
-                                                    bool enforce_contrast = true);
+                                                    bool enforce_contrast = true,
+                                                    quint64 *validated_panel_pixels = nullptr);
 };
 
 } // namespace cosmo

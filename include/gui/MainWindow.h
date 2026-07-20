@@ -39,8 +39,11 @@ class QLabel;
 class QMenu;
 class QProgressDialog;
 class QPushButton;
+class QResizeEvent;
 class QStackedWidget;
 class QTimer;
+class QToolBar;
+class QToolButton;
 class DashboardPage;
 class LiveTelemetryPage;
 class SettingsPage;
@@ -74,6 +77,10 @@ public slots:
     /** @brief Receives parser and serial error strings and shows them in the status bar. */
     void onParserError(const QString &message);
 
+protected:
+    /** @brief Reflow toolbar controls when the application window is resized. */
+    void resizeEvent(QResizeEvent *event) override;
+
 private slots:
     void updateMissionClock();
     void applyPendingReplayTelemetryStrip();
@@ -97,6 +104,8 @@ private:
     void setupConnectionBar();
     [[nodiscard]] QString buildToolbarStyleSheet();
     [[nodiscard]] QString buildActionBarStyleSheet();
+    void updateSettingsIcon();
+    void updateToolbarLayout();
     void setupPages();
     void openSettingsWindow();
     void applyReplayTelemetrySample(int trailLength);
@@ -150,6 +159,13 @@ private:
     QLabel *m_missionMetaLabel  = nullptr;
     QTimer *m_missionClockTimer = nullptr;
     QGraphicsDropShadowEffect *m_brandShadow = nullptr;
+    QToolBar *m_missionToolbar = nullptr;
+    QWidget *m_toolbarContent = nullptr;
+    QWidget *m_brandBlock = nullptr;
+    QToolButton *m_liveNavButton = nullptr;
+    QToolButton *m_dashboardNavButton = nullptr;
+    QToolButton *m_settingsNavButton = nullptr;
+    int m_toolbarLayoutMode = -1;
 
     // ── Connection bar ────────────────────────────────────────────────────────
     QWidget  *m_connectionBar       = nullptr;

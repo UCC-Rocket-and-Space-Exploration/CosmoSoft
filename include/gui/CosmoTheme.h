@@ -10,8 +10,10 @@
 #ifndef COSMO_SOFT_COSMOTHEME_H
 #define COSMO_SOFT_COSMOTHEME_H
 
-#include <QString>
+#include <array>
+
 #include <QMap>
+#include <QString>
 
 namespace cosmo {
 
@@ -33,10 +35,10 @@ struct ColorPalette {
     QString text_muted         = QStringLiteral("#b0bcc8");
     QString text_dim           = QStringLiteral("#8fa0b0");
 
-    QString border_default     = QStringLiteral("#4d4d4d");
-    QString border_light       = QStringLiteral("#6a6a6a");
+    QString border_default     = QStringLiteral("#777781");
+    QString border_light       = QStringLiteral("#92929c");
     QString border_subtle      = QStringLiteral("#3a3a3a");
-    QString border_panel       = QStringLiteral("#3b3b45");
+    QString border_panel       = QStringLiteral("#75757f");
 
     QString btn_hover          = QStringLiteral("#4d4f57");
     QString btn_pressed        = QStringLiteral("#2d2f37");
@@ -46,10 +48,10 @@ struct ColorPalette {
     QString accent_checkbox_border = QStringLiteral("#5a9fd5");
     QString danger             = QStringLiteral("#ff6b6b");
     QString error              = QStringLiteral("#e05555");
-    QString select_bg          = QStringLiteral("#4b4b4b");
+    QString select_bg          = QStringLiteral("#6b717d");
 
     // ── Semantic state colors ─────────────────────────────────────────────────
-    QString success            = QStringLiteral("#4caf50");
+    QString success            = QStringLiteral("#68c96f");
     QString success_bg         = QStringLiteral("#1e3a20");
     QString warning            = QStringLiteral("#ff9800");
     QString warning_bg         = QStringLiteral("#3a2a10");
@@ -58,7 +60,29 @@ struct ColorPalette {
 
     // ── Focus state tokens ────────────────────────────────────────────────────
     QString focus_ring         = QStringLiteral("#6ab0de");
-    QString focus_ring_offset  = QStringLiteral("#ffffff20");
+    QString focus_ring_offset  = QStringLiteral("#20ffffff");
+
+    // ── Telemetry trace colors ─────────────────────────────────────────────────
+    /**
+     * @brief Trace colors in metric order: altitude, temperature, pressure,
+     * acceleration, battery, RSSI, gyro, latitude, longitude.
+     *
+     * These defaults target dark surfaces. SkinLoader substitutes a
+     * contrast-safe light-surface palette when an older light custom skin
+     * omits the optional trace_colors array. Explicit custom trace palettes
+     * must keep every pair at least 10 CIE76 Delta-E apart.
+     */
+    std::array<QString, 9> trace_colors = {
+        QStringLiteral("#5b9bd5"),
+        QStringLiteral("#70c1a5"),
+        QStringLiteral("#f0b429"),
+        QStringLiteral("#c084fc"),
+        QStringLiteral("#ff6b6b"),
+        QStringLiteral("#ff9f6b"),
+        QStringLiteral("#f472b6"),
+        QStringLiteral("#a3e635"),
+        QStringLiteral("#f8de22"),
+    };
 };
 
 /**
@@ -69,11 +93,16 @@ enum class TextureMode { Tile, Stretch, Cover };
 /**
  * @brief Optional background textures for UI regions.
  *
- * Keys: "sidebar", "toolbar", "panel", "chart_bg", "settings_bg".
+ * The "panel" key is currently rendered. Legacy keys "sidebar", "toolbar",
+ * "chart_bg", and "settings_bg" remain loadable for skin compatibility.
  * Values: absolute path to extracted PNG on disk (empty if unused).
  */
 struct TextureSet {
     QMap<QString, QString> paths;
+    /**
+     * @brief Texture alpha, capped and pixel-validated by SkinLoader to protect
+     * text and border contrast on the rendered panel surface.
+     */
     double opacity = 0.15;
     TextureMode mode = TextureMode::Tile;
 };

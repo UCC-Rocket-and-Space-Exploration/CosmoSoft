@@ -27,6 +27,7 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QColor>
 #include <QComboBox>
 #include <QDateTime>
 #include <QDir>
@@ -40,6 +41,7 @@
 #include <QPointer>
 #include <QProgressDialog>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QSettings>
 #include <QStringList>
 #include <QGraphicsDropShadowEffect>
@@ -60,6 +62,7 @@
 #include <QtConcurrent/QtConcurrentRun>
 
 #include <atomic>
+#include <cmath>
 #include <exception>
 #include <limits>
 #include <memory>
@@ -214,6 +217,31 @@ QPushButton* createActionButton(QWidget *parent, const QString &tooltip, const Q
     return btn;
 }
 
+[[nodiscard]] double relativeLuminance(const QColor &color) {
+    const auto linearChannel = [](const double channel) {
+        return channel <= 0.04045
+            ? channel / 12.92
+            : std::pow((channel + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * linearChannel(color.redF())
+        + 0.7152 * linearChannel(color.greenF())
+        + 0.0722 * linearChannel(color.blueF());
+}
+
+[[nodiscard]] QString settingsIconResource(const QString &backgroundColor) {
+    const QColor background(backgroundColor);
+    if (!background.isValid()) {
+        return u":/icons/settings_button.png"_s;
+    }
+
+    // Choose the black or white asset according to whichever has the stronger
+    // WCAG contrast against the current palette surface.
+    constexpr double kEqualContrastLuminance = 0.179;
+    return relativeLuminance(background) > kEqualContrastLuminance
+        ? u":/icons/settings_button_black.png"_s
+        : u":/icons/settings_button.png"_s;
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent)
@@ -302,24 +330,29 @@ void MainWindow::appendToLog(bool isError, const QString &text) {
 }
 
 void MainWindow::setupActions() {
-    QIcon settingsIcon;
-    settingsIcon.addFile(u":/icons/settings_button.png"_s, QSize(), QIcon::Normal, QIcon::Off);
-    settingsIcon.addFile(u":/icons/settings_button_black.png"_s, QSize(), QIcon::Normal, QIcon::On);
-    m_openSettingsAction = new QAction(settingsIcon, u"Settings"_s, this);
-    m_openSettingsAction->setToolTip(u"Open the settings window."_s);
+    m_openSettingsAction = new QAction(u"Preferences…"_s, this);
+    m_openSettingsAction->setToolTip(u"Open application preferences."_s);
+    m_openSettingsAction->setMenuRole(QAction::PreferencesRole);
+    m_openSettingsAction->setShortcut(QKeySequence::Preferences);
+    m_openSettingsAction->setShortcutContext(Qt::ApplicationShortcut);
     m_openSettingsAction->setCheckable(true);
+    updateSettingsIcon();
 
     connect(m_openSettingsAction, &QAction::triggered, this, [this]() { openSettingsWindow(); });
 
     auto *pageGroup = new QActionGroup(this);
     pageGroup->setExclusive(true);
 
-    m_dashboardAction = new QAction(u"Flight Replay"_s, this);
+    m_dashboardAction = new QAction(u"Dashboard"_s, this);
+    m_dashboardAction->setToolTip(u"Show the flight replay dashboard."_s);
+    m_dashboardAction->setShortcut(QKeySequence(u"Ctrl+1"_s));
     m_dashboardAction->setCheckable(true);
     m_dashboardAction->setChecked(true);
     pageGroup->addAction(m_dashboardAction);
 
     m_liveTelemetryAction = new QAction(u"Live Telemetry"_s, this);
+    m_liveTelemetryAction->setToolTip(u"Show live telemetry."_s);
+    m_liveTelemetryAction->setShortcut(QKeySequence(u"Ctrl+2"_s));
     m_liveTelemetryAction->setCheckable(true);
     pageGroup->addAction(m_liveTelemetryAction);
 }
@@ -339,6 +372,9 @@ void MainWindow::setupMenuBar() {
     fileMenu->addAction(u"&Quit"_s, QKeySequence::Quit, qApp, &QApplication::quit);
 
     auto *viewMenu = mb->addMenu(u"&View"_s);
+    viewMenu->addAction(m_dashboardAction);
+    viewMenu->addAction(m_liveTelemetryAction);
+    viewMenu->addSeparator();
     viewMenu->addAction(m_openSettingsAction);
 
     auto *helpMenu = mb->addMenu(u"&Help"_s);
@@ -418,7 +454,6 @@ QString MainWindow::buildToolbarStyleSheet() {
             font-family: %2;
             letter-spacing: 0.05em;
             color: %3;
-            line-height: 1.2;
         }
         QWidget#brandBlock QLabel#missionMeta {
             font-size: 14px;
@@ -479,6 +514,14 @@ QString MainWindow::buildToolbarStyleSheet() {
         QToolButton[kind="iconButton"]:checked {
             background-color: %7;
         }
+        QToolBar#missionToolbar[compact="true"] QToolButton[kind="navButton"] {
+            min-width: 76px;
+            padding-left: 6px;
+            padding-right: 6px;
+        }
+        QToolBar#missionToolbar[narrow="true"] QToolButton[kind="navButton"] {
+            min-width: 62px;
+        }
     )"_s)
         .arg(accent)                // %1
         .arg(Theme::kBgBase())      // %2
@@ -486,7 +529,14 @@ QString MainWindow::buildToolbarStyleSheet() {
         .arg(textDim)               // %4
         .arg(borderLight)           // %5
         .arg(btnHov)                // %6
-        .arg(btnBg);                // %7
+        .arg(btnBg)                 // %7
+    + QString(uR"(
+        QToolButton[kind="navButton"]:focus,
+        QToolButton[kind="iconButton"]:focus {
+            border: 2px solid %1;
+        }
+    )"_s)
+        .arg(Theme::kFocusRing());
 }
 
 QString MainWindow::buildActionBarStyleSheet() {
@@ -519,6 +569,9 @@ QString MainWindow::buildActionBarStyleSheet() {
         QPushButton[kind="actionButton"]:pressed {
             background-color: %8;
         }
+        QPushButton[kind="actionButton"]:focus {
+            border: 2px solid %9;
+        }
     )"_s)
         .arg(Theme::kBgBase())          // %1 - lighter than toolbar
         .arg(Theme::kTextPrimary())     // %2
@@ -527,16 +580,19 @@ QString MainWindow::buildActionBarStyleSheet() {
         .arg(Theme::kTextMid())         // %5
         .arg(Theme::kFontMono)          // %6
         .arg(Theme::kBtnHover())        // %7
-        .arg(Theme::kBtnPressed());     // %8
+        .arg(Theme::kBtnPressed())      // %8
+        .arg(Theme::kFocusRing());      // %9
 }
 
 void MainWindow::setupToolbar() {
     auto *toolbar = new QToolBar(u"Mission Toolbar"_s, this);
+    m_missionToolbar = toolbar;
     toolbar->setObjectName(u"missionToolbar"_s);
     toolbar->setMovable(false);
     toolbar->setFloatable(false);
     toolbar->setToolButtonStyle(Qt::ToolButtonTextOnly);
     toolbar->setAllowedAreas(Qt::TopToolBarArea);
+    toolbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     toolbar->setStyleSheet(buildToolbarStyleSheet());
     addToolBar(Qt::TopToolBarArea, toolbar);
 
@@ -546,12 +602,16 @@ void MainWindow::setupToolbar() {
     updateBrandShadowColor();
 
     auto *content = new QWidget(toolbar);
+    m_toolbarContent = content;
     content->setObjectName(u"toolbarContent"_s);
+    content->setMinimumWidth(0);
+    content->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     auto *contentLayout = new QHBoxLayout(content);
     LayoutHelpers::setZeroMargins(contentLayout);
     contentLayout->setSpacing(Theme::kSpaceXl);
 
     auto *brandBlock = new QWidget(content);
+    m_brandBlock = brandBlock;
     brandBlock->setObjectName(u"brandBlock"_s);
     brandBlock->setGraphicsEffect(m_brandShadow);
     auto *brandLayout = new QVBoxLayout(brandBlock);
@@ -597,7 +657,10 @@ void MainWindow::setupToolbar() {
         button->setAutoRaise(false);
         button->setCheckable(true);
         button->setCursor(Qt::PointingHandCursor);
+        button->setFocusPolicy(Qt::TabFocus);
         button->setDefaultAction(action);
+        button->setAccessibleName(action->text());
+        button->setToolTip(action->toolTip());
         button->setToolButtonStyle(style);
         if (iconSize.isValid()) {
             button->setIconSize(iconSize);
@@ -610,13 +673,96 @@ void MainWindow::setupToolbar() {
     navLayout->setContentsMargins(0, 0, 0, 0);
     navLayout->setSpacing(12);
 
-    navLayout->addWidget(makeNavButton(m_liveTelemetryAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_dashboardAction, navContainer));
-    navLayout->addWidget(makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonIconOnly, u"iconButton"_s, QSize(44, 44)));
+    m_liveNavButton = makeNavButton(m_liveTelemetryAction, navContainer);
+    m_dashboardNavButton = makeNavButton(m_dashboardAction, navContainer);
+    m_settingsNavButton = makeNavButton(
+        m_openSettingsAction,
+        navContainer,
+        Qt::ToolButtonIconOnly,
+        u"iconButton"_s,
+        QSize(44, 44));
+    navLayout->addWidget(m_liveNavButton);
+    navLayout->addWidget(m_dashboardNavButton);
+    navLayout->addWidget(m_settingsNavButton);
 
     contentLayout->addWidget(navContainer);
 
     toolbar->addWidget(content);
+    updateToolbarLayout();
+}
+
+void MainWindow::resizeEvent(QResizeEvent *event) {
+    QMainWindow::resizeEvent(event);
+    updateToolbarLayout();
+}
+
+void MainWindow::updateToolbarLayout() {
+    if (!m_missionToolbar) {
+        return;
+    }
+
+    constexpr int kCompactWidth = 900;
+    constexpr int kNarrowWidth = 540;
+    const int toolbarWidth = width();
+    const int nextMode = toolbarWidth < kNarrowWidth
+        ? 2
+        : (toolbarWidth < kCompactWidth ? 1 : 0);
+    const bool modeChanged = nextMode != m_toolbarLayoutMode;
+    m_toolbarLayoutMode = nextMode;
+
+    const bool compact = nextMode >= 1;
+    const bool narrow = nextMode >= 2;
+    m_missionToolbar->setProperty("compact", compact);
+    m_missionToolbar->setProperty("narrow", narrow);
+
+    if (m_missionMetaLabel) {
+        m_missionMetaLabel->setVisible(!compact);
+    }
+    if (m_brandBlock) {
+        m_brandBlock->setVisible(!narrow);
+    }
+    if (m_liveNavButton) {
+        m_liveNavButton->setText(compact ? u"Live"_s : m_liveTelemetryAction->text());
+    }
+    if (m_dashboardNavButton) {
+        m_dashboardNavButton->setText(compact ? u"Replay"_s : m_dashboardAction->text());
+    }
+    if (m_toolbarContent && m_toolbarContent->layout()) {
+        m_toolbarContent->layout()->setSpacing(compact ? Theme::kSpaceBase : Theme::kSpaceXl);
+    }
+    if (m_connectionPageLabel) {
+        m_connectionPageLabel->setMinimumWidth(compact ? 0 : 200);
+        m_connectionPageLabel->setVisible(!narrow);
+    }
+
+    if (modeChanged) {
+        // Dynamic QSS properties require repolishing after a mode transition.
+        m_missionToolbar->setStyleSheet(buildToolbarStyleSheet());
+    }
+}
+
+void MainWindow::updateSettingsIcon() {
+    if (!m_openSettingsAction) {
+        return;
+    }
+
+    QIcon settingsIcon;
+    settingsIcon.addFile(
+        settingsIconResource(Theme::kBgPanel()),
+        QSize(),
+        QIcon::Normal,
+        QIcon::Off);
+    settingsIcon.addFile(
+        settingsIconResource(Theme::kBgButton()),
+        QSize(),
+        QIcon::Normal,
+        QIcon::On);
+    m_openSettingsAction->setIcon(settingsIcon);
+
+    if (m_settingsWindow) {
+        m_settingsWindow->setWindowIcon(
+            QIcon(settingsIconResource(Theme::kBgBase())));
+    }
 }
 
 void MainWindow::setupConnectionBar() {
@@ -656,7 +802,7 @@ void MainWindow::setupConnectionBar() {
     connect(m_fakeTransmissionBtn, &QPushButton::clicked, this, &MainWindow::onToggleFakeTransmission);
 
     m_connectionBar->setStyleSheet(buildActionBarStyleSheet());
-
+    updateToolbarLayout();
 }
 
 void MainWindow::updateBreadcrumb(const QString &context) {
@@ -769,7 +915,8 @@ void MainWindow::openSettingsWindow() {
         m_settingsWindow = new SettingsPage();
         m_settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
         m_settingsWindow->setWindowTitle(u"CosmoSoft Settings"_s);
-        m_settingsWindow->setWindowIcon(QIcon(u":/icons/settings_button.png"_s));
+        m_settingsWindow->setWindowIcon(
+            QIcon(settingsIconResource(Theme::kBgBase())));
         m_settingsWindow->resize(640, 560);
 
         connect(m_settingsWindow, &QObject::destroyed, this, [this]() {
@@ -1144,23 +1291,21 @@ void MainWindow::updateBrandShadowColor() {
     if (!m_brandShadow) {
         return;
     }
-    const bool lightBg = QColor(Theme::kBgBase()).lightness() > 128;
-    m_brandShadow->setColor(lightBg ? QColor(0, 0, 0, 100) : QColor(0, 0, 0, 160));
+    const QColor toolbarSurface(Theme::kBgPanel());
+    const bool lightBackground = toolbarSurface.isValid()
+        && relativeLuminance(toolbarSurface) > 0.5;
+    QColor shadowColor(lightBackground
+                           ? Theme::kTextPrimary()
+                           : Theme::kBgDark());
+    if (!shadowColor.isValid()) {
+        shadowColor = QColor(Theme::kBorderPanel());
+    }
+    shadowColor.setAlpha(lightBackground ? 110 : 175);
+    m_brandShadow->setColor(shadowColor);
 }
 
 void MainWindow::onThemeChanged() {
-    if (m_openSettingsAction) {
-        const QString themeId = cosmo::ThemeManager::instance().current().id;
-        const bool isDark = themeId.contains(u"dark"_s, Qt::CaseInsensitive);
-        QIcon settingsIcon;
-        settingsIcon.addFile(
-            isDark ? u":/icons/settings_button.png"_s : u":/icons/settings_button_black.png"_s,
-            QSize(), QIcon::Normal, QIcon::Off);
-        settingsIcon.addFile(
-            isDark ? u":/icons/settings_button_black.png"_s : u":/icons/settings_button.png"_s,
-            QSize(), QIcon::Normal, QIcon::On);
-        m_openSettingsAction->setIcon(settingsIcon);
-    }
+    updateSettingsIcon();
 
     updateBrandShadowColor();
 

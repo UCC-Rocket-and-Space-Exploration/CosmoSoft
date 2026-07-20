@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'none'; base-uri 'none'; object-src 'none'; script-src 'self' qrc:; style-src 'self' qrc:; img-src 'self' qrc: data: blob: https://a.basemaps.cartocdn.com https://b.basemaps.cartocdn.com https://c.basemaps.cartocdn.com https://d.basemaps.cartocdn.com https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/ https://s3.amazonaws.com/elevation-tiles-prod/terrarium/; connect-src 'none'; font-src 'self' qrc:; media-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'; form-action 'none'">
 <title>CosmoSoft Flight Map</title>
@@ -14,8 +14,8 @@
 <body>
 
 <div id="mapContainer">
-  <div id="map" role="application" aria-label="Interactive two-dimensional flight map"></div>
-  <div id="view3d" role="application" aria-label="Interactive three-dimensional flight view"></div>
+  <div id="map" role="region" aria-label="Interactive two-dimensional flight map"></div>
+  <div id="view3d" role="region" aria-label="Interactive three-dimensional flight view"></div>
 </div>
 <div id="altProfile"><canvas id="altCanvas" role="img" aria-label="Altitude profile for the loaded flight"></canvas></div>
 
@@ -31,7 +31,7 @@
     <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
   </svg>
 </button>
-<button type="button" id="btnFit" class="map-btn" title="Fit to full path">Fit</button>
+<button type="button" id="btnFit" class="map-btn" title="Fit to full path" aria-label="Fit full flight path">Fit</button>
 <button type="button" id="btnFollow" class="map-btn" title="Auto-follow rocket" aria-label="Auto-follow rocket" aria-pressed="false">F</button>
 <button type="button" id="btnZoomIn" class="map-btn" title="Zoom in" aria-label="Zoom in">+</button>
 <button type="button" id="btnZoomOut" class="map-btn" title="Zoom out" aria-label="Zoom out">&minus;</button>
@@ -54,8 +54,8 @@
   <button type="button" class="ls-btn" id="g3dSat" aria-pressed="false">Satellite</button>
 </div>
 
-<div id="statsOverlay" role="status" aria-live="polite"></div>
-<div id="info3d" role="status" aria-live="polite"></div>
+<div id="statsOverlay" role="region" aria-label="Current flight position statistics" aria-live="off"></div>
+<div id="info3d" role="region" aria-label="Three-dimensional map status" aria-live="off"></div>
 <div id="providerAttribution" aria-label="Map data attribution"></div>
 
 <script type="module" src="qrc:///map/map3d.js"></script>

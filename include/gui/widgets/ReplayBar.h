@@ -28,7 +28,9 @@ class FlightPreviewCache;
 }
 
 class QComboBox;
+class QBoxLayout;
 class QLabel;
+class QResizeEvent;
 class QSlider;
 class QToolButton;
 
@@ -66,6 +68,10 @@ signals:
     /** Emitted when the slider or step buttons change the replay position. */
     void trailLengthChanged(int trailLength);
 
+protected:
+    /** @brief Reflows transport controls when the available width changes. */
+    void resizeEvent(QResizeEvent *event) override;
+
 private slots:
     void applyThemeStyleSheet();
     void onPlaybackStarted();
@@ -78,6 +84,7 @@ private slots:
 
 private:
     void buildUi();
+    void updateResponsiveLayout();
     void updateLabels();
     void syncTransportChrome();
 
@@ -92,6 +99,7 @@ private:
     // UI containers
     QFrame *m_navButtonGroup = nullptr;
     QLabel *m_statusPill     = nullptr;
+    QBoxLayout *m_transportLayout = nullptr;
 
     // Transport widgets
     QToolButton *m_playPauseBtn        = nullptr;

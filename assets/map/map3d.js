@@ -65,6 +65,37 @@ function fmtAlt(m){return m>=1000?(m/1000).toFixed(1)+" km":m.toFixed(0)+" m";}
 function fmtDist(m){return m>=1000?(m/1000).toFixed(2)+" km":m.toFixed(0)+" m";}
 function sampleIdx(indices, i){return Number.isFinite(indices[i])?indices[i]:i;}
 
+function parseHexColor(color) {
+  const match = /^#([0-9a-f]{6})$/i.exec(String(color || ""));
+  if (!match) return null;
+  const value = Number.parseInt(match[1], 16);
+  return {r:(value>>16)&255,g:(value>>8)&255,b:value&255};
+}
+
+function colorWithAlpha(color, alpha, fallback) {
+  const rgb = parseHexColor(color);
+  return rgb ? `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})` : fallback;
+}
+
+function relativeLuminance(color) {
+  const rgb = parseHexColor(color);
+  if (!rgb) return null;
+  const linear = value => {
+    const channel = value / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126*linear(rgb.r)+0.7152*linear(rgb.g)+0.0722*linear(rgb.b);
+}
+
+function higherContrastText(background, first, second) {
+  const bg = relativeLuminance(background);
+  const a = relativeLuminance(first);
+  const b = relativeLuminance(second);
+  if (bg === null || a === null || b === null) return first || second;
+  const ratio = value => (Math.max(bg,value)+0.05)/(Math.min(bg,value)+0.05);
+  return ratio(a) >= ratio(b) ? first : second;
+}
+
 function cappedPositions(length, budget) {
   if (length <= 0 || budget <= 0) return [];
   const count = Math.min(length, budget);
@@ -101,14 +132,16 @@ function cap3DSeries() {
 }
 
 function setFollowing(enabled, notifyBridge) {
-  following = !!enabled;
+  const nextFollowing = !!enabled;
+  const changed = following !== nextFollowing;
+  following = nextFollowing;
   const btn = document.getElementById("btnFollow");
   if (btn) {
     btn.classList.toggle("active", following);
     btn.setAttribute("aria-pressed", String(following));
   }
   if (following) window.centerOnCurrent();
-  if (bridge && notifyBridge && typeof bridge.onFollowChanged === "function") {
+  if (changed && bridge && notifyBridge && typeof bridge.onFollowChanged === "function") {
     bridge.onFollowChanged(following);
   }
 }
@@ -219,16 +252,18 @@ function apply3DTheme() {
   const bg = currentThemePalette?.bg_dark || currentThemePalette?.bg_base || (isDark ? "#080a10" : "#f4f7fb");
   const fog = currentThemePalette?.bg_dark || currentThemePalette?.bg_base || (isDark ? "#080a10" : "#f4f7fb");
   const trail = currentThemePalette?.accent_link || (isDark ? 0x64c8ff : 0x0057b8);
-  const ghost = isDark ? 0x3a5a78 : 0x4a6478;
-  const drop = isDark ? 0x64c8ff : 0x0b63ce;
-  const rocket = isDark ? 0xff8a3d : 0xd44818;
-  const rocketEmissive = isDark ? 0x993300 : 0x8f220d;
-  const launch = isDark ? 0x44cc77 : 0x12864a;
-  const launchEmissive = isDark ? 0x226633 : 0x0b4f2d;
+  const ghost = currentThemePalette?.border_light || (isDark ? 0x3a5a78 : 0x4a6478);
+  const drop = currentThemePalette?.info || currentThemePalette?.accent_link || (isDark ? 0x64c8ff : 0x0b63ce);
+  const rocket = currentThemePalette?.warning || currentThemePalette?.danger || (isDark ? 0xff8a3d : 0xd44818);
+  const rocketEmissive = rocket;
+  const launch = currentThemePalette?.success || (isDark ? 0x44cc77 : 0x12864a);
+  const launchEmissive = launch;
 
   scene3d.background = new THREE.Color(bg);
   if (scene3d.fog) scene3d.fog.color.set(fog);
-  setGridColors(isDark ? 0x223044 : 0x75889a, isDark ? 0x121a28 : 0xc2ccd6);
+  setGridColors(
+    currentThemePalette?.border_default || (isDark ? 0x223044 : 0x75889a),
+    currentThemePalette?.border_subtle || (isDark ? 0x121a28 : 0xc2ccd6));
   if (groundMesh3d && ground3dMode === "box") {
     groundMesh3d.material.color.set(currentThemePalette?.bg_panel || (isDark ? 0x0a0e16 : 0xe8edf2));
   } else if (groundMesh3d?.material?.color) {
@@ -323,8 +358,13 @@ function switchLayer(name, force = false) {
       ? "brightness(0.7) contrast(1.1) saturate(0.5)" : "none";
   }
 
-  const pathColor = (name === "map") ? "rgba(60,100,140,0.35)" : "rgba(20,60,100,0.5)";
-  const trailColor = (name === "sat") ? "#ff9944" : "#4fa5de";
+  const pathColor = colorWithAlpha(
+    currentThemePalette?.info || currentThemePalette?.border_light,
+    name === "map" ? 0.42 : 0.62,
+    name === "map" ? "rgba(60,100,140,0.42)" : "rgba(20,60,100,0.62)");
+  const trailColor = name === "sat"
+    ? (currentThemePalette?.warning || "#ff9944")
+    : (currentThemePalette?.accent_link || "#4fa5de");
   if (pathLine) pathLine.setStyle({ color: pathColor });
   if (trailLine) trailLine.setStyle({ color: trailColor });
 
@@ -754,7 +794,7 @@ async function buildGroundTexture(tileType, generation) {
   canvas.height = ch;
   const context = canvas.getContext("2d");
   if (!context) return false;
-  context.fillStyle = "#0a0e16";
+  context.fillStyle = currentThemePalette?.bg_dark || currentThemePalette?.bg_base || "#0a0e16";
   context.fillRect(0, 0, cw, ch);
 
   const urlFn = TILE_URLS[tileType] || TILE_URLS.sat;
@@ -1027,14 +1067,16 @@ function drawAltProfile() {
   for (let i=0;i<n;i++){minA=Math.min(minA,allAlt[i]);maxA=Math.max(maxA,allAlt[i]);}
   const range=Math.max(maxA-minA,1), pad=6;
 
-  const bgFill = currentThemeDark ? "rgba(60,100,140,0.15)" : "rgba(40,80,140,0.10)";
-  const gradTop = currentThemeDark ? "rgba(79,165,222,0.45)" : "rgba(30,120,200,0.35)";
-  const gradBot = currentThemeDark ? "rgba(79,165,222,0.05)" : "rgba(30,120,200,0.03)";
-  const lineCol = currentThemeDark ? "#4fa5de" : "#1a73b8";
-  const dotFill = currentThemeDark ? "#ff7a30" : "#d05020";
-  const dotStroke = currentThemeDark ? "#ffaa55" : "#ff7040";
-  const labelDim = currentThemeDark ? "#6a7a8a" : "#6b7580";
-  const labelBright = currentThemeDark ? "#e8ecf0" : "#1a1a1a";
+  const accent = currentThemePalette?.accent_link;
+  const rocket = currentThemePalette?.warning || currentThemePalette?.danger;
+  const bgFill = colorWithAlpha(accent,0.15,currentThemeDark?"rgba(60,100,140,0.15)":"rgba(40,80,140,0.10)");
+  const gradTop = colorWithAlpha(accent,0.45,currentThemeDark?"rgba(79,165,222,0.45)":"rgba(30,120,200,0.35)");
+  const gradBot = colorWithAlpha(accent,0.05,currentThemeDark?"rgba(79,165,222,0.05)":"rgba(30,120,200,0.03)");
+  const lineCol = accent || (currentThemeDark?"#4fa5de":"#1a73b8");
+  const dotFill = rocket || (currentThemeDark?"#ff7a30":"#d05020");
+  const dotStroke = currentThemePalette?.danger || (currentThemeDark?"#ffaa55":"#ff7040");
+  const labelDim = currentThemePalette?.text_dim || (currentThemeDark?"#6a7a8a":"#6b7580");
+  const labelBright = currentThemePalette?.text_primary || (currentThemeDark?"#e8ecf0":"#1a1a1a");
 
   ctx.beginPath(); ctx.moveTo(0,H);
   for (let i=0;i<n;i++){ctx.lineTo((i/(n-1))*W, H-pad-((allAlt[i]-minA)/range)*(H-pad*2));}
@@ -1124,30 +1166,6 @@ function sendStats(vp,va,total){
 
 let lastStatsText = "";
 
-function handlePageZoomWheel(e) {
-  if (!e.ctrlKey && !e.metaKey) return;
-  e.preventDefault();
-  e.stopPropagation();
-
-  if (activeView === "2d" && map) {
-    const nextZoom = map.getZoom() + (e.deltaY < 0 ? 1 : -1);
-    map.setZoomAround(map.mouseEventToContainerPoint(e), nextZoom);
-    return;
-  }
-
-  if (activeView === "3d") {
-    set3DCameraDistance(e.deltaY < 0 ? 0.9 : 1.1);
-  }
-}
-
-function preventBrowserPageZoomShortcut(e) {
-  if (!e.ctrlKey && !e.metaKey) return false;
-  if (!["0", "=", "+", "-", "_"].includes(e.key)) return false;
-  e.preventDefault();
-  e.stopPropagation();
-  return true;
-}
-
 function updateStatsOverlay(vp,va,total){
   const el=document.getElementById("statsOverlay");
   if(vp.length===0){el.style.display="none";lastStatsText="";return;}
@@ -1165,16 +1183,7 @@ function updateStatsOverlay(vp,va,total){
   el.style.display="block";
 }
 
-document.addEventListener("wheel", handlePageZoomWheel, { capture: true, passive: false });
-["gesturestart", "gesturechange", "gestureend"].forEach(type => {
-  document.addEventListener(type, e => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, { capture: true, passive: false });
-});
-
 document.addEventListener("keydown", function(e) {
-  if (preventBrowserPageZoomShortcut(e)) return;
   if ((e.ctrlKey || e.metaKey) && e.key === "c" && !window.getSelection().toString() && lastStatsText) {
     navigator.clipboard.writeText(lastStatsText).catch(()=>{});
   }
@@ -1366,18 +1375,25 @@ window.applyTheme = function(paletteJson) {
   setThemeVar("--bg-dark", p.bg_dark || p.bg_base);
   setThemeVar("--text-dim", p.text_dim);
   setThemeVar("--border", p.border_subtle);
-  setThemeVar("--border-strong", p.accent_link || p.border_subtle);
+  setThemeVar("--border-strong", p.border_light || p.accent_link || p.border_subtle);
   setThemeVar("--divider", p.border_subtle);
   setThemeVar("--accent", p.accent_link);
+  setThemeVar("--focus", p.focus_ring || p.accent_link);
   setThemeVar("--text-primary", p.text_primary);
   setThemeVar("--text-muted", p.text_muted);
   setThemeVar("--control-bg", p.bg_panel || p.bg_dark || p.bg_base);
-  setThemeVar("--control-hover", p.bg_base || p.bg_panel);
+  setThemeVar("--control-hover", p.btn_hover || p.bg_base || p.bg_panel);
   setThemeVar("--active-bg", p.accent_link);
-  setThemeVar("--active-text", isDark ? p.text_primary : p.bg_base);
+  setThemeVar("--active-text", higherContrastText(p.accent_link,p.text_primary,p.bg_base));
   setThemeVar("--alt-bg", p.bg_dark || p.bg_base);
   setThemeVar("--stats-bg", p.bg_panel || p.bg_dark || p.bg_base);
   setThemeVar("--subtle-line", p.border_subtle);
+  setThemeVar("--path", colorWithAlpha(p.info || p.border_light,0.5,"rgba(60,100,140,0.5)"));
+  setThemeVar("--trail", p.accent_link);
+  setThemeVar("--rocket", p.warning || p.danger);
+  setThemeVar("--rocket-border", p.danger || p.warning);
+  setThemeVar("--launch", p.success);
+  setThemeVar("--launch-border", p.success);
 
   if (map) switchLayer(activeLayer, true);
 
