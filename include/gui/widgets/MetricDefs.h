@@ -13,6 +13,7 @@
 #include <QString>
 
 #include <cmath>
+#include <limits>
 
 #include "domain/FlightSample.h"
 #include "gui/Theme.h"
@@ -162,14 +163,43 @@ inline QString formatIntGrouped(int v)
     return QLocale::system().toString(v);
 }
 
+/**
+ * @brief Computes a non-negative replay duration without overflowing signed timestamps.
+ * @param firstTimestampMs Timestamp of the first sample, in milliseconds.
+ * @param lastTimestampMs Timestamp of the last sample, in milliseconds.
+ * @return Elapsed seconds, or zero when the timestamps are not increasing.
+ */
+inline double replayDurationSeconds(long firstTimestampMs, long lastTimestampMs)
+{
+    const long double milliseconds = static_cast<long double>(lastTimestampMs)
+        - static_cast<long double>(firstTimestampMs);
+    if (milliseconds <= 0.0L) {
+        return 0.0;
+    }
+    return static_cast<double>(milliseconds / 1000.0L);
+}
+
 /** Formats a duration in seconds as m:ss or h:mm:ss. */
 inline QString formatReplayClockHms(double sec)
 {
     if (!std::isfinite(sec) || sec < 0.0) return QString(u"\u2014");
-    const int total = static_cast<int>(std::floor(sec + 0.5));
-    const int h = total / 3600;
-    const int m = (total % 3600) / 60;
-    const int s = total % 60;
+
+    // Converting an out-of-range floating-point value to an integer is
+    // undefined behaviour.  2^63 is exactly representable as a double, so
+    // every representable non-negative value below this bound fits qint64.
+    const double qint64UpperExclusive =
+        std::ldexp(1.0, std::numeric_limits<qint64>::digits);
+    if (sec >= qint64UpperExclusive)
+        return QStringLiteral("duration too large");
+
+    const double rounded = std::floor(sec + 0.5);
+    if (rounded >= qint64UpperExclusive)
+        return QStringLiteral("duration too large");
+
+    const qint64 total = static_cast<qint64>(rounded);
+    const qint64 h = total / qint64{3600};
+    const qint64 m = (total % qint64{3600}) / qint64{60};
+    const qint64 s = total % qint64{60};
     if (h > 0)
         return QStringLiteral("%1:%2:%3").arg(h)
             .arg(m, 2, 10, QLatin1Char('0'))

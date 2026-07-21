@@ -22,6 +22,7 @@
 #include <QVector>
 #include <QVariantMap>
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -135,6 +136,7 @@ private:
     void sendPendingTrailLength();
     void scheduleMapUpdate();
     void compactLiveHistory();
+    void rebaseLiveHistoryIndices();
     void pushUnitSystemToMap();
 
 protected:
@@ -171,6 +173,12 @@ private:
     int m_lastPublishedLiveIndex = -1;
     int m_publishedLive3DPointCount = 0;
     int m_liveTotalSamples = 0;
+    std::uint64_t m_liveReceivedSamples = 0;
+    std::uint64_t m_liveValidGpsSamples = 0;
+    double m_liveCumulativePathLength = 0.0;
+    double m_lastLiveLatitude = 0.0;
+    double m_lastLiveLongitude = 0.0;
+    bool m_haveLastLiveCoordinate = false;
 
     std::vector<IndexedLiveSample> m_liveSamples;
 };

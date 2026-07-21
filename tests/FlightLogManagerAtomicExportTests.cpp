@@ -165,3 +165,26 @@ TEST_CASE("FlightLogManager discards serialized output when the final commit fai
         QDir::AllEntries | QDir::NoDotAndDotDot);
     REQUIRE(parentEntries == QStringList{QStringLiteral("flight.csv")});
 }
+
+TEST_CASE("FlightLogManager bounds live recording and accepts samples after clear",
+          "[persistence][recording]") {
+    FlightLogManager manager(2U);
+    FlightSample first;
+    first.timestamp = 1;
+    FlightSample second;
+    second.timestamp = 2;
+    FlightSample overflow;
+    overflow.timestamp = 3;
+
+    REQUIRE(manager.appendSample(first));
+    REQUIRE(manager.appendSample(second));
+    REQUIRE_FALSE(manager.appendSample(overflow));
+    REQUIRE(manager.session().samples.size() == 2U);
+    REQUIRE(manager.session().samples.back().timestamp == 2);
+
+    manager.clear();
+    REQUIRE(manager.session().samples.empty());
+    REQUIRE(manager.appendSample(overflow));
+    REQUIRE(manager.session().samples.size() == 1U);
+    REQUIRE(manager.session().samples.front().timestamp == 3);
+}

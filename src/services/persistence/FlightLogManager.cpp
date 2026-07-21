@@ -32,15 +32,19 @@ void writeCsvSample(QTextStream &output, const FlightSample &sample) {
 } // namespace
 
 void FlightLogManager::clear() {
-    m_session.samples.clear();
+    m_session = FlightSession{};
 }
 
 void FlightLogManager::setOutputPath(std::string path) {
     m_fileName = std::move(path);
 }
 
-void FlightLogManager::appendSample(const FlightSample &sample) {
+bool FlightLogManager::appendSample(const FlightSample &sample) {
+    if (m_session.samples.size() >= m_maxSamples) {
+        return false;
+    }
     m_session.samples.push_back(sample);
+    return true;
 }
 
 void FlightLogManager::setSession(const FlightSession &session) {

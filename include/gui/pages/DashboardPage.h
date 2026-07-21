@@ -47,10 +47,9 @@ class TracesPanel;
  *  in m_liveSamples (capped at kMaxLiveBufferSamples) and the chart is rebuilt
  *  at most 20 times per second by the shared render scheduler.
  *
- *  **Replay mode** — A FlightSession is loaded via setReplaySession() and the
- *  visible trail is controlled by setReplayTrailLength() which is called by
- *  MainWindow on every FlightReplayController tick. Chart work is capped at
- *  ≈ 30 fps and deferred while its view is hidden.
+ *  **Replay mode** — A FlightSession is loaded via setReplaySession(); ReplayBar
+ *  forwards each confirmed controller position to the dashboard. Chart work is
+ *  capped at ≈ 30 fps and deferred while its view is hidden.
  *
  * When the sample count exceeds kMaxChartDisplayPoints the chart uses LTTB
  * reduction; the mapping from display-point index back to original sample is
@@ -86,7 +85,7 @@ public:
 
     /**
      * Updates the visible replay trail to @p trailLength samples.
-     * Called by MainWindow on every FlightReplayController::positionChanged signal.
+     * Also synchronizes the ReplayBar when an external caller changes the trail.
      */
     void setReplayTrailLength(int trailLength);
 
@@ -211,7 +210,9 @@ private:
     std::vector<QLineSeries *> m_markerSeries;
     void addEventMarker(double timeSec, const QString &name);
     void clearEventMarkers();
-    void redrawEventMarkers();
+    void applyEventMarkerTheme(QLineSeries *series) const;
+    void refreshEventMarkerTheme();
+    void updateEventMarkerGeometry();
 
     // ── Bounded chart scheduling ─────────────────────────────────────────────
     static constexpr int kLiveChartIntervalMs = 50;

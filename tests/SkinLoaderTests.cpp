@@ -17,8 +17,11 @@
 
 #include <algorithm>
 #include <array>
+#include <barrier>
 #include <cmath>
+#include <cstddef>
 #include <optional>
+#include <thread>
 
 #include <zlib.h>
 
@@ -262,6 +265,59 @@ TEST_CASE("SkinLoader imports and replaces a validated archive", "[gui][skin]") 
         updated_archive, destination, true);
     REQUIRE(replaced.succeeded());
     REQUIRE(replaced.theme->name == QStringLiteral("Updated"));
+}
+
+TEST_CASE("SkinLoader serializes concurrent replacement imports", "[gui][skin][concurrency]") {
+    QTemporaryDir temporary;
+    REQUIRE(temporary.isValid());
+    const QString destination = QDir(temporary.path()).filePath(QStringLiteral("skins"));
+
+    const QString first_archive = writeArchive(
+        temporary,
+        QStringLiteral("Concurrent Skin.cosmo"),
+        {{QByteArrayLiteral("theme.json"), QByteArrayLiteral(R"({"name":"Initial"})")}});
+    const auto initial = cosmo::SkinLoader::importArchiveDetailed(first_archive, destination);
+    REQUIRE(initial.succeeded());
+
+    // These different filenames normalize to the same installed directory.
+    writeArchive(
+        temporary,
+        QStringLiteral("Concurrent Skin.cosmo"),
+        {{QByteArrayLiteral("theme.json"), QByteArrayLiteral(R"({"name":"First"})")}});
+    const QString second_archive = writeArchive(
+        temporary,
+        QStringLiteral("Concurrent@Skin.cosmo"),
+        {{QByteArrayLiteral("theme.json"), QByteArrayLiteral(R"({"name":"Second"})")}});
+
+    std::array<cosmo::SkinImportResult, 2> results;
+    std::barrier start_line(static_cast<std::ptrdiff_t>(3));
+    std::jthread first([&]() {
+        start_line.arrive_and_wait();
+        results[0] = cosmo::SkinLoader::importArchiveDetailed(
+            first_archive, destination, true);
+    });
+    std::jthread second([&]() {
+        start_line.arrive_and_wait();
+        results[1] = cosmo::SkinLoader::importArchiveDetailed(
+            second_archive, destination, true);
+    });
+    start_line.arrive_and_wait();
+    first.join();
+    second.join();
+
+    REQUIRE(results[0].succeeded());
+    REQUIRE(results[1].succeeded());
+    REQUIRE(results[0].target_path == results[1].target_path);
+
+    const auto installed = cosmo::SkinLoader::loadFromDirectory(results[0].target_path);
+    REQUIRE(installed.has_value());
+    REQUIRE((installed->name == QStringLiteral("First")
+             || installed->name == QStringLiteral("Second")));
+
+    const QStringList transaction_artifacts = QDir(destination).entryList(
+        {QStringLiteral(".cosmoskin-import-*"), QStringLiteral(".cosmoskin-backup-*")},
+        QDir::Dirs | QDir::Hidden | QDir::NoDotAndDotDot);
+    REQUIRE(transaction_artifacts.isEmpty());
 }
 
 TEST_CASE("SkinLoader imports a standard deflated archive", "[gui][skin]") {

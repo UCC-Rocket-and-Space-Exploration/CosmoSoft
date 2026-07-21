@@ -17,10 +17,9 @@
  *  - Live mode  — samples arrive in batches from the serial decoder worker.
  *    They are stored in m_liveSamples (bounded to kMaxLiveBufferSamples) and
  *    chart redraws are capped at 20 Hz by the shared render scheduler.
- *  - Replay mode — a FlightSession is set via setReplaySession(); the trail
- *    length (number of samples to show) is updated via setReplayTrailLength()
- *    on every controller tick. Chart updates are capped at 30 Hz so scrolling
- *    the scrubber stays smooth.
+ *  - Replay mode — a FlightSession is set via setReplaySession(); ReplayBar
+ *    forwards each confirmed controller position to update the visible trail.
+ *    Chart updates are capped at 30 Hz so scrolling the scrubber stays smooth.
  *
  * When more than kMaxChartDisplayPoints samples are present the chart uses
  * LTTB reduction (sampleIndicesForChartDisplay) to keep rendering fast.
@@ -296,16 +295,16 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     // ── Replay transport bar ─────────────────────────────────────────────────
     m_replayBar = new ReplayBar(m_replay, m_model, this);
     if (m_replay) {
-        connect(m_replay, &FlightReplayController::playbackPaused,   this, &DashboardPage::flushReplayChartRebuild);
+        connect(m_replay, &FlightReplayController::playbackPaused, this, [this] {
+            // A seek pauses before its confirmed position signal. Queue the
+            // flush so the old trail is never rebuilt immediately beforehand.
+            QTimer::singleShot(0, this, &DashboardPage::flushReplayChartRebuild);
+        });
         connect(m_replay, &FlightReplayController::playbackStopped,  this, &DashboardPage::flushReplayChartRebuild);
         connect(m_replay, &FlightReplayController::playbackFinished, this, &DashboardPage::flushReplayChartRebuild);
-        connect(m_replay, &FlightReplayController::positionChanged,  this, [this](int len) {
-            applyReplayControllerPosition(len);
-        });
     }
-    connect(m_replayBar, &ReplayBar::trailLengthChanged, this, [this](int len) {
-        applyReplayControllerPosition(len);
-    });
+    connect(m_replayBar, &ReplayBar::trailLengthChanged,
+            this, &DashboardPage::applyReplayControllerPosition);
 
     m_sessionInfoLabel = new QLabel(this);
     m_sessionInfoLabel->setWordWrap(true);
@@ -401,6 +400,8 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         m_lineSeries[static_cast<std::size_t>(i)]->attachAxis(m_axisX);
         m_lineSeries[static_cast<std::size_t>(i)]->attachAxis(m_axisY);
     }
+    connect(m_axisY, &QValueAxis::rangeChanged, this,
+            [this](qreal, qreal) { updateEventMarkerGeometry(); });
 
     applyChartTheme();
 
@@ -630,6 +631,7 @@ void DashboardPage::applyChartTheme() {
         series->setColor(color);
         series->setPen(QPen(color, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     }
+    refreshEventMarkerTheme();
 
     m_chart->setBackgroundBrush(bg);
     m_chart->setBackgroundPen(Qt::NoPen);
@@ -1280,7 +1282,6 @@ void DashboardPage::applyReplayControllerPosition(int trailLength) {
     if (!m_followToggle || m_followToggle->isChecked())
         m_preserveChartAxes = false;
     m_lastReplayTrailLength = trailLength;
-    if (m_replayBar) m_replayBar->setTrailLength(trailLength);
     if (m_mapWidget) m_mapWidget->setReplayTrailLength(trailLength);
     if (m_replay && m_replay->isPlaying()) {
         if (m_preview) {
@@ -1318,13 +1319,18 @@ void DashboardPage::scheduleReplayChartRebuild() {
  * without waiting for the timer to fire.
  */
 void DashboardPage::flushReplayChartRebuild() {
-    if (m_model && m_model->replayMode()) {
-        m_replayChartDirty = true;
-        processScheduledUpdates(true);
+    if ((m_replay && m_replay->isPlaying())
+        || !m_model || !m_model->replayMode()
+        || (!m_replayChartDirty
+            && m_replayChartBuiltTrailLength == m_lastReplayTrailLength)) {
+        return;
     }
+    m_replayChartDirty = true;
+    processScheduledUpdates(true);
 }
 
 void DashboardPage::setReplayTrailLength(int trailLength) {
+    if (m_replayBar) m_replayBar->setTrailLength(trailLength);
     applyReplayControllerPosition(trailLength);
 }
 
@@ -1912,8 +1918,23 @@ void DashboardPage::hideChartLoadingIndicator() {
 }
 
 void DashboardPage::addEventMarker(double timeSec, const QString &name) {
-    m_eventMarkers.push_back({timeSec, name});
-    redrawEventMarkers();
+    const EventMarker marker{timeSec, name};
+    m_eventMarkers.push_back(marker);
+
+    if (!m_chart || !m_axisX || !m_axisY) {
+        return;
+    }
+
+    auto *line = new QLineSeries();
+    line->setName(marker.name);
+    line->append(marker.timeSec, m_axisY->min());
+    line->append(marker.timeSec, m_axisY->max());
+    applyEventMarkerTheme(line);
+    m_chart->addSeries(line);
+    line->attachAxis(m_axisX);
+    line->attachAxis(m_axisY);
+    m_markerSeries.push_back(line);
+    if (m_chartView) m_chartView->invalidateHoverSeriesCache();
 }
 
 void DashboardPage::clearEventMarkers() {
@@ -1926,29 +1947,40 @@ void DashboardPage::clearEventMarkers() {
     if (m_chartView) m_chartView->invalidateHoverSeriesCache();
 }
 
-void DashboardPage::redrawEventMarkers() {
-    for (auto *s : m_markerSeries) {
-        if (m_chart) m_chart->removeSeries(s);
-        delete s;
+void DashboardPage::applyEventMarkerTheme(QLineSeries *series) const {
+    if (!series) {
+        return;
     }
-    m_markerSeries.clear();
+    const QColor markerColor(Theme::kAccentLink());
+    series->setPen(QPen(markerColor, 2, Qt::DashLine));
+}
 
-    if (!m_chart || !m_axisX || !m_axisY) return;
-
-    for (const auto &marker : m_eventMarkers) {
-        auto *line = new QLineSeries();
-        line->setName(marker.name);
-        QColor markerColor(Theme::kWarning());
-        markerColor.setAlpha(180);
-        line->setPen(QPen(markerColor, 2, Qt::DashLine));
-        line->append(marker.timeSec, m_axisY->min());
-        line->append(marker.timeSec, m_axisY->max());
-        m_chart->addSeries(line);
-        line->attachAxis(m_axisX);
-        line->attachAxis(m_axisY);
-        m_markerSeries.push_back(line);
+void DashboardPage::refreshEventMarkerTheme() {
+    for (QLineSeries *series : m_markerSeries) {
+        applyEventMarkerTheme(series);
     }
-    if (m_chartView) m_chartView->invalidateHoverSeriesCache();
+}
+
+void DashboardPage::updateEventMarkerGeometry() {
+    if (!m_axisY) {
+        return;
+    }
+
+    const std::size_t markerCount = std::min(
+        m_eventMarkers.size(), m_markerSeries.size());
+    for (std::size_t index = 0; index < markerCount; ++index) {
+        QLineSeries *series = m_markerSeries[index];
+        if (!series) {
+            continue;
+        }
+        const double timeSec = m_eventMarkers[index].timeSec;
+        series->replace(QList<QPointF>{
+            QPointF(timeSec, m_axisY->min()),
+            QPointF(timeSec, m_axisY->max())});
+    }
+    if (markerCount > 0 && m_chartView) {
+        m_chartView->invalidateHoverSeriesCache();
+    }
 }
 
 void DashboardPage::showEvent(QShowEvent *event) {

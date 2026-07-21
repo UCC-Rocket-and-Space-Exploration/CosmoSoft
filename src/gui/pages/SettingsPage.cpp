@@ -9,6 +9,7 @@
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QDir>
 #include <QFileDialog>
 #include <QFont>
 #include <QFormLayout>
@@ -133,17 +134,7 @@ QWidget *SettingsPage::buildAppearanceSection() {
     m_skinCombo = new QComboBox(m_skinGroup);
     m_skinCombo->setAccessibleName(u"Active skin"_s);
     skinLabel->setBuddy(m_skinCombo);
-    const auto skins = cosmo::SkinLoader::discoverAll(cosmo::ThemeManager::skinsDirectory());
-    for (const auto &skin : skins) {
-        m_skinCombo->addItem(skin.name, skin.id);
-    }
-    const auto &active_id = cosmo::ThemeManager::instance().current().id;
-    for (int i = 0; i < m_skinCombo->count(); ++i) {
-        if (m_skinCombo->itemData(i).toString() == active_id) {
-            m_skinCombo->setCurrentIndex(i);
-            break;
-        }
-    }
+    refreshAvailableSkins(cosmo::ThemeManager::instance().current().id);
     connect(m_skinCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &SettingsPage::onSkinChanged);
     skinLayout->addWidget(m_skinCombo);
@@ -616,14 +607,61 @@ void SettingsPage::onDebugModeToggled(bool enabled) {
 }
 
 void SettingsPage::onSkinChanged(int index) {
+    if (!m_skinCombo || index < 0 || index >= m_skinCombo->count()) {
+        return;
+    }
+
     const auto skin_id = m_skinCombo->itemData(index).toString();
-    const auto skins = cosmo::SkinLoader::discoverAll(cosmo::ThemeManager::skinsDirectory());
-    for (const auto &skin : skins) {
+    for (const auto &skin : m_availableSkins) {
         if (skin.id == skin_id) {
-            cosmo::ThemeManager::instance().setActiveSkin(skin);
+            if (skin.builtin) {
+                cosmo::ThemeManager::instance().setActiveSkin(skin);
+                return;
+            }
+
+            // Preserve the previous tamper protection without rediscovering and
+            // decoding every installed skin on each combo-box selection.
+            const QString storage_name = skin.id.mid(QStringLiteral("custom:").size());
+            const QString skin_dir =
+                QDir(cosmo::ThemeManager::skinsDirectory()).filePath(storage_name);
+            auto validated_theme = cosmo::SkinLoader::loadFromDirectory(skin_dir);
+            if (validated_theme) {
+                validated_theme->id = skin.id;
+                cosmo::ThemeManager::instance().setActiveSkin(*validated_theme);
+            } else {
+                refreshAvailableSkins(cosmo::ThemeManager::instance().current().id);
+            }
             break;
         }
     }
+}
+
+void SettingsPage::refreshAvailableSkins(const QString &preferred_skin_id) {
+    m_availableSkins =
+        cosmo::SkinLoader::discoverAll(cosmo::ThemeManager::skinsDirectory());
+    if (!m_skinCombo) {
+        return;
+    }
+
+    QString selected_id = preferred_skin_id;
+    if (selected_id.isEmpty()) {
+        selected_id = m_skinCombo->currentData().toString();
+    }
+    if (selected_id.isEmpty()) {
+        selected_id = cosmo::ThemeManager::instance().current().id;
+    }
+
+    const QSignalBlocker blocker(m_skinCombo);
+    m_skinCombo->clear();
+    for (const auto &skin : m_availableSkins) {
+        m_skinCombo->addItem(skin.name, skin.id);
+    }
+
+    int selected_index = m_skinCombo->findData(selected_id);
+    if (selected_index < 0 && m_skinCombo->count() > 0) {
+        selected_index = 0;
+    }
+    m_skinCombo->setCurrentIndex(selected_index);
 }
 
 void SettingsPage::onImportSkin() {
@@ -679,18 +717,17 @@ void SettingsPage::startSkinImport(const QString &archive_path, bool replace_exi
         }
 
         const auto &theme = *result.theme;
-        int skin_index = m_skinCombo->findData(theme.id);
-        {
-            const QSignalBlocker blocker(m_skinCombo);
-            if (skin_index < 0) {
-                m_skinCombo->addItem(theme.name, theme.id);
-                skin_index = m_skinCombo->count() - 1;
-            } else {
-                m_skinCombo->setItemText(skin_index, theme.name);
-            }
-            m_skinCombo->setCurrentIndex(skin_index);
+        refreshAvailableSkins(theme.id);
+        const auto imported_theme = std::find_if(
+            m_availableSkins.cbegin(), m_availableSkins.cend(),
+            [&theme](const cosmo::CosmoTheme &available) {
+                return available.id == theme.id;
+            });
+        if (imported_theme != m_availableSkins.cend()) {
+            // Use the freshly rediscovered object. A later serialized import may
+            // already have replaced the same ID before this queued callback ran.
+            cosmo::ThemeManager::instance().setActiveSkin(*imported_theme);
         }
-        cosmo::ThemeManager::instance().setActiveSkin(theme);
     });
 
     watcher->setFuture(QtConcurrent::run(

@@ -25,7 +25,9 @@ first worksheet.
 CSV stream is decoded off the UI thread by `LineTelemetryDecodeWorker` and
 delivered to the model in bounded batches. Complete valid rows appear in the
 dashboard and Live Telemetry page. The binary `Framer` / `Parser` path remains
-reserved for the future hardware protocol.
+reserved for the future hardware protocol. The live export snapshot retains at
+most 1,000,000 samples; if that limit is reached, new samples remain visible
+and the Event Log reports that they are no longer retained for export.
 
 Serial discovery has platform-matched implementations: Linux device nodes
 (`ttyUSB`, `ttyACM`, `ttyS`), macOS callout/TTY nodes (`cu.*`, `tty.*`), and

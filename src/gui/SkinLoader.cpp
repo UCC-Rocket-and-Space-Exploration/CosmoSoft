@@ -12,6 +12,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMutex>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSet>
@@ -36,6 +37,16 @@ constexpr quint64 kMaxDecodedImagePixels = 20ULL * 1024ULL * 1024ULL;
 constexpr double kMaxTextureOpacity = 0.20;
 constexpr double kMinimumTraceColorDeltaE = 10.0;
 constexpr std::size_t kTraceColorCount = 9;
+
+QMutex &skinImportMutex() {
+    static QMutex mutex;
+    return mutex;
+}
+
+QRecursiveMutex &skinCatalogMutex() {
+    static QRecursiveMutex mutex;
+    return mutex;
+}
 
 void assignError(QString *error_message, const QString &message) {
     if (error_message) {
@@ -991,6 +1002,9 @@ std::optional<CosmoTheme> SkinLoader::loadBuiltin(const QString &resource_prefix
 
 std::optional<CosmoTheme> SkinLoader::loadFromDirectory(const QString &skin_dir)
 {
+    // Installed-skin reads share the process-wide transaction boundary with
+    // imports, so callers never observe a replacement between its two renames.
+    QMutexLocker transaction_lock(&skinCatalogMutex());
     const auto json_path = skin_dir + QStringLiteral("/theme.json");
     QFile f(json_path);
     if (!f.open(QIODevice::ReadOnly)) {
@@ -1037,6 +1051,12 @@ SkinImportResult SkinLoader::importArchiveDetailed(
     const QString &archive_path,
     const QString &dest_dir,
     bool replace_existing) {
+    // Settings windows are delete-on-close, but their QtConcurrent jobs keep
+    // running. Serialize the complete import operation at the process boundary
+    // so old and newly-opened windows cannot overlap replacement transactions.
+    // Archive validation may be expensive, so serialize it only against other
+    // import jobs. Installed-skin readers use the narrower catalogue lock below.
+    QMutexLocker import_lock(&skinImportMutex());
     SkinImportResult result;
 
     const QFileInfo archive_info(archive_path);
@@ -1156,6 +1176,9 @@ SkinImportResult SkinLoader::importArchiveDetailed(
         }
     }
 
+    // From this point through final verification, catalogue readers must see
+    // either the complete old installation or the complete replacement.
+    QMutexLocker catalog_lock(&skinCatalogMutex());
     const QFileInfo existing_target(target_dir);
     if (existing_target.exists() && !replace_existing) {
         result.status = SkinImportStatus::AlreadyExists;
@@ -1213,6 +1236,7 @@ SkinImportResult SkinLoader::importArchiveDetailed(
 
 QList<CosmoTheme> SkinLoader::discoverAll(const QString &custom_skins_dir)
 {
+    QMutexLocker transaction_lock(&skinCatalogMutex());
     QList<CosmoTheme> result;
 
     // Built-in skins

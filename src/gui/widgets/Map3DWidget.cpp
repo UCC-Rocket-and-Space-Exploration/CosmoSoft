@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <numbers>
 #include <utility>
 
 namespace {
@@ -119,6 +120,27 @@ bool isUsableMapPoint(const FlightSample &sample, double displayTime) {
     const double longitude = sample.coordinates.longitude;
     return isValidMapPoint(sample, displayTime)
         && (std::abs(latitude) >= 1.0e-9 || std::abs(longitude) >= 1.0e-9);
+}
+
+double horizontalDistanceMetres(
+    double firstLatitude,
+    double firstLongitude,
+    double secondLatitude,
+    double secondLongitude) {
+    constexpr double kEarthRadiusMetres = 6'371'000.0;
+    constexpr double kDegreesToRadians = std::numbers::pi_v<double> / 180.0;
+    const double firstLatitudeRadians = firstLatitude * kDegreesToRadians;
+    const double secondLatitudeRadians = secondLatitude * kDegreesToRadians;
+    const double latitudeDelta = (secondLatitude - firstLatitude) * kDegreesToRadians;
+    const double longitudeDelta = (secondLongitude - firstLongitude) * kDegreesToRadians;
+    const double latitudeTerm = std::sin(latitudeDelta * 0.5);
+    const double longitudeTerm = std::sin(longitudeDelta * 0.5);
+    const double haversine = latitudeTerm * latitudeTerm
+        + std::cos(firstLatitudeRadians) * std::cos(secondLatitudeRadians)
+            * longitudeTerm * longitudeTerm;
+    const double centralAngle = 2.0 * std::asin(
+        std::sqrt(std::clamp(haversine, 0.0, 1.0)));
+    return kEarthRadiusMetres * centralAngle;
 }
 
 QVariantMap mapPointPayload(const FlightSample &sample, int sampleIndex, double displayTime) {
@@ -553,6 +575,10 @@ void Map3DWidget::setReplaySession(
     m_preview = previewMatchesSession ? std::move(preview) : nullptr;
     m_liveSamples.clear();
     m_liveTotalSamples = 0;
+    m_liveReceivedSamples = 0;
+    m_liveValidGpsSamples = 0;
+    m_liveCumulativePathLength = 0.0;
+    m_haveLastLiveCoordinate = false;
     m_lastPublishedLiveIndex = -1;
     m_publishedLive3DPointCount = 0;
     m_liveUpdatePending = false;
@@ -677,12 +703,26 @@ void Map3DWidget::onLiveSamplesReceived(const QVector<FlightSample> &samples) {
     bool totalChanged = false;
     for (const auto &sample : samples) {
         if (m_liveTotalSamples >= kMaxMapSampleCount) {
-            break;
+            rebaseLiveHistoryIndices();
         }
         const int sampleIndex = m_liveTotalSamples;
         ++m_liveTotalSamples;
+        ++m_liveReceivedSamples;
         totalChanged = true;
         if (isUsableMapPoint(sample, static_cast<double>(sample.timestamp))) {
+            const double latitude = sample.coordinates.latitude;
+            const double longitude = sample.coordinates.longitude;
+            if (m_haveLastLiveCoordinate) {
+                m_liveCumulativePathLength += horizontalDistanceMetres(
+                    m_lastLiveLatitude,
+                    m_lastLiveLongitude,
+                    latitude,
+                    longitude);
+            }
+            m_lastLiveLatitude = latitude;
+            m_lastLiveLongitude = longitude;
+            m_haveLastLiveCoordinate = true;
+            ++m_liveValidGpsSamples;
             m_liveSamples.push_back({sample, sampleIndex});
         }
         compactLiveHistory();
@@ -691,6 +731,17 @@ void Map3DWidget::onLiveSamplesReceived(const QVector<FlightSample> &samples) {
         m_liveUpdatePending = true;
         scheduleMapUpdate();
     }
+}
+
+void Map3DWidget::rebaseLiveHistoryIndices() {
+    int rebasedIndex = 0;
+    for (auto &entry : m_liveSamples) {
+        entry.sampleIndex = rebasedIndex++;
+    }
+    m_liveTotalSamples = rebasedIndex;
+    m_lastPublishedLiveIndex = -1;
+    m_publishedLive3DPointCount = 0;
+    m_liveSnapshotPending = true;
 }
 
 void Map3DWidget::compactLiveHistory() {
@@ -772,6 +823,11 @@ void Map3DWidget::sendPendingLiveSamples() {
     m_bridge->publishLiveBatch({
         {QStringLiteral("replace"), replace},
         {QStringLiteral("total"), m_liveTotalSamples},
+        {QStringLiteral("cumulativeTotal"),
+         QString::number(static_cast<qulonglong>(m_liveReceivedSamples))},
+        {QStringLiteral("cumulativeValid"),
+         QString::number(static_cast<qulonglong>(m_liveValidGpsSamples))},
+        {QStringLiteral("cumulativePathLength"), m_liveCumulativePathLength},
         {QStringLiteral("path"), path2d},
         {QStringLiteral("path3d"), path3d},
     });
@@ -790,6 +846,10 @@ void Map3DWidget::onSessionReset() {
     m_preview.reset();
     m_liveSamples.clear();
     m_liveTotalSamples = 0;
+    m_liveReceivedSamples = 0;
+    m_liveValidGpsSamples = 0;
+    m_liveCumulativePathLength = 0.0;
+    m_haveLastLiveCoordinate = false;
     m_lastPublishedLiveIndex = -1;
     m_publishedLive3DPointCount = 0;
     m_sessionPending = false;

@@ -15,6 +15,7 @@ let map = null, bridge = null;
 let pathLine = null, trailLine = null, launchMarker = null, rocketMarker = null;
 let allPos = [], allAlt = [], allTs = [], allIdx = [], trailLen = 0, following = false;
 let allPos3d = [], allAlt3d = [], allIdx3d = [], totalRawSamples = 0, currentExactPoint = null;
+let cumulativeLiveTotal = "", cumulativeLiveValid = "", cumulativeLivePathLength = NaN;
 let activeView = "2d";
 let activeLayer = "map";
 let tileLayerMap = null, tileLayerLight = null, tileLayerTerrain = null, tileLayerSat = null;
@@ -42,6 +43,7 @@ let groundLoadGeneration = 0;
 
 const MAX_ABS_ALTITUDE = 10000000;
 const MAX_ABS_TIMESTAMP = 1e15;
+const MAX_MAP_DISTANCE = 1e12;
 const MAX_MAP_SAMPLE_COUNT = 10000000;
 const MAX_2D_POINTS = 10000;
 const MAX_3D_POINTS = 5000;
@@ -1183,13 +1185,19 @@ function updateStatsOverlay(vp,va,total){
   let pL=0;for(let i=1;i<vp.length;i++)pL+=hDist(vp[i-1].lat,vp[i-1].lon,vp[i].lat,vp[i].lon);
   const dist = hDist(f.lat,f.lon,l.lat,l.lon), bear = fBearing(f.lat,f.lon,l.lat,l.lon);
   const coords = l.lat.toFixed(6)+', '+l.lon.toFixed(6);
-  lastStatsText = 'Position: '+coords+'\nAlt: '+fmtAlt(la)+'\nRange: '+fmtDist(dist)+' '+bear.toFixed(0)+'°\nPath: '+fmtDist(pL)+' ('+vp.length+'/'+total+' pts)';
+  const hasExactLivePath=Number.isFinite(cumulativeLivePathLength);
+  const displayedPath=hasExactLivePath?cumulativeLivePathLength:pL;
+  const pathPrefix=hasExactLivePath?'':'≈';
+  const pointSummary=cumulativeLiveTotal
+    ? vp.length+' shown · '+cumulativeLiveValid+' GPS / '+cumulativeLiveTotal+' samples'
+    : vp.length+'/'+total+' pts';
+  lastStatsText = 'Position: '+coords+'\nAlt: '+fmtAlt(la)+'\nRange: '+fmtDist(dist)+' '+bear.toFixed(0)+'°\nPath: '+pathPrefix+fmtDist(displayedPath)+' ('+pointSummary+')';
   el.innerHTML=
     '<div class="st">POSITION</div>'+
     '<div class="sv">'+coords+'</div>'+
     '<div class="sv">Alt '+fmtAlt(la)+'</div>'+
     '<div class="sd"><div class="st">RANGE</div><div class="sv">'+fmtDist(dist)+' · '+bear.toFixed(0)+'°</div></div>'+
-    '<div class="sd"><div class="st">PATH</div><div class="sv">'+fmtDist(pL)+' · '+vp.length+'/'+total+' pts</div></div>';
+    '<div class="sd"><div class="st">PATH</div><div class="sv">'+pathPrefix+fmtDist(displayedPath)+' · '+pointSummary+'</div></div>';
   el.style.display="block";
 }
 
@@ -1236,6 +1244,16 @@ window.addPoints = function(payload){
   catch (_) { return; }
   if (!batch || typeof batch !== "object") return;
 
+  const cumulativeTotalText=String(batch.cumulativeTotal??"");
+  const cumulativeValidText=String(batch.cumulativeValid??"");
+  cumulativeLiveTotal=/^(0|[1-9][0-9]{0,19})$/.test(cumulativeTotalText)
+    ? cumulativeTotalText : "";
+  cumulativeLiveValid=/^(0|[1-9][0-9]{0,19})$/.test(cumulativeValidText)
+    ? cumulativeValidText : "";
+  const cumulativePath=Number(batch.cumulativePathLength);
+  cumulativeLivePathLength=Number.isFinite(cumulativePath)
+    && cumulativePath>=0 && cumulativePath<=MAX_MAP_DISTANCE ? cumulativePath : NaN;
+
   const replace=Boolean(batch.replace);
   const path=cappedRawPoints(batch.path,MAX_2D_POINTS);
   const path3d=cappedRawPoints(batch.path3d,MAX_3D_POINTS);
@@ -1274,6 +1292,7 @@ window.loadSession = function(payload){
   try { s=(typeof payload==="string")?JSON.parse(payload):payload; }
   catch (_) { return; }
   if (!s || typeof s !== "object") return;
+  cumulativeLiveTotal="";cumulativeLiveValid="";cumulativeLivePathLength=NaN;
   const sourcePath=Array.isArray(s)?s:(s.path||[]);
   const sourcePath3d=Array.isArray(s)?s:(s.path3d||sourcePath);
   const path=cappedRawPoints(sourcePath,MAX_2D_POINTS);
@@ -1338,6 +1357,7 @@ window.clearAll = function(){
   invalidateGroundData();
   allPos=[];allAlt=[];allTs=[];allIdx=[];trailLen=0;
   allPos3d=[];allAlt3d=[];allIdx3d=[];totalRawSamples=0;currentExactPoint=null;
+  cumulativeLiveTotal="";cumulativeLiveValid="";cumulativeLivePathLength=NaN;
   pathDataDirty=true;path3dDataDirty=true;
   pathLine.setLatLngs([]);trailLine.setLatLngs([]);
   launchMarker.setOpacity(0);rocketMarker.setOpacity(0);

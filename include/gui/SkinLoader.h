@@ -68,6 +68,9 @@ public:
      *
      * The complete archive is validated before the destination is changed.
      * Existing skins are never replaced unless @p replace_existing is true.
+     * Import operations are serialized process-wide. Installed-skin catalogue
+     * reads are synchronized with the shorter replacement transaction so they
+     * cannot observe a partially replaced installation.
      *
      * @param archive_path Path to the .cosmo or .zip file.
      * @param dest_dir Application directory containing imported skins.

@@ -9,7 +9,8 @@
  * Ownership model:
  *  - MainWindow owns the controller and the loaded FlightSession.
  *  - DashboardPage's ReplayBar calls play/pause/stop/setPosition.
- *  - MainWindow and DashboardPage both subscribe to positionChanged().
+ *  - MainWindow and ReplayBar subscribe to positionChanged(); ReplayBar
+ *    forwards each confirmed trail position to DashboardPage once.
  */
 
 #ifndef COSMO_SOFT_FLIGHTREPLAYCONTROLLER_H

@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(Catch2)
 
 add_executable(cosmo-tests
     FileLoadCancellationTests.cpp
+    EventLogFormattingTests.cpp
     FlightLogManagerAtomicExportTests.cpp
     FlightReplayControllerTests.cpp
     LineTelemetryPipelineTests.cpp

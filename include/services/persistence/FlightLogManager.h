@@ -9,21 +9,33 @@
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
 
+#include <cstddef>
 #include <string>
 
 /**
  * @class FlightLogManager
  * @brief Stores flight samples and exports stable snapshots as CSV files.
  *
+ * Samples appended during live recording are capped by the configured
+ * in-memory limit. An externally supplied session may be larger.
+ *
  * Export writes through a temporary file in the destination directory and
  * replaces the destination only after every row has been written successfully.
  */
 class FlightLogManager {
 public:
-    /** @brief Construct an empty manager with no output path. */
-    FlightLogManager() = default;
+    /** Maximum number of live samples retained for an export snapshot by default. */
+    static constexpr std::size_t kDefaultMaxInMemorySamples = 1'000'000U;
 
-    /** @brief Remove all samples from the current in-memory session. */
+    /**
+     * @brief Construct an empty manager with a bounded in-memory recording.
+     * @param maxSamples Maximum samples accepted through appendSample().
+     */
+    explicit FlightLogManager(
+        std::size_t maxSamples = kDefaultMaxInMemorySamples)
+        : m_maxSamples(maxSamples) {}
+
+    /** @brief Remove all samples and release their retained allocation. */
     void clear();
 
     /**
@@ -36,10 +48,14 @@ public:
     [[nodiscard]] const std::string &outputPath() const { return m_fileName; }
 
     /**
-     * @brief Append one sample to the current in-memory session.
+     * @brief Append one sample when the configured recording bound permits it.
      * @param sample Sample copied into the session.
+     * @return true when retained; false when the in-memory recording is full.
      */
-    void appendSample(const FlightSample &sample);
+    bool appendSample(const FlightSample &sample);
+
+    /** @brief Return the configured in-memory sample limit. */
+    [[nodiscard]] std::size_t maxSamples() const noexcept { return m_maxSamples; }
 
     /**
      * @brief Replace the internal session with an externally loaded one.
@@ -73,6 +89,7 @@ public:
 private:
     FlightSession m_session;
     std::string m_fileName;
+    std::size_t m_maxSamples = kDefaultMaxInMemorySamples;
 };
 
 #endif // COSMO_SOFT_FLIGHTLOGMANAGER_H

@@ -3,6 +3,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <cmath>
 #include <limits>
 
 TEST_CASE("Metric display conversion preserves SI values in metric mode",
@@ -77,4 +78,60 @@ TEST_CASE("Metric display helpers reject invalid metadata indices safely",
     REQUIRE(MetricDefs::metricDisplayTitle(MetricDefs::kMetricCount, false).isEmpty());
     REQUIRE(MetricDefs::metricDisplayUnitShort(-1, false).isEmpty());
     REQUIRE(MetricDefs::metricDisplayUnitShort(MetricDefs::kMetricCount, true).isEmpty());
+}
+
+TEST_CASE("Replay clock formatting rounds ordinary durations", "[gui][replay]")
+{
+    REQUIRE(MetricDefs::formatReplayClockHms(0.0) == QStringLiteral("0:00"));
+    REQUIRE(MetricDefs::formatReplayClockHms(59.49) == QStringLiteral("0:59"));
+    REQUIRE(MetricDefs::formatReplayClockHms(59.5) == QStringLiteral("1:00"));
+    REQUIRE(MetricDefs::formatReplayClockHms(3599.5) == QStringLiteral("1:00:00"));
+}
+
+TEST_CASE("Replay elapsed-time calculation avoids signed timestamp overflow",
+          "[gui][replay]")
+{
+    REQUIRE(MetricDefs::replayDurationSeconds(1000L, 2500L)
+            == Catch::Approx(1.5));
+    REQUIRE(MetricDefs::replayDurationSeconds(2500L, 1000L) == 0.0);
+    REQUIRE(MetricDefs::replayDurationSeconds(2500L, 2500L) == 0.0);
+
+    const double extremeDuration = MetricDefs::replayDurationSeconds(
+        std::numeric_limits<long>::min(),
+        std::numeric_limits<long>::max());
+    const double expectedExtremeDuration = static_cast<double>(
+        (static_cast<long double>(std::numeric_limits<long>::max())
+         - static_cast<long double>(std::numeric_limits<long>::min())) / 1000.0L);
+    REQUIRE(std::isfinite(extremeDuration));
+    REQUIRE(extremeDuration == Catch::Approx(expectedExtremeDuration));
+}
+
+TEST_CASE("Replay clock formatting rejects invalid and overflowing durations",
+          "[gui][replay]")
+{
+    const QString unavailable = QStringLiteral("\u2014");
+    REQUIRE(MetricDefs::formatReplayClockHms(-0.01) == unavailable);
+    REQUIRE(MetricDefs::formatReplayClockHms(
+                std::numeric_limits<double>::quiet_NaN()) == unavailable);
+    REQUIRE(MetricDefs::formatReplayClockHms(
+                std::numeric_limits<double>::infinity()) == unavailable);
+
+    const double qint64UpperExclusive =
+        std::ldexp(1.0, std::numeric_limits<qint64>::digits);
+    const double largestSafeDouble = std::nextafter(qint64UpperExclusive, 0.0);
+    const qint64 largestSafeTotal = static_cast<qint64>(largestSafeDouble);
+    const qint64 hours = largestSafeTotal / qint64{3600};
+    const qint64 minutes = (largestSafeTotal % qint64{3600}) / qint64{60};
+    const qint64 seconds = largestSafeTotal % qint64{60};
+    const QString expectedLargestSafe = QStringLiteral("%1:%2:%3")
+        .arg(hours)
+        .arg(minutes, 2, 10, QLatin1Char('0'))
+        .arg(seconds, 2, 10, QLatin1Char('0'));
+
+    REQUIRE(MetricDefs::formatReplayClockHms(largestSafeDouble)
+            == expectedLargestSafe);
+    REQUIRE(MetricDefs::formatReplayClockHms(qint64UpperExclusive)
+            == QStringLiteral("duration too large"));
+    REQUIRE(MetricDefs::formatReplayClockHms(std::numeric_limits<double>::max())
+            == QStringLiteral("duration too large"));
 }

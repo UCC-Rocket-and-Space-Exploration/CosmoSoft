@@ -355,6 +355,20 @@ void MainWindow::playErrorFeedback() {
     m_hasPlayedErrorFeedback = true;
 }
 
+void MainWindow::recordLiveSample(const FlightSample &sample) {
+    if (m_logManager->appendSample(sample) || m_recordingLimitReported) {
+        return;
+    }
+
+    m_recordingLimitReported = true;
+    const QString message = QStringLiteral(
+        "Live export recording reached its %1-sample memory limit; "
+        "new telemetry remains visible but is not retained for export.")
+        .arg(static_cast<qulonglong>(m_logManager->maxSamples()));
+    showStatusMessage(message, 8000);
+    appendToLog(true, message);
+}
+
 void MainWindow::setupActions() {
     m_openSettingsAction = new QAction(u"Preferences…"_s, this);
     m_openSettingsAction->setToolTip(u"Open application preferences."_s);
@@ -1167,7 +1181,7 @@ void MainWindow::pushFakeTransmissionSample() {
 
     const auto index = m_fakeTransmissionIndex++;
     const FlightSample sample = m_fakeTransmissionSamples[index];
-    m_logManager->appendSample(sample);
+    recordLiveSample(sample);
     m_flightModel->appendSample(sample);
     if (index < m_fakeTransmissionByteCounts.size()) {
         m_flightModel->addBytesReceived(m_fakeTransmissionByteCounts[index]);
@@ -1258,6 +1272,10 @@ void MainWindow::loadFlightLogAsync(const QString &path) {
             appendToLog(true, message);
             return;
         }
+        // A validated replay replaces the live recording as the active export
+        // source, so release the otherwise-hidden live-session allocation.
+        m_logManager->clear();
+        m_recordingLimitReported = false;
         m_loadedSession = std::move(r.session);
         m_loadedPreview = std::move(r.preview);
         m_flightModel->resetSession();
@@ -1322,6 +1340,7 @@ void MainWindow::onClearFlightData() {
     stopFakeTransmission(false);
     stopSerial();
     m_logManager->clear();
+    m_recordingLimitReported = false;
     m_replay->stop();
     m_loadedSession.reset();
     m_loadedPreview.reset();
@@ -1524,6 +1543,7 @@ void MainWindow::prepareLiveSession(const QString &context) {
     m_loadedPreview.reset();
     m_replay->setSession(nullptr, nullptr);
     m_logManager->clear();
+    m_recordingLimitReported = false;
     m_flightModel->setReplayMode(false);
     m_flightModel->resetByteCounter();
     m_flightModel->resetSession();
@@ -1665,7 +1685,7 @@ void MainWindow::drainLiveTelemetryBatches(const std::uint64_t generation) {
         FlightSampleBatch samples;
         samples.reserve(static_cast<qsizetype>(batch.samples.size()));
         for (auto &sample : batch.samples) {
-            m_logManager->appendSample(sample);
+            recordLiveSample(sample);
             samples.append(std::move(sample));
         }
         m_flightModel->appendLiveBatch(samples);

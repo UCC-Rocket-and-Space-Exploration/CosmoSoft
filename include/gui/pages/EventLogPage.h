@@ -30,8 +30,9 @@ class QTextCursor;
  *
  * The widget owns a QPlainTextEdit in read-only mode. New entries are retained
  * as timestamp, message, and severity data so their colours can be rebuilt when
- * the active theme changes. At most 2,000 entries are retained. A "Clear"
- * button empties both the retained entries and the rendered log.
+ * the active theme changes. At most 2,000 single-line, size-bounded entries are
+ * retained. A "Clear" button empties both the retained entries and the
+ * rendered log.
  */
 class EventLogPage : public QWidget {
     Q_OBJECT

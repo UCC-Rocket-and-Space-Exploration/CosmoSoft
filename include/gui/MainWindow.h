@@ -133,6 +133,9 @@ private:
     /** @brief Play a rate-limited platform alert when UI sounds are enabled. */
     void playErrorFeedback();
 
+    /** @brief Retain one live sample or report the recording-memory bound once. */
+    void recordLiveSample(const FlightSample &sample);
+
     void addRecentFile(const QString &path);
     void rebuildRecentFilesMenu();
     void updateBreadcrumb(const QString &context = QString());
@@ -217,6 +220,7 @@ private:
 
     bool m_uiSoundsEnabled = true;
     bool m_hasPlayedErrorFeedback = false;
+    bool m_recordingLimitReported = false;
     std::chrono::steady_clock::time_point m_lastErrorFeedback;
 };
 

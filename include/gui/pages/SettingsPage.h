@@ -15,9 +15,11 @@
 #ifndef COSMO_SOFT_SETTINGSPAGE_H
 #define COSMO_SOFT_SETTINGSPAGE_H
 
-#include <QWidget>
+#include "gui/CosmoTheme.h"
 
+#include <QList>
 #include <QString>
+#include <QWidget>
 
 class QCheckBox;
 class QCloseEvent;
@@ -95,6 +97,12 @@ private:
     /** @brief Start a non-blocking validated skin import operation. */
     void startSkinImport(const QString &archive_path, bool replace_existing);
 
+    /**
+     * @brief Revalidate and cache the installed skin catalogue.
+     * @param preferred_skin_id Skin identifier to keep selected after the refresh.
+     */
+    void refreshAvailableSkins(const QString &preferred_skin_id = QString());
+
     /** @brief Rebuilds the page-local stylesheet from the active theme palette. */
     void refreshStyleSheet();
 
@@ -109,6 +117,7 @@ private:
     QGroupBox   *m_skinGroup     = nullptr;
     QComboBox   *m_skinCombo     = nullptr;
     QPushButton *m_importSkinBtn = nullptr;
+    QList<cosmo::CosmoTheme> m_availableSkins;
 
     QComboBox *m_unitSystemCombo = nullptr;
     QGroupBox *m_soundGroup      = nullptr;

@@ -1,5 +1,7 @@
 #include "gui/pages/EventLogPage.h"
 
+#include "EventLogFormatting.h"
+
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
 
@@ -135,7 +137,10 @@ void EventLogPage::append(const QString &text, const Severity severity) {
         return;
     }
 
-    LogEntry entry{QDateTime::currentDateTime(), text, severity};
+    LogEntry entry{
+        QDateTime::currentDateTime(),
+        cosmo::event_log_detail::boundedSingleLineText(text),
+        severity};
     m_entries.push_back(entry);
     if (m_entries.size() > kMaxRetainedEntries) {
         m_entries.pop_front();
@@ -172,15 +177,7 @@ void EventLogPage::renderEntry(const LogEntry &entry, QTextCursor &cursor) {
     const QString prefix = entry.severity == Severity::Error
         ? u"ERROR: "_s
         : QString{};
-    QString display_text = entry.text;
-    // Keep one document block per retained entry so the view and semantic
-    // deque apply the same bound even when a diagnostic contains line breaks.
-    display_text.replace(u"\r\n"_s, u" "_s);
-    display_text.replace(u'\r', u' ');
-    display_text.replace(u'\n', u' ');
-    display_text.replace(u'\u2028', u' ');
-    display_text.replace(u'\u2029', u' ');
-    cursor.insertText(prefix + display_text, message_format);
+    cursor.insertText(prefix + entry.text, message_format);
 }
 
 void EventLogPage::rebuildLog() {

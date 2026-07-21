@@ -749,9 +749,9 @@ void ReplayBar::updateLabels()
     const int head = std::clamp(m_lastTrailLength, 0, n);
     const double fullDur = m_preview
         ? m_preview->durationSeconds()
-        : std::max(
-              0.0,
-              static_cast<double>(samples.back().timestamp - samples.front().timestamp) / 1000.0);
+        : MetricDefs::replayDurationSeconds(
+              samples.front().timestamp,
+              samples.back().timestamp);
 
     if (m_replaySampleCaption) {
         if (head <= 0) {
@@ -770,9 +770,14 @@ void ReplayBar::updateLabels()
     }
 
     if (m_replayTimeLeftLabel && m_replayTimeRightLabel) {
-        const double elapsed = (head > 0 && m_preview)
-            ? m_preview->displaySecondAt(head - 1)
-            : 0.0;
+        double elapsed = 0.0;
+        if (head > 0) {
+            elapsed = m_preview
+                ? m_preview->displaySecondAt(head - 1)
+                : MetricDefs::replayDurationSeconds(
+                      samples.front().timestamp,
+                      samples[static_cast<std::size_t>(head - 1)].timestamp);
+        }
         m_replayTimeLeftLabel->setText(MetricDefs::formatReplayClockHms(elapsed));
         m_replayTimeRightLabel->setText(MetricDefs::formatReplayClockHms(fullDur));
     }
