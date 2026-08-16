@@ -3,7 +3,7 @@
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
 #include "gateway/comms/CommsFactory.h"
-#include "gateway/comms/ISerialPortScanner.h"
+#include "../../include/gateway/comms/interfaces/ISerialPortScanner.h"
 #include "gateway/comms/SerialPortScannerFactory.h"
 #include "gateway/comms/SerialWorker.h"
 #include "gui/AboutDialog.h"

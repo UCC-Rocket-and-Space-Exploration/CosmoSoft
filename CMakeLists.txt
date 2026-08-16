@@ -18,6 +18,9 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
+set(ZLIB_LIBRARY "D:\\Libraries\\CppLibs\\vcpkg\\packages\\zlib_x64-windows\\lib\\z.lib")
+set(ZLIB_INCLUDE_DIR "D:\\Libraries\\CppLibs\\vcpkg\\packages\\zlib_x64-windows\\include")
+include(D:\\Libraries\\CppLibs\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake)
 
 set(HEADERS "${CMAKE_SOURCE_DIR}/include")
 
@@ -31,10 +34,10 @@ find_package(ZLIB REQUIRED) # for compressing
 add_subdirectory(src)
 
 #target_compile_features(cosmo-backend PUBLIC cxx_std_20)
-
-if(BUILD_TESTING)
-    add_subdirectory(tests)
-endif()
+add_subdirectory(tests)
+#if(BUILD_TESTING)
+#    add_subdirectory(tests)
+#endif()
 
 target_link_libraries(cosmo-soft-bin PRIVATE cosmo-backend)
 target_compile_features(cosmo-soft-bin PRIVATE cxx_std_20)

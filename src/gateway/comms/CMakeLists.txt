@@ -16,7 +16,8 @@ endif()
 
 file(GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
-add_library(comms ${SOURCES})
+add_library(comms ${SOURCES}
+        SerialFramerWorker.cpp)
 target_include_directories(comms PUBLIC "${HEADERS}")
 
 target_link_libraries(cosmo-backend comms)

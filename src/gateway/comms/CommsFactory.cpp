@@ -10,8 +10,13 @@
 std::unique_ptr<IComms> CommsFactory::createSerialComms(const std::string &device, int baud) {
 #if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
     return std::make_unique<SerialCommsPosix>(device, baud);
-#else
+#elif defined(WIN32)
     return std::make_unique<SerialCommsWindows>(device, baud);
-// #error "Unsupported platform: implement Windows serial comms"
+
+#else
+    throw std::system_error(
+        std::make_error_code(std::errc::not_supported),
+        "Platform is not supported. "
+    );
 #endif
 }

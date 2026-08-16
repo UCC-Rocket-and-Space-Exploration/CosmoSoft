@@ -22,6 +22,9 @@ public:
     //Non-blocking read function
     // uint8_t* buffer: pointer to the start of a block of unsigned 8-bit integers to write to
     // size_t maxSize: how many bytes past the pointer to write to, i.e. the size of the buffer
+    //Exceptions:
+    //SerialTimeout
+    //UnhandledSerialException
     virtual ssize_t read(uint8_t* buffer, size_t maxSize) = 0;
 
     // Device info & metadata, add more later depending on applicability

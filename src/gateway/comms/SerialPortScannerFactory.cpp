@@ -4,10 +4,15 @@
 #include "gateway/comms/Posix/SerialPortScannerPosix.h"
 #endif
 
-ISerialPortScanner *SerialPortScannerFactory::createSerialPortScanner() {
+std::unique_ptr<ISerialPortScanner> SerialPortScannerFactory::createSerialPortScanner() {
 #if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
-    return new SerialPortScannerPosix();
+    return std::make_unique<SerialPortScannerPosix>();
+#elif defined(WIN32)
+    return std::make_unique<SerialPortScannerWindows>();
 #else
-    return nullptr;
+    throw std::system_error(
+        std::make_error_code(std::errc::not_supported),
+        "Platform is not supported. "
+    );
 #endif
 }

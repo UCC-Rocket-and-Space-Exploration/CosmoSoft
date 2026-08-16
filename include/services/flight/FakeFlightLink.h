@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "domain/FlightSample.h"
-#include "gateway/comms/IComms.h"
+#include "../../gateway/comms/interfaces/IComms.h"
 
 namespace cosmo::flightlink {
 

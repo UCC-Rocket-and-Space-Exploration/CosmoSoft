@@ -1,11 +1,12 @@
 #pragma once //works fine on linux?
 #include <optional>
 
+#include "domain/Frame.h"
 #include "services/RingBuffer.h"
 
 template <typename T>
 RingBuffer<T>::RingBuffer(int size) {
-     m_buffer = new int[size]{};
+     m_buffer = new T[size]{};
      m_size = size;
 }
 
@@ -23,11 +24,24 @@ template <typename T>
 RingBuffer<T>::~RingBuffer() {
     delete[] m_buffer;
 }
-
+// //for tests
+// template <typename T>
+// void RingBuffer<T>::show() {
+//     std::cout << "occupacy: " << m_occupancy << std::endl;
+//     // if (std::is_same<T, Frame>::value) {
+//     //     // std::cout << "1 elem data: " << m_buffer[0].data[0] << std::endl;
+//     //     // std::cout << "1 elem size: " << m_buffer[0].size << std::endl;
+//     // }
+//     // this->
+// }
 /// overwrite slot once buffer is full. Defined by policy
 template <typename T>
 void RingBuffer<T>::put(T item) {
     std::lock_guard<std::mutex> lk(m_locker);
+     if (std::is_same<T, Frame>::value) {
+         std::cout << "PUT: Size: " << item.data.size() << std::endl;
+     }
+
     m_buffer[m_head] = item;
 
     m_head = (m_head + 1) % m_size;
@@ -38,16 +52,30 @@ void RingBuffer<T>::put(T item) {
         m_tail = (m_tail + 1) % m_size;
     }
 }
+// //for tests only
+// template <typename T>
+// void RingBuffer<T>::show() {
+//     std::cout << "Show: " << this->m_occupancy << std::endl;
+//
+//     for (int i = 0; i < this->m_occupancy; i++) {
+//         for (auto raw_frame : m_buffer[i].data) {
+//             std::cout << raw_frame;
+//         }
+//         std::cout << std::endl;
+//     }
+// }
 
 /// if empty - return last nullopt
 template <typename T>
 std::optional<T> RingBuffer<T>::get() {
     std::lock_guard<std::mutex> lk(m_locker);
+
     if (is_empty()) {
         return std::nullopt;
     }
 
-    const int item = m_buffer[m_tail];
+    const T item = m_buffer[m_tail];
+
     m_tail = (m_tail + 1) % m_size;
     m_occupancy--;
     return item;
