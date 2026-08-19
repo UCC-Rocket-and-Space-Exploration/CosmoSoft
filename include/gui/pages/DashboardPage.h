@@ -2,6 +2,7 @@
 #define COSMO_SOFT_DASHBOARDPAGE_H
 
 #include <QElapsedTimer>
+#include <QPointer>
 #include <QVector>
 #include <QWidget>
 
@@ -152,8 +153,8 @@ private:
     [[nodiscard]] QString formatMultiMetricHover(double tSec, int displayPointIndex1Based) const;
 
     // ── Data sources ──────────────────────────────────────────────────────────
-    FlightDataModel        *m_model   = nullptr;
-    FlightReplayController *m_replay  = nullptr;
+    FlightDataModel              *m_model   = nullptr;
+    QPointer<FlightReplayController> m_replay;
     std::shared_ptr<const FlightSession> m_session;  ///< Shared loaded replay session.
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
 
@@ -243,6 +244,7 @@ private:
 
     int m_lastReplayTrailLength = 0;  ///< Most recent trail length from the controller.
     bool m_imperialUnits = false;     ///< True when telemetry is presented in imperial units.
+    bool m_splitterSavePending = false; ///< Coalesces QSettings writes from splitterMoved.
 
     /** Circular live-telemetry buffer, bounded to kMaxLiveBufferSamples. */
     std::deque<FlightSample> m_liveSamples;

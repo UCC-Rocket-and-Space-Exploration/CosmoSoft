@@ -541,7 +541,7 @@ void Map3DWidget::showEvent(QShowEvent *event) {
     ensureMapInitialized();
     if (!m_mapReady && !m_loadAttemptActive) {
         loadMapPage();
-    } else if (!m_mapReady && m_loadAttemptActive) {
+    } else if (!m_mapReady && m_loadAttemptActive && !m_readyWatchdog->isActive()) {
         m_readyWatchdog->start();
     }
 

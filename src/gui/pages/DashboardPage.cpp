@@ -557,9 +557,15 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             dashSplitter->setSizes({200, 1000});
         }
     }
-    connect(dashSplitter, &QSplitter::splitterMoved, this, [dashSplitter]() {
-        QSettings s(kSettingsOrg, kSettingsApp);
-        s.setValue(kSettingsDashSplitter, dashSplitter->saveState());
+    connect(dashSplitter, &QSplitter::splitterMoved, this, [this, dashSplitter]() {
+        if (!m_splitterSavePending) {
+            m_splitterSavePending = true;
+            QTimer::singleShot(500, this, [this, dashSplitter] {
+                m_splitterSavePending = false;
+                QSettings s(kSettingsOrg, kSettingsApp);
+                s.setValue(kSettingsDashSplitter, dashSplitter->saveState());
+            });
+        }
     });
     connect(m_tracesToggleBtn, &QToolButton::toggled, this,
             [this, dashSplitter](bool show) {
@@ -1298,7 +1304,10 @@ void DashboardPage::applyReplayControllerPosition(int trailLength) {
         scheduleReplayChartRebuild();
         return;
     }
-    if (m_model && m_model->replayMode() && trailLength == m_replayChartBuiltTrailLength) {
+    if (!m_model || !m_model->replayMode()) {
+        return;  // not in replay mode; ignore stale positionChanged signals
+    }
+    if (trailLength == m_replayChartBuiltTrailLength) {
         scheduleRenderPass();
         return;  // chart already correct; ReplayBar updates its own labels via positionChanged
     }

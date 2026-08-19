@@ -417,13 +417,20 @@ void TracesPanel::updateLiveValues(const FlightSample &sample)
         if (!lbl) continue;
         const double siValue = MetricDefs::sampleValueForMetric(sample, i);
         if (!std::isfinite(siValue)) {
-            lbl->setText(u"—"_s);
+            if (m_lastValueText[static_cast<std::size_t>(i)] != u"—"_s) {
+                m_lastValueText[static_cast<std::size_t>(i)] = u"—"_s;
+                lbl->setText(u"—"_s);
+            }
             continue;
         }
         const QString val = MetricDefs::formatMetricDisplayValue(
             i, siValue, m_imperialUnits);
         const QString unit = MetricDefs::metricDisplayUnitShort(i, m_imperialUnits);
-        lbl->setText(unit.isEmpty() ? val : val + u' ' + unit);
+        const QString display = unit.isEmpty() ? val : val + u' ' + unit;
+        if (display != m_lastValueText[static_cast<std::size_t>(i)]) {
+            m_lastValueText[static_cast<std::size_t>(i)] = display;
+            lbl->setText(display);
+        }
     }
 }
 

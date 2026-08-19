@@ -81,6 +81,7 @@ private:
     std::array<QLabel *,    kMetricCount> m_traceSwatches{};
     std::array<QFrame *,    kMetricCount> m_traceRows{};
     std::array<bool,        kMetricCount> m_metricEnabled{};
+    std::array<QString,     kMetricCount> m_lastValueText{}; ///< Cached display text; avoids redundant setText calls.
     FlightSample m_latestSample;
     bool m_haveLatestSample = false;
     bool m_imperialUnits = false;
