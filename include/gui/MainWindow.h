@@ -46,7 +46,7 @@ class QToolBar;
 class QToolButton;
 class DashboardPage;
 class EventLogPage;
-class LiveTelemetryPage;
+class MonitoringPage;
 class SettingsPage;
 class FlightDataModel;
 class FlightReplayController;
@@ -159,7 +159,7 @@ private:
     // ── Page stack ────────────────────────────────────────────────────────────
     QStackedWidget     *m_pages             = nullptr;
     DashboardPage      *m_flightDataPage    = nullptr;
-    LiveTelemetryPage  *m_liveTelemetryPage = nullptr;
+    MonitoringPage     *m_liveTelemetryPage = nullptr;
     EventLogPage        *m_eventLogPage      = nullptr;
     SettingsPage       *m_settingsWindow    = nullptr;
 

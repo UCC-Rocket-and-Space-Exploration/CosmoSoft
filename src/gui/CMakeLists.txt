@@ -12,7 +12,7 @@ set(GUI_MOC_HEADERS
         "${CMAKE_SOURCE_DIR}/include/gui/pages/SettingsPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/DashboardPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/pages/EventLogPage.h"
-        "${CMAKE_SOURCE_DIR}/include/gui/pages/LiveTelemetryPage.h"
+        "${CMAKE_SOURCE_DIR}/include/gui/pages/MonitoringPage.h"
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/Map3DWidget.h"
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/StatTileWidget.h"
         "${CMAKE_SOURCE_DIR}/include/gui/widgets/TracesPanel.h"

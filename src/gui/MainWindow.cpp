@@ -15,7 +15,7 @@
 #include "gui/ThemeManager.h"
 #include "gui/pages/DashboardPage.h"
 #include "gui/pages/EventLogPage.h"
-#include "gui/pages/LiveTelemetryPage.h"
+#include "gui/pages/MonitoringPage.h"
 #include "gui/pages/SettingsPage.h"
 #include "services/import/SampleFileLoader.h"
 #include "services/flight/FakeFlightLink.h"
@@ -932,7 +932,7 @@ void MainWindow::setupPages() {
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_flightDataPage);
 
-    m_liveTelemetryPage = new LiveTelemetryPage(m_flightModel.get(), this);
+    m_liveTelemetryPage = new MonitoringPage(m_flightModel.get(), this);
     m_pages->addWidget(m_liveTelemetryPage);
 
     m_eventLogPage = new EventLogPage(m_pages);
@@ -967,13 +967,13 @@ void MainWindow::setupPages() {
         updateBreadcrumb(u"Event Log"_s);
     });
 
-    connect(m_liveTelemetryPage, &LiveTelemetryPage::scanDevicesRequested,
+    connect(m_liveTelemetryPage, &MonitoringPage::scanDevicesRequested,
             this, &MainWindow::onScanLiveDevices);
-    connect(m_liveTelemetryPage, &LiveTelemetryPage::connectDeviceRequested,
+    connect(m_liveTelemetryPage, &MonitoringPage::connectDeviceRequested,
             this, &MainWindow::onConnectLiveDevice);
-    connect(m_liveTelemetryPage, &LiveTelemetryPage::disconnectRequested,
+    connect(m_liveTelemetryPage, &MonitoringPage::disconnectRequested,
             this, &MainWindow::onDisconnectLiveDevice);
-    connect(m_liveTelemetryPage, &LiveTelemetryPage::startDemoRequested,
+    connect(m_liveTelemetryPage, &MonitoringPage::startDemoRequested,
             this, &MainWindow::onStartLiveDemo);
 
     onScanLiveDevices();
@@ -1002,7 +1002,7 @@ void MainWindow::openSettingsWindow() {
         connect(m_settingsWindow, &SettingsPage::unitSystemChanged,
                 m_flightDataPage, &DashboardPage::setImperialUnits);
         connect(m_settingsWindow, &SettingsPage::unitSystemChanged,
-                m_liveTelemetryPage, &LiveTelemetryPage::setImperialUnits);
+                m_liveTelemetryPage, &MonitoringPage::setImperialUnits);
         connect(m_settingsWindow, &SettingsPage::uiSoundsEnabledChanged,
                 this, [this](bool enabled) { m_uiSoundsEnabled = enabled; });
     }
