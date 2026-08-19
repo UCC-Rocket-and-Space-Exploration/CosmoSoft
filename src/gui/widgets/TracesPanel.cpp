@@ -177,8 +177,8 @@ TracesPanel::TracesPanel(QWidget *parent)
         row->setObjectName(u"traceRow"_s);
         row->setProperty("noData", false);
         auto *rowLay = new QHBoxLayout(row);
-        rowLay->setContentsMargins(6, 5, 8, 5);
-        rowLay->setSpacing(8);
+        rowLay->setContentsMargins(6, 3, 8, 3);
+        rowLay->setSpacing(5);
 
         const QColor col = MetricDefs::metricColor(i);
         auto *swatch = new QLabel(row);
@@ -254,25 +254,28 @@ void TracesPanel::applyThemeStyleSheet()
             font-weight: 600;
         }
         QPushButton#tracesAllNoneBtn {
-            font-size: 11px;
-            color: %7;
-            background: %10;
-            border: 1px solid %8;
-            border-radius: 4px;
-            padding: 6px 12px;
-            min-height: 30px;
+            font-size: 10px;
+            font-family: %5;
+            color: %6;
+            background: transparent;
+            border: none;
+            border-radius: 0px;
+            padding: 1px 4px;
+            min-height: 18px;
+            max-height: 18px;
             font-weight: 500;
         }
         QPushButton#tracesAllNoneBtn:hover {
             color: %7;
-            border-color: %8;
-            background: %11;
+            text-decoration: underline;
+            background: transparent;
         }
         QPushButton#tracesAllNoneBtn:pressed {
-            background: %12;
+            color: %7;
+            background: transparent;
         }
         QPushButton#tracesAllNoneBtn:focus {
-            border: 2px solid %17;
+            outline: none;
         }
         QFrame#traceSeparator { background-color: %2; border: none; }
         QFrame#traceRow {
@@ -290,18 +293,9 @@ void TracesPanel::applyThemeStyleSheet()
             spacing: 6px;
         }
         QCheckBox#traceCheck::indicator {
-            width: 16px;
-            height: 16px;
-            border: 1px solid %8;
-            border-radius: 3px;
-            background-color: %14;
-        }
-        QCheckBox#traceCheck::indicator:checked {
-            background-color: %15;
-            border: 2px solid %16;
-        }
-        QCheckBox#traceCheck:focus::indicator {
-            border: 2px solid %17;
+            width: 0px;
+            height: 0px;
+            border: none;
         }
         QCheckBox#traceCheck[metricEnabled="true"] {
             color: %7;

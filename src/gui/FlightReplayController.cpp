@@ -156,12 +156,15 @@ void FlightReplayController::pause() {
 }
 
 void FlightReplayController::stop() {
+    const bool wasActive = m_playing || m_index != 0;
     haltPlayback(false);
     m_playbackTimeMs = 0.0;
     m_anchorPlaybackTimeMs = 0.0;
     m_anchorClockMs = 0;
     updatePosition(0);
-    emit playbackStopped();
+    if (wasActive) {
+        emit playbackStopped();
+    }
 }
 
 void FlightReplayController::setPosition(int trailLength) {
@@ -271,6 +274,11 @@ void FlightReplayController::synchronizePlayback(const qint64 clockMilliseconds)
         positionForPlaybackTime(m_playbackTimeMs));
     updatePosition(nextPosition);
 
+    // A slot connected to positionChanged may call setSession(nullptr) synchronously,
+    // which resets m_playing and nulls m_preview. Re-guard before testing duration.
+    if (!m_playing) {
+        return;
+    }
     const int count = sampleCount();
     if (m_playbackTimeMs >= durationMilliseconds()) {
         updatePosition(count);

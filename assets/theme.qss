@@ -13,7 +13,7 @@
 
 QWidget {
     color: #f8f8f8;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    font-family: "Red Hat Mono", "Courier New", monospace;
 }
 
 /* ── Push buttons ─────────────────────────────────────────────────────────── */
@@ -26,8 +26,8 @@ QPushButton {
     min-width: 0px;
     background-color: #3d3f47;
     color: #f0f0f0;
-    font-size: 11px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    font-family: "Red Hat Mono", "Courier New", monospace;
+    font-size: 12px;
 }
 
 QPushButton:hover   { background-color: #4d4f57; }
@@ -48,7 +48,7 @@ QComboBox {
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    font-family: "Red Hat Mono", "Courier New", monospace;
 }
 
 QComboBox::drop-down {
@@ -72,7 +72,7 @@ QLineEdit {
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 12px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
+    font-family: "Red Hat Mono", "Courier New", monospace;
 }
 
 /* ── Scroll bars ──────────────────────────────────────────────────────────── */
@@ -119,7 +119,6 @@ QCheckBox {
     color: #f8f8f8;
     spacing: 8px;
     font-size: 12px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
 }
 
 QCheckBox::indicator {
@@ -146,7 +145,6 @@ QGroupBox {
     padding-top: 12px;
     background-color: #2b2d33;
     font-size: 12px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
 }
 
 QGroupBox::title {
@@ -173,9 +171,7 @@ QTabBar::tab {
     margin-right: 2px;
     border-radius: 4px 4px 0 0;
     font-size: 12px;
-    letter-spacing: 1px;
     min-width: 100px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
 }
 
 QTabBar::tab:selected {
@@ -207,5 +203,4 @@ QToolTip {
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 11px;
-    font-family: "Red Hat Mono", "Courier New", "Roboto Mono", monospace;
 }

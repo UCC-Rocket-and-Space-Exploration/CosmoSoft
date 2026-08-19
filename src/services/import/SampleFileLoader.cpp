@@ -1253,13 +1253,13 @@ SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
         }
     }
 
+    if (cancellation.poll()) {
+        return canceled_load_result();
+    }
     if (decoded_samples.empty() && out.samples.empty()) {
         return failed_load_result(std::string(
             "No telemetry samples decoded from TELEM file. "
             "Framer/Parser must implement the binary protocol for this to produce data."));
-    }
-    if (cancellation.poll()) {
-        return canceled_load_result();
     }
 
     if (!decoded_samples.empty()) {

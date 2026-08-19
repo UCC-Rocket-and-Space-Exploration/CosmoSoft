@@ -172,31 +172,42 @@ void ReplayBar::applyThemeStyleSheet()
             border-radius: 6px;
         }
 
-        /* Navigation buttons - 32×32px */
+        /* Navigation buttons - 32×32px, 3D raised look */
         QToolButton#replaySkipBtn {
-            background: %4;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 %24, stop:0.45 %4, stop:1 %25);
             border: 1px solid %5;
+            border-bottom: 2px solid %25;
             border-radius: 4px;
             padding: 2px;
             min-width: 32px; max-width: 32px;
             min-height: 32px; max-height: 32px;
         }
         QToolButton#replaySkipBtn:hover {
-            background: %6;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 %26, stop:0.45 %6, stop:1 %25);
             border-color: %7;
+            border-bottom-color: %25;
         }
         QToolButton#replaySkipBtn:pressed {
-            background: %8;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 %25, stop:1 %4);
+            border-top-color: %25;
+            border-bottom-color: %5;
+            padding-top: 3px;
         }
         QToolButton#replaySkipBtn:disabled {
             color: %9;
             border-color: %2;
+            background: %4;
         }
 
-        /* Play/Pause button - 40×40px, prominent */
+        /* Play/Pause button - 40×40px, prominent 3D */
         QToolButton#replayPlayPauseBtn {
-            background: %4;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 %24, stop:0.45 %4, stop:1 %25);
             border: 2px solid %10;
+            border-bottom: 3px solid %27;
             border-radius: 6px;
             padding: 2px;
             min-width: 40px; max-width: 40px;
@@ -204,21 +215,30 @@ void ReplayBar::applyThemeStyleSheet()
             color: %11;
         }
         QToolButton#replayPlayPauseBtn:hover {
-            background: %6;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 %26, stop:0.45 %6, stop:1 %25);
             border-color: %10;
+            border-bottom-color: %27;
         }
         QToolButton#replayPlayPauseBtn:pressed {
-            background: %8;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 %25, stop:1 %4);
+            border-top-color: %27;
+            border-bottom-color: %10;
+            padding-top: 3px;
         }
         QToolButton#replayPlayPauseBtn:disabled {
             color: %9;
             border-color: %2;
+            background: %4;
         }
 
-        /* Stop button - 30×30px, de-emphasized */
+        /* Stop button - 30×30px, de-emphasized 3D */
         QToolButton#replayTransportBtn {
-            background: %4;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 %24, stop:0.45 %4, stop:1 %25);
             border: 1px solid %2;
+            border-bottom: 2px solid %25;
             border-radius: 4px;
             padding: 2px;
             min-width: 30px; max-width: 30px;
@@ -226,15 +246,22 @@ void ReplayBar::applyThemeStyleSheet()
             color: %9;
         }
         QToolButton#replayTransportBtn:hover {
-            background: %6;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 %26, stop:0.45 %6, stop:1 %25);
             border-color: %7;
+            border-bottom-color: %25;
         }
         QToolButton#replayTransportBtn:pressed {
-            background: %8;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 %25, stop:1 %4);
+            border-top-color: %25;
+            border-bottom-color: %2;
+            padding-top: 3px;
         }
         QToolButton#replayTransportBtn:disabled {
             color: %9;
             border-color: %2;
+            background: %4;
         }
         QToolButton#replaySkipBtn:focus,
         QToolButton#replayPlayPauseBtn:focus,
@@ -349,7 +376,7 @@ void ReplayBar::applyThemeStyleSheet()
             font-size: 10px;
             font-family: %13;
             color: %9;
-            letter-spacing: 1.5px;
+            letter-spacing: 0.5px;
             font-weight: 600;
         }
         QLabel#replayCaption {
@@ -380,7 +407,11 @@ void ReplayBar::applyThemeStyleSheet()
         .arg(QColor(bgPanel).lighter(105).name()) // %20 - nav group bg
         .arg(QColor(accent).lighter(140).name())  // %21 - slider gradient end
         .arg(info)              // %22
-        .arg(Theme::kFocusRing())); // %23
+        .arg(Theme::kFocusRing())                          // %23
+        .arg(QColor(bgButton).lighter(130).name())         // %24 - btn top highlight
+        .arg(QColor(bgButton).darker(140).name())          // %25 - btn bottom shadow
+        .arg(QColor(btnHover).lighter(115).name())         // %26 - hover top highlight
+        .arg(QColor(accent).darker(130).name()));          // %27 - accent shadow
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

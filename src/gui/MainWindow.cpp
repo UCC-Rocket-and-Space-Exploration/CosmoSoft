@@ -517,18 +517,19 @@ QString MainWindow::buildToolbarStyleSheet() {
             font-family: %5;
         }
         QToolButton[kind="navButton"] {
-            font-size: %6px;
-            min-width: 150px;
-            padding: 5px 8px;
-            border: 2px solid %7;
+            font-size: 13px;
+            min-width: 120px;
+            padding: 8px 16px;
+            border: none;
+            border-bottom: 3px solid transparent;
             border-radius: 0;
-            background-color: %8;
-            color: %3;
-            letter-spacing: 1px;
+            background-color: transparent;
+            color: %4;
             font-family: %5;
         }
         QToolButton[kind="navButton"]:hover {
             background-color: %9;
+            color: %3;
         }
     )"_s)
         .arg(bgPanel)               // %1
@@ -540,15 +541,21 @@ QString MainWindow::buildToolbarStyleSheet() {
         .arg(borderDef)             // %7
         .arg(btnBg)                 // %8
         .arg(btnHov)                // %9
-    + QString(uR"(
+    + [&]() {
+        QColor accentColor(accent);
+        accentColor.setAlpha(28);
+        const QString accentSubtle = accentColor.name(QColor::HexArgb);
+        return QString(uR"(
         QToolButton[kind="navButton"]:checked {
-            background-color: %1;
-            color: %2;
-            border-color: %3;
+            background-color: %8;
+            color: %1;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            border-bottom: 3px solid %3;
         }
         QToolButton[kind="navButton"]:disabled {
             color: %4;
-            border-color: %5;
             background-color: transparent;
         }
         QToolButton[kind="iconButton"] {
@@ -572,13 +579,15 @@ QString MainWindow::buildToolbarStyleSheet() {
             min-width: 62px;
         }
     )"_s)
-        .arg(accent)                // %1
-        .arg(Theme::kBgBase())      // %2
-        .arg(accent)                // %3
-        .arg(textDim)               // %4
-        .arg(borderLight)           // %5
-        .arg(btnHov)                // %6
-        .arg(btnBg)                 // %7
+            .arg(accent)            // %1
+            .arg(Theme::kBgBase())  // %2
+            .arg(accent)            // %3
+            .arg(textDim)           // %4
+            .arg(borderLight)       // %5
+            .arg(btnHov)            // %6
+            .arg(btnBg)             // %7
+            .arg(accentSubtle);     // %8
+    }()
     + QString(uR"(
         QToolButton[kind="navButton"]:focus,
         QToolButton[kind="iconButton"]:focus {

@@ -198,8 +198,11 @@ void LineTelemetryDecodeWorker::run(const std::stop_token &stopToken) {
             };
 
             if (flushDeadline == Clock::time_point::max()) {
-                m_queueChanged.wait(lock, ready);
-            } else if (!m_queueChanged.wait_until(lock, flushDeadline, ready)) {
+                // Use the stop-token-aware overload: request_stop() atomically
+                // registers a callback that fires notify_all() under the internal
+                // lock, eliminating the lost-wakeup race present in wait(lock, pred).
+                m_queueChanged.wait(lock, stopToken, ready);
+            } else if (!m_queueChanged.wait_until(lock, stopToken, flushDeadline, ready)) {
                 deadlineReached = true;
             }
 

@@ -23,8 +23,8 @@ public:
      * @brief Create cancellation state backed by @p cancellation_check.
      * @param cancellation_check Callback that returns true after cancellation is requested.
      */
-    explicit CancellationState(const CancellationCheck &cancellation_check) noexcept
-        : m_cancellation_check(cancellation_check) {}
+    explicit CancellationState(CancellationCheck cancellation_check) noexcept
+        : m_cancellation_check(std::move(cancellation_check)) {}
 
     /**
      * @brief Query the callback immediately and latch a positive result.
@@ -64,7 +64,7 @@ public:
 private:
     static constexpr std::size_t POLL_INTERVAL = 256U;
 
-    const CancellationCheck &m_cancellation_check;
+    CancellationCheck m_cancellation_check;
     std::size_t m_operations_until_poll = 1U;
     bool m_canceled = false;
 };

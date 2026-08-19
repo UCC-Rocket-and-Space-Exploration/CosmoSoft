@@ -1,7 +1,9 @@
 #include "gateway/comms/SerialWorker.h"
 
+#include <chrono>
 #include <exception>
 #include <system_error>
+#include <thread>
 #include <vector>
 
 SerialWorker::~SerialWorker() {
@@ -121,6 +123,11 @@ void SerialWorker::run(const std::stop_token stopToken) {
                 closeConnection();
                 break;
             }
+        } else if (n == 0) {
+            // read() returned 0: no data available (non-blocking / timeout read).
+            // Yield briefly to avoid spinning at 100% CPU on a silent or
+            // disconnected port that never returns n<0.
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         } else if (n < 0) {
             reportError("Serial read failed");
             closeConnection();
