@@ -10,22 +10,29 @@
 #include "gui/widgets/MetricDefs.h"
 #include "gui/widgets/StatTileWidget.h"
 
+#include <QChart>
+#include <QChartView>
+#include <QColor>
 #include <QComboBox>
+#include <QDateTime>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineSeries>
 #include <QList>
-#include <QListWidget>
-#include <QListWidgetItem>
+#include <QPen>
 #include <QPushButton>
+#include <QSerialPortInfo>
 #include <QSettings>
 #include <QShowEvent>
 #include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QSplitter>
 #include <QStyle>
+#include <QTimer>
 #include <QToolButton>
+#include <QValueAxis>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -105,24 +112,41 @@ void MonitoringPage::setImperialUnits(bool imperial) {
 }
 
 void MonitoringPage::setAvailablePorts(const QStringList &ports) {
+    setScanningState(false);
+
     const QString previous = selectedPort();
     m_availablePorts = ports;
 
     if (m_portCombo) {
         const QSignalBlocker blocker(m_portCombo);
         m_portCombo->clear();
-        m_portCombo->addItems(m_availablePorts);
+
+        // Build a lookup of QSerialPortInfo by system location for rich descriptions
+        const auto available = QSerialPortInfo::availablePorts();
+        for (const QString &portPath : ports) {
+            QString displayText = portPath;
+            for (const auto &info : available) {
+                if (info.systemLocation() == portPath || info.portName() == portPath) {
+                    const QString desc = info.description().trimmed();
+                    if (!desc.isEmpty()) {
+                        displayText = QStringLiteral("%1 — %2").arg(desc, portPath);
+                    }
+                    break;
+                }
+            }
+            m_portCombo->addItem(displayText, portPath);
+        }
+
         if (!previous.isEmpty()) {
-            const int idx = m_portCombo->findText(previous);
+            const int idx = m_portCombo->findData(previous);
             if (idx >= 0) {
                 m_portCombo->setCurrentIndex(idx);
             }
         } else {
-            // Restore last-used port
             const QSettings settings(kSettingsOrg, kSettingsApp);
             const QString lastPort = settings.value(kSettingsSerialPort).toString();
             if (!lastPort.isEmpty()) {
-                const int idx = m_portCombo->findText(lastPort);
+                const int idx = m_portCombo->findData(lastPort);
                 if (idx >= 0) {
                     m_portCombo->setCurrentIndex(idx);
                 }
@@ -171,6 +195,13 @@ void MonitoringPage::resetLiveState() {
     m_havePreviousSample       = false;
     m_haveLatestDisplaySample  = false;
     m_latestVelocity           = 0.0;
+    m_chartHasData             = false;
+    m_chartStartMs             = 0;
+    if (m_altSeries) { m_altSeries->clear(); }
+    if (m_velSeries) { m_velSeries->clear(); }
+    if (m_timeAxis)  { m_timeAxis->setRange(0.0, kChartWindowSec); }
+    if (m_altAxis)   { m_altAxis->setRange(0.0, 100.0); }
+    if (m_velAxis)   { m_velAxis->setRange(-50.0, 50.0); }
     resetMetricTiles();
     if (m_mapWidget) {
         m_mapWidget->onSessionReset();
@@ -212,6 +243,11 @@ void MonitoringPage::onLiveSamplesReceived(const QVector<FlightSample> &samples)
     m_latestDisplaySample      = sample;
     m_latestVelocity           = velocity;
     m_haveLatestDisplaySample  = true;
+
+    if (std::isfinite(sample.altitude)) {
+        appendToLiveChart(sample.altitude,
+                          std::isfinite(velocity) ? velocity : 0.0);
+    }
 
     if (isVisible()) {
         refreshTelemetryDisplay();
@@ -341,8 +377,10 @@ void MonitoringPage::buildConnectionBar(QWidget *bar) {
     m_bytesLabel->setObjectName(u"monCountLabel"_s);
     layout->addWidget(m_bytesLabel);
 
-    connect(m_scanButton,       &QPushButton::clicked,
-            this, &MonitoringPage::scanDevicesRequested);
+    connect(m_scanButton,       &QPushButton::clicked, this, [this]() {
+        setScanningState(true);
+        emit scanDevicesRequested();
+    });
     connect(m_connectButton,    &QPushButton::clicked,
             this, &MonitoringPage::onConnectClicked);
     connect(m_disconnectButton, &QPushButton::clicked,
@@ -463,19 +501,66 @@ QWidget *MonitoringPage::buildRightPanel() {
     linkLayout->addWidget(barBg);
     layout->addWidget(linkFrame);
 
-    // ── Event log ───────────────────────────────────────────────────────────
-    auto *logTitle = new QLabel(u"EVENT LOG"_s, panel);
-    logTitle->setObjectName(u"monSectionTitle"_s);
-    layout->addWidget(logTitle);
+    // ── Live rolling chart ──────────────────────────────────────────────────
+    auto *chartTitle = new QLabel(u"LIVE TELEMETRY"_s, panel);
+    chartTitle->setObjectName(u"monSectionTitle"_s);
+    layout->addWidget(chartTitle);
 
-    m_eventLog = new QListWidget(panel);
-    m_eventLog->setObjectName(u"monEventLog"_s);
-    m_eventLog->setAlternatingRowColors(true);
-    m_eventLog->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    m_eventLog->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_eventLog->setSpacing(1);
-    m_eventLog->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    layout->addWidget(m_eventLog, 1);
+    m_altSeries = new QLineSeries();
+    m_altSeries->setName(u"Altitude"_s);
+    m_altSeries->setPen(QPen(QColor(u"#5b9bd5"_s), 1.5));
+
+    m_velSeries = new QLineSeries();
+    m_velSeries->setName(u"Velocity"_s);
+    m_velSeries->setPen(QPen(QColor(u"#70c1a5"_s), 1.5));
+
+    m_chart = new QChart();
+    m_chart->setBackgroundBrush(QBrush(QColor(Theme::kBgPanel())));
+    m_chart->setPlotAreaBackgroundBrush(QBrush(QColor(Theme::kBgDark())));
+    m_chart->setPlotAreaBackgroundVisible(true);
+    m_chart->setMargins(QMargins(4, 4, 4, 4));
+    m_chart->legend()->hide();
+
+    m_timeAxis = new QValueAxis();
+    m_timeAxis->setRange(0.0, kChartWindowSec);
+    m_timeAxis->setLabelFormat(u"%.0f s"_s);
+    m_timeAxis->setLabelsColor(QColor(Theme::kTextMuted()));
+    m_timeAxis->setGridLineColor(QColor(Theme::kBorderPanel()));
+    m_timeAxis->setLinePen(QPen(QColor(Theme::kBorderPanel())));
+    m_timeAxis->setTickCount(7);
+
+    m_altAxis = new QValueAxis();
+    m_altAxis->setRange(0.0, 100.0);
+    m_altAxis->setLabelFormat(u"%.0f m"_s);
+    m_altAxis->setLabelsColor(QColor(u"#5b9bd5"_s));
+    m_altAxis->setGridLineColor(QColor(Theme::kBorderPanel()));
+    m_altAxis->setLinePen(QPen(Qt::transparent));
+    m_altAxis->setTickCount(5);
+
+    m_velAxis = new QValueAxis();
+    m_velAxis->setRange(-50.0, 50.0);
+    m_velAxis->setLabelFormat(u"%.0f m/s"_s);
+    m_velAxis->setLabelsColor(QColor(u"#70c1a5"_s));
+    m_velAxis->setGridLineVisible(false);
+    m_velAxis->setLinePen(QPen(Qt::transparent));
+    m_velAxis->setTickCount(5);
+
+    m_chart->addSeries(m_altSeries);
+    m_chart->addSeries(m_velSeries);
+    m_chart->addAxis(m_timeAxis, Qt::AlignBottom);
+    m_chart->addAxis(m_altAxis, Qt::AlignLeft);
+    m_chart->addAxis(m_velAxis, Qt::AlignRight);
+    m_altSeries->attachAxis(m_timeAxis);
+    m_altSeries->attachAxis(m_altAxis);
+    m_velSeries->attachAxis(m_timeAxis);
+    m_velSeries->attachAxis(m_velAxis);
+
+    m_chartView = new QChartView(m_chart, panel);
+    m_chartView->setObjectName(u"monLiveChart"_s);
+    m_chartView->setRenderHint(QPainter::Antialiasing);
+    m_chartView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_chartView->setMinimumHeight(120);
+    layout->addWidget(m_chartView, 1);
 
     return panel;
 }
@@ -505,8 +590,9 @@ void MonitoringPage::refreshStyleSheet() {
             background: transparent;
             border: none;
         }
-        QLabel#monStatusDot[state="connected"] { color: %5; font-size: 18px; border: none; background: transparent; }
-        QLabel#monStatusDot[state="idle"]      { color: %6; font-size: 18px; border: none; background: transparent; }
+        QLabel#monStatusDot[state="connected"] { color: %5;  font-size: 18px; border: none; background: transparent; }
+        QLabel#monStatusDot[state="idle"]      { color: %6;  font-size: 18px; border: none; background: transparent; }
+        QLabel#monStatusDot[state="error"]     { color: %19; font-size: 18px; border: none; background: transparent; }
         QLabel#monStatusLabel[state="connected"] {
             color: %5;
             font-weight: 700;
@@ -517,6 +603,14 @@ void MonitoringPage::refreshStyleSheet() {
         }
         QLabel#monStatusLabel[state="idle"] {
             color: %6;
+            font-family: %7;
+            font-size: %8px;
+            background: transparent;
+            border: none;
+        }
+        QLabel#monStatusLabel[state="error"] {
+            color: %19;
+            font-weight: 700;
             font-family: %7;
             font-size: %8px;
             background: transparent;
@@ -581,17 +675,10 @@ void MonitoringPage::refreshStyleSheet() {
         }
         QFrame#monRssiBarBg   { background-color: %15; border-radius: 5px; border: none; }
         QFrame#monRssiBarFill { background-color: %5;  border-radius: 5px; border: none; }
-        QListWidget#monEventLog {
+        QChartView#monLiveChart {
             background-color: %17;
-            alternate-background-color: %15;
             border: 1px solid %3;
             border-radius: %18px;
-            color: %4;
-            font-family: %7;
-            font-size: %8px;
-        }
-        QListWidget#monEventLog::item {
-            padding: 3px 6px;
         }
     )"_s)
         .arg(Theme::kBgBase())          // %1
@@ -611,12 +698,26 @@ void MonitoringPage::refreshStyleSheet() {
         .arg(Theme::kBgDark())          // %15
         .arg(Theme::kAccentLink())      // %16
         .arg(Theme::kBgPanel())         // %17
-        .arg(Theme::kRadiusMd));        // %18
+        .arg(Theme::kRadiusMd)          // %18
+        .arg(Theme::kDanger()));        // %19
 
     for (auto *tile : m_metricTiles) {
         if (tile) {
             tile->setAccentColor(QColor(Theme::kAccentLink()));
         }
+    }
+
+    if (m_chart) {
+        m_chart->setBackgroundBrush(QBrush(QColor(Theme::kBgPanel())));
+        m_chart->setPlotAreaBackgroundBrush(QBrush(QColor(Theme::kBgDark())));
+    }
+    if (m_timeAxis) {
+        m_timeAxis->setLabelsColor(QColor(Theme::kTextMuted()));
+        m_timeAxis->setGridLineColor(QColor(Theme::kBorderPanel()));
+        m_timeAxis->setLinePen(QPen(QColor(Theme::kBorderPanel())));
+    }
+    if (m_altAxis) {
+        m_altAxis->setGridLineColor(QColor(Theme::kBorderPanel()));
     }
 }
 
@@ -700,27 +801,93 @@ void MonitoringPage::updateRssiBar(double rssi) {
     }
 }
 
-void MonitoringPage::appendEvent(bool isError, const QString &text) {
-    if (!m_eventLog) {
+void MonitoringPage::setScanningState(bool scanning) {
+    m_scanning = scanning;
+    if (m_scanButton) {
+        m_scanButton->setText(scanning ? u"Scanning…"_s : u"Scan"_s);
+        m_scanButton->setEnabled(!scanning);
+    }
+}
+
+void MonitoringPage::setConnectionError(const QString &message) {
+    if (m_statusDot) {
+        m_statusDot->setProperty("state", u"error"_s);
+        m_statusDot->style()->unpolish(m_statusDot);
+        m_statusDot->style()->polish(m_statusDot);
+    }
+    if (m_statusLabel) {
+        m_statusLabel->setText(message.toUpper());
+        m_statusLabel->setProperty("state", u"error"_s);
+        m_statusLabel->style()->unpolish(m_statusLabel);
+        m_statusLabel->style()->polish(m_statusLabel);
+    }
+    if (m_connectButton) {
+        m_connectButton->setEnabled(!m_availablePorts.isEmpty());
+    }
+    QTimer::singleShot(5000, this, [this]() {
+        if (!m_connected) {
+            setActiveConnection(QString(), false);
+        }
+    });
+}
+
+void MonitoringPage::appendToLiveChart(double altM, double velMps) {
+    if (!m_altSeries || !m_velSeries || !m_timeAxis || !m_altAxis || !m_velAxis) {
         return;
     }
-    auto *item = new QListWidgetItem(text, m_eventLog);
-    item->setForeground(isError ? QColor(Theme::kDanger()) : QColor(Theme::kTextMuted()));
-    m_eventLog->scrollToBottom();
 
-    constexpr int kMaxItems = 500;
-    while (m_eventLog->count() > kMaxItems) {
-        delete m_eventLog->takeItem(0);
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    if (!m_chartHasData) {
+        m_chartStartMs = nowMs;
+        m_chartHasData = true;
     }
+
+    const double x    = static_cast<double>(nowMs - m_chartStartMs) / 1000.0;
+    const double xMin = x - kChartWindowSec;
+
+    m_altSeries->append(x, altM);
+    m_velSeries->append(x, velMps);
+
+    m_timeAxis->setRange(std::max(0.0, xMin), std::max(kChartWindowSec, x));
+
+    const auto pruneOld = [xMin](QLineSeries *series) {
+        const auto pts = series->points();
+        int n = 0;
+        for (const auto &pt : pts) {
+            if (pt.x() < xMin) { ++n; } else { break; }
+        }
+        if (n > 0) {
+            series->removePoints(0, n);
+        }
+    };
+    pruneOld(m_altSeries);
+    pruneOld(m_velSeries);
+
+    const auto autoRange = [](QValueAxis *axis, QLineSeries *series, double defaultLo, double defaultHi) {
+        const auto pts = series->points();
+        if (pts.isEmpty()) {
+            axis->setRange(defaultLo, defaultHi);
+            return;
+        }
+        double lo = pts.first().y(), hi = lo;
+        for (const auto &pt : pts) {
+            lo = std::min(lo, pt.y());
+            hi = std::max(hi, pt.y());
+        }
+        const double pad = std::max(1.0, (hi - lo) * 0.1);
+        axis->setRange(lo - pad, hi + pad);
+    };
+    autoRange(m_altAxis, m_altSeries, 0.0, 100.0);
+    autoRange(m_velAxis, m_velSeries, -50.0, 50.0);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 QString MonitoringPage::selectedPort() const {
-    if (!m_portCombo || m_portCombo->currentText().trimmed().isEmpty()) {
+    if (!m_portCombo) {
         return QString();
     }
-    return m_portCombo->currentText().trimmed();
+    return m_portCombo->currentData().toString();
 }
 
 int MonitoringPage::selectedBaud() const {

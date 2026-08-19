@@ -34,6 +34,6 @@ target_link_libraries(gui
         import
 )
 
-target_link_libraries(gui PRIVATE ZLIB::ZLIB)
+target_link_libraries(gui PRIVATE ZLIB::ZLIB Qt6::SerialPort)
 
 target_link_libraries(cosmo-backend gui)

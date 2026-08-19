@@ -9,14 +9,18 @@
 
 #include <array>
 
+class QChart;
+class QChartView;
 class QComboBox;
 class QFrame;
 class QGridLayout;
 class QLabel;
-class QListWidget;
+class QLineSeries;
 class QPushButton;
 class QShowEvent;
+class QTimer;
 class QToolButton;
+class QValueAxis;
 class FlightDataModel;
 class Map3DWidget;
 class StatTileWidget;
@@ -28,17 +32,24 @@ public:
     explicit MonitoringPage(FlightDataModel *model, QWidget *parent = nullptr);
     ~MonitoringPage() override = default;
 
-    /** Replace the serial device list. Existing selection is preserved when possible. */
+    /** Replace the serial device list. Clears scanning state. */
     void setAvailablePorts(const QStringList &ports);
 
     /** Update connection chrome. */
     void setActiveConnection(const QString &label, bool connected);
 
-    /** Clear samples, metric values, map state, and counters. */
+    /** Clear samples, metric values, map state, counters, and chart. */
     void resetLiveState();
 
     /** Select metric or imperial presentation units. */
     void setImperialUnits(bool imperial);
+
+public slots:
+    /** Show/hide scanning feedback on the scan button. */
+    void setScanningState(bool scanning);
+
+    /** Show an error state in the connection bar; auto-clears after 5 s. */
+    void setConnectionError(const QString &message);
 
 signals:
     void scanDevicesRequested();
@@ -64,7 +75,7 @@ private:
     void resetMetricTiles();
     void updateStatusCounters();
     void updateRssiBar(double rssi);
-    void appendEvent(bool isError, const QString &text);
+    void appendToLiveChart(double altM, double velMps);
     [[nodiscard]] QString selectedPort() const;
     [[nodiscard]] int selectedBaud() const;
 
@@ -91,17 +102,28 @@ private:
     QFrame *m_rssiBarFill    = nullptr;
     QLabel *m_rssiValueLabel = nullptr;
 
-    // Scrollable event log
-    QListWidget *m_eventLog = nullptr;
+    // Live rolling chart
+    QChart      *m_chart        = nullptr;
+    QChartView  *m_chartView    = nullptr;
+    QLineSeries *m_altSeries    = nullptr;
+    QLineSeries *m_velSeries    = nullptr;
+    QValueAxis  *m_timeAxis     = nullptr;
+    QValueAxis  *m_altAxis      = nullptr;
+    QValueAxis  *m_velAxis      = nullptr;
+    qint64       m_chartStartMs = 0;
+    bool         m_chartHasData = false;
+
+    static constexpr double kChartWindowSec = 30.0;
 
     QStringList m_availablePorts;
-    bool        m_connected              = false;
-    int         m_sampleCount           = 0;
-    qint64      m_totalBytes            = 0;
+    bool         m_scanning               = false;
+    bool         m_connected              = false;
+    int          m_sampleCount            = 0;
+    qint64       m_totalBytes             = 0;
     FlightSample m_previousSample;
-    bool         m_havePreviousSample    = false;
+    bool         m_havePreviousSample     = false;
     FlightSample m_latestDisplaySample;
-    double       m_latestVelocity       = 0.0;
+    double       m_latestVelocity         = 0.0;
     bool         m_haveLatestDisplaySample = false;
-    bool         m_imperialUnits        = false;
+    bool         m_imperialUnits          = false;
 };
