@@ -7,5 +7,5 @@
 enum FrameFormat{
       Csv,
       Telemega
-}
+};
 #endif //COSMO_SOFT_PACKAGEFORMAT_H

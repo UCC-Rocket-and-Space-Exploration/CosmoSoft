@@ -2,42 +2,59 @@
 #define COSMO_SOFT_SERIALWORKER_H
 #include <atomic>
 #include <functional>
+#include <mutex>
+#include <stop_token>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
-#include "IBuffer.h"
-#include "services/RingBuffer.h"
-#include "../../domain/FlightSample.h"
-#include "../../gateway/comms/IComms.h"
-#include "gateway/comms/ISerialPortScanner.h"
+#include "gateway/comms/IComms.h"
 
-//To avoid blocking the UI when fetching serial data, we need to use Qt's signals and slots technique for async data fetching
-//TODO complete refactor; make async if possible, include error handling & logging, parsing, etc.
-// - Also rewrite to use std::jthread and std::stop_token for better thread management and cancellation
+/**
+ * @brief Reads byte chunks from an IComms connection on a background thread.
+ *
+ * The IComms object is non-owning and must outlive this worker. stop() closes
+ * the connection to cancel a pending read before joining the worker thread.
+ * Callbacks run on the worker thread and must not destroy this worker.
+ */
 class SerialWorker {
     using DataCallback = std::function<void(std::vector<uint8_t>)>;
     using ErrorCallback = std::function<void(const std::string&)>;
 
 public:
+    /**
+     * @brief Construct a reader for an externally owned communications object.
+     * @param comms Connection that remains alive until this worker is destroyed.
+     * @param onData Callback for each non-empty byte chunk.
+     * @param onError Callback for backend and callback failures.
+     */
+    explicit SerialWorker(IComms* comms, DataCallback onData, ErrorCallback onError)
+        : m_connectedPort(comms),
+          m_onData(std::move(onData)),
+          m_onError(std::move(onError)) {}
 
-    explicit SerialWorker(IComms* comms, IBuffer* buffer, ErrorCallback onError) : m_connectedPort(comms), m_buffer(buffer), m_onError(std::move(onError)), m_running(false) {};
+    /** @brief Stop and join the reader before releasing worker state. */
     ~SerialWorker();
 
+    /** @brief Start reading from an already-open connection. */
     bool start();
+
+    /** @brief Return true while the reader thread is accepting work. */
+    [[nodiscard]] bool isRunning() const noexcept;
+
+    /** @brief Request cancellation, close the connection, and join the reader. */
     void stop();
 
 private:
-    void run() const;
-    IBuffer* m_buffer;
-    std::thread m_workerThread;
-    std::atomic<bool> m_running;
+    void run(std::stop_token stopToken);
 
     IComms* m_connectedPort;
-    ISerialPortScanner* m_scanner;
     DataCallback m_onData;
     ErrorCallback m_onError;
+    std::jthread m_workerThread;
+    std::atomic<bool> m_running{false};
+    std::mutex m_lifecycleMutex;
 };
 
-
-#endif //COSMO_SOFT_SERIALWORKER_H
+#endif // COSMO_SOFT_SERIALWORKER_H

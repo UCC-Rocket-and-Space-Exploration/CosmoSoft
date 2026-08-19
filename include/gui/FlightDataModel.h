@@ -12,16 +12,23 @@
 
 #include <QMutex>
 #include <QObject>
+#include <QVector>
 
 #include "domain/FlightSample.h"
 
 Q_DECLARE_METATYPE(FlightSample)
 
+/** @brief Qt-compatible batch of live flight samples. */
+using FlightSampleBatch = QVector<FlightSample>;
+
+Q_DECLARE_METATYPE(FlightSampleBatch)
+
 /**
  * @class FlightDataModel
  * @brief Centralised, thread-safe store for the latest flight sample and session metadata.
  *
- * DashboardPage subscribes to sampleUpdated() to refresh its displays.
+ * GUI pages subscribe to displayedSampleChanged() for the latest values and
+ * liveSamplesReceived() when they need every point in a live batch.
  * The model itself never performs any I/O or parsing.
  */
 class FlightDataModel : public QObject {
@@ -52,15 +59,41 @@ public:
     void setDisplayedSample(const FlightSample &sample);
 
 public slots:
-    /** @brief Stores @p sample as the latest and emits sampleUpdated(). Must be called on the GUI thread. */
+    /** @brief Stores one live sample and emits the live, display, and legacy signals. */
     void appendSample(const FlightSample &sample);
 
-    /** @brief Accumulates @p byteCount into totalBytesReceived() and emits bytesReceivedChanged(). */
+    /**
+     * @brief Stores a batch of live samples and coalesces display notifications.
+     *
+     * The complete batch is emitted once through liveSamplesReceived(). The
+     * final sample becomes latestSample() and is emitted once through
+     * displayedSampleChanged(). The legacy sampleUpdated() signal remains
+     * per-sample for compatibility with existing consumers.
+     * Empty batches are ignored. Must be called on the GUI thread.
+     */
+    void appendLiveBatch(const FlightSampleBatch &samples);
+
+    /** @brief Accumulates a positive @p byteCount and emits bytesReceivedChanged(). */
     void addBytesReceived(qint64 byteCount);
 
 signals:
-    /** @brief Emitted after every new sample is stored; carries the new sample. */
+    /** @brief Emitted once for every new sample; carries that sample. */
     void sampleUpdated(const FlightSample &sample);
+
+    /**
+     * @brief Emitted once when the sample shown by monitoring widgets changes.
+     *
+     * New display-only consumers should prefer this signal to sampleUpdated().
+     */
+    void displayedSampleChanged(const FlightSample &sample);
+
+    /**
+     * @brief Emitted once for each accepted batch of live telemetry samples.
+     *
+     * Consumers that need every live point should use this signal and must not
+     * also subscribe to sampleUpdated(), which is retained for compatibility.
+     */
+    void liveSamplesReceived(const FlightSampleBatch &samples);
 
     /** @brief Emitted whenever the cumulative byte counter changes. */
     void bytesReceivedChanged(qint64 totalBytes);

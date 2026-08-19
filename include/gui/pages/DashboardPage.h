@@ -1,6 +1,9 @@
 #ifndef COSMO_SOFT_DASHBOARDPAGE_H
 #define COSMO_SOFT_DASHBOARDPAGE_H
 
+#include <QElapsedTimer>
+#include <QPointer>
+#include <QVector>
 #include <QWidget>
 
 #include <array>
@@ -19,8 +22,10 @@ class QLabel;
 class QLineSeries;
 class QPaintEvent;
 class QPushButton;
+class QShowEvent;
 class QStackedWidget;
 class QProgressBar;
+class QShortcut;
 class QTimer;
 class QToolButton;
 class QValueAxis;
@@ -30,6 +35,7 @@ class FlightDataModel;
 class FlightReplayController;
 class Map3DWidget;
 class ReplayBar;
+class TelemetryChartView;
 class TracesPanel;
 
 /**
@@ -38,20 +44,19 @@ class TracesPanel;
  *
  * Supports two operating modes controlled by FlightDataModel::replayMode():
  *
- *  **Live mode** — FlightDataModel emits sampleUpdated(); samples are buffered
+ *  **Live mode** — FlightDataModel emits liveSamplesReceived(); samples are buffered
  *  in m_liveSamples (capped at kMaxLiveBufferSamples) and the chart is rebuilt
- *  at most once per 50 ms via the live coalesce timer.
+ *  at most 20 times per second by the shared render scheduler.
  *
- *  **Replay mode** — A FlightSession is loaded via setReplaySession() and the
- *  visible trail is controlled by setReplayTrailLength() which is called by
- *  MainWindow on every FlightReplayController tick.  Chart redraws are coalesced
- *  to ≈ 30 fps so timeline scrubbing stays smooth.
+ *  **Replay mode** — A FlightSession is loaded via setReplaySession(); ReplayBar
+ *  forwards each confirmed controller position to the dashboard. Chart work is
+ *  capped at ≈ 30 fps and deferred while its view is hidden.
  *
- * When the sample count exceeds kMaxChartDisplayPoints the chart uses uniform
- * decimation; the mapping from display-point index back to original sample is
+ * When the sample count exceeds kMaxChartDisplayPoints the chart uses LTTB
+ * reduction; the mapping from display-point index back to original sample is
  * stored in m_hoverSampleIndexMap to keep hover readouts accurate.
  *
- * When two or more metrics are enabled the Y axis is normalised to [0, 1] so
+ * When three or more metrics are enabled the Y axis is normalised to [0, 1] so
  * all traces overlay on the same scale (the axis title changes to "Normalized").
  */
 class DashboardPage : public QWidget {
@@ -64,6 +69,13 @@ public:
     explicit DashboardPage(FlightDataModel *model, FlightReplayController *replay, QWidget *parent = nullptr);
 
     /**
+     * @brief Selects metric or imperial presentation units for dashboard views.
+     *
+     * Stored flight samples and preview selection remain in their raw SI form.
+     */
+    void setImperialUnits(bool imperial);
+
+    /**
      * Switches to replay mode and loads @p session.
      * Resets the scrubber, rebuilds the chart from the full session, and
      * positions the replay controller at the end (most recent sample).
@@ -74,7 +86,7 @@ public:
 
     /**
      * Updates the visible replay trail to @p trailLength samples.
-     * Called by MainWindow on every FlightReplayController::positionChanged signal.
+     * Also synchronizes the ReplayBar when an external caller changes the trail.
      */
     void setReplayTrailLength(int trailLength);
 
@@ -86,9 +98,11 @@ public:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private slots:
-    void onSampleUpdated(const FlightSample &sample);
+    void onDisplayedSampleChanged(const FlightSample &sample);
+    void onLiveSamplesReceived(const QVector<FlightSample> &samples);
     void onSessionReset();
     void onResetChartZoom();
     void onChartVisualOptionsToggled();
@@ -96,13 +110,18 @@ private slots:
 private:
     // ── Replay chart management ───────────────────────────────────────────────
     void applyReplayControllerPosition(int trailLength);
-    void scheduleReplayChartRebuild();   ///< Restart the 33 ms coalesce timer.
-    void flushReplayChartRebuild();      ///< Cancel timer and rebuild immediately.
+    void scheduleReplayChartRebuild();   ///< Mark replay chart data dirty.
+    void flushReplayChartRebuild();      ///< Flush the latest visible replay state.
     void rebuildReplayCharts(int trailLength);
 
     // ── Live chart management ─────────────────────────────────────────────────
-    void scheduleLiveChartRebuild();     ///< Restart the 50 ms coalesce timer.
+    void scheduleLiveChartRebuild();     ///< Mark live chart data dirty.
     void rebuildLiveSeriesFromHistory();
+
+    // ── Shared chart render scheduler ─────────────────────────────────────
+    void scheduleRenderPass();
+    void processScheduledUpdates(bool forceImmediate = false);
+    [[nodiscard]] bool graphViewIsActive() const;
 
     // ── Chart helpers ─────────────────────────────────────────────────────────
 
@@ -134,8 +153,8 @@ private:
     [[nodiscard]] QString formatMultiMetricHover(double tSec, int displayPointIndex1Based) const;
 
     // ── Data sources ──────────────────────────────────────────────────────────
-    FlightDataModel        *m_model   = nullptr;
-    FlightReplayController *m_replay  = nullptr;
+    FlightDataModel              *m_model   = nullptr;
+    QPointer<FlightReplayController> m_replay;
     std::shared_ptr<const FlightSession> m_session;  ///< Shared loaded replay session.
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
 
@@ -146,12 +165,13 @@ private:
     QLabel      *m_sessionInfoLabel  = nullptr;  ///< Session metadata summary.
 
     // ── Chart ─────────────────────────────────────────────────────────────────
-    QChart     *m_chart     = nullptr;
-    QChartView *m_chartView = nullptr;
+    QChart             *m_chart     = nullptr;
+    TelemetryChartView *m_chartView = nullptr;
     std::array<QLineSeries *, kMetricCount> m_lineSeries{};
     QValueAxis *m_axisX  = nullptr;
     QValueAxis *m_axisY  = nullptr;
     QValueAxis *m_axisY2 = nullptr;  ///< Secondary right-hand Y axis for dual-metric mode.
+    QVector<QShortcut *> m_chartShortcuts; ///< Shortcuts active only inside the graph view.
 
     // ── View switcher (Graph / Map) ───────────────────────────────────────────
     QStackedWidget *m_viewStack    = nullptr;
@@ -191,11 +211,20 @@ private:
     std::vector<QLineSeries *> m_markerSeries;
     void addEventMarker(double timeSec, const QString &name);
     void clearEventMarkers();
-    void redrawEventMarkers();
+    void applyEventMarkerTheme(QLineSeries *series) const;
+    void refreshEventMarkerTheme();
+    void updateEventMarkerGeometry();
 
-    // ── Chart update coalescing ───────────────────────────────────────────────
-    QTimer *m_liveChartCoalesceTimer   = nullptr;  ///< 50 ms, single-shot.
-    QTimer *m_replayChartCoalesceTimer = nullptr;  ///< 33 ms, single-shot.
+    // ── Bounded chart scheduling ─────────────────────────────────────────────
+    static constexpr int kLiveChartIntervalMs = 50;
+    static constexpr int kInteractiveIntervalMs = 33;
+
+    QTimer *m_renderSchedulerTimer = nullptr;  ///< The only chart render timer.
+    QElapsedTimer m_renderClock;
+    qint64 m_lastLiveChartRenderMs = -kLiveChartIntervalMs;
+    qint64 m_lastReplayChartRenderMs = -kInteractiveIntervalMs;
+    bool m_liveChartDirty = false;
+    bool m_replayChartDirty = false;
 
     /**
      * When true, rebuildReplayCharts / rebuildLiveSeriesFromHistory skip the
@@ -214,6 +243,8 @@ private:
     int m_replayChartBuiltBucket = -1;      ///< Preview bucket at last replay rebuild.
 
     int m_lastReplayTrailLength = 0;  ///< Most recent trail length from the controller.
+    bool m_imperialUnits = false;     ///< True when telemetry is presented in imperial units.
+    bool m_splitterSavePending = false; ///< Coalesces QSettings writes from splitterMoved.
 
     /** Circular live-telemetry buffer, bounded to kMaxLiveBufferSamples. */
     std::deque<FlightSample> m_liveSamples;

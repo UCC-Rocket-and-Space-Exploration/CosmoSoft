@@ -3,9 +3,9 @@
  * @brief Top-level application window for CosmoSoft.
  *
  * MainWindow owns the mission toolbar, connection bar, telemetry strip, and the
- * page stack (DashboardPage).  It also owns the
- * live-telemetry pipeline (SerialWorker → BlockingQueue → line CSV decoder →
- * FlightDataModel) and the replay pipeline (FlightReplayController).
+ * page stack (Dashboard, Live Telemetry, and Event Log). It also owns the
+ * live-telemetry pipeline (SerialWorker → bounded decoder worker → batched
+ * FlightDataModel updates) and the replay pipeline (FlightReplayController).
  *
  * Responsibilities:
  *  - Serial port management: scan, connect, disconnect.
@@ -22,33 +22,42 @@
 #include <QMainWindow>
 #include <QString>
 
-#include <deque>
+#include <atomic>
+#include <chrono>
+#include <cstdint>
 #include <memory>
 #include <utility>
 #include <vector>
 
 #include "domain/FlightSession.h"
-#include "services/BlockingQueue.h"
 #include "services/preview/FlightPreviewCache.h"
-#include "services/telemetry/LineTelemetryDecoder.h"
 
 class QAction;
 class QComboBox;
 class QGraphicsDropShadowEffect;
 class QLabel;
 class QMenu;
+class QProgressDialog;
 class QPushButton;
+class QResizeEvent;
 class QStackedWidget;
 class QTimer;
+class QToolBar;
+class QToolButton;
 class DashboardPage;
+class EventLogPage;
 class LiveTelemetryPage;
 class SettingsPage;
 class FlightDataModel;
 class FlightReplayController;
 class FlightLogManager;
-class ParserWorker;
 class SerialWorker;
 class IComms;
+
+namespace cosmo::telemetry {
+class LineTelemetryBatchMailbox;
+class LineTelemetryDecodeWorker;
+}
 
 /** @brief Top-level application window. */
 class MainWindow : public QMainWindow {
@@ -69,6 +78,10 @@ public slots:
     /** @brief Receives parser and serial error strings and shows them in the status bar. */
     void onParserError(const QString &message);
 
+protected:
+    /** @brief Reflow toolbar controls when the application window is resized. */
+    void resizeEvent(QResizeEvent *event) override;
+
 private slots:
     void updateMissionClock();
     void applyPendingReplayTelemetryStrip();
@@ -84,7 +97,6 @@ private slots:
     void onConnectLiveDevice(const QString &portName, int baud);
     void onDisconnectLiveDevice();
     void onStartLiveDemo();
-    void drainLiveTelemetryQueue();
 
 private:
     void setupActions();
@@ -93,9 +105,12 @@ private:
     void setupConnectionBar();
     [[nodiscard]] QString buildToolbarStyleSheet();
     [[nodiscard]] QString buildActionBarStyleSheet();
+    void updateSettingsIcon();
+    void updateToolbarLayout();
     void setupPages();
     void openSettingsWindow();
     void applyReplayTelemetrySample(int trailLength);
+    void cancelFlightLogLoad(bool showStatus);
 
     /**
      * @brief Load a flight log asynchronously, showing a progress dialog.
@@ -109,11 +124,17 @@ private:
     void loadFlightLogAsync(const QString &path);
 
     /**
-     * @brief Appends a log entry to the persistent in-memory buffer.
-     * @param isError When true the entry is rendered as an error (red).
+     * @brief Appends a semantic entry to the bounded Event Log page.
+     * @param isError When true the entry uses the active theme's error style.
      * @param text    Human-readable message.
      */
     void appendToLog(bool isError, const QString &text);
+
+    /** @brief Play a rate-limited platform alert when UI sounds are enabled. */
+    void playErrorFeedback();
+
+    /** @brief Retain one live sample or report the recording-memory bound once. */
+    void recordLiveSample(const FlightSample &sample);
 
     void addRecentFile(const QString &path);
     void rebuildRecentFilesMenu();
@@ -124,7 +145,7 @@ private:
     void startSerial(const QString &portName, int baud);
     void stopSerial();
     void prepareLiveSession(const QString &context);
-    void clearRawQueue();
+    void drainLiveTelemetryBatches(std::uint64_t generation);
 
     // ── Menu bar ─────────────────────────────────────────────────────────────
     QMenu *m_recentFilesMenu = nullptr;
@@ -133,11 +154,13 @@ private:
     QAction *m_openSettingsAction    = nullptr;
     QAction *m_dashboardAction       = nullptr;
     QAction *m_liveTelemetryAction   = nullptr;
+    QAction *m_eventLogAction        = nullptr;
 
     // ── Page stack ────────────────────────────────────────────────────────────
     QStackedWidget     *m_pages             = nullptr;
     DashboardPage      *m_flightDataPage    = nullptr;
     LiveTelemetryPage  *m_liveTelemetryPage = nullptr;
+    EventLogPage        *m_eventLogPage      = nullptr;
     SettingsPage       *m_settingsWindow    = nullptr;
 
     // ── Toolbar labels ────────────────────────────────────────────────────────
@@ -145,6 +168,14 @@ private:
     QLabel *m_missionMetaLabel  = nullptr;
     QTimer *m_missionClockTimer = nullptr;
     QGraphicsDropShadowEffect *m_brandShadow = nullptr;
+    QToolBar *m_missionToolbar = nullptr;
+    QWidget *m_toolbarContent = nullptr;
+    QWidget *m_brandBlock = nullptr;
+    QToolButton *m_liveNavButton = nullptr;
+    QToolButton *m_dashboardNavButton = nullptr;
+    QToolButton *m_eventLogNavButton = nullptr;
+    QToolButton *m_settingsNavButton = nullptr;
+    int m_toolbarLayoutMode = -1;
 
     // ── Connection bar ────────────────────────────────────────────────────────
     QWidget  *m_connectionBar       = nullptr;
@@ -161,14 +192,23 @@ private:
     std::shared_ptr<const FlightSession> m_loadedSession;
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_loadedPreview;
 
+    // Each asynchronous operation has an independent generation. Completion
+    // handlers accept results only from the most recently started generation.
+    std::uint64_t m_loadGeneration = 0;
+    std::uint64_t m_exportGeneration = 0;
+    std::uint64_t m_scanGeneration = 0;
+    std::shared_ptr<std::atomic_bool> m_loadCancelFlag;
+    std::shared_ptr<std::atomic_bool> m_scanCancelFlag;
+    QProgressDialog *m_loadProgress = nullptr;
+    bool m_exportInProgress = false;
+
     // ── Live-telemetry pipeline ───────────────────────────────────────────────
-    BlockingQueue<std::vector<uint8_t>> m_rawQueue{512};
-    std::unique_ptr<ParserWorker>  m_parserWorker;
-    std::unique_ptr<SerialWorker>  m_serialWorker;
-    std::unique_ptr<IComms>        m_comms;
-    cosmo::telemetry::LineTelemetryDecoder m_lineDecoder;
+    std::unique_ptr<cosmo::telemetry::LineTelemetryBatchMailbox> m_liveBatchMailbox;
+    std::unique_ptr<cosmo::telemetry::LineTelemetryDecodeWorker> m_lineDecodeWorker;
+    std::unique_ptr<SerialWorker> m_serialWorker;
+    std::unique_ptr<IComms> m_comms;
+    std::uint64_t m_liveGeneration = 0;
     QString m_serialPortSummary;
-    std::size_t m_lastMalformedLineCount = 0;
 
     // ── Timers ────────────────────────────────────────────────────────────────
     QTimer *m_replayTelemetryCoalesceTimer = nullptr;
@@ -178,12 +218,10 @@ private:
     std::vector<qint64> m_fakeTransmissionByteCounts;
     std::size_t m_fakeTransmissionIndex = 0;
 
-    /**
-     * Persistent log buffer.  Every entry is stored here so that the settings
-     * window can be closed and reopened without losing history.  The bool is
-     * true for errors, false for informational entries.
-     */
-    std::deque<std::pair<bool, QString>> m_logEntries;
+    bool m_uiSoundsEnabled = true;
+    bool m_hasPlayedErrorFeedback = false;
+    bool m_recordingLimitReported = false;
+    std::chrono::steady_clock::time_point m_lastErrorFeedback;
 };
 
 #endif // COSMO_SOFT_MAINWINDOW_H

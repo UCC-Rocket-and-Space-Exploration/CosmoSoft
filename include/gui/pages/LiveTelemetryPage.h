@@ -13,14 +13,19 @@
 
 #include <QString>
 #include <QStringList>
+#include <QVector>
 #include <QWidget>
 
 #include <array>
 
 class QComboBox;
 class QFrame;
+class QGridLayout;
 class QLabel;
 class QPushButton;
+class QResizeEvent;
+class QScrollArea;
+class QShowEvent;
 class QToolButton;
 class QVBoxLayout;
 class FlightDataModel;
@@ -59,6 +64,13 @@ public:
     /** @brief Clear samples, metric values, map state, and counters. */
     void resetLiveState();
 
+    /**
+     * @brief Selects metric or imperial presentation units for live telemetry.
+     *
+     * Incoming samples and vertical-speed calculations remain in SI units.
+     */
+    void setImperialUnits(bool imperial);
+
 signals:
     /** @brief User requested serial device scanning. */
     void scanDevicesRequested();
@@ -72,9 +84,16 @@ signals:
     /** @brief User requested deterministic fake live telemetry. */
     void startDemoRequested();
 
+protected:
+    /** @brief Refresh deferred telemetry presentation when the page becomes visible. */
+    void showEvent(QShowEvent *event) override;
+
+    /** @brief Reflow telemetry panels to match the available viewport width. */
+    void resizeEvent(QResizeEvent *event) override;
+
 private slots:
     void refreshStyleSheet();
-    void onSampleUpdated(const FlightSample &sample);
+    void onLiveSamplesReceived(const QVector<FlightSample> &samples);
     void onBytesReceivedChanged(qint64 totalBytes);
     void onConnectClicked();
 
@@ -87,13 +106,25 @@ private:
     QPushButton *createPanelButton(const QString &text, QWidget *parent);
     QToolButton *createMapToolButton(const QString &text, QWidget *parent);
     void refreshDeviceRows();
+    void refreshTelemetryDisplay();
     void resetMetricTiles();
     void updateLastPacketLabel();
+    void updateResponsiveLayout();
+    void updateFollowButtonState(bool enabled);
     [[nodiscard]] QString selectedPort() const;
     [[nodiscard]] int selectedBaud() const;
 
     FlightDataModel *m_model = nullptr;
     Map3DWidget *m_mapWidget = nullptr;
+    QScrollArea *m_scrollArea = nullptr;
+    QWidget *m_scrollContent = nullptr;
+    QGridLayout *m_responsiveLayout = nullptr;
+    QGridLayout *m_metricsGrid = nullptr;
+    QFrame *m_mapPanel = nullptr;
+    QWidget *m_metricsPanel = nullptr;
+    QWidget *m_sideColumn = nullptr;
+    int m_responsiveMode = -1;
+    int m_metricColumnCount = 0;
 
     std::array<StatTileWidget *, 6> m_metricTiles{};
     QLabel *m_connectionStatusLabel = nullptr;
@@ -102,6 +133,7 @@ private:
     QLabel *m_lastPacketLabel = nullptr;
     QComboBox *m_portCombo = nullptr;
     QComboBox *m_baudCombo = nullptr;
+    QToolButton *m_followButton = nullptr;
     QPushButton *m_scanButton = nullptr;
     QPushButton *m_connectButton = nullptr;
     QPushButton *m_disconnectButton = nullptr;
@@ -115,6 +147,10 @@ private:
     qint64 m_totalBytes = 0;
     FlightSample m_previousSample;
     bool m_havePreviousSample = false;
+    FlightSample m_latestDisplaySample;
+    double m_latestVelocity = 0.0;
+    bool m_haveLatestDisplaySample = false;
+    bool m_imperialUnits = false;
 };
 
 #endif // COSMO_SOFT_LIVETELEMETRYPAGE_H

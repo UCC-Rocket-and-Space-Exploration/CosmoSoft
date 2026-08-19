@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "domain/Frame.h"
+
 #define Kilobyte 1024
 
 //TODO
@@ -30,8 +32,8 @@ public:
     // - setErrorCallback() to allow for reporting framing errors back to the caller
 
 private:
-    uint8_t m_boundedInputBuffer[4 * Kilobyte] = {}; //TODO instantiat RingBuffer with this
-    Frame m_boundedOutputBuffer[256] = {};
+    [[maybe_unused]] uint8_t m_boundedInputBuffer[4 * Kilobyte] = {}; // TODO: instantiate RingBuffer with this
+    [[maybe_unused]] Frame m_boundedOutputBuffer[256] = {};
 
     //TODO
 

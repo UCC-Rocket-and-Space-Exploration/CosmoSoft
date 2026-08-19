@@ -9,16 +9,70 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QStyle>
+#include <QStyleOptionButton>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include <cmath>
 
 using namespace Qt::StringLiterals;
 
 namespace {
+
+/**
+ * Draws a theme-aware tick because styling QCheckBox::indicator suppresses
+ * the native platform checkmark on several Qt styles.
+ */
+class TraceCheckBox : public QCheckBox {
+public:
+    using QCheckBox::QCheckBox;
+
+protected:
+    void paintEvent(QPaintEvent *event) override
+    {
+        QCheckBox::paintEvent(event);
+        if (!isChecked()) {
+            return;
+        }
+
+        QStyleOptionButton option;
+        initStyleOption(&option);
+        const QRect indicator = style()->subElementRect(
+            QStyle::SE_CheckBoxIndicator, &option, this);
+        if (!indicator.isValid()) {
+            return;
+        }
+
+        const QColor indicatorColor(Theme::kAccentCheckbox());
+        const QColor primaryCandidate(Theme::kTextPrimary());
+        const QColor baseCandidate(Theme::kBgBase());
+        const int primaryDifference = qAbs(
+            primaryCandidate.lightness() - indicatorColor.lightness());
+        const int baseDifference = qAbs(
+            baseCandidate.lightness() - indicatorColor.lightness());
+        const QColor checkmarkColor = primaryDifference >= baseDifference
+            ? primaryCandidate
+            : baseCandidate;
+
+        const QRectF mark = QRectF(indicator).adjusted(3.0, 3.0, -3.0, -3.0);
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(QPen(checkmarkColor, 2.0, Qt::SolidLine,
+                            Qt::RoundCap, Qt::RoundJoin));
+
+        QPainterPath tick;
+        tick.moveTo(mark.left(), mark.center().y());
+        tick.lineTo(mark.left() + mark.width() * 0.38, mark.bottom());
+        tick.lineTo(mark.right(), mark.top());
+        painter.drawPath(tick);
+    }
+};
 
 /**
  * Row frame: the entire row is a single click target that toggles the checkbox.
@@ -123,8 +177,8 @@ TracesPanel::TracesPanel(QWidget *parent)
         row->setObjectName(u"traceRow"_s);
         row->setProperty("noData", false);
         auto *rowLay = new QHBoxLayout(row);
-        rowLay->setContentsMargins(6, 5, 8, 5);
-        rowLay->setSpacing(8);
+        rowLay->setContentsMargins(6, 3, 8, 3);
+        rowLay->setSpacing(5);
 
         const QColor col = MetricDefs::metricColor(i);
         auto *swatch = new QLabel(row);
@@ -135,10 +189,10 @@ TracesPanel::TracesPanel(QWidget *parent)
                 .arg(col.name(QColor::HexRgb)));
         m_traceSwatches[static_cast<std::size_t>(i)] = swatch;
 
-        auto *cb = new QCheckBox(MetricDefs::metricTraceShortName(i), row);
+        auto *cb = new TraceCheckBox(MetricDefs::metricTraceShortName(i), row);
         cb->setObjectName(u"traceCheck"_s);
         cb->setToolTip(QStringLiteral("%1 — click anywhere on the row to toggle")
-                           .arg(MetricDefs::metricTitle(i)));
+                           .arg(MetricDefs::metricDisplayTitle(i, m_imperialUnits)));
         m_metricChecks[static_cast<std::size_t>(i)] = cb;
 
         auto *valLabel = new QLabel(u"—"_s, row);
@@ -182,6 +236,8 @@ void TracesPanel::applyThemeStyleSheet()
     const auto textPrimary = Theme::kTextPrimary();
     const auto bgPanel = Theme::kBgPanel();
     const auto borderLight = Theme::kBorderLight();
+    QColor rowHoverColor(Theme::kTextMuted());
+    rowHoverColor.setAlpha(15);
 
     setStyleSheet(
         QString(uR"(
@@ -198,22 +254,28 @@ void TracesPanel::applyThemeStyleSheet()
             font-weight: 600;
         }
         QPushButton#tracesAllNoneBtn {
-            font-size: 11px;
-            color: %7;
-            background: %10;
-            border: 1px solid %8;
-            border-radius: 4px;
-            padding: 6px 12px;
-            min-height: 30px;
+            font-size: 10px;
+            font-family: %5;
+            color: %6;
+            background: transparent;
+            border: none;
+            border-radius: 0px;
+            padding: 1px 4px;
+            min-height: 18px;
+            max-height: 18px;
             font-weight: 500;
         }
         QPushButton#tracesAllNoneBtn:hover {
             color: %7;
-            border-color: %8;
-            background: %11;
+            text-decoration: underline;
+            background: transparent;
         }
         QPushButton#tracesAllNoneBtn:pressed {
-            background: %12;
+            color: %7;
+            background: transparent;
+        }
+        QPushButton#tracesAllNoneBtn:focus {
+            outline: none;
         }
         QFrame#traceSeparator { background-color: %2; border: none; }
         QFrame#traceRow {
@@ -228,14 +290,20 @@ void TracesPanel::applyThemeStyleSheet()
             font-size: %4px;
             font-family: %5;
             color: %7;
-            spacing: 0px;
+            spacing: 6px;
         }
         QCheckBox#traceCheck::indicator {
             width: 0px;
             height: 0px;
             border: none;
-            margin: 0px;
-            padding: 0px;
+        }
+        QCheckBox#traceCheck[metricEnabled="true"] {
+            color: %7;
+            font-weight: 700;
+        }
+        QCheckBox#traceCheck[metricEnabled="false"] {
+            color: %6;
+            font-weight: 400;
         }
         QLabel#traceValueLabel {
             font-size: %9px;
@@ -257,7 +325,11 @@ void TracesPanel::applyThemeStyleSheet()
             .arg(Theme::kBgButton())        // %10
             .arg(Theme::kBtnHover())        // %11
             .arg(Theme::kBtnPressed())      // %12
-            .arg(QColor(Theme::kTextMuted()).name(QColor::HexRgb) + QStringLiteral("0f"))); // %13 - subtle hover
+            .arg(rowHoverColor.name(QColor::HexArgb)) // %13 - subtle hover
+            .arg(Theme::kBgInput())         // %14
+            .arg(Theme::kAccentCheckbox())  // %15
+            .arg(Theme::kAccentCheckboxBorder()) // %16
+            .arg(Theme::kFocusRing()));     // %17
 
     refreshSwatchStates();
 }
@@ -301,7 +373,7 @@ void TracesPanel::setMetricDataStates(const std::array<bool, kMetricCount> &hasD
 {
     for (int i = 0; i < kMetricCount; ++i) {
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
-        if (!row || !row->isVisible()) {
+        if (!row || row->isHidden()) {
             continue;
         }
         const bool noData = !hasData[static_cast<std::size_t>(i)];
@@ -318,15 +390,47 @@ void TracesPanel::setMetricDataStates(const std::array<bool, kMetricCount> &hasD
     }
 }
 
+void TracesPanel::setImperialUnits(bool imperial)
+{
+    if (m_imperialUnits == imperial) {
+        return;
+    }
+    m_imperialUnits = imperial;
+    for (int i = 0; i < kMetricCount; ++i) {
+        if (auto *check = m_metricChecks[static_cast<std::size_t>(i)]) {
+            check->setToolTip(
+                QStringLiteral("%1 — click anywhere on the row to toggle")
+                    .arg(MetricDefs::metricDisplayTitle(i, m_imperialUnits)));
+        }
+    }
+    if (m_haveLatestSample) {
+        updateLiveValues(m_latestSample);
+    }
+}
+
 void TracesPanel::updateLiveValues(const FlightSample &sample)
 {
+    m_latestSample = sample;
+    m_haveLatestSample = true;
     for (int i = 0; i < kMetricCount; ++i) {
         auto *lbl = m_traceValueLabels[static_cast<std::size_t>(i)];
         if (!lbl) continue;
-        const double v    = MetricDefs::sampleValueForMetric(sample, i);
-        const QString val = MetricDefs::formatMetricValuePretty(i, v);
-        const QString unit = MetricDefs::metricAxisUnitShort(i);
-        lbl->setText(unit.isEmpty() ? val : val + u' ' + unit);
+        const double siValue = MetricDefs::sampleValueForMetric(sample, i);
+        if (!std::isfinite(siValue)) {
+            if (m_lastValueText[static_cast<std::size_t>(i)] != u"—"_s) {
+                m_lastValueText[static_cast<std::size_t>(i)] = u"—"_s;
+                lbl->setText(u"—"_s);
+            }
+            continue;
+        }
+        const QString val = MetricDefs::formatMetricDisplayValue(
+            i, siValue, m_imperialUnits);
+        const QString unit = MetricDefs::metricDisplayUnitShort(i, m_imperialUnits);
+        const QString display = unit.isEmpty() ? val : val + u' ' + unit;
+        if (display != m_lastValueText[static_cast<std::size_t>(i)]) {
+            m_lastValueText[static_cast<std::size_t>(i)] = display;
+            lbl->setText(display);
+        }
     }
 }
 
@@ -348,7 +452,7 @@ void TracesPanel::onSelectAllTraces()
     for (int i = 0; i < kMetricCount; ++i) {
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
         auto *cb = m_metricChecks[static_cast<std::size_t>(i)];
-        if (cb && row && row->isVisible()) {
+        if (cb && row && !row->isHidden()) {
             const QSignalBlocker b(cb);
             cb->setChecked(true);
         }
@@ -361,7 +465,7 @@ void TracesPanel::onSelectNoneTraces()
     int keeper = -1;
     for (int i = 0; i < kMetricCount; ++i) {
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
-        if (!row || !row->isVisible()) {
+        if (!row || row->isHidden()) {
             continue;
         }
         if (m_metricEnabled[static_cast<std::size_t>(i)]) {
@@ -372,7 +476,7 @@ void TracesPanel::onSelectNoneTraces()
     if (keeper < 0) {
         for (int i = 0; i < kMetricCount; ++i) {
             auto *row = m_traceRows[static_cast<std::size_t>(i)];
-            if (row && row->isVisible()) {
+            if (row && !row->isHidden()) {
                 keeper = i;
                 break;
             }
@@ -381,7 +485,7 @@ void TracesPanel::onSelectNoneTraces()
     for (int i = 0; i < kMetricCount; ++i) {
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
         auto *cb = m_metricChecks[static_cast<std::size_t>(i)];
-        if (cb && row && row->isVisible()) {
+        if (cb && row && !row->isHidden()) {
             const QSignalBlocker b(cb);
             cb->setChecked(i == keeper);
         }
@@ -408,7 +512,7 @@ void TracesPanel::ensureAtLeastOneMetricEnabled()
     int firstVisible = -1;
     for (int i = 0; i < kMetricCount; ++i) {
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
-        if (!row || !row->isVisible()) {
+        if (!row || row->isHidden()) {
             continue;
         }
         if (firstVisible < 0) {
@@ -433,14 +537,14 @@ void TracesPanel::updateSecondaryGroupSeparatorVisibility()
     bool anySecondary = false;
     for (int i = 0; i < kSecondaryGroupFirst; ++i) {
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
-        if (row && row->isVisible()) {
+        if (row && !row->isHidden()) {
             anyPrimary = true;
             break;
         }
     }
     for (int i = kSecondaryGroupFirst; i < kMetricCount; ++i) {
         auto *row = m_traceRows[static_cast<std::size_t>(i)];
-        if (row && row->isVisible()) {
+        if (row && !row->isHidden()) {
             anySecondary = true;
             break;
         }
@@ -467,9 +571,10 @@ void TracesPanel::refreshSwatchStates()
 
         auto *cb = m_metricChecks[static_cast<std::size_t>(i)];
         if (cb) {
-            cb->setStyleSheet(
-                QStringLiteral("QCheckBox#traceCheck { color: %1; }")
-                    .arg(on ? Theme::kTextPrimary() : Theme::kTextMuted()));
+            cb->setProperty("metricEnabled", on);
+            cb->style()->unpolish(cb);
+            cb->style()->polish(cb);
+            cb->update();
         }
     }
 }

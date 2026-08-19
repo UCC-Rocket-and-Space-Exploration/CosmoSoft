@@ -25,7 +25,7 @@ public:
      *
      * @param painter Already-begun QPainter for the widget.
      * @param rect Widget rect to fill.
-     * @param region Texture region key: "sidebar", "toolbar", "panel", "chart_bg", "settings_bg".
+     * @param region Texture region key (currently only "panel").
      */
     static void paintBackground(QPainter &painter, const QRect &rect, const QString &region);
 };

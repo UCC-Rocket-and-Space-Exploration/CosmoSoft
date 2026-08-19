@@ -39,6 +39,8 @@ private slots:
     void applyThemeStyleSheet();
 
 private:
+    void refreshAccessibleName();
+
     QLabel *m_titleLabel = nullptr;
     QLabel *m_valueLabel = nullptr;
     QColor m_accentColor;
