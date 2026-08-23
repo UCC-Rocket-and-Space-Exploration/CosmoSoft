@@ -2,6 +2,8 @@
 #ifndef COSMO_SOFT_FILELOGGER_H
 #define COSMO_SOFT_FILELOGGER_H
 #include <fstream>
+#include <mutex>
+
 #include "services/interfaces/ILogger.h"
 
 class FileLogger : public ILogger{
@@ -19,6 +21,7 @@ public:
     }
 private:
     std::ofstream m_file_stream;
+    std::mutex m_locker;
 };
 
 
