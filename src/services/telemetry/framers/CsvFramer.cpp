@@ -13,7 +13,6 @@ Frame CsvFramer::get_frame(const bool& running) {
     uint8_t previous_byte = 0;
     uint8_t next_byte = 0;
 
-    std::cout << "entering" << std::endl;
     while (next_byte != frame_separator && running) {
         const ssize_t read_count = this->m_comms->read(byte_buffer, 1);
         next_byte = byte_buffer[0];
