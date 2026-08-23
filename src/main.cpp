@@ -12,6 +12,7 @@
 #include "gateway/comms/SerialFramerWorker.h"
 #include "gateway/comms/windows/SerialCommsWindows.h"
 #include "gui/MainWindow.h"
+#include "gui/SettingsKeys.h"
 #include "gui/ThemeManager.h"
 #include "services/RingBuffer.h"
 #include "services/SerialWriter.h"
@@ -37,11 +38,15 @@ int main(int argc, char *argv[]) {
     };
 
     const QString redHatFamily = loadFontFamily(QStringLiteral(":/fonts/RedHatMono-Regular.ttf"), QStringLiteral("Red Hat Mono"));
-    QFont baseFont = !redHatFamily.isEmpty() ? QFont(redHatFamily) : QFont(QStringLiteral("Red Hat Mono"));
-    QSettings settings(QStringLiteral("CosmoSoft"), QStringLiteral("cosmo-soft"));
-    const int savedPt = settings.value(QStringLiteral("ui/fontPointSize"), 12).toInt();
-    if (savedPt >= 6 && savedPt <= 48) {
-        baseFont.setPointSize(savedPt);
+    QFont baseFont = app.font();
+    baseFont.setFamily(
+        !redHatFamily.isEmpty() ? redHatFamily : QStringLiteral("Red Hat Mono"));
+    QSettings settings(kSettingsOrg, kSettingsApp);
+    if (settings.contains(kSettingsFontSize)) {
+        const int savedPt = settings.value(kSettingsFontSize).toInt();
+        if (savedPt >= 6 && savedPt <= 48) {
+            baseFont.setPointSize(savedPt);
+        }
     }
     app.setFont(baseFont);
 

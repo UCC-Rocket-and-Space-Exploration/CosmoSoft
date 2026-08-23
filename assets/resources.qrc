@@ -19,8 +19,19 @@
     </qresource>
     <qresource prefix="/map">
         <file alias="map3d.html">map/map3d.html</file>
+        <file alias="map3d.css">map/map3d.css</file>
+        <file alias="map3d.js">map/map3d.js</file>
         <file alias="leaflet.js">map/leaflet.js</file>
         <file alias="leaflet.css">map/leaflet.css</file>
+        <file alias="leaflet.LICENSE">map/leaflet.LICENSE</file>
+        <file alias="vendor/three/LICENSE">map/vendor/three/LICENSE</file>
+        <file alias="vendor/three/build/three.module.js">map/vendor/three/build/three.module.js</file>
+        <file alias="vendor/three/examples/jsm/controls/OrbitControls.js">map/vendor/three/examples/jsm/controls/OrbitControls.js</file>
+        <file alias="vendor/three/examples/jsm/lines/Line2.js">map/vendor/three/examples/jsm/lines/Line2.js</file>
+        <file alias="vendor/three/examples/jsm/lines/LineGeometry.js">map/vendor/three/examples/jsm/lines/LineGeometry.js</file>
+        <file alias="vendor/three/examples/jsm/lines/LineMaterial.js">map/vendor/three/examples/jsm/lines/LineMaterial.js</file>
+        <file alias="vendor/three/examples/jsm/lines/LineSegments2.js">map/vendor/three/examples/jsm/lines/LineSegments2.js</file>
+        <file alias="vendor/three/examples/jsm/lines/LineSegmentsGeometry.js">map/vendor/three/examples/jsm/lines/LineSegmentsGeometry.js</file>
     </qresource>
     <qresource prefix="/icons">
         <file alias="settings_button.png">icons/settings_button.png</file>

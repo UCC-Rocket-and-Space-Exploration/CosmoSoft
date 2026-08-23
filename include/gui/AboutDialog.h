@@ -1,6 +1,6 @@
 /**
  * @file AboutDialog.h
- * @brief Non-resizable dialog displaying application metadata.
+ * @brief Resizable dialog displaying application metadata.
  *
  * Shows the application name, version, license (Apache 2.0), and a clickable
  * link to the project's GitHub repository.  Triggered from Help → About in

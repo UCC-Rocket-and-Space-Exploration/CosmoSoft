@@ -55,7 +55,7 @@ constexpr auto kSettingsDashSplitter = "ui/dashboardSplitterState";
 /** @brief UI font point size selected in SettingsPage. */
 constexpr auto kSettingsFontSize = "ui/fontPointSize";
 
-/** @brief Whether UI sounds are enabled (reserved for future audio engine). */
+/** @brief Whether short interface feedback sounds are enabled. */
 constexpr auto kSettingsSoundsEnabled = "ui/soundsEnabled";
 
 /** @brief Whether the developer debug mode is active. */
@@ -73,6 +73,12 @@ constexpr auto kSettingsActiveSkin = "ui/activeSkin";
 constexpr auto kSettingsRecentFiles = "paths/recentFiles";
 
 // ── Units ─────────────────────────────────────────────────────────────────────
+
+/** @brief Canonical QSettings value for metric (SI) display units. */
+constexpr auto kUnitSystemMetric = "metric";
+
+/** @brief Canonical QSettings value for imperial display units. */
+constexpr auto kUnitSystemImperial = "imperial";
 
 /** @brief Unit system preference: "metric" or "imperial". */
 constexpr auto kSettingsUnitSystem = "ui/unitSystem";

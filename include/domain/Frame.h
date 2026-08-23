@@ -4,6 +4,7 @@
 #include <vector>
 #include <domain/FrameFormat.h>
 
+
 class Frame {
 public:
 	FrameFormat format;

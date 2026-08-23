@@ -22,3 +22,8 @@ add_executable(cosmo-soft-bin
     main.cpp
     "${CMAKE_SOURCE_DIR}/assets/resources.qrc"
 )
+
+set_target_properties(cosmo-soft-bin PROPERTIES
+    OUTPUT_NAME "cosmo-soft"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)

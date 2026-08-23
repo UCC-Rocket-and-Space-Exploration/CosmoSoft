@@ -1,0 +1,274 @@
+  :root {
+    --bg: #0c0e14;
+    --bg-dark: #080a10;
+    --text-primary: #c8d4e0;
+    --text-muted: #7a8796;
+    --text-dim: #6a7a8a;
+    --border: rgba(255,255,255,0.12);
+    --border-strong: rgba(255,255,255,0.22);
+    --divider: rgba(255,255,255,0.10);
+    --accent: #4a88c0;
+    --control-bg: rgba(16,18,24,0.92);
+    --control-hover: rgba(40,44,56,0.95);
+    --active-bg: rgba(30,58,82,0.95);
+    --active-text: #c8dcf0;
+    --alt-bg: rgba(12,14,20,0.95);
+    --stats-bg: rgba(8,10,16,0.90);
+    --subtle-line: rgba(255,255,255,0.08);
+    --focus: #6ab0de;
+    --path: rgba(60,100,140,0.50);
+    --trail: #4fa5de;
+    --rocket: #ff7a30;
+    --rocket-border: #ffaa55;
+    --launch: #44cc77;
+    --launch-border: #22aa55;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--bg);
+    font-family: "Red Hat Mono", "Courier New", monospace;
+    color: var(--text-primary);
+  }
+  #mapContainer {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    bottom: 80px;
+  }
+  #map { width: 100%; height: 100%; background: var(--bg); touch-action: none; }
+  #view3d {
+    width: 100%; height: 100%;
+    background: var(--bg-dark);
+    display: none;
+    position: relative;
+  }
+  #view3d canvas { display: block; width: 100%; height: 100%; }
+
+  /* ── Altitude profile bar ──────────────────────────────────────── */
+  #altProfile {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 80px;
+    background: var(--alt-bg);
+    border-top: 1px solid var(--subtle-line);
+    padding: 0;
+    cursor: crosshair;
+  }
+  #altCanvas { width: 100%; height: 100%; display: block; }
+
+  /* ── Floating controls ─────────────────────────────────────────── */
+  .map-btn {
+    position: absolute;
+    z-index: 1000;
+    height: 36px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--control-bg);
+    color: var(--text-primary);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: background 0.15s, border-color 0.15s;
+    line-height: 1;
+    padding: 0;
+  }
+  .map-btn { width: 36px; }
+  .map-btn:hover {
+    background: var(--control-hover);
+    border-color: var(--border-strong);
+  }
+  .map-btn.active {
+    background: var(--active-bg);
+    border-color: var(--accent);
+    color: var(--active-text);
+  }
+  #btnLocate    { top: 10px; right: 10px; }
+  #btnFit       { top: 52px; right: 10px; font-size: 13px; font-weight: 600; }
+  #btnFollow    { top: 94px; right: 10px; font-size: 12px; font-weight: 600; }
+  #btnZoomIn    { bottom: 100px; right: 10px; font-weight: 700; }
+  #btnZoomOut   { bottom: 100px; right: 52px; font-weight: 700; }
+
+  /* ── 2D/3D toggle pill ─────────────────────────────────────────── */
+  #viewToggle {
+    position: absolute;
+    top: 10px; left: 50%; transform: translateX(-50%);
+    z-index: 1001;
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+  .vt-btn {
+    padding: 6px 18px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: var(--control-bg);
+    color: var(--text-muted);
+    transition: background 0.15s, color 0.15s;
+    letter-spacing: 1px;
+  }
+  .vt-btn:hover { background: var(--control-hover); color: var(--text-primary); }
+  .vt-btn.active {
+    background: var(--active-bg);
+    color: var(--active-text);
+  }
+  .vt-sep { width: 1px; background: var(--divider); }
+
+  /* ── Layer switcher (Map / Terrain / Satellite) ──────────────────── */
+  #layerSwitcher {
+    position: absolute;
+    bottom: 92px; left: 10px;
+    z-index: 1001;
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+  .ls-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: var(--control-bg);
+    color: var(--text-muted);
+    transition: background 0.15s, color 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .ls-btn:hover { background: var(--control-hover); color: var(--text-primary); }
+  .ls-btn.active { background: var(--active-bg); color: var(--active-text); }
+  .ls-sep { width: 1px; background: var(--divider); }
+
+  /* ── 3D ground toggle ────────────────────────────────────────────── */
+  #ground3dToggle {
+    position: absolute;
+    bottom: 92px; left: 10px;
+    z-index: 1001;
+    display: none;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+
+  /* ── Stats overlay ─────────────────────────────────────────────── */
+  #statsOverlay {
+    position: absolute;
+    top: 10px; left: 10px;
+    z-index: 1000;
+    background: var(--stats-bg);
+    backdrop-filter: blur(10px);
+    font-size: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--subtle-line);
+    pointer-events: auto;
+    user-select: text;
+    line-height: 1.55;
+    min-width: 200px;
+    display: none;
+  }
+  #statsOverlay .st { color: var(--text-muted); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-top: 5px; }
+  #statsOverlay .st:first-child { margin-top: 0; }
+  #statsOverlay .sv { color: var(--text-primary); }
+  #statsOverlay .sd { border-top: 1px solid var(--subtle-line); margin-top: 5px; padding-top: 5px; }
+
+  /* ── 3D view labels ────────────────────────────────────────────── */
+  #info3d {
+    position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+    z-index: 1000; color: var(--text-dim); font-size: 11px; pointer-events: none;
+    text-align: center; white-space: nowrap;
+  }
+
+  #providerAttribution {
+    position: absolute;
+    right: 6px;
+    bottom: 82px;
+    z-index: 1000;
+    display: none;
+    max-width: min(70%, 760px);
+    padding: 2px 5px;
+    border: 1px solid var(--subtle-line);
+    border-radius: 4px 0 0 0;
+    background: var(--stats-bg);
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.35;
+    text-align: right;
+  }
+
+  .leaflet-tile-pane { transition: filter 0.3s; filter: brightness(0.7) contrast(1.1) saturate(0.5); }
+  .leaflet-control-zoom { display: none; }
+  .leaflet-control-attribution {
+    background: var(--stats-bg);
+    color: var(--text-muted);
+    border: 1px solid var(--subtle-line);
+    border-radius: 4px 0 0 0;
+    font-size: 11px;
+    padding: 2px 5px;
+  }
+  .leaflet-control-attribution a { color: var(--text-primary); }
+
+  button:focus-visible,
+  .leaflet-control-attribution a:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: -3px;
+  }
+
+  .rocket-marker { width: 32px; height: 32px; position: relative; }
+  .rocket-pulse {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--rocket);
+    animation: pulse 1.5s ease-out infinite;
+  }
+  .rocket-core {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--rocket);
+    border: 2px solid var(--rocket-border);
+    box-shadow: 0 0 10px var(--rocket);
+  }
+  .launch-marker {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--launch);
+    border: 2px solid var(--launch-border);
+    box-shadow: 0 0 6px var(--launch);
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(0.5); opacity: 0.8; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; }
+    .rocket-pulse {
+      inset: 4px;
+      animation: none;
+      transform: none;
+      background: transparent;
+      border: 1px solid var(--rocket);
+      opacity: 0.45;
+    }
+    .rocket-core { box-shadow: 0 0 3px var(--rocket); }
+  }

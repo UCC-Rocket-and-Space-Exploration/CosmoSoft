@@ -44,7 +44,6 @@ QString buildTileQss(const QString &accentBorder = QString())
             color: %7;
             background: transparent;
             border: none;
-            line-height: 1.2;
         }
     )"_s)
         .arg(Theme::kBgPanel())
@@ -75,7 +74,7 @@ StatTileWidget::StatTileWidget(const QString &label,
     m_valueLabel->setProperty("kind", u"statValue"_s);
     layout->addWidget(m_valueLabel);
 
-    setAccessibleName(QStringLiteral("%1: %2").arg(label, initialValue));
+    refreshAccessibleName();
 
     applyThemeStyleSheet();
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
@@ -85,14 +84,13 @@ StatTileWidget::StatTileWidget(const QString &label,
 void StatTileWidget::setValue(const QString &text)
 {
     if (m_valueLabel) m_valueLabel->setText(text);
-    if (m_titleLabel) {
-        setAccessibleName(QStringLiteral("%1: %2").arg(m_titleLabel->text(), text));
-    }
+    refreshAccessibleName();
 }
 
 void StatTileWidget::setLabel(const QString &text)
 {
     if (m_titleLabel) m_titleLabel->setText(text.toUpper());
+    refreshAccessibleName();
 }
 
 void StatTileWidget::setAccentColor(const QColor &color)
@@ -107,6 +105,15 @@ void StatTileWidget::applyThemeStyleSheet()
         ? m_accentColor.name(QColor::HexRgb)
         : QString();
     setStyleSheet(buildTileQss(accentBorder));
+}
+
+void StatTileWidget::refreshAccessibleName()
+{
+    if (!m_titleLabel || !m_valueLabel) {
+        return;
+    }
+    setAccessibleName(
+        QStringLiteral("%1: %2").arg(m_titleLabel->text(), m_valueLabel->text()));
 }
 
 void StatTileWidget::paintEvent(QPaintEvent *event)

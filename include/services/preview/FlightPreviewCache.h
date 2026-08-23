@@ -3,6 +3,7 @@
 
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
+#include "services/Cancellation.h"
 
 #include <algorithm>
 #include <array>
@@ -37,15 +38,52 @@ public:
     /** @brief Build a preview cache for @p session without modifying raw samples. */
     [[nodiscard]] static std::shared_ptr<const FlightPreviewCache> build(const FlightSession &session)
     {
+        return build(session, cosmo::CancellationCheck{});
+    }
+
+    /**
+     * @brief Build a preview cache while cooperatively observing cancellation.
+     * @param session Raw flight session that remains unmodified.
+     * @param cancellation_check Callback polled throughout preprocessing loops.
+     * @return Immutable preview cache, or nullptr when cancellation was requested.
+     */
+    [[nodiscard]] static std::shared_ptr<const FlightPreviewCache> build(
+        const FlightSession &session,
+        const cosmo::CancellationCheck &cancellation_check)
+    {
+        cosmo::detail::CancellationState cancellation(cancellation_check);
+        if (cancellation.poll()) {
+            return {};
+        }
         auto cache = std::shared_ptr<FlightPreviewCache>(new FlightPreviewCache());
-        cache->buildTimeline(session.samples);
-        cache->buildMetricRanges(session.samples);
-        cache->buildGpsIndices(session.samples);
+        cache->m_sourceSessionIdentity = reinterpret_cast<std::uintptr_t>(
+            std::addressof(session));
+        cache->m_sourceSampleCount = session.samples.size();
+        if (!cache->buildTimeline(session.samples, cancellation)
+            || !cache->buildMetricRanges(session.samples, cancellation)
+            || !cache->buildGpsIndices(session.samples, cancellation)
+            || cancellation.poll()) {
+            return {};
+        }
         return cache;
     }
 
     /** @brief Returns corrected monotonic display seconds for every raw sample. */
     [[nodiscard]] const std::vector<double> &displaySeconds() const { return m_displaySeconds; }
+
+    /**
+     * @brief Returns true when this cache was built from this exact session object.
+     *
+     * Preview selections are session-specific even when two sessions contain
+     * the same number of samples. Callers should reject or ignore a cache that
+     * does not match before using its timeline or cached chart selections.
+     */
+    [[nodiscard]] bool wasBuiltFor(const FlightSession &session) const noexcept
+    {
+        return m_sourceSessionIdentity
+                == reinterpret_cast<std::uintptr_t>(std::addressof(session))
+            && m_sourceSampleCount == session.samples.size();
+    }
 
     /** @brief Returns corrected display seconds for @p sampleIndex, clamped to valid range. */
     [[nodiscard]] double displaySecondAt(int sampleIndex) const
@@ -157,6 +195,9 @@ public:
         int maxPoints,
         const std::array<bool, kMetricCount> &enabled) const
     {
+        if (!wasBuiltFor(session)) {
+            return {};
+        }
         const int n = static_cast<int>(session.samples.size());
         begin = std::clamp(begin, 0, n);
         end = std::clamp(end, begin, n);
@@ -224,6 +265,9 @@ private:
 
     FlightPreviewCache() = default;
 
+    std::uintptr_t m_sourceSessionIdentity = 0;
+    std::size_t m_sourceSampleCount = 0;
+
     static bool finiteCoordinate(double lat, double lon)
     {
         return std::isfinite(lat) && std::isfinite(lon)
@@ -254,13 +298,13 @@ private:
         case 2: return s.pressure;
         case 3: {
             const double x = s.acceleration.x, y = s.acceleration.y, z = s.acceleration.z;
-            return std::sqrt(x * x + y * y + z * z);
+            return std::hypot(x, y, z);
         }
         case 4: return s.batteryVoltage;
         case 5: return s.rssi;
         case 6: {
             const double x = s.angularVelocity.x, y = s.angularVelocity.y, z = s.angularVelocity.z;
-            return std::sqrt(x * x + y * y + z * z);
+            return std::hypot(x, y, z);
         }
         case 7: return s.coordinates.latitude;
         case 8: return s.coordinates.longitude;
@@ -268,20 +312,28 @@ private:
         }
     }
 
-    void buildTimeline(const std::vector<FlightSample> &samples)
+    [[nodiscard]] bool buildTimeline(
+        const std::vector<FlightSample> &samples,
+        cosmo::detail::CancellationState &cancellation)
     {
         m_displaySeconds.clear();
         m_displaySeconds.reserve(samples.size());
         if (samples.empty()) {
-            return;
+            return !cancellation.poll();
         }
 
         std::vector<long> positiveDeltas;
         positiveDeltas.reserve(samples.size());
         for (std::size_t i = 1; i < samples.size(); ++i) {
-            const long dt = samples[i].timestamp - samples[i - 1].timestamp;
-            if (dt > 0) {
-                positiveDeltas.push_back(dt);
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
+            const long double rawDelta = static_cast<long double>(samples[i].timestamp)
+                - static_cast<long double>(samples[i - 1].timestamp);
+            const long double maximum = static_cast<long double>(
+                std::numeric_limits<long>::max());
+            if (rawDelta > 0.0L && rawDelta <= maximum) {
+                positiveDeltas.push_back(static_cast<long>(rawDelta));
             }
         }
 
@@ -292,29 +344,48 @@ private:
         } else {
             m_medianPositiveDeltaMs = 1;
         }
+        if (cancellation.poll()) {
+            return false;
+        }
 
         m_displaySeconds.push_back(0.0);
-        long long elapsedMs = 0;
+        long double elapsedMs = 0.0L;
         for (std::size_t i = 1; i < samples.size(); ++i) {
-            long dt = samples[i].timestamp - samples[i - 1].timestamp;
-            if (dt <= 0) {
-                dt = m_medianPositiveDeltaMs;
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
+            const long double rawDelta = static_cast<long double>(samples[i].timestamp)
+                - static_cast<long double>(samples[i - 1].timestamp);
+            const long double maximum = static_cast<long double>(
+                std::numeric_limits<long>::max());
+            long double displayDelta = rawDelta;
+            if (rawDelta <= 0.0L || rawDelta > maximum) {
+                displayDelta = static_cast<long double>(m_medianPositiveDeltaMs);
                 ++m_timestampDiscontinuityCount;
                 m_correctedTimelineUsed = true;
             }
-            elapsedMs += dt;
-            m_displaySeconds.push_back(static_cast<double>(elapsedMs) / 1000.0);
+            elapsedMs += displayDelta;
+            m_displaySeconds.push_back(static_cast<double>(elapsedMs / 1000.0L));
         }
+        return !cancellation.poll();
     }
 
-    void buildMetricRanges(const std::vector<FlightSample> &samples)
+    [[nodiscard]] bool buildMetricRanges(
+        const std::vector<FlightSample> &samples,
+        cosmo::detail::CancellationState &cancellation)
     {
         for (auto &range : m_metricRanges) {
             range = {std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity()};
         }
         for (const FlightSample &sample : samples) {
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
             for (int mi = 0; mi < kMetricCount; ++mi) {
                 const double value = sampleValueForMetric(sample, mi);
+                if (!std::isfinite(value)) {
+                    continue;
+                }
                 auto &range = m_metricRanges[static_cast<std::size_t>(mi)];
                 range.first = std::min(range.first, value);
                 range.second = std::max(range.second, value);
@@ -325,12 +396,18 @@ private:
                 range = {0.0, 0.0};
             }
         }
+        return !cancellation.poll();
     }
 
-    void buildGpsIndices(const std::vector<FlightSample> &samples)
+    [[nodiscard]] bool buildGpsIndices(
+        const std::vector<FlightSample> &samples,
+        cosmo::detail::CancellationState &cancellation)
     {
         bool hasRealCoordinate = false;
         for (const FlightSample &sample : samples) {
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
             const double lat = sample.coordinates.latitude;
             const double lon = sample.coordinates.longitude;
             if (finiteCoordinate(lat, lon) && !zeroCoordinate(lat, lon)) {
@@ -340,6 +417,9 @@ private:
         }
 
         for (int i = 0; i < static_cast<int>(samples.size()); ++i) {
+            if (cancellation.poll_periodically()) {
+                return false;
+            }
             const FlightSample &sample = samples[static_cast<std::size_t>(i)];
             const double lat = sample.coordinates.latitude;
             const double lon = sample.coordinates.longitude;
@@ -354,6 +434,7 @@ private:
 
         m_map2DIndices = cappedIndices(m_validGpsIndices, kMap2DPointBudget);
         m_map3DIndices = cappedIndices(m_validGpsIndices, kMap3DPointBudget);
+        return !cancellation.poll();
     }
 
     static std::vector<int> cappedIndices(const std::vector<int> &source, int maxPoints)
@@ -415,15 +496,26 @@ private:
             const FlightSample &sample = samples[static_cast<std::size_t>(i)];
             for (std::size_t m = 0; m < metricCount; ++m) {
                 const double value = sampleValueForMetric(sample, enabledMetrics[m]);
+                if (!std::isfinite(value)) {
+                    continue;
+                }
                 metricMin[m] = std::min(metricMin[m], value);
                 metricMax[m] = std::max(metricMax[m], value);
             }
         }
 
         std::vector<double> metricScale(metricCount, 1.0);
+        std::vector<bool> metricUsable(metricCount, false);
         for (std::size_t m = 0; m < metricCount; ++m) {
             const double span = metricMax[m] - metricMin[m];
-            metricScale[m] = span > 1e-15 ? 1.0 / span : 1.0;
+            metricUsable[m] = std::isfinite(metricMin[m]) && std::isfinite(metricMax[m]);
+            if (!metricUsable[m]) {
+                metricMin[m] = 0.0;
+                metricMax[m] = 0.0;
+                metricScale[m] = 1.0;
+                continue;
+            }
+            metricScale[m] = std::isfinite(span) && span > 1e-15 ? 1.0 / span : 1.0;
         }
 
         idx.reserve(static_cast<std::size_t>(maxPoints));
@@ -452,40 +544,59 @@ private:
 
             double avgX = 0.0;
             std::vector<double> avgY(metricCount, 0.0);
+            std::vector<int> avgCounts(metricCount, 0);
             for (int i = nextBucketStart; i < nextBucketEnd; ++i) {
                 const FlightSample &sample = samples[static_cast<std::size_t>(i)];
                 avgX += m_displaySeconds[static_cast<std::size_t>(i)];
                 for (std::size_t m = 0; m < metricCount; ++m) {
-                    avgY[m] += (sampleValueForMetric(sample, enabledMetrics[m]) - metricMin[m]) * metricScale[m];
+                    const double value = sampleValueForMetric(sample, enabledMetrics[m]);
+                    if (!metricUsable[m] || !std::isfinite(value)) {
+                        continue;
+                    }
+                    avgY[m] += (value - metricMin[m]) * metricScale[m];
+                    ++avgCounts[m];
                 }
             }
             avgX /= static_cast<double>(nextBucketCount);
-            for (double &value : avgY) {
-                value /= static_cast<double>(nextBucketCount);
+            for (std::size_t m = 0; m < metricCount; ++m) {
+                if (avgCounts[m] > 0) {
+                    avgY[m] /= static_cast<double>(avgCounts[m]);
+                }
             }
 
             const FlightSample &previousSample = samples[static_cast<std::size_t>(previousSelected)];
             const double previousX = m_displaySeconds[static_cast<std::size_t>(previousSelected)];
-            int bestIndex = bucketStart;
+            int bestIndex = -1;
             double bestArea = -1.0;
 
             for (int i = bucketStart; i < bucketEnd; ++i) {
                 const FlightSample &sample = samples[static_cast<std::size_t>(i)];
                 const double currentX = m_displaySeconds[static_cast<std::size_t>(i)];
                 double maxArea = 0.0;
+                bool hasFiniteMetric = false;
                 for (std::size_t m = 0; m < metricCount; ++m) {
                     const int metric = enabledMetrics[m];
-                    const double previousY = (sampleValueForMetric(previousSample, metric) - metricMin[m]) * metricScale[m];
-                    const double currentY = (sampleValueForMetric(sample, metric) - metricMin[m]) * metricScale[m];
+                    const double previousValue = sampleValueForMetric(previousSample, metric);
+                    const double currentValue = sampleValueForMetric(sample, metric);
+                    if (!metricUsable[m] || avgCounts[m] == 0
+                        || !std::isfinite(previousValue) || !std::isfinite(currentValue)) {
+                        continue;
+                    }
+                    hasFiniteMetric = true;
+                    const double previousY = (previousValue - metricMin[m]) * metricScale[m];
+                    const double currentY = (currentValue - metricMin[m]) * metricScale[m];
                     const double area = std::abs(
                         (previousX - avgX) * (currentY - previousY)
                         - (previousX - currentX) * (avgY[m] - previousY));
                     maxArea = std::max(maxArea, area);
                 }
-                if (maxArea > bestArea) {
+                if (hasFiniteMetric && maxArea > bestArea) {
                     bestArea = maxArea;
                     bestIndex = i;
                 }
+            }
+            if (bestIndex < 0) {
+                bestIndex = bucketStart + (bucketEnd - bucketStart) / 2;
             }
             idx.push_back(bestIndex);
             previousSelected = bestIndex;

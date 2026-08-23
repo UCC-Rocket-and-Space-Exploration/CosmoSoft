@@ -21,6 +21,8 @@
 #ifndef COSMO_SOFT_THEME_H
 #define COSMO_SOFT_THEME_H
 
+#include <cstddef>
+
 #include "gui/ThemeManager.h"
 
 namespace Theme {
@@ -124,13 +126,27 @@ inline const QString &kFocusRing() { return cosmo::ThemeManager::instance().pale
 /** @brief Focus ring offset/shadow color. */
 inline const QString &kFocusRingOffset() { return cosmo::ThemeManager::instance().palette().focus_ring_offset; }
 
+/**
+ * @brief Runtime trace color for a telemetry metric.
+ * @param index Metric index in altitude-to-longitude order (0 through 8).
+ * @return Active trace color, or the active link accent for an invalid index.
+ */
+inline const QString &kTraceColor(int index)
+{
+    const auto &palette = cosmo::ThemeManager::instance().palette();
+    if (index < 0 || index >= static_cast<int>(palette.trace_colors.size())) {
+        return palette.accent_link;
+    }
+    return palette.trace_colors[static_cast<std::size_t>(index)];
+}
+
 // ── Font families (unchanged — not palette-dependent) ─────────────────────────
 
 /** @brief Monospace stack used for all data labels and UI controls. */
-constexpr auto kFontMono    = R"("Red Hat Mono","Courier New","Roboto Mono",monospace)";
+constexpr auto kFontMono = R"("Red Hat Mono","Courier New")";
 
 /** @brief Display stack used for the brand logo label. */
-constexpr auto kFontDisplay = R"("Workbench","Courier New","Roboto Mono",monospace)";
+constexpr auto kFontDisplay = R"("Workbench","Courier New")";
 
 /** @brief Sans-serif stack for UI labels, prose, descriptions (non-data). */
 constexpr auto kFontUI = R"("Inter","SF Pro Text",system-ui,-apple-system,BlinkMacSystemFont,sans-serif)";

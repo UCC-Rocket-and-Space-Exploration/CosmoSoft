@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <deque>
 #include <iomanip>
+#include <mutex>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -234,22 +235,26 @@ class FakeComms final : public IComms {
 public:
     /** @brief Open the fake connection. */
     bool open() override {
+        std::scoped_lock lock(m_mutex);
         m_open = true;
         return true;
     }
 
     /** @brief Close the fake connection. */
     void close() override {
+        std::scoped_lock lock(m_mutex);
         m_open = false;
     }
 
     /** @brief Return whether the fake connection is open. */
     [[nodiscard]] bool isOpen() const override {
+        std::scoped_lock lock(m_mutex);
         return m_open;
     }
 
     /** @brief Store bytes written by the caller; returns -1 when closed. */
     ssize_t write(const uint8_t *data, size_t size) override {
+        std::scoped_lock lock(m_mutex);
         if (!m_open || (!data && size > 0)) {
             return -1;
         }
@@ -262,6 +267,7 @@ public:
 
     /** @brief Read injected incoming bytes; returns -1 when closed. */
     ssize_t read(uint8_t *buffer, size_t maxSize) override {
+        std::scoped_lock lock(m_mutex);
         if (!m_open || (!buffer && maxSize > 0)) {
             return -1;
         }
@@ -284,6 +290,7 @@ public:
 
     /** @brief Inject text bytes that will be returned by read(). */
     void injectIncoming(std::string_view bytes) {
+        std::scoped_lock lock(m_mutex);
         for (const char ch : bytes) {
             m_incoming.push_back(static_cast<uint8_t>(ch));
         }
@@ -291,6 +298,7 @@ public:
 
     /** @brief Inject raw bytes that will be returned by read(). */
     void injectIncoming(const std::vector<uint8_t> &bytes) {
+        std::scoped_lock lock(m_mutex);
         for (const uint8_t byte : bytes) {
             m_incoming.push_back(byte);
         }
@@ -298,10 +306,12 @@ public:
 
     /** @brief Return bytes written by the caller as text. */
     [[nodiscard]] std::string writtenText() const {
+        std::scoped_lock lock(m_mutex);
         return std::string(m_written.begin(), m_written.end());
     }
 
 private:
+    mutable std::mutex m_mutex;
     bool m_open = false;
     std::deque<uint8_t> m_incoming;
     std::vector<uint8_t> m_written;

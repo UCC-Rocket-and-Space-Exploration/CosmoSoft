@@ -6,8 +6,10 @@
 #include "services/telemetry/LineTelemetryDecoder.h"
 
 #include <array>
+#include <cmath>
 #include <cstdlib>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -202,6 +204,24 @@ TEST_CASE("FlightPreviewCache builds monotonic display time without mutating raw
     REQUIRE(cache->durationSeconds() == Catch::Approx(1.6));
 }
 
+TEST_CASE("FlightPreviewCache safely corrects extreme timestamp transitions", "[preview]") {
+    FlightSession session;
+    session.samples.resize(3);
+    session.samples[0].timestamp = std::numeric_limits<long>::lowest();
+    session.samples[1].timestamp = std::numeric_limits<long>::max();
+    session.samples[2].timestamp = std::numeric_limits<long>::lowest();
+
+    const auto cache = cosmo::preview::FlightPreviewCache::build(session);
+
+    REQUIRE(cache);
+    REQUIRE(cache->correctedTimelineUsed());
+    REQUIRE(cache->timestampDiscontinuityCount() == 2);
+    REQUIRE(cache->displaySeconds().size() == 3);
+    REQUIRE(std::isfinite(cache->durationSeconds()));
+    REQUIRE(cache->displaySeconds()[1] > cache->displaySeconds()[0]);
+    REQUIRE(cache->displaySeconds()[2] > cache->displaySeconds()[1]);
+}
+
 TEST_CASE("FlightPreviewCache chart indices cap point count and preserve spikes", "[preview]") {
     FlightSession session;
     session.samples.resize(101);
@@ -226,6 +246,48 @@ TEST_CASE("FlightPreviewCache chart indices cap point count and preserve spikes"
     REQUIRE(reduced.front() == 0);
     REQUIRE(reduced.back() == 100);
     REQUIRE(std::find(reduced.begin(), reduced.end(), 50) != reduced.end());
+}
+
+TEST_CASE("FlightPreviewCache ignores non-finite metrics while selecting chart points", "[preview]") {
+    FlightSession session;
+    session.samples.resize(100);
+    for (int i = 0; i < 100; ++i) {
+        auto &sample = session.samples[static_cast<std::size_t>(i)];
+        sample.timestamp = i * 10L;
+        sample.altitude = static_cast<double>(i);
+    }
+    session.samples[10].altitude = std::numeric_limits<double>::quiet_NaN();
+    session.samples[20].altitude = std::numeric_limits<double>::infinity();
+
+    const auto cache = cosmo::preview::FlightPreviewCache::build(session);
+    std::array<bool, cosmo::preview::FlightPreviewCache::kMetricCount> enabled{};
+    enabled[0] = true;
+    const auto indices = cache->chartIndices(session, 0, 100, 12, enabled);
+
+    REQUIRE(indices.size() <= 12);
+    REQUIRE_FALSE(indices.empty());
+    REQUIRE(indices.front() == 0);
+    REQUIRE(indices.back() == 99);
+    REQUIRE(cache->metricRange(0).first == 0.0);
+    REQUIRE(cache->metricRange(0).second == 99.0);
+}
+
+TEST_CASE("FlightPreviewCache rejects selections for another same-sized session", "[preview]") {
+    FlightSession source;
+    source.samples.resize(3);
+    source.samples[0].timestamp = 0;
+    source.samples[1].timestamp = 10;
+    source.samples[2].timestamp = 20;
+    FlightSession other = source;
+
+    const auto cache = cosmo::preview::FlightPreviewCache::build(source);
+    REQUIRE(cache);
+    REQUIRE(cache->wasBuiltFor(source));
+    REQUIRE_FALSE(cache->wasBuiltFor(other));
+
+    std::array<bool, cosmo::preview::FlightPreviewCache::kMetricCount> enabled{};
+    enabled[0] = true;
+    REQUIRE(cache->chartIndices(other, 0, 3, 3, enabled).empty());
 }
 
 TEST_CASE("FlightPreviewCache filters placeholder GPS rows and caps map paths", "[preview]") {

@@ -17,6 +17,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
+#include <utility>
 
 using namespace Qt::StringLiterals;
 
@@ -85,7 +87,9 @@ QLineSeries *firstVisibleNonEmptyLineSeries(QChart *chart)
  */
 int nearestIndexByX(const QList<QPointF> &pts, double tx)
 {
-    const int n = pts.size();
+    const qsizetype boundedSize = std::min(
+        pts.size(), static_cast<qsizetype>(std::numeric_limits<int>::max()));
+    const int n = static_cast<int>(boundedSize);
     if (n <= 0) return -1;
     if (n == 1) return 0;
     int lo = 0, hi = n - 1;
@@ -94,6 +98,23 @@ int nearestIndexByX(const QList<QPointF> &pts, double tx)
         if (pts[mid].x() <= tx) lo = mid; else hi = mid;
     }
     return std::abs(pts[lo].x() - tx) <= std::abs(pts[hi].x() - tx) ? lo : hi;
+}
+
+/** Returns the index of the sorted X value closest to @p tx. */
+int nearestValueIndexByX(const QVector<double> &values, double tx)
+{
+    const qsizetype boundedSize = std::min(
+        values.size(), static_cast<qsizetype>(std::numeric_limits<int>::max()));
+    const int n = static_cast<int>(boundedSize);
+    if (n <= 0) return -1;
+    if (n == 1) return 0;
+    int lo = 0;
+    int hi = n - 1;
+    while (lo < hi - 1) {
+        const int mid = (lo + hi) / 2;
+        if (values[mid] <= tx) lo = mid; else hi = mid;
+    }
+    return std::abs(values[lo] - tx) <= std::abs(values[hi] - tx) ? lo : hi;
 }
 
 } // namespace
@@ -111,6 +132,7 @@ TelemetryChartView::TelemetryChartView(QChart *c, QWidget *parent)
     setMinimumHeight(280);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setMouseTracking(true);
+    setFocusPolicy(Qt::StrongFocus);
     setContextMenuPolicy(Qt::NoContextMenu);
     setDragMode(QGraphicsView::NoDrag);
 
@@ -137,6 +159,19 @@ void TelemetryChartView::setChart(QChart *c)
 {
     m_chartPtr = c;
     QChartView::setChart(c);
+    m_hoverXValues.clear();
+    invalidateHoverSeriesCache();
+}
+
+void TelemetryChartView::setHoverXValues(QVector<double> values)
+{
+    m_hoverXValues = std::move(values);
+}
+
+void TelemetryChartView::invalidateHoverSeriesCache()
+{
+    m_hoverSeriesCacheDirty = true;
+    hideHoverOverlays();
 }
 
 void TelemetryChartView::refreshHoverOverlayStyleSheet()
@@ -388,57 +423,99 @@ void TelemetryChartView::zoomAxisAtFocal(QValueAxis *ax, double focal, double sp
     ax->setRange(focal - (focal - ax->min()) * spanScale, focal + (ax->max() - focal) * spanScale);
 }
 
+void TelemetryChartView::rebuildHoverSeriesCache()
+{
+    m_hoverSeriesCache.clear();
+    m_hoverSeriesCacheDirty = false;
+    if (!m_chartPtr) {
+        return;
+    }
+
+    const QList<QAbstractSeries *> chartSeries = m_chartPtr->series();
+    m_hoverSeriesCache.reserve(static_cast<std::size_t>(chartSeries.size()));
+    for (QAbstractSeries *abstractSeries : chartSeries) {
+        auto *lineSeries = qobject_cast<QLineSeries *>(abstractSeries);
+        if (!lineSeries || !lineSeries->isVisible() || lineSeries->count() <= 0) {
+            continue;
+        }
+
+        QList<QPointF> points = lineSeries->points();
+        points.erase(
+            std::remove_if(points.begin(), points.end(), [](const QPointF &point) {
+                return !std::isfinite(point.x()) || !std::isfinite(point.y());
+            }),
+            points.end());
+        if (points.isEmpty()) {
+            continue;
+        }
+        std::sort(points.begin(), points.end(), [](const QPointF &left, const QPointF &right) {
+            return left.x() < right.x();
+        });
+        m_hoverSeriesCache.push_back({lineSeries, std::move(points)});
+    }
+}
+
 void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
 {
     if (!m_chartPtr) return;
 
-    QLineSeries *ref = nullptr;
-    QList<QLineSeries *> visibleSeries;
-    for (QAbstractSeries *s : m_chartPtr->series()) {
-        auto *ls = qobject_cast<QLineSeries *>(s);
-        if (ls && ls->isVisible() && ls->count() > 0) {
-            visibleSeries.append(ls);
-            if (!ref) ref = ls;
-        }
+    if (m_hoverSeriesCacheDirty) {
+        rebuildHoverSeriesCache();
     }
-    if (!ref) {
+    if (m_hoverSeriesCache.empty()) {
         hideHoverOverlays();
         if (hoverReadout) hoverReadout(u"—"_s);
         return;
     }
 
-    const QList<QPointF> pts = ref->points();
+    auto *ref = qobject_cast<QLineSeries *>(m_hoverSeriesCache.front().series.data());
+    if (!ref) {
+        invalidateHoverSeriesCache();
+        return;
+    }
+    const QList<QPointF> &referencePoints = m_hoverSeriesCache.front().points;
     const QPointF scenePos = mapToScene(widgetPos);
     const QPointF chartPos = m_chartPtr->mapFromScene(scenePos);
     const QPointF plotVals = m_chartPtr->mapToValue(chartPos, ref);
-    const int idx = nearestIndexByX(pts, plotVals.x());
-    if (idx < 0) return;
+    const bool hasLogicalLookup = !m_hoverXValues.isEmpty();
+    const int logicalIndex = hasLogicalLookup
+        ? nearestValueIndexByX(m_hoverXValues, plotVals.x())
+        : nearestIndexByX(referencePoints, plotVals.x());
+    if (logicalIndex < 0) return;
+    const double hoverX = hasLogicalLookup
+        ? m_hoverXValues[logicalIndex]
+        : referencePoints[logicalIndex].x();
 
-    const QPointF &p = pts[idx];
-
-    QLineSeries *closestSeries = ref;
-    if (visibleSeries.size() > 1) {
-        double closestDistSq = -1.0;
-        for (QLineSeries *ls : visibleSeries) {
-            const int lsIdx = std::min(idx, ls->count() - 1);
-            if (lsIdx < 0) continue;
-            const QPointF cPt  = m_chartPtr->mapToPosition(ls->at(lsIdx), ls);
-            const QPointF sPt  = m_chartPtr->mapToScene(cPt);
-            const QPointF vPt  = mapFromScene(sPt);
-            const double dx = vPt.x() - widgetPos.x();
-            const double dy = vPt.y() - widgetPos.y();
-            const double d  = dx * dx + dy * dy;
-            if (closestDistSq < 0.0 || d < closestDistSq) {
-                closestDistSq = d;
-                closestSeries = ls;
-            }
+    QLineSeries *closestSeries = nullptr;
+    QPointF closestPoint;
+    double closestDistSq = -1.0;
+    for (const HoverSeriesCacheEntry &entry : m_hoverSeriesCache) {
+        auto *lineSeries = qobject_cast<QLineSeries *>(entry.series.data());
+        if (!lineSeries || !lineSeries->isVisible()) {
+            continue;
+        }
+        const int seriesIndex = nearestIndexByX(entry.points, hoverX);
+        if (seriesIndex < 0) {
+            continue;
+        }
+        const QPointF candidate = entry.points[seriesIndex];
+        const QPointF chartPoint = m_chartPtr->mapToPosition(candidate, lineSeries);
+        const QPointF scenePoint = m_chartPtr->mapToScene(chartPoint);
+        const QPointF viewportPoint = mapFromScene(scenePoint);
+        const double dx = viewportPoint.x() - widgetPos.x();
+        const double dy = viewportPoint.y() - widgetPos.y();
+        const double distanceSquared = dx * dx + dy * dy;
+        if (closestDistSq < 0.0 || distanceSquared < closestDistSq) {
+            closestDistSq = distanceSquared;
+            closestSeries = lineSeries;
+            closestPoint = candidate;
         }
     }
 
     int snapWidgetX = -1, snapWidgetY = -1;
     QColor snapCol;
-    if (idx < closestSeries->count()) {
-        const QPointF cPt = m_chartPtr->mapToPosition(closestSeries->at(idx), closestSeries);
+    if (closestSeries) {
+        const QPointF cPt = m_chartPtr->mapToPosition(closestPoint, closestSeries);
         const QPointF sPt = m_chartPtr->mapToScene(cPt);
         const QPointF vPt = mapFromScene(sPt);
         snapWidgetX = static_cast<int>(std::round(vPt.x()));
@@ -447,10 +524,19 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
     }
 
     QString text;
-    if (hoverDetail)
-        text = hoverDetail(p.x(), idx + 1, pts.size());
-    else
-        text = QStringLiteral("t=%1 s · #%2 / %3").arg(p.x(), 0, 'f', 3).arg(idx + 1).arg(pts.size());
+    const qsizetype lookupSize = hasLogicalLookup
+        ? m_hoverXValues.size()
+        : referencePoints.size();
+    const int totalSamples = static_cast<int>(std::min(
+        lookupSize, static_cast<qsizetype>(std::numeric_limits<int>::max())));
+    if (hoverDetail) {
+        text = hoverDetail(hoverX, logicalIndex + 1, totalSamples);
+    } else {
+        text = QStringLiteral("t=%1 s · #%2 / %3")
+                   .arg(hoverX, 0, 'f', 3)
+                   .arg(logicalIndex + 1)
+                   .arg(totalSamples);
+    }
 
     if (hoverReadout) hoverReadout(text);
 

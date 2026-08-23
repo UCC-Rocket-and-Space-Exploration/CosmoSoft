@@ -7,13 +7,13 @@
  * calls DashboardPage needs to make are:
  *
  *  - setSession(session)     — call after loading a new log file
- *  - setTrailLength(n)       — call from applyReplayControllerPosition to keep
- *                              the scrubber in sync without triggering a signal loop
+ *  - setTrailLength(n)       — call when an external source changes the trail,
+ *                              keeping the scrubber in sync without a signal loop
  *  - setLiveSampleCount(n)   — call from onSampleUpdated / onSessionReset so
  *                              the "N samples buffered" caption stays current
  *
- * trailLengthChanged(int) is emitted whenever the scrubber or step buttons
- * move so DashboardPage can trigger chart rebuilds.
+ * trailLengthChanged(int) is emitted whenever the controller confirms a new
+ * position so DashboardPage can update its map and chart exactly once.
  */
 
 #pragma once
@@ -28,7 +28,9 @@ class FlightPreviewCache;
 }
 
 class QComboBox;
+class QBoxLayout;
 class QLabel;
+class QResizeEvent;
 class QSlider;
 class QToolButton;
 
@@ -63,8 +65,12 @@ public:
     void setLiveSampleCount(int count);
 
 signals:
-    /** Emitted when the slider or step buttons change the replay position. */
+    /** Emitted when the controller confirms a new replay position. */
     void trailLengthChanged(int trailLength);
+
+protected:
+    /** @brief Reflows transport controls when the available width changes. */
+    void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void applyThemeStyleSheet();
@@ -78,6 +84,7 @@ private slots:
 
 private:
     void buildUi();
+    void updateResponsiveLayout();
     void updateLabels();
     void syncTransportChrome();
 
@@ -92,6 +99,7 @@ private:
     // UI containers
     QFrame *m_navButtonGroup = nullptr;
     QLabel *m_statusPill     = nullptr;
+    QBoxLayout *m_transportLayout = nullptr;
 
     // Transport widgets
     QToolButton *m_playPauseBtn        = nullptr;

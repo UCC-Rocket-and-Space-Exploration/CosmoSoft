@@ -9,22 +9,33 @@
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QDir>
 #include <QFileDialog>
 #include <QFont>
 #include <QFormLayout>
 #include <QFrame>
+#include <QFutureWatcher>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QScrollArea>
 #include <QSettings>
 #include <QShowEvent>
+#include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QSysInfo>
 #include <QVBoxLayout>
+
+#include <QtConcurrent/QtConcurrentRun>
+
+#include <algorithm>
 
 using namespace Qt::StringLiterals;
 
@@ -59,7 +70,7 @@ bool SettingsPage::debugModeEnabled() const {
 // ── Main layout ──────────────────────────────────────────────────────────────
 
 void SettingsPage::buildUi() {
-    setMinimumSize(560, 480);
+    setMinimumSize(440, 400);
 
     auto *root = new QHBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
@@ -68,7 +79,10 @@ void SettingsPage::buildUi() {
     // Sidebar navigation
     m_nav = new QListWidget(this);
     m_nav->setObjectName(u"settingsNav"_s);
-    m_nav->setFixedWidth(170);
+    m_nav->setAccessibleName(u"Settings sections"_s);
+    m_nav->setMinimumWidth(108);
+    m_nav->setMaximumWidth(152);
+    m_nav->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     m_nav->setFrameShape(QFrame::NoFrame);
     m_nav->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_nav->setSpacing(2);
@@ -96,6 +110,7 @@ void SettingsPage::buildUi() {
     root->addWidget(m_pages, 1);
 
     refreshStyleSheet();
+    updateResponsiveLayout();
 }
 
 // ── Appearance section ───────────────────────────────────────────────────────
@@ -103,7 +118,7 @@ void SettingsPage::buildUi() {
 QWidget *SettingsPage::buildAppearanceSection() {
     auto *inner = new QWidget;
     auto *layout = new QVBoxLayout(inner);
-    layout->setContentsMargins(28, 28, 28, 28);
+    layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(20);
 
     // ── Skin group ────────────────────────────────────────────────────────────
@@ -112,27 +127,21 @@ QWidget *SettingsPage::buildAppearanceSection() {
     skinLayout->setContentsMargins(16, 20, 16, 16);
     skinLayout->setSpacing(12);
 
-    auto *skinLabel = new QLabel(u"Active skin"_s, m_skinGroup);
+    auto *skinLabel = new QLabel(u"&Active skin"_s, m_skinGroup);
     skinLabel->setObjectName(u"fieldLabel"_s);
     skinLayout->addWidget(skinLabel);
 
     m_skinCombo = new QComboBox(m_skinGroup);
-    const auto skins = cosmo::SkinLoader::discoverAll(cosmo::ThemeManager::skinsDirectory());
-    for (const auto &skin : skins) {
-        m_skinCombo->addItem(skin.name, skin.id);
-    }
-    const auto &active_id = cosmo::ThemeManager::instance().current().id;
-    for (int i = 0; i < m_skinCombo->count(); ++i) {
-        if (m_skinCombo->itemData(i).toString() == active_id) {
-            m_skinCombo->setCurrentIndex(i);
-            break;
-        }
-    }
+    m_skinCombo->setAccessibleName(u"Active skin"_s);
+    skinLabel->setBuddy(m_skinCombo);
+    refreshAvailableSkins(cosmo::ThemeManager::instance().current().id);
     connect(m_skinCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &SettingsPage::onSkinChanged);
     skinLayout->addWidget(m_skinCombo);
 
     m_importSkinBtn = new QPushButton(u"Import .cosmo skin\u2026"_s, m_skinGroup);
+    m_importSkinBtn->setAccessibleName(u"Import CosmoSoft skin"_s);
+    m_importSkinBtn->setFocusPolicy(Qt::TabFocus);
     m_importSkinBtn->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     connect(m_importSkinBtn, &QPushButton::clicked, this, &SettingsPage::onImportSkin);
     skinLayout->addWidget(m_importSkinBtn);
@@ -148,9 +157,42 @@ QWidget *SettingsPage::buildAppearanceSection() {
 QWidget *SettingsPage::buildDataSection() {
     auto *inner = new QWidget;
     auto *layout = new QVBoxLayout(inner);
-    layout->setContentsMargins(28, 28, 28, 28);
-    layout->setSpacing(20);
+    layout->setContentsMargins(20, 20, 20, 20);
+    layout->setSpacing(16);
 
+    // ── Unit system ────────────────────────────────────────────────────────────────────────────
+    auto *unitsGroup = new QGroupBox(u"Measurement units"_s, inner);
+    auto *unitsLayout = new QFormLayout(unitsGroup);
+    unitsLayout->setContentsMargins(16, 20, 16, 16);
+    unitsLayout->setHorizontalSpacing(12);
+    unitsLayout->setVerticalSpacing(10);
+    unitsLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+
+    auto *unitSystemLabel = new QLabel(u"&Unit system"_s, unitsGroup);
+    unitSystemLabel->setObjectName(u"fieldLabel"_s);
+
+    m_unitSystemCombo = new QComboBox(unitsGroup);
+    m_unitSystemCombo->addItem(
+        u"Metric (SI)"_s, QString::fromLatin1(kUnitSystemMetric));
+    m_unitSystemCombo->addItem(
+        u"Imperial"_s, QString::fromLatin1(kUnitSystemImperial));
+    m_unitSystemCombo->setAccessibleName(u"Measurement unit system"_s);
+    m_unitSystemCombo->setAccessibleDescription(
+        u"Select metric or imperial units for displayed telemetry values."_s);
+    m_unitSystemCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    unitSystemLabel->setBuddy(m_unitSystemCombo);
+    connect(m_unitSystemCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &SettingsPage::onUnitSystemSelectionChanged);
+    unitsLayout->addRow(unitSystemLabel, m_unitSystemCombo);
+
+    auto *unitHint = new QLabel(
+        u"Changes displayed telemetry values; stored flight data remains in SI units."_s,
+        unitsGroup);
+    unitHint->setWordWrap(true);
+    unitHint->setObjectName(u"mutedLabel"_s);
+    unitsLayout->addRow(unitHint);
+
+    layout->addWidget(unitsGroup);
 
     // ── Sound group ───────────────────────────────────────────────────────────
     m_soundGroup = new QGroupBox(u"Sound"_s, inner);
@@ -158,13 +200,18 @@ QWidget *SettingsPage::buildDataSection() {
     soundLayout->setContentsMargins(16, 20, 16, 16);
     soundLayout->setSpacing(10);
 
-    m_uiSoundsCheck = new QCheckBox(u"Enable UI sounds"_s, m_soundGroup);
+    m_uiSoundsCheck = new QCheckBox(u"Enable &UI sounds"_s, m_soundGroup);
     m_uiSoundsCheck->setChecked(true);
+    m_uiSoundsCheck->setAccessibleName(u"Enable interface feedback sounds"_s);
+    m_uiSoundsCheck->setAccessibleDescription(
+        u"Allow short, rate-limited feedback sounds for important errors."_s);
     connect(m_uiSoundsCheck, &QCheckBox::toggled, this, &SettingsPage::onSoundsToggled);
     soundLayout->addWidget(m_uiSoundsCheck);
 
     auto *soundHint = new QLabel(
-        u"Reserved for future alerts and feedback tones."_s, m_soundGroup);
+        u"Plays a short system feedback tone for important errors; repeated alerts are "
+        u"rate-limited."_s,
+        m_soundGroup);
     soundHint->setWordWrap(true);
     soundHint->setObjectName(u"mutedLabel"_s);
     soundLayout->addWidget(soundHint);
@@ -180,11 +227,11 @@ QWidget *SettingsPage::buildDataSection() {
 QWidget *SettingsPage::buildDeveloperSection() {
     auto *inner = new QWidget;
     auto *layout = new QVBoxLayout(inner);
-    layout->setContentsMargins(28, 28, 28, 28);
+    layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(20);
 
     // ── Debug toggle ──────────────────────────────────────────────────────────
-    m_debugModeCheck = new QCheckBox(u"Enable debug mode"_s, inner);
+    m_debugModeCheck = new QCheckBox(u"Enable &debug mode"_s, inner);
     m_debugModeCheck->setObjectName(u"debugModeCheck"_s);
     m_debugModeCheck->setToolTip(
         u"Expose verbose system information and developer reference."_s);
@@ -230,7 +277,7 @@ QWidget *SettingsPage::buildDeveloperSection() {
 
     m_sysInfoLabel = new QLabel(sysText, m_sysInfoGroup);
     m_sysInfoLabel->setObjectName(u"sysInfoLabel"_s);
-    m_sysInfoLabel->setWordWrap(false);
+    m_sysInfoLabel->setWordWrap(true);
     m_sysInfoLabel->setTextInteractionFlags(
         Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
     sysLayout->addWidget(m_sysInfoLabel);
@@ -245,14 +292,15 @@ QWidget *SettingsPage::buildDeveloperSection() {
     auto *helperText = new QPlainTextEdit(helperGroup);
     helperText->setObjectName(u"devReference"_s);
     helperText->setReadOnly(true);
-    helperText->setMinimumHeight(200);
+    helperText->setMinimumHeight(140);
+    helperText->setAccessibleName(u"Developer reference"_s);
     helperText->setPlainText(
         u"\u2500\u2500\u2500 Workflow \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-        u"  1. Select serial port + baud on the Monitoring connection bar.\n"
+        u"  1. Open Live Telemetry and select a serial port + baud rate.\n"
         u"  2. Click Connect to start the live telemetry pipeline.\n"
-        u"  3. Or click Open log\u2026 to load a .telem / .csv / .xlsx flight log.\n"
-        u"  4. Switch to Flight data for charts and replay.\n"
-        u"  5. Click Export session\u2026 to write a timestamped text log.\n"
+        u"  3. Or use Open flight log to load a .telem / .csv / .xlsx log.\n"
+        u"  4. Switch to Dashboard for charts and replay.\n"
+        u"  5. Use Export session to write the selected session as CSV.\n"
         u"\n"
         u"\u2500\u2500\u2500 File formats \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
         u"  .telem   AltOS binary framed telemetry (Framer + Parser)\n"
@@ -260,10 +308,10 @@ QWidget *SettingsPage::buildDeveloperSection() {
         u"  .xlsx    Excel workbook with telemetry columns on the first worksheet\n"
         u"\n"
         u"\u2500\u2500\u2500 Architecture overview \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-        u"  SerialWorker  \u2192 BlockingQueue \u2192 ParserWorker\n"
-        u"                                   \u2193\n"
-        u"  FlightDataModel \u2190 appendSample (Qt::QueuedConnection)\n"
-        u"  FlightLogManager \u2190 appendSample (for export)\n"
+        u"  SerialWorker \u2192 LineTelemetryDecodeWorker (worker thread)\n"
+        u"                                    \u2193 bounded batches\n"
+        u"  LineTelemetryBatchMailbox \u2192 FlightDataModel (GUI thread)\n"
+        u"                              \u2514\u2192 FlightLogManager (export)\n"
         u"\n"
         u"\u2500\u2500\u2500 QSettings location (macOS) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
         u"  ~/Library/Preferences/CosmoSoft.cosmo-soft.plist\n"
@@ -275,16 +323,17 @@ QWidget *SettingsPage::buildDeveloperSection() {
         u"  serial/baud                 Last baud rate\n"
         u"  paths/replayDir             Last replay directory\n"
         u"  ui/dashboardSplitterState   Dashboard splitter\n"
-        u"  ui/fontPointSize            App font pt size\n"
-        u"  ui/soundsEnabled            Sounds toggle\n"
+        u"  ui/fontPointSize            Startup font override (6-48 pt)\n"
+        u"  ui/unitSystem               metric | imperial\n"
+        u"  ui/soundsEnabled            Feedback-sound toggle\n"
         u"  ui/debugMode                Debug mode toggle\n"
         u"  ui/settingsActiveTab        Last active settings tab\n"
         u"\n"
         u"\u2500\u2500\u2500 Useful build commands \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n"
-        u"  cmake --preset debug\n"
-        u"  cmake --build build/debug --target CosmoSoft -j\n"
-        u"  cmake --preset release\n"
-        u"  cmake --build build/release --target CosmoSoft -j\n"_s);
+        u"  cmake -S . -B build\n"
+        u"  cmake --build build --target cosmo-soft-bin --parallel\n"
+        u"  ctest --test-dir build --output-on-failure\n"
+        u"  ./build/cosmo-soft\n"_s);
     helperLayout->addWidget(helperText);
     layout->addWidget(helperGroup);
 
@@ -298,7 +347,7 @@ QWidget *SettingsPage::buildDeveloperSection() {
 QWidget *SettingsPage::buildAboutSection() {
     auto *inner = new QWidget;
     auto *layout = new QVBoxLayout(inner);
-    layout->setContentsMargins(32, 32, 32, 32);
+    layout->setContentsMargins(20, 20, 20, 20);
     layout->setSpacing(12);
 
     auto *appName = new QLabel(u"CosmoSoft"_s, inner);
@@ -337,6 +386,12 @@ QWidget *SettingsPage::buildAboutSection() {
     repoLabel->setObjectName(u"aboutLink"_s);
     repoLabel->setOpenExternalLinks(true);
     repoLabel->setTextFormat(Qt::RichText);
+    repoLabel->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    repoLabel->setFocusPolicy(Qt::StrongFocus);
+    repoLabel->setWordWrap(true);
+    repoLabel->setAccessibleName(u"CosmoSoft source repository"_s);
+    repoLabel->setAccessibleDescription(
+        u"Opens the CosmoSoft source repository in the default browser"_s);
     layout->addWidget(repoLabel);
 
     layout->addSpacing(24);
@@ -385,6 +440,12 @@ void SettingsPage::refreshStyleSheet() {
     QListWidget#settingsNav::item:hover:!selected {
         background-color: %9;
         color: %7;
+    }
+    QListWidget#settingsNav[compact="true"] {
+        padding: 8px 4px;
+    }
+    QListWidget#settingsNav[compact="true"]::item {
+        padding: 8px 6px;
     }
 
     /* ── Content area ────────────────────────────────────────── */
@@ -463,17 +524,6 @@ void SettingsPage::refreshStyleSheet() {
         color: %13;
         spacing: 10px;
     }
-    QCheckBox#debugModeCheck::indicator {
-        width: 18px;
-        height: 18px;
-        border: 1px solid %5;
-        border-radius: 3px;
-        background-color: %2;
-    }
-    QCheckBox#debugModeCheck::indicator:checked {
-        background-color: %13;
-        border-color: %13;
-    }
 
     /* ── Developer reference ─────────────────────────────────── */
     QPlainTextEdit#devReference {
@@ -488,6 +538,17 @@ void SettingsPage::refreshStyleSheet() {
     /* ── Dividers ────────────────────────────────────────────── */
     QFrame#divider {
         color: %3;
+    }
+
+    /* ── Keyboard focus ──────────────────────────────────────── */
+    QListWidget#settingsNav:focus,
+    QComboBox:focus,
+    QPushButton:focus,
+    QPlainTextEdit:focus,
+    QLabel#aboutLink:focus,
+    QCheckBox:focus {
+        border: 2px solid %16;
+        border-radius: %6px;
     }
 )"_s)
     .arg(Theme::kBgBase())          // %1
@@ -504,7 +565,8 @@ void SettingsPage::refreshStyleSheet() {
     .arg(Theme::kTextMid())         // %12
     .arg(Theme::kAccentLink())      // %13
     .arg(Theme::kFontMono)          // %14
-    .arg(Theme::kSuccess());        // %15
+    .arg(Theme::kSuccess())         // %15
+    .arg(Theme::kFocusRing());      // %16
 
     setStyleSheet(sheet);
 }
@@ -515,9 +577,24 @@ void SettingsPage::onThemeChanged() {
 
 // ── Slot implementations ─────────────────────────────────────────────────────
 
+void SettingsPage::onUnitSystemSelectionChanged(int index) {
+    if (!m_unitSystemCombo || index < 0) {
+        return;
+    }
+
+    const bool imperial =
+        m_unitSystemCombo->itemData(index).toString()
+        == QLatin1StringView(kUnitSystemImperial);
+    QSettings s(kSettingsOrg, kSettingsApp);
+    s.setValue(kSettingsUnitSystem,
+               QString::fromLatin1(imperial ? kUnitSystemImperial : kUnitSystemMetric));
+    emit unitSystemChanged(imperial);
+}
+
 void SettingsPage::onSoundsToggled(bool enabled) {
     QSettings s(kSettingsOrg, kSettingsApp);
     s.setValue(kSettingsSoundsEnabled, enabled);
+    emit uiSoundsEnabledChanged(enabled);
 }
 
 void SettingsPage::onDebugModeToggled(bool enabled) {
@@ -530,14 +607,61 @@ void SettingsPage::onDebugModeToggled(bool enabled) {
 }
 
 void SettingsPage::onSkinChanged(int index) {
+    if (!m_skinCombo || index < 0 || index >= m_skinCombo->count()) {
+        return;
+    }
+
     const auto skin_id = m_skinCombo->itemData(index).toString();
-    const auto skins = cosmo::SkinLoader::discoverAll(cosmo::ThemeManager::skinsDirectory());
-    for (const auto &skin : skins) {
+    for (const auto &skin : m_availableSkins) {
         if (skin.id == skin_id) {
-            cosmo::ThemeManager::instance().setActiveSkin(skin);
+            if (skin.builtin) {
+                cosmo::ThemeManager::instance().setActiveSkin(skin);
+                return;
+            }
+
+            // Preserve the previous tamper protection without rediscovering and
+            // decoding every installed skin on each combo-box selection.
+            const QString storage_name = skin.id.mid(QStringLiteral("custom:").size());
+            const QString skin_dir =
+                QDir(cosmo::ThemeManager::skinsDirectory()).filePath(storage_name);
+            auto validated_theme = cosmo::SkinLoader::loadFromDirectory(skin_dir);
+            if (validated_theme) {
+                validated_theme->id = skin.id;
+                cosmo::ThemeManager::instance().setActiveSkin(*validated_theme);
+            } else {
+                refreshAvailableSkins(cosmo::ThemeManager::instance().current().id);
+            }
             break;
         }
     }
+}
+
+void SettingsPage::refreshAvailableSkins(const QString &preferred_skin_id) {
+    m_availableSkins =
+        cosmo::SkinLoader::discoverAll(cosmo::ThemeManager::skinsDirectory());
+    if (!m_skinCombo) {
+        return;
+    }
+
+    QString selected_id = preferred_skin_id;
+    if (selected_id.isEmpty()) {
+        selected_id = m_skinCombo->currentData().toString();
+    }
+    if (selected_id.isEmpty()) {
+        selected_id = cosmo::ThemeManager::instance().current().id;
+    }
+
+    const QSignalBlocker blocker(m_skinCombo);
+    m_skinCombo->clear();
+    for (const auto &skin : m_availableSkins) {
+        m_skinCombo->addItem(skin.name, skin.id);
+    }
+
+    int selected_index = m_skinCombo->findData(selected_id);
+    if (selected_index < 0 && m_skinCombo->count() > 0) {
+        selected_index = 0;
+    }
+    m_skinCombo->setCurrentIndex(selected_index);
 }
 
 void SettingsPage::onImportSkin() {
@@ -546,12 +670,71 @@ void SettingsPage::onImportSkin() {
         u"CosmoSoft Skins (*.cosmo);;Zip Archives (*.zip)"_s);
     if (path.isEmpty()) return;
 
-    const auto dest = cosmo::ThemeManager::skinsDirectory();
-    auto theme = cosmo::SkinLoader::importArchive(path, dest);
-    if (!theme) return;
+    startSkinImport(path, false);
+}
 
-    m_skinCombo->addItem(theme->name, theme->id);
-    m_skinCombo->setCurrentIndex(m_skinCombo->count() - 1);
+void SettingsPage::startSkinImport(const QString &archive_path, bool replace_existing) {
+    if (m_importSkinBtn) {
+        m_importSkinBtn->setEnabled(false);
+        m_importSkinBtn->setText(u"Importing…"_s);
+    }
+
+    const auto dest = cosmo::ThemeManager::skinsDirectory();
+    auto *watcher = new QFutureWatcher<cosmo::SkinImportResult>(this);
+    connect(watcher, &QFutureWatcher<cosmo::SkinImportResult>::finished,
+            this, [this, watcher, archive_path]() {
+        const cosmo::SkinImportResult result = watcher->result();
+        watcher->deleteLater();
+
+        if (m_importSkinBtn) {
+            m_importSkinBtn->setEnabled(true);
+            m_importSkinBtn->setText(u"Import .cosmo skin…"_s);
+        }
+
+        if (result.status == cosmo::SkinImportStatus::AlreadyExists) {
+            QMessageBox prompt(QMessageBox::Question,
+                               u"Replace installed skin?"_s,
+                               result.error_message,
+                               QMessageBox::Cancel,
+                               this);
+            auto *replace_button = prompt.addButton(u"Replace"_s, QMessageBox::AcceptRole);
+            prompt.setDefaultButton(QMessageBox::Cancel);
+            prompt.exec();
+            if (prompt.clickedButton() == replace_button) {
+                startSkinImport(archive_path, true);
+            }
+            return;
+        }
+
+        if (!result.succeeded()) {
+            QMessageBox::warning(
+                this,
+                u"Could not import skin"_s,
+                result.error_message.isEmpty()
+                    ? u"The selected archive is not a valid CosmoSoft skin."_s
+                    : result.error_message);
+            return;
+        }
+
+        const auto &theme = *result.theme;
+        refreshAvailableSkins(theme.id);
+        const auto imported_theme = std::find_if(
+            m_availableSkins.cbegin(), m_availableSkins.cend(),
+            [&theme](const cosmo::CosmoTheme &available) {
+                return available.id == theme.id;
+            });
+        if (imported_theme != m_availableSkins.cend()) {
+            // Use the freshly rediscovered object. A later serialized import may
+            // already have replaced the same ID before this queued callback ran.
+            cosmo::ThemeManager::instance().setActiveSkin(*imported_theme);
+        }
+    });
+
+    watcher->setFuture(QtConcurrent::run(
+        [archive_path, dest, replace_existing]() {
+            return cosmo::SkinLoader::importArchiveDetailed(
+                archive_path, dest, replace_existing);
+        }));
 }
 
 // ── Persistence ──────────────────────────────────────────────────────────────
@@ -559,6 +742,12 @@ void SettingsPage::onImportSkin() {
 void SettingsPage::showEvent(QShowEvent *event) {
     QWidget::showEvent(event);
     loadFromSettings();
+    updateResponsiveLayout();
+}
+
+void SettingsPage::resizeEvent(QResizeEvent *event) {
+    QWidget::resizeEvent(event);
+    updateResponsiveLayout();
 }
 
 void SettingsPage::closeEvent(QCloseEvent *event) {
@@ -569,7 +758,19 @@ void SettingsPage::closeEvent(QCloseEvent *event) {
 void SettingsPage::loadFromSettings() {
     QSettings s(kSettingsOrg, kSettingsApp);
 
+    if (m_unitSystemCombo) {
+        const QString storedUnitSystem =
+            s.value(kSettingsUnitSystem, QString::fromLatin1(kUnitSystemMetric)).toString();
+        int unitIndex = m_unitSystemCombo->findData(storedUnitSystem);
+        if (unitIndex < 0) {
+            unitIndex = m_unitSystemCombo->findData(QString::fromLatin1(kUnitSystemMetric));
+        }
+        const QSignalBlocker blocker(m_unitSystemCombo);
+        m_unitSystemCombo->setCurrentIndex(unitIndex);
+    }
+
     if (m_uiSoundsCheck) {
+        const QSignalBlocker blocker(m_uiSoundsCheck);
         m_uiSoundsCheck->setChecked(s.value(kSettingsSoundsEnabled, true).toBool());
     }
 
@@ -596,6 +797,14 @@ void SettingsPage::loadFromSettings() {
 
 void SettingsPage::saveToSettings() {
     QSettings s(kSettingsOrg, kSettingsApp);
+    if (m_unitSystemCombo) {
+        const bool imperial =
+            m_unitSystemCombo->currentData().toString()
+            == QLatin1StringView(kUnitSystemImperial);
+        s.setValue(kSettingsUnitSystem,
+                   QString::fromLatin1(
+                       imperial ? kUnitSystemImperial : kUnitSystemMetric));
+    }
     if (m_uiSoundsCheck) {
         s.setValue(kSettingsSoundsEnabled, m_uiSoundsCheck->isChecked());
     }
@@ -606,4 +815,28 @@ void SettingsPage::saveToSettings() {
         s.setValue(kSettingsActiveTab, m_nav->currentRow());
     }
     s.setValue(kSettingsWindowSettingsGeo, saveGeometry());
+}
+
+void SettingsPage::updateResponsiveLayout() {
+    if (!m_nav) {
+        return;
+    }
+
+    constexpr int kMinSidebarWidth = 108;
+    constexpr int kMaxSidebarWidth = 152;
+    constexpr int kCompactWindowWidth = 640;
+    const int sidebarWidth = std::clamp(
+        width() / 4,
+        kMinSidebarWidth,
+        kMaxSidebarWidth);
+    m_nav->setFixedWidth(sidebarWidth);
+
+    const bool compact = width() < kCompactWindowWidth;
+    if (m_nav->property("compact").toBool() == compact) {
+        return;
+    }
+    m_nav->setProperty("compact", compact);
+    m_nav->style()->unpolish(m_nav);
+    m_nav->style()->polish(m_nav);
+    m_nav->update();
 }

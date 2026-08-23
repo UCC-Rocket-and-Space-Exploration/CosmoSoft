@@ -8,7 +8,22 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-add_executable(cosmo-tests "")
+add_executable(cosmo-tests
+    FileLoadCancellationTests.cpp
+    EventLogFormattingTests.cpp
+    FlightLogManagerAtomicExportTests.cpp
+    FlightReplayControllerTests.cpp
+    LineTelemetryPipelineTests.cpp
+    LineTelemetryBatchMailboxTests.cpp
+    MetricDisplayUnitTests.cpp
+    MockFlightLinkTests.cpp
+    SampleFileLoaderTests.cpp
+    SerialPortScannerHardeningTests.cpp
+    SerialWorkerLifecycleTests.cpp
+    SkinLoaderTests.cpp
+    "${CMAKE_SOURCE_DIR}/assets/resources.qrc"
+        include/SerialWriter.h
+)
 
 add_subdirectory("comms")
 target_include_directories(cosmo-tests PRIVATE
@@ -17,8 +32,8 @@ target_include_directories(cosmo-tests PRIVATE
 )
 
 target_link_libraries(cosmo-tests PRIVATE
-    Catch2::Catch2WithMain cosmo-backend
-#    import
+    Catch2::Catch2WithMain
+    cosmo-backend
 )
 
 target_compile_definitions(cosmo-tests PRIVATE

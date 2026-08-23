@@ -8,16 +8,31 @@ The project is written in C++20 and uses Qt 6 for the user interface and CMake f
 
 The app builds and runs with:
 
-- **Monitoring** — summary of the latest decoded sample (live or replay).
-- **Flight data** — interactive telemetry chart: **multiple traces** (checkboxes for altitude, temp, pressure, accel, battery, RSSI, gyro, lat/lon). One trace uses raw Y units; **two or more** use a **normalized 0–1 overlay** (legend shows “(norm)”); **hover** lists elapsed time, sample index, and **engineering values for every enabled trace**. Dotted grid, legend, point markers when ≤400 samples/trace, full-history replay scrubber, zoom, stat tiles.
-- **Connection bar** (under the toolbar) — serial port, baud, **Refresh** / **Connect** / **Disconnect**, **Open log…** and **Clear flight**; port, baud, and last replay folder are persisted via **QSettings** (`CosmoSoft` / `cosmo-soft`).
-- **Settings** (separate window) — appearance (UI font size) and sound preference flags only.
+- **Dashboard** — interactive telemetry chart: **multiple traces** (checkboxes for altitude, temp, pressure, accel, battery, RSSI, gyro, lat/lon). One trace uses raw Y units; **two or more** use a **normalized 0–1 overlay** (legend shows “(norm)”); **hover** lists elapsed time, sample index, and **engineering values for every enabled trace**. Dotted grid, legend, point markers when ≤400 samples/trace, full-history replay scrubber, zoom, stat tiles.
+- **Live Telemetry** — serial device discovery and connection controls, the latest decoded sample, and its mapped flight path.
+- **Event Log** — bounded, timestamped application events and errors with live theme updates.
+- **Action bar** (under the toolbar) — **Open flight log**, **Clear flight data**, **Export**, and a deterministic fake live transmission; port, baud, and the last replay folder are persisted via **QSettings** (`CosmoSoft` / `cosmo-soft`).
+- **Settings** (separate window) — built-in and imported skins, metric/imperial display units, rate-limited error feedback sounds, and developer diagnostics.
 
-**Offline replay:** Load **Theseus-style CSV** (see `sample_data/theseus_flight_data.csv`) via *Open log…* on the connection bar. Timestamps are taken from the `time` column (seconds → stored as milliseconds).
+**Offline replay:** Load CSV or XLSX logs via *Open log…* on the action bar.
+Theseus-style CSV timestamps are taken from the `time` column (seconds →
+stored as milliseconds); XLSX import reads supported telemetry columns from the
+first worksheet.
 
 **`.telem` files:** Lines are hex-decoded and fed through the telemetry **Framer** / **Parser**. Those layers are still **stubs**, so `.telem` replay will not produce samples until binary framing and decoding are implemented.
 
-**Live serial:** Connect from the connection bar; bytes flow through `ParserWorker` → `Framer` → `Parser`. Until parsing is implemented, decoded live samples may not appear in the UI.
+**Live serial:** Connect from the Live Telemetry page; the current newline-delimited
+CSV stream is decoded off the UI thread by `LineTelemetryDecodeWorker` and
+delivered to the model in bounded batches. Complete valid rows appear in the
+dashboard and Live Telemetry page. The binary `Framer` / `Parser` path remains
+reserved for the future hardware protocol. The live export snapshot retains at
+most 1,000,000 samples; if that limit is reached, new samples remain visible
+and the Event Log reports that they are no longer retained for export.
+
+Serial discovery has platform-matched implementations: Linux device nodes
+(`ttyUSB`, `ttyACM`, `ttyS`), macOS callout/TTY nodes (`cu.*`, `tty.*`), and
+Windows registry COM ports. Windows serial changes require validation in
+Windows CI and on representative hardware in addition to macOS/Linux testing.
 
 ## Theming
 
@@ -56,6 +71,9 @@ Before building, make sure you have:
   - `Widgets`
   - `Charts`
   - `Concurrent`
+  - `WebEngineWidgets`
+  - `WebChannel`
+- Zlib
 
 If CMake cannot find your Qt installation automatically, set `CMAKE_PREFIX_PATH` or `Qt6_DIR` to the Qt install location.
 
@@ -102,7 +120,13 @@ Multi-config generators:
 ./build/Release/cosmo-soft
 ```
 
-On Windows:
+On Windows with a single-config generator:
+
+```powershell
+.\build\cosmo-soft.exe
+```
+
+On Windows with a multi-config generator:
 
 ```powershell
 .\build\Release\cosmo-soft.exe
@@ -114,7 +138,8 @@ The `sample_data/` folder contains example logs:
 
 | File | Use |
 |------|-----|
-| `theseus_flight_data.csv` | Replay in the app (connection bar → Open log…) |
+| `theseus_flight_data.csv` | Replay in the app (action bar → Open flight log) |
+| `flight_2026-05-30_17-34-27.xlsx` | Example XLSX replay log |
 | `altos_sample_data.telem`, `altos_sample_data2.telem` | Altos-style hex lines; needs Framer/Parser implementation to decode |
 | `TELEM_FORMAT_EXPLAINED.md` | Documentation of the `.telem` hex packet format |
 | `parse_telem.py` | Python script to convert `.telem` hex lines to human-readable output |
@@ -122,12 +147,12 @@ The `sample_data/` folder contains example logs:
 
 ## Project structure
 
-- `src/gui` — Qt UI (`MainWindow`, `MonitoringPage`, `DashboardPage`, `SettingsPage`, replay controller, `FlightDataModel`, widgets)
-- `src/services/import` — `SampleFileLoader` (CSV and `.telem` ingestion)
+- `src/gui` — Qt UI (`MainWindow`, `DashboardPage`, `LiveTelemetryPage`, `EventLogPage`, `SettingsPage`, replay controller, `FlightDataModel`, widgets)
+- `src/services/import` — `SampleFileLoader` (CSV, XLSX, and `.telem` ingestion)
 - `src/services/telemetry` — framing and parsing pipeline (worker thread)
 - `src/services/persistence` — `FlightLogManager`
 - `src/services/flight` — flight module placeholder
-- `src/services/RingBuffer.cpp` — lock-free ring buffer utility
+- `src/services/RingBuffer.tpp` — lock-free ring buffer utility
 - `src/gateway/comms` — serial communication and port scanning
 - `include/domain/` — core data models (`FlightSample`, `FlightSession`)
 - `include/` — public headers (GUI, services, gateway)
@@ -136,7 +161,9 @@ The `sample_data/` folder contains example logs:
 ## Notes
 
 - Assets are bundled with Qt resources; there is no separate asset copy step.
-- The executable output name is `cosmo-soft` (CMake target `cosmo-soft-bin`).
+- Single-config builds place the `cosmo-soft` executable at `build/cosmo-soft`
+  (the internal CMake target remains `cosmo-soft-bin`). Multi-config builds use
+  the configuration directory shown above.
 - Optional Qt **Vulkan** lookup is disabled in CMake when the Vulkan SDK is absent, to keep configure output quiet.
 
 ## License
