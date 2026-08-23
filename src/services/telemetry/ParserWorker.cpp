@@ -1,41 +1,5 @@
-//
-// bool ParserWorker::start() {
-//     if (m_thread.joinable()) return true;
-//     m_thread = std::jthread([this](const std::stop_token &st){ run(st); });
-//     return true;
-// }
-//
-// void ParserWorker::stop() {
-//     if (m_thread.joinable()) {
-//         m_thread.request_stop();
-//         m_thread = std::jthread{};
-//     }
-// }
-//
-// void ParserWorker::run(const std::stop_token &st) {
-//     while (!st.stop_requested()) {
-//         Chunk chunk;
-//         if (!m_inQueue.pop_for(chunk, std::chrono::milliseconds(50))) {
-//             continue;
-//         }
-//
-//         m_framer.ingest(chunk.data(), chunk.size());
-//
-//         Frame frame{};
-//         while (m_framer.try_next_frame(frame)) {
-//             auto sampleOpt = m_parser.decode(frame);
-//             if (!sampleOpt) {
-//                 if (m_onError) m_onError("Failed to decode frame");
-//                 continue;
-//             }
-//             if (m_onData) m_onData(std::move(*sampleOpt));
-//         }
-//     }
-// }
-
 #include "services/telemetry/ParserWorker.h"
 #include <thread>
-
 #include "shared/exceptions/IncorrectAltosPacketType.h"
 
 
@@ -47,15 +11,6 @@ ParserWorker::ParserWorker(
     m_decoder_vault = FrameDecoderVault();
 }
 
-// void ParserWorker::start() {
-//
-//     // 13603,19.24,100896.15,165.59,0.704,-0.927,9.850,-0.047,0.091,0.091,-4.822,-2.985,16.506,0.000000,0.000000,0.00
-//     m_worker_thread = std::thread(&ParserWorker::parse_flight_samples, this);
-// }
-
-// void ParserWorker::stop() {
-//
-// }
 
 void ParserWorker::m_process() {
     while (m_running) {

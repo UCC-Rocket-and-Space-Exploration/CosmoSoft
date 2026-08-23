@@ -23,7 +23,7 @@ private:
     FrameDecoderVault m_decoder_vault;
     void (*m_on_parsed_data_callback)(const FlightSample& flight_sample);
     Buffer m_buffer;
-    // std::unique_ptr<IFrameDecoder> m_decoder;
+
     std::atomic_bool m_first_frame {true};
     int m_initial_timestamp = 0;
 };
