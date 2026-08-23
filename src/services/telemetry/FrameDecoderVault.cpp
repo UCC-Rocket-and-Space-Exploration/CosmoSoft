@@ -16,8 +16,8 @@ std::shared_ptr<IFrameDecoder> FrameDecoderVault::select(const Frame& frame) {
         case Csv: {
             return m_cvs_frame_decoder;
         }
-            case AltosFrame: {
-            auto packet_type_value = getAltosPacketType(frame);
+        case AltosFrame: {
+            const auto packet_type_value = getAltosPacketType(frame);
             return selectAltosPacketDecoder(packet_type_value);
         }
         default:

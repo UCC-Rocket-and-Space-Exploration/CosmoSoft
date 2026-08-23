@@ -4,7 +4,6 @@
 #include <vector>
 #include <domain/FrameFormat.h>
 
-
 class Frame {
 public:
 	FrameFormat format;
@@ -12,3 +11,10 @@ public:
 	size_t packet_start_index = 0;
 };
 #endif //COSMO_SOFT_FRAME_H
+
+// struct Frame {
+//     FrameFormat format;
+//     uint8_t* data;
+//     std::size_t size;
+// };
+
