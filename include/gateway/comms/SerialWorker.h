@@ -9,7 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include "gateway/comms/IComms.h"
+// #include "gateway/comms/IComms.h"
+#include "interfaces/IComms.h"
 
 /**
  * @brief Reads byte chunks from an IComms connection on a background thread.
