@@ -2,9 +2,6 @@
 #include <thread>
 #include "shared/exceptions/IncorrectAltosPacketType.h"
 
-
-
-
 void ParserWorker::m_process() {
     while (m_running) {
         std::optional<Frame> frame = m_buffer->get();

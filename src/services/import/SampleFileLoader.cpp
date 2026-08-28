@@ -24,6 +24,11 @@
 
 #include <zlib.h>
 
+#include "services/telemetry/FrameDecoderVault.h"
+#include "shared/exceptions/IncorrectAltosPacketType.h"
+
+class IncorrectAltosPacketType;
+
 namespace {
 
 constexpr std::uint32_t kZipLocalFileHeaderSignature = 0x04034b50;
@@ -1197,14 +1202,14 @@ std::optional<std::string> SampleFileLoader::loadTelemFile(
     FlightSession &out,
     Framer &framer,
     Parser &parser) {
-    return loadTelemFile(path, out, framer, parser, cosmo::CancellationCheck{}).error;
+    FrameDecoderVault vault{};
+    return loadTelemFile(path, out, vault, cosmo::CancellationCheck{}).error;
 }
 
 SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
     const std::string &path,
     FlightSession &out,
-    Framer &framer,
-    Parser &parser,
+    FrameDecoderVault& decoder_vault,
     const cosmo::CancellationCheck &cancellation_check) {
     CancellationState cancellation(cancellation_check);
     if (cancellation.poll()) {
@@ -1233,25 +1238,38 @@ SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
             continue;
         }
         const std::string_view hexPart(line.data() + kPrefix.size(), line.size() - kPrefix.size());
-        auto bytesOpt = hexDecodeLine(hexPart, cancellation);
+        std::optional<std::vector<uint8_t>> bytesOpt = hexDecodeLine(hexPart, cancellation);
         if (cancellation.is_canceled()) {
             return canceled_load_result();
         }
         if (!bytesOpt || bytesOpt->empty()) {
             continue;
         }
-        //Use decoder insatead
-        framer.ingest(bytesOpt->data(), bytesOpt->size());
+        //Use decoder instead
         Frame frame{};
-        while (framer.try_next_frame(frame)) {
-            if (cancellation.poll_periodically()) {
-                return canceled_load_result();
-            }
-            auto decoded = parser.decode(frame);
-            if (decoded) {
-                decoded_samples.push_back(std::move(*decoded));
-            }
+        frame.format = AltosFrame;
+        frame.data = std::move(*bytesOpt);
+        try {
+            std::shared_ptr<IFrameDecoder> decoder = decoder_vault.select(frame);
+            FlightSample sample = decoder->decode(frame);
+            decoded_samples.push_back(sample);
         }
+        catch (IncorrectAltosPacketType ex) {
+            //add logging
+        }
+
+        // framer.ingest(bytesOpt->data(), bytesOpt->size());
+        // Frame frame{};
+        //
+        // while (framer.try_next_frame(frame)) {
+        //     if (cancellation.poll_periodically()) {
+        //         return canceled_load_result();
+        //     }
+        //     auto decoded = parser.decode(frame);
+        //     if (decoded) {
+        //         decoded_samples.push_back(std::move(*decoded));
+        //     }
+        // }
     }
 
     if (cancellation.poll()) {

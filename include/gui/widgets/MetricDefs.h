@@ -182,7 +182,7 @@ inline double replayDurationSeconds(long firstTimestampMs, long lastTimestampMs)
 /** Formats a duration in seconds as m:ss or h:mm:ss. */
 inline QString formatReplayClockHms(double sec)
 {
-    if (!std::isfinite(sec) || sec < 0.0) return QString(u"\u2014");
+    if (!std::isfinite(sec) || sec < 0.0) return QStringLiteral("—");
 
     // Converting an out-of-range floating-point value to an integer is
     // undefined behaviour.  2^63 is exactly representable as a double, so
@@ -277,7 +277,7 @@ inline QString metricDisplayTitle(int idx, bool imperial)
 inline QString formatMetricDisplayValue(int idx, double siValue, bool imperial)
 {
     if (!std::isfinite(siValue)) {
-        return QString(u"\u2014");
+        return QStringLiteral("—");
     }
     const double displayValue = metricDisplayValue(idx, siValue, imperial);
     if (idx == 2) {

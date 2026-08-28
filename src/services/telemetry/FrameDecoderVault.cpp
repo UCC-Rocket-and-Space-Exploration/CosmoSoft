@@ -1,4 +1,7 @@
 #include "services/telemetry/FrameDecoderVault.h"
+
+#include <stdexcept>
+
 #include "services/telemetry/frame_decoders/ConfigFrameDecoder.h"
 #include "services/telemetry/frame_decoders/CsvFrameDecoder.h"
 #include "services/telemetry/frame_decoders/GpsFrameDecoder.h"
@@ -11,7 +14,6 @@
 //IncorrectAltosPacketType - if altos packet type is incorrect
 //std::logic_error if format is incorrect
 std::shared_ptr<IFrameDecoder> FrameDecoderVault::select(const Frame& frame) {
-
     switch (frame.format) {
         case Csv: {
             return m_cvs_frame_decoder;

@@ -3,7 +3,7 @@
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
 #include "gateway/comms/CommsFactory.h"
-#include "../../include/gateway/comms/interfaces/ISerialPortScanner.h"
+#include "gateway/comms/interfaces/ISerialPortScanner.h"
 #include "gateway/comms/SerialPortScannerFactory.h"
 #include "gateway/comms/SerialWorker.h"
 #include "gui/AboutDialog.h"
@@ -20,10 +20,8 @@
 #include "services/import/SampleFileLoader.h"
 #include "services/flight/FakeFlightLink.h"
 #include "services/persistence/FlightLogManager.h"
-#include "services/telemetry/Framer.h"
 #include "services/telemetry/LineTelemetryBatchMailbox.h"
 #include "services/telemetry/LineTelemetryDecodeWorker.h"
-#include "services/telemetry/Parser.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -108,11 +106,10 @@ struct SerialPortScanResult {
         };
         FlightSession session;
         SampleFileLoader::LoadResult loadResult;
+        FrameDecoderVault vault{};
         if (path.endsWith(u".telem", Qt::CaseInsensitive)) {
-            Framer framer;
-            Parser parser;
             loadResult = SampleFileLoader::loadTelemFile(
-                path.toStdString(), session, framer, parser, cancellationCheck);
+                path.toStdString(), session, vault, cancellationCheck);
         } else if (path.endsWith(u".xlsx", Qt::CaseInsensitive)) {
             loadResult = SampleFileLoader::loadXlsx(
                 path.toStdString(), session, cancellationCheck);

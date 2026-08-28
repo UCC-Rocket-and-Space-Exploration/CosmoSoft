@@ -20,7 +20,7 @@ class StatTileWidget : public QFrame {
 
 public:
     explicit StatTileWidget(const QString &label,
-                            const QString &initialValue = QString(u"\u2014"),
+                            const QString &initialValue = QStringLiteral("—"),
                             QWidget *parent = nullptr);
 
     /** Replaces the large value text. */
