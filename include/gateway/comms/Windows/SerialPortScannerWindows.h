@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "gateway/comms/ISerialPortScanner.h"
+#include "gateway/comms/interfaces/ISerialPortScanner.h"
 
 /**
  * @brief Discovers serial ports registered by Windows.

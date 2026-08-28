@@ -5,7 +5,7 @@
 #include <mutex>
 #include <string>
 
-#include "gateway/comms/IComms.h"
+#include "gateway/comms/interfaces/IComms.h"
 
 /** @brief Windows serial connection using cancellable overlapped I/O. */
 class SerialCommsWindows : public IComms {

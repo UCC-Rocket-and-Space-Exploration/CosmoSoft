@@ -33,7 +33,6 @@ bool AltosFrameDecoder::checksum_valid(const Frame& frame) {
         std::string byte_str(byte_pts, 2);
         actual_checksum += ByteHelper::get_byte_from_str(byte_str);
     }
-    std::cout << "actual: " << (int)actual_checksum << std::endl;
     return expected_checksum == actual_checksum;
 }
 

@@ -1,7 +1,7 @@
 #include "services/import/SampleFileLoader.h"
 
-#include "services/telemetry/Framer.h"
-#include "services/telemetry/Parser.h"
+// #include "services/telemetry/Framer.h"
+// #include "services/telemetry/Parser.h"
 
 #include <QByteArray>
 #include <QLocale>
@@ -1240,6 +1240,7 @@ SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
         if (!bytesOpt || bytesOpt->empty()) {
             continue;
         }
+        //Use decoder insatead
         framer.ingest(bytesOpt->data(), bytesOpt->size());
         Frame frame{};
         while (framer.try_next_frame(frame)) {

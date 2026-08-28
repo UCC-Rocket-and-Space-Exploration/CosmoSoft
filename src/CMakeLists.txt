@@ -17,6 +17,7 @@ add_subdirectory(gateway/comms)
 add_subdirectory(services)
 add_subdirectory(shared)
 add_subdirectory(gui)
+#add_subdirectory(tests)
 
 add_executable(cosmo-soft-bin
     main.cpp

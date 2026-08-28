@@ -37,7 +37,6 @@ FlightSample CsvFrameDecoder::decode(const Frame &frame) {
 
 void CsvFrameDecoder::setValueToFlightSampleField(const std::string& value, FlightSample& sample, int field_position) {
 //todo: ensure all types are correct and there will not be any slising
-    // std::cout << "value: " << value << " is num: " << isNumber(value) << std::endl;
     if (!isNumber(value)) {
         return;
     }
@@ -91,7 +90,7 @@ void CsvFrameDecoder::setValueToFlightSampleField(const std::string& value, Flig
             sample.distanceFromLaunchPoint = stod(value);
             break;
         default:
-            std::cout << "warning: no field with position #" << field_position << std::endl;
+            // std::cout << "warning: no field with position #" << field_position << std::endl;
             break;
     }
 }

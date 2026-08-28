@@ -28,6 +28,7 @@ set(HEADERS "${CMAKE_SOURCE_DIR}/include")
 include(CTest)
 
 find_package(Qt6 6.2 REQUIRED COMPONENTS Core Gui Widgets Charts Concurrent WebEngineWidgets WebChannel)
+
 find_package(ZLIB REQUIRED) # for compressing
 add_subdirectory(src)
 
