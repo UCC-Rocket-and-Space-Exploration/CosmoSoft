@@ -1,3 +1,4 @@
+#include "gui/widgets/ChartSamples.h"
 #include "gui/widgets/MetricDefs.h"
 
 #include <catch2/catch_approx.hpp>
@@ -6,9 +7,38 @@
 #include <cmath>
 #include <limits>
 
-TEST_CASE("Metric display conversion preserves SI values in metric mode",
-          "[gui][units]")
-{
+TEST_CASE("Chart overview preserves spikes in every trace and missing-value boundaries", "[gui][chart]") {
+    std::vector<FlightSample> samples(12000);
+    for (int i = 0; i < static_cast<int>(samples.size()); ++i) {
+        samples[i].timestamp = i * 10;
+        samples[i].altitude = 100;
+        samples[i].temperature = 20;
+    }
+    samples[4501].altitude = 12345.678901;
+    samples[4502].altitude = -9876.54321;
+    samples[4503].temperature = 890.125;
+    samples[4504].temperature = -765.25;
+    samples[8000].altitude = std::numeric_limits<double>::quiet_NaN();
+    std::array<bool, MetricDefs::kMetricCount> enabled{};
+    enabled[0] = enabled[1] = true;
+    const auto overview = ChartSamples::select(samples, 0, 12000, 1000, enabled);
+    REQUIRE(overview.size() < samples.size());
+    REQUIRE(std::is_sorted(overview.begin(), overview.end()));
+    REQUIRE(overview.front() == 0);
+    REQUIRE(overview.back() == 11999);
+    for (int index : {4501, 4502, 4503, 4504, 7999, 8000, 8001}) {
+        REQUIRE(std::binary_search(overview.begin(), overview.end(), index));
+    }
+    const auto detail = ChartSamples::select(samples, 4490, 4520, 1000, enabled);
+    REQUIRE(detail.size() == 30);
+    for (int i = 0; i < 30; ++i)
+        REQUIRE(detail[i] == 4490 + i);
+    REQUIRE(samples[4501].altitude == 12345.678901);
+    REQUIRE(samples[4503].temperature == 890.125);
+    REQUIRE(ChartSamples::select(samples, 20, 10, 0, enabled).empty());
+}
+
+TEST_CASE("Metric display conversion preserves SI values in metric mode", "[gui][units]") {
     constexpr double sourceValue = 123.456;
     for (int metricIndex = 0; metricIndex < MetricDefs::kMetricCount; ++metricIndex) {
         REQUIRE(MetricDefs::metricDisplayValue(metricIndex, sourceValue, false)

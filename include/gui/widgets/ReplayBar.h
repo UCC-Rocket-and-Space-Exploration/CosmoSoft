@@ -87,6 +87,7 @@ private:
     void updateResponsiveLayout();
     void updateLabels();
     void syncTransportChrome();
+    void refreshTransportIcons();
 
     FlightReplayController *m_replay = nullptr;
     FlightDataModel        *m_model  = nullptr;

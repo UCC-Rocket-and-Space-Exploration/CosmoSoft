@@ -194,19 +194,19 @@
 
   #providerAttribution {
     position: absolute;
-    right: 6px;
-    bottom: 82px;
+    right: 8px;
+    bottom: 4px;
+    left: 8px;
     z-index: 1000;
     display: none;
-    max-width: min(70%, 760px);
-    padding: 2px 5px;
-    border: 1px solid var(--subtle-line);
-    border-radius: 4px 0 0 0;
-    background: var(--stats-bg);
+    padding: 0;
+    border: none;
+    background: transparent;
     color: var(--text-muted);
-    font-size: 11px;
-    line-height: 1.35;
+    font-size: 8px;
+    line-height: 1.15;
     text-align: right;
+    pointer-events: none;
   }
 
   .leaflet-tile-pane { transition: filter 0.3s; filter: brightness(0.7) contrast(1.1) saturate(0.5); }

@@ -5,12 +5,14 @@
 
 #include <QChart>
 #include <QFocusEvent>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QLineSeries>
 #include <QMouseEvent>
+#include <QPaintEvent>
 #include <QPainter>
 #include <QPen>
-#include <QPaintEvent>
+#include <QResizeEvent>
 #include <QValueAxis>
 #include <QWheelEvent>
 #include <QWidget>
@@ -37,6 +39,7 @@ public:
     int crosshairY = -1;
     int snapX = -1, snapY = -1;
     QColor snapColor;
+    QRectF plotArea;
 
     explicit ChartCrosshairOverlay(QWidget *parent) : QWidget(parent)
     {
@@ -51,6 +54,7 @@ protected:
         if (crosshairX < 0 && crosshairY < 0) return;
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing, false);
+        p.setClipRect(plotArea);
         // Use theme-aware crosshair color
         QColor crosshairColor(Theme::kTextPrimary());
         crosshairColor.setAlpha(100);
@@ -144,6 +148,8 @@ TelemetryChartView::TelemetryChartView(QChart *c, QWidget *parent)
     // Floating text overlay — positioned near cursor, hidden by default.
     m_hoverOverlay = new QLabel(viewport());
     m_hoverOverlay->setWordWrap(true);
+    m_hoverOverlay->setTextFormat(Qt::PlainText);
+    m_hoverOverlay->setAttribute(Qt::WA_TransparentForMouseEvents);
     m_hoverOverlay->setMaximumWidth(420);
     refreshHoverOverlayStyleSheet();
     m_hoverOverlay->hide();
@@ -153,6 +159,12 @@ TelemetryChartView::TelemetryChartView(QChart *c, QWidget *parent)
             this, &TelemetryChartView::refreshHoverOverlayStyleSheet);
 
     viewport()->installEventFilter(this);
+    for (auto *abstractAxis : c->axes()) {
+        if (auto *axis = qobject_cast<QValueAxis *>(abstractAxis)) {
+            connect(axis, &QValueAxis::rangeChanged, this, [this](qreal, qreal) { updateAxisTicks(); });
+        }
+    }
+    updateAxisTicks();
 }
 
 void TelemetryChartView::setChart(QChart *c)
@@ -166,6 +178,7 @@ void TelemetryChartView::setChart(QChart *c)
 void TelemetryChartView::setHoverXValues(QVector<double> values)
 {
     m_hoverXValues = std::move(values);
+    m_hoverIndex = std::min(m_hoverIndex, static_cast<int>(m_hoverXValues.size()) - 1);
 }
 
 void TelemetryChartView::invalidateHoverSeriesCache()
@@ -390,31 +403,11 @@ void TelemetryChartView::panAxesByPixels(const QPoint &delta)
 
     const double dValX = static_cast<double>(delta.x()) * (axX->max() - axX->min()) / plot.width();
 
-    // Block signals on all axes except the last one updated so the chart
-    // scene only repaints once instead of once per axis.
-    const bool hadBlockX = axX->signalsBlocked();
-    axX->blockSignals(true);
+    // Emit X changes so sibling plots keep the same time range.
     axX->setRange(axX->min() - dValX, axX->max() - dValX);
-
-    for (int i = 0; i < yAxes.size(); ++i) {
-        QValueAxis *ay = yAxes[i];
-        const double dValY = static_cast<double>(delta.y()) * (ay->max() - ay->min()) / plot.height();
-        const bool isLast = (i == yAxes.size() - 1);
-        if (!isLast) {
-            const bool had = ay->signalsBlocked();
-            ay->blockSignals(true);
-            ay->setRange(ay->min() + dValY, ay->max() + dValY);
-            ay->blockSignals(had);
-        } else {
-            // Unblock X before the last axis update triggers the repaint
-            axX->blockSignals(hadBlockX);
-            ay->setRange(ay->min() + dValY, ay->max() + dValY);
-        }
-    }
-    if (yAxes.isEmpty()) {
-        axX->blockSignals(hadBlockX);
-        // Re-fire a rangeChanged so the chart repaints once
-        axX->setRange(axX->min(), axX->max());
+    for (auto *axis : yAxes) {
+        const double offset = static_cast<double>(delta.y()) * (axis->max() - axis->min()) / plot.height();
+        axis->setRange(axis->min() + offset, axis->max() + offset);
     }
 }
 
@@ -435,7 +428,8 @@ void TelemetryChartView::rebuildHoverSeriesCache()
     m_hoverSeriesCache.reserve(static_cast<std::size_t>(chartSeries.size()));
     for (QAbstractSeries *abstractSeries : chartSeries) {
         auto *lineSeries = qobject_cast<QLineSeries *>(abstractSeries);
-        if (!lineSeries || !lineSeries->isVisible() || lineSeries->count() <= 0) {
+        if (!lineSeries || !lineSeries->property("metricIndex").isValid() || !lineSeries->isVisible() ||
+            lineSeries->count() <= 0) {
             continue;
         }
 
@@ -455,8 +449,7 @@ void TelemetryChartView::rebuildHoverSeriesCache()
     }
 }
 
-void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
-{
+void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos, int requestedIndex) {
     if (!m_chartPtr) return;
 
     if (m_hoverSeriesCacheDirty) {
@@ -477,11 +470,16 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
     const QPointF scenePos = mapToScene(widgetPos);
     const QPointF chartPos = m_chartPtr->mapFromScene(scenePos);
     const QPointF plotVals = m_chartPtr->mapToValue(chartPos, ref);
+    if (!m_chartPtr->plotArea().contains(chartPos)) {
+        hideHoverOverlays();
+        return;
+    }
     const bool hasLogicalLookup = !m_hoverXValues.isEmpty();
-    const int logicalIndex = hasLogicalLookup
-        ? nearestValueIndexByX(m_hoverXValues, plotVals.x())
-        : nearestIndexByX(referencePoints, plotVals.x());
+    const int logicalIndex = requestedIndex >= 0 ? requestedIndex
+                             : hasLogicalLookup  ? nearestValueIndexByX(m_hoverXValues, plotVals.x())
+                                                 : nearestIndexByX(referencePoints, plotVals.x());
     if (logicalIndex < 0) return;
+    m_hoverIndex = logicalIndex;
     const double hoverX = hasLogicalLookup
         ? m_hoverXValues[logicalIndex]
         : referencePoints[logicalIndex].x();
@@ -498,7 +496,10 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
         if (seriesIndex < 0) {
             continue;
         }
-        const QPointF candidate = entry.points[seriesIndex];
+        const QPointF candidate = hoverValue && hasLogicalLookup
+                                      ? QPointF(hoverX, hoverValue(lineSeries, logicalIndex + 1))
+                                      : entry.points[seriesIndex];
+        if (!std::isfinite(candidate.y())) continue;
         const QPointF chartPoint = m_chartPtr->mapToPosition(candidate, lineSeries);
         const QPointF scenePoint = m_chartPtr->mapToScene(chartPoint);
         const QPointF viewportPoint = mapFromScene(scenePoint);
@@ -542,7 +543,9 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
 
     if (m_crosshairOverlay) {
         auto *co = static_cast<ChartCrosshairOverlay *>(m_crosshairOverlay);
-        co->crosshairX = widgetPos.x();
+        const auto crosshairPosition = m_chartPtr->mapToPosition(QPointF(hoverX, plotVals.y()), ref);
+        co->crosshairX = mapFromScene(m_chartPtr->mapToScene(crosshairPosition)).x();
+        co->plotArea = mapFromScene(m_chartPtr->mapToScene(m_chartPtr->plotArea())).boundingRect();
         co->crosshairY = snapWidgetY;
         co->snapX = snapWidgetX;
         co->snapY = snapWidgetY;
@@ -564,5 +567,75 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos)
         oy = qBound(kMargin, oy, std::max(kMargin, vpH - oH - kMargin));
         m_hoverOverlay->move(ox, oy);
         m_hoverOverlay->show();
+        m_hoverOverlay->raise();
+    }
+}
+
+void TelemetryChartView::resizeEvent(QResizeEvent *event) {
+    QChartView::resizeEvent(event);
+    if (m_chartPtr) {
+        // Fixed gutters keep time coordinates aligned between stacked metric plots.
+        m_chartPtr->setPlotArea(
+            QRectF(100, 34, std::max(40, viewport()->width() - 146), std::max(40, viewport()->height() - 78)));
+        updateAxisTicks();
+    }
+}
+
+void TelemetryChartView::mouseDoubleClickEvent(QMouseEvent *event) {
+    if (event->button() == Qt::LeftButton && onResetAxes) {
+        endPanningIfActive();
+        onResetAxes();
+        event->accept();
+        return;
+    }
+    QChartView::mouseDoubleClickEvent(event);
+}
+
+void TelemetryChartView::keyPressEvent(QKeyEvent *event) {
+    if ((event->key() == Qt::Key_Left || event->key() == Qt::Key_Right) && !m_hoverXValues.isEmpty()) {
+        auto *axis = qobject_cast<QValueAxis *>(m_chartPtr->axes(Qt::Horizontal).value(0));
+        auto *series = firstVisibleNonEmptyLineSeries(m_chartPtr);
+        if (!axis || !series) return;
+        const int first = nearestValueIndexByX(m_hoverXValues, axis->min());
+        const int last = nearestValueIndexByX(m_hoverXValues, axis->max());
+        const int index = m_hoverIndex < first || m_hoverIndex > last
+                              ? first
+                              : std::clamp(m_hoverIndex + (event->key() == Qt::Key_Right ? 1 : -1), first, last);
+        const QPointF position = m_chartPtr->mapToPosition(QPointF(m_hoverXValues[index], 0), series);
+        QPoint point = mapFromScene(m_chartPtr->mapToScene(position));
+        point.setY(static_cast<int>(m_chartPtr->plotArea().center().y()));
+        updateHoverReadoutAt(point, index);
+        event->accept();
+        return;
+    }
+    if (event->key() == Qt::Key_Escape) {
+        hideHoverOverlays();
+        event->accept();
+        return;
+    }
+    QChartView::keyPressEvent(event);
+}
+
+void TelemetryChartView::updateAxisTicks() {
+    if (!m_chartPtr) return;
+    for (auto *abstractAxis : m_chartPtr->axes()) {
+        auto *axis = qobject_cast<QValueAxis *>(abstractAxis);
+        if (!axis) continue;
+        const double span = axis->max() - axis->min();
+        if (!std::isfinite(span) || span <= 0) continue;
+        const int divisions = axis->orientation() == Qt::Horizontal
+                                  ? std::clamp(static_cast<int>(m_chartPtr->plotArea().width() / 100), 2, 8)
+                                  : 3;
+        const double roughStep = span / divisions;
+        const double magnitude = std::pow(10.0, std::floor(std::log10(roughStep)));
+        const double fraction = roughStep / magnitude;
+        const double step = (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10) * magnitude;
+        if (!std::isfinite(step) || step <= 0) continue;
+        axis->setTickType(QValueAxis::TicksDynamic);
+        axis->setTickAnchor(0);
+        axis->setTickInterval(step);
+        const int decimals = std::clamp(static_cast<int>(-std::floor(std::log10(step))), 0, 9);
+        axis->setLabelFormat(QStringLiteral("%.") + QString::number(decimals) +
+                             (axis->orientation() == Qt::Horizontal ? u"f s"_s : u"f"_s));
     }
 }

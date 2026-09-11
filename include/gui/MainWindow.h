@@ -34,7 +34,6 @@
 
 class QAction;
 class QComboBox;
-class QGraphicsDropShadowEffect;
 class QLabel;
 class QMenu;
 class QProgressDialog;
@@ -139,7 +138,6 @@ private:
     void addRecentFile(const QString &path);
     void rebuildRecentFilesMenu();
     void updateBreadcrumb(const QString &context = QString());
-    void updateBrandShadowColor();
     void stopFakeTransmission(bool completed = false);
     void refreshFakeTransmissionButton();
     void startSerial(const QString &portName, int baud);
@@ -167,7 +165,6 @@ private:
     QLabel *m_brandLabel        = nullptr;
     QLabel *m_missionMetaLabel  = nullptr;
     QTimer *m_missionClockTimer = nullptr;
-    QGraphicsDropShadowEffect *m_brandShadow = nullptr;
     QToolBar *m_missionToolbar = nullptr;
     QWidget *m_toolbarContent = nullptr;
     QWidget *m_brandBlock = nullptr;

@@ -22,9 +22,10 @@ class QLabel;
 class QLineSeries;
 class QPaintEvent;
 class QPushButton;
+class QResizeEvent;
 class QShowEvent;
+class QScrollArea;
 class QStackedWidget;
-class QProgressBar;
 class QShortcut;
 class QTimer;
 class QToolButton;
@@ -52,12 +53,9 @@ class TracesPanel;
  *  forwards each confirmed controller position to the dashboard. Chart work is
  *  capped at ≈ 30 fps and deferred while its view is hidden.
  *
- * When the sample count exceeds kMaxChartDisplayPoints the chart uses LTTB
- * reduction; the mapping from display-point index back to original sample is
- * stored in m_hoverSampleIndexMap to keep hover readouts accurate.
- *
- * When three or more metrics are enabled the Y axis is normalised to [0, 1] so
- * all traces overlay on the same scale (the axis title changes to "Normalized").
+ * Each enabled metric has an aligned plot in its own measurement units.
+ * Dense overviews retain original bucket minima/maxima; zooming restores every
+ * sample. Hover inspection always resolves to an original sample.
  */
 class DashboardPage : public QWidget {
     Q_OBJECT
@@ -90,14 +88,21 @@ public:
      */
     void setReplayTrailLength(int trailLength);
 
-    /** Maximum display points sent to Qt Charts per series (decimation threshold). */
+    /** Target display budget per series; missing-value boundaries are retained in addition. */
     static constexpr int kMaxChartDisplayPoints = 6000;
 
     /** Maximum live samples kept in memory; older samples are discarded. */
     static constexpr int kMaxLiveBufferSamples = 25000;
 
-protected:
+  signals:
+    /** @brief Request the main window flight-log picker. */
+    void openLogRequested();
+    /** @brief Request the live telemetry connection page. */
+    void liveTelemetryRequested();
+
+  protected:
     void paintEvent(QPaintEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
     void showEvent(QShowEvent *event) override;
 
 private slots:
@@ -127,9 +132,8 @@ private:
 
     /** Common chart-building pipeline shared by replay and live chart rebuilds. */
     void buildChartFromSamples(const std::vector<FlightSample> &samples, int end);
-    void buildChartFromSampleIndices(const std::vector<FlightSample> &samples,
-                                     const std::vector<int> &sampleIndices,
-                                     int logicalSampleCount);
+    void buildChartFromSampleIndices(const std::vector<FlightSample> &samples, const std::vector<int> &sampleIndices,
+                                     int logicalSampleCount, int begin, int end);
     [[nodiscard]] int chartPointBudget() const;
 
     /** Builds the chart toolbar and populates all toolbar member pointers. */
@@ -141,14 +145,21 @@ private:
     /** Dispatches to rebuildReplayCharts or rebuildLiveSeriesFromHistory depending on mode. */
     void refreshAllSeriesFromData();
     void applyChartTheme();
+    void configureTracePlots();
+    void enterComparisonView();
+    void exitComparisonView();
+    void rebuildComparisonChart();
+    void updateComparisonControls();
+    void updateCompactToolbar();
+    [[nodiscard]] const FlightSample *hoverSample(int index1Based) const;
     void refreshPageStyleSheet();
     [[nodiscard]] static QString buildDashboardQss();
 
     /**
      * Applies per-series point-marker and label visibility based on point count
-     * and the number of currently enabled metrics.
+     * in the visible range.
      */
-    void applySeriesPointDisplay(QLineSeries *series, int pointCount, int nEnabledMetrics) const;
+    void applySeriesPointDisplay(QLineSeries *series, int pointCount) const;
     [[nodiscard]] int countEnabledMetrics() const;
     [[nodiscard]] QString formatMultiMetricHover(double tSec, int displayPointIndex1Based) const;
 
@@ -170,7 +181,21 @@ private:
     std::array<QLineSeries *, kMetricCount> m_lineSeries{};
     QValueAxis *m_axisX  = nullptr;
     QValueAxis *m_axisY  = nullptr;
-    QValueAxis *m_axisY2 = nullptr;  ///< Secondary right-hand Y axis for dual-metric mode.
+    std::array<QChart *, kMetricCount> m_traceCharts{};
+    std::array<TelemetryChartView *, kMetricCount> m_traceViews{};
+    std::array<QValueAxis *, kMetricCount> m_traceAxesX{};
+    std::array<QValueAxis *, kMetricCount> m_traceAxesY{};
+    QScrollArea *m_chartScroll = nullptr;
+    QWidget *m_chartContent = nullptr;
+    QStackedWidget *m_graphStack = nullptr;
+    QChart *m_comparisonChart = nullptr;
+    TelemetryChartView *m_comparisonView = nullptr;
+    QValueAxis *m_comparisonAxisX = nullptr;
+    QValueAxis *m_comparisonAxisLeft = nullptr;
+    QValueAxis *m_comparisonAxisRight = nullptr;
+    bool m_syncingChartAxes = false;
+    bool m_syncingComparisonAxes = false;
+    bool m_comparisonActive = false;
     QVector<QShortcut *> m_chartShortcuts; ///< Shortcuts active only inside the graph view.
 
     // ── View switcher (Graph / Map) ───────────────────────────────────────────
@@ -178,6 +203,7 @@ private:
     Map3DWidget    *m_mapWidget    = nullptr;
     QPushButton    *m_graphViewBtn = nullptr;
     QPushButton    *m_mapViewBtn   = nullptr;
+    QWidget *m_viewSwitchGroup = nullptr;
 
     // ── Chart toolbar buttons ─────────────────────────────────────────────────
     QPushButton  *m_zoomOutBtn            = nullptr;
@@ -187,20 +213,18 @@ private:
     QToolButton  *m_showPointValuesToggle = nullptr;
     QToolButton  *m_followToggle          = nullptr;
     QToolButton  *m_tracesToggleBtn       = nullptr;
+    QPushButton  *m_compareSelectedBtn    = nullptr;
+    QPushButton  *m_exitComparisonBtn     = nullptr;
 
     // ── Graph-only toolbar groups (hidden in Map view) ────────────────────────
     QWidget *m_zoomGroup    = nullptr;
     QWidget *m_toggleGroup  = nullptr;
     QWidget *m_actionGroup  = nullptr;
-    QWidget *m_chartHelpBtn = nullptr;
+    QToolButton *m_chartHelpBtn = nullptr;
+    QLabel *m_chartHelpHint = nullptr;
 
     /** Shows/hides toolbar buttons appropriate to the current view (Graph vs Map). */
     void updateToolbarForView();
-
-    // ── Chart loading indicator ─────────────────────────────────────────────
-    QProgressBar *m_chartLoadingBar = nullptr;
-    void showChartLoadingIndicator();
-    void hideChartLoadingIndicator();
 
     // ── Event markers ─────────────────────────────────────────────────────────
     struct EventMarker {
@@ -234,10 +258,11 @@ private:
     bool m_preserveChartAxes = false;
 
     /**
-     * Maps each decimated display-point index back to the original logical
+     * Maps each visible-time lookup entry back to the original logical
      * sample index in m_liveSamples / m_session->samples.
      */
     std::vector<int> m_hoverSampleIndexMap;
+    QVector<double> m_chartHoverXValues;
     int m_hoverLogicalSampleCount    = 0;   ///< Total logical samples at last rebuild.
     int m_replayChartBuiltTrailLength = -1; ///< Trail length at last full replay rebuild.
     int m_replayChartBuiltBucket = -1;      ///< Preview bucket at last replay rebuild.

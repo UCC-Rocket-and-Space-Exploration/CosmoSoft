@@ -20,6 +20,7 @@
 #include <QWidget>
 
 #include <cmath>
+#include <memory>
 
 using namespace Qt::StringLiterals;
 
@@ -115,7 +116,7 @@ TracesPanel::TracesPanel(QWidget *parent)
             this, &TracesPanel::applyThemeStyleSheet);
 
     auto *outer = new QVBoxLayout(this);
-    outer->setContentsMargins(8, 8, 8, 8);
+    outer->setContentsMargins(12, 16, 12, 12);
     outer->setSpacing(6);
 
     // ── Header: "TRACES" title + ALL / NONE buttons ──────────────────────────
@@ -125,20 +126,19 @@ TracesPanel::TracesPanel(QWidget *parent)
 
     auto *title = new QLabel(u"TRACES"_s, this);
     title->setObjectName(u"tracesPanelTitle"_s);
-    title->setToolTip(
-        u"Toggle which metrics appear on the chart.\n"
-        u"When replaying a log, only fields present in that file are listed.\n"
-        u"2+ traces: Y axis is normalized (0–1).\n"
-        u"Click the row (not only the box) to toggle."_s);
+    title->setToolTip(u"Toggle which metrics appear on the chart.\n"
+                      u"When replaying a log, only fields present in that file are listed.\n"
+                      u"Each trace uses its own scale and actual units.\n"
+                      u"Click the row (not only the box) to toggle."_s);
     headerRow->addWidget(title, 1, Qt::AlignVCenter);
 
     auto *allBtn = new QPushButton(u"ALL"_s, this);
     allBtn->setObjectName(u"tracesAllNoneBtn"_s);
     allBtn->setToolTip(u"Enable all traces"_s);
 
-    auto *noneBtn = new QPushButton(u"NONE"_s, this);
+    auto *noneBtn = new QPushButton(u"SOLO"_s, this);
     noneBtn->setObjectName(u"tracesAllNoneBtn"_s);
-    noneBtn->setToolTip(u"Disable all traces (keeps one minimum)"_s);
+    noneBtn->setToolTip(u"Keep only the first selected trace"_s);
 
     headerRow->addWidget(allBtn,  0, Qt::AlignVCenter);
     headerRow->addWidget(noneBtn, 0, Qt::AlignVCenter);
@@ -176,9 +176,9 @@ TracesPanel::TracesPanel(QWidget *parent)
         auto *row = new TraceRowFrame(inner);
         row->setObjectName(u"traceRow"_s);
         row->setProperty("noData", false);
-        auto *rowLay = new QHBoxLayout(row);
-        rowLay->setContentsMargins(6, 3, 8, 3);
-        rowLay->setSpacing(5);
+        auto *rowLay = std::make_unique<QVBoxLayout>(row).release();
+        rowLay->setContentsMargins(6, 8, 8, 8);
+        rowLay->setSpacing(4);
 
         const QColor col = MetricDefs::metricColor(i);
         auto *swatch = new QLabel(row);
@@ -197,14 +197,17 @@ TracesPanel::TracesPanel(QWidget *parent)
 
         auto *valLabel = new QLabel(u"—"_s, row);
         valLabel->setObjectName(u"traceValueLabel"_s);
-        valLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        valLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        valLabel->setIndent(24);
         valLabel->setMinimumWidth(52);
         valLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
         m_traceValueLabels[static_cast<std::size_t>(i)] = valLabel;
 
-        rowLay->addWidget(swatch,   0, Qt::AlignVCenter);
-        rowLay->addWidget(cb,       1, Qt::AlignVCenter);
-        rowLay->addWidget(valLabel, 0, Qt::AlignVCenter);
+        auto *selectionRow = std::make_unique<QHBoxLayout>().release();
+        selectionRow->addWidget(cb, 1);
+        selectionRow->addWidget(swatch, 0, Qt::AlignVCenter);
+        rowLay->addLayout(selectionRow);
+        rowLay->addWidget(valLabel);
         listLay->addWidget(row);
         m_traceRows[static_cast<std::size_t>(i)] = row;
 
@@ -230,7 +233,7 @@ std::array<bool, TracesPanel::kMetricCount> TracesPanel::enabledMetrics() const
 
 void TracesPanel::applyThemeStyleSheet()
 {
-    const auto borderPanel = Theme::kBorderPanel();
+    const auto borderPanel = Theme::kBorderSubtle();
     const auto fontMono = QString::fromUtf8(Theme::kFontMono);
     const auto textMuted = Theme::kTextMuted();
     const auto textPrimary = Theme::kTextPrimary();
@@ -239,8 +242,7 @@ void TracesPanel::applyThemeStyleSheet()
     QColor rowHoverColor(Theme::kTextMuted());
     rowHoverColor.setAlpha(15);
 
-    setStyleSheet(
-        QString(uR"(
+    setStyleSheet(QString(uR"(
         QFrame#tracesPanel {
             background-color: %1;
             border: 1px solid %2;
@@ -274,8 +276,8 @@ void TracesPanel::applyThemeStyleSheet()
             color: %7;
             background: transparent;
         }
-        QPushButton#tracesAllNoneBtn:focus {
-            outline: none;
+        QPushButton#tracesAllNoneBtn:focus, QCheckBox#traceCheck:focus {
+            outline: 1px solid %17;
         }
         QFrame#traceSeparator { background-color: %2; border: none; }
         QFrame#traceRow {
@@ -293,9 +295,15 @@ void TracesPanel::applyThemeStyleSheet()
             spacing: 6px;
         }
         QCheckBox#traceCheck::indicator {
-            width: 0px;
-            height: 0px;
-            border: none;
+            width: 14px;
+            height: 14px;
+            border: 1px solid %8;
+            border-radius: 3px;
+            background: %14;
+        }
+        QCheckBox#traceCheck::indicator:checked {
+            background: %15;
+            border-color: %16;
         }
         QCheckBox#traceCheck[metricEnabled="true"] {
             color: %7;
@@ -313,23 +321,20 @@ void TracesPanel::applyThemeStyleSheet()
         QScrollArea#traceScroll { background: transparent; border: none; }
         QWidget#traceScrollInner { background: transparent; }
     )"_s)
-            .arg(bgPanel)                   // %1
-            .arg(borderPanel)               // %2
-            .arg(Theme::kRadiusMd)          // %3
-            .arg(Theme::kFontSizeBase)      // %4
-            .arg(fontMono)                  // %5
-            .arg(textMuted)                 // %6
-            .arg(textPrimary)               // %7
-            .arg(borderLight)               // %8
-            .arg(Theme::kFontSizeSm)        // %9
-            .arg(Theme::kBgButton())        // %10
-            .arg(Theme::kBtnHover())        // %11
-            .arg(Theme::kBtnPressed())      // %12
-            .arg(rowHoverColor.name(QColor::HexArgb)) // %13 - subtle hover
-            .arg(Theme::kBgInput())         // %14
-            .arg(Theme::kAccentCheckbox())  // %15
-            .arg(Theme::kAccentCheckboxBorder()) // %16
-            .arg(Theme::kFocusRing()));     // %17
+                      .arg(bgPanel)                             // %1
+                      .arg(borderPanel)                         // %2
+                      .arg(Theme::kRadiusMd)                    // %3
+                      .arg(Theme::kFontSizeBase)                // %4
+                      .arg(fontMono)                            // %5
+                      .arg(textMuted)                           // %6
+                      .arg(textPrimary)                         // %7
+                      .arg(borderLight)                         // %8
+                      .arg(Theme::kFontSizeSm)                  // %9
+                      .arg(rowHoverColor.name(QColor::HexArgb)) // %13 - subtle hover
+                      .arg(Theme::kBgInput())                   // %14
+                      .arg(Theme::kAccentCheckbox())            // %15
+                      .arg(Theme::kAccentCheckboxBorder())      // %16
+                      .arg(Theme::kFocusRing()));               // %17
 
     refreshSwatchStates();
 }

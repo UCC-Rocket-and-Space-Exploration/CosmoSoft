@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
 
 using namespace Qt::StringLiterals;
 
@@ -147,12 +148,14 @@ void LiveTelemetryPage::setAvailablePorts(const QStringList &ports) {
                 m_portCombo->setCurrentIndex(index);
             }
         }
+        if (m_portCombo->currentIndex() < 0 && m_portCombo->count() > 0) {
+            m_portCombo->setCurrentIndex(0);
+        }
     }
 
     if (m_connectButton) {
         m_connectButton->setEnabled(!m_availablePorts.isEmpty() && !m_connected);
     }
-    refreshDeviceRows();
 }
 
 void LiveTelemetryPage::setActiveConnection(const QString &label, bool connected) {
@@ -240,17 +243,6 @@ void LiveTelemetryPage::refreshStyleSheet() {
             border-radius: 4px;
             padding: 5px 8px;
         }
-        QFrame#deviceRow {
-            background-color: %11;
-            border: 1px solid %12;
-            border-radius: 4px;
-        }
-        QLabel[kind="deviceDot"] {
-            color: %9;
-            background: transparent;
-            border: none;
-            font-size: 16px;
-        }
         QPushButton[kind="liveButton"],
         QToolButton[kind="mapButton"],
         QComboBox {
@@ -290,44 +282,27 @@ void LiveTelemetryPage::refreshStyleSheet() {
             border-color: %3;
             background-color: %11;
         }
-        QPushButton#ignitorFireButton {
-            min-width: 88px;
-            min-height: 88px;
-            border-radius: 44px;
-            background-color: %18;
-            color: %1;
-            border: 2px solid %18;
-            font-family: %6;
-            font-size: 15px;
-            font-weight: 800;
-        }
-        QPushButton#ignitorFireButton:disabled {
-            background-color: %11;
-            color: %17;
-            border-color: %3;
-        }
     )"_s)
-        .arg(Theme::kBgBase())       // %1
-        .arg(Theme::kBgPanel())      // %2
-        .arg(Theme::kBorderPanel())  // %3
-        .arg(Theme::kRadiusMd)       // %4
-        .arg(Theme::kTextPrimary())  // %5
-        .arg(Theme::kFontMono)       // %6
-        .arg(Theme::kTextMuted())    // %7
-        .arg(Theme::kFontSizeBase)   // %8
-        .arg(Theme::kSuccess())      // %9
-        .arg(Theme::kSuccessBg())    // %10
-        .arg(Theme::kBgDark())       // %11
-        .arg(Theme::kBorderDefault())// %12
-        .arg(Theme::kBgButton())     // %13
-        .arg(Theme::kBtnHover())     // %14
-        .arg(Theme::kBorderLight())  // %15
-        .arg(Theme::kBtnPressed())   // %16
-        .arg(Theme::kTextDim())      // %17
-        .arg(Theme::kDanger())       // %18
-        .arg(Theme::kFocusRing())    // %19
-        .arg(Theme::kAccentLink())   // %20
-        .arg(checkedButtonForeground())); // %21
+                      .arg(Theme::kBgBase())            // %1
+                      .arg(Theme::kBgPanel())           // %2
+                      .arg(Theme::kBorderSubtle())      // %3
+                      .arg(Theme::kRadiusMd)            // %4
+                      .arg(Theme::kTextPrimary())       // %5
+                      .arg(Theme::kFontMono)            // %6
+                      .arg(Theme::kTextMuted())         // %7
+                      .arg(Theme::kFontSizeBase)        // %8
+                      .arg(Theme::kSuccess())           // %9
+                      .arg(Theme::kSuccessBg())         // %10
+                      .arg(Theme::kBgDark())            // %11
+                      .arg(Theme::kBorderDefault())     // %12
+                      .arg(Theme::kBgButton())          // %13
+                      .arg(Theme::kBtnHover())          // %14
+                      .arg(Theme::kBorderLight())       // %15
+                      .arg(Theme::kBtnPressed())        // %16
+                      .arg(Theme::kTextDim())           // %17
+                      .arg(Theme::kFocusRing())         // %19
+                      .arg(Theme::kAccentLink())        // %20
+                      .arg(checkedButtonForeground())); // %21
 
     for (auto *tile : m_metricTiles) {
         if (tile) {
@@ -412,9 +387,9 @@ void LiveTelemetryPage::buildUi() {
     m_scrollContent = new QWidget(m_scrollArea);
     m_scrollContent->setObjectName(u"liveTelemetryContent"_s);
     m_responsiveLayout = new QGridLayout(m_scrollContent);
-    m_responsiveLayout->setContentsMargins(12, 12, 12, 12);
-    m_responsiveLayout->setHorizontalSpacing(12);
-    m_responsiveLayout->setVerticalSpacing(12);
+    m_responsiveLayout->setContentsMargins(24, 8, 24, 20);
+    m_responsiveLayout->setHorizontalSpacing(16);
+    m_responsiveLayout->setVerticalSpacing(16);
     m_responsiveLayout->setSizeConstraint(QLayout::SetMinimumSize);
 
     m_mapPanel = buildMapPanel();
@@ -424,8 +399,8 @@ void LiveTelemetryPage::buildUi() {
     auto *sideLayout = new QVBoxLayout(m_sideColumn);
     LayoutHelpers::setZeroMargins(sideLayout);
     sideLayout->setSpacing(12);
-    sideLayout->addWidget(buildDevicePanel(), 3);
-    sideLayout->addWidget(buildIgnitorPanel(), 2);
+    sideLayout->addWidget(buildDevicePanel(), 1);
+    sideLayout->addWidget(buildIgnitorPanel());
 
     m_scrollArea->setWidget(m_scrollContent);
     root->addWidget(m_scrollArea);
@@ -436,11 +411,11 @@ QFrame *LiveTelemetryPage::buildMapPanel() {
     auto *panel = new QFrame(this);
     panel->setObjectName(u"livePanel"_s);
     auto *layout = new QVBoxLayout(panel);
-    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setContentsMargins(16, 16, 16, 16);
     layout->setSpacing(8);
 
     auto *header = new QHBoxLayout();
-    auto *title = new QLabel(u"LIVE MAP"_s, panel);
+    auto *title = new QLabel(u"FLIGHT PATH"_s, panel);
     title->setProperty("kind", u"sectionTitle"_s);
     header->addWidget(title);
     header->addStretch(1);
@@ -480,7 +455,7 @@ QWidget *LiveTelemetryPage::buildMetricsPanel() {
     LayoutHelpers::setZeroMargins(layout);
     layout->setSpacing(12);
 
-    auto *title = new QLabel(u"LIVE TELEMETRY"_s, panel);
+    auto *title = new QLabel(u"FLIGHT TELEMETRY"_s, panel);
     title->setProperty("kind", u"sectionTitle"_s);
     layout->addWidget(title);
 
@@ -513,10 +488,10 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     auto *panel = new QFrame(this);
     panel->setObjectName(u"liveSidePanel"_s);
     auto *layout = new QVBoxLayout(panel);
-    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setContentsMargins(16, 16, 16, 16);
     layout->setSpacing(8);
 
-    auto *title = new QLabel(u"DEVICES"_s, panel);
+    auto *title = new QLabel(u"CONNECTION"_s, panel);
     title->setProperty("kind", u"sectionTitle"_s);
     layout->addWidget(title);
 
@@ -528,9 +503,14 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
 
     m_portCombo = new QComboBox(panel);
     m_portCombo->setAccessibleName(u"Serial port"_s);
+    m_portCombo->setPlaceholderText(tr("No devices found — scan again"));
     m_portCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
     m_portCombo->setMinimumContentsLength(10);
     m_portCombo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+    auto *portLabel = std::make_unique<QLabel>(tr("Serial port"), panel).release();
+    portLabel->setProperty("kind", u"caption"_s);
+    portLabel->setBuddy(m_portCombo);
+    layout->addWidget(portLabel);
     layout->addWidget(m_portCombo);
 
     m_baudCombo = new QComboBox(panel);
@@ -541,6 +521,10 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
         m_baudCombo->addItem(QString::number(baud), baud);
     }
     m_baudCombo->setCurrentText(u"115200"_s);
+    auto *baudLabel = std::make_unique<QLabel>(tr("Baud rate"), panel).release();
+    baudLabel->setProperty("kind", u"caption"_s);
+    baudLabel->setBuddy(m_baudCombo);
+    layout->addWidget(baudLabel);
     layout->addWidget(m_baudCombo);
 
     auto *buttonRow = new QHBoxLayout();
@@ -553,7 +537,7 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     buttonRow->addWidget(m_disconnectButton);
     layout->addLayout(buttonRow);
 
-    m_demoButton = createPanelButton(u"Demo"_s, panel);
+    m_demoButton = createPanelButton(u"Run telemetry demo"_s, panel);
     layout->addWidget(m_demoButton);
 
     m_lastPacketLabel = new QLabel(panel);
@@ -568,10 +552,6 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     m_bytesLabel->setProperty("kind", u"caption"_s);
     layout->addWidget(m_bytesLabel);
 
-    m_deviceRowsLayout = new QVBoxLayout();
-    m_deviceRowsLayout->setContentsMargins(0, 0, 0, 0);
-    m_deviceRowsLayout->setSpacing(6);
-    layout->addLayout(m_deviceRowsLayout);
     layout->addStretch(1);
 
     connect(m_scanButton, &QPushButton::clicked, this, &LiveTelemetryPage::scanDevicesRequested);
@@ -579,7 +559,6 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     connect(m_disconnectButton, &QPushButton::clicked, this, &LiveTelemetryPage::disconnectRequested);
     connect(m_demoButton, &QPushButton::clicked, this, &LiveTelemetryPage::startDemoRequested);
 
-    refreshDeviceRows();
     return panel;
 }
 
@@ -587,40 +566,19 @@ QFrame *LiveTelemetryPage::buildIgnitorPanel() {
     auto *panel = new QFrame(this);
     panel->setObjectName(u"liveIgnitorPanel"_s);
     auto *layout = new QVBoxLayout(panel);
-    layout->setContentsMargins(12, 12, 12, 12);
+    layout->setContentsMargins(16, 16, 16, 16);
     layout->setSpacing(10);
 
-    auto *title = new QLabel(u"FIRE IGNITOR"_s, panel);
+    auto *title = new QLabel(u"IGNITION · DISABLED"_s, panel);
     title->setProperty("kind", u"sectionTitle"_s);
     layout->addWidget(title);
 
-    auto *targetCombo = new QComboBox(panel);
-    targetCombo->addItem(u"DISABLED"_s);
-    targetCombo->setEnabled(false);
-    layout->addWidget(targetCombo);
-
-    auto *armedRow = new QHBoxLayout();
-    auto *keyOne = createPanelButton(u"1"_s, panel);
-    auto *keyZero = createPanelButton(u"0"_s, panel);
-    keyOne->setEnabled(false);
-    keyZero->setEnabled(false);
-    armedRow->addWidget(keyOne);
-    armedRow->addWidget(keyZero);
-    armedRow->addStretch(1);
-    layout->addLayout(armedRow);
-
-    auto *fireRow = new QHBoxLayout();
-    fireRow->addStretch(1);
-    auto *timerButton = createPanelButton(u"Timer"_s, panel);
-    timerButton->setEnabled(false);
-    auto *fireButton = new QPushButton(u"FIRE\nIGNITE"_s, panel);
-    fireButton->setObjectName(u"ignitorFireButton"_s);
-    fireButton->setEnabled(false);
-    fireButton->setAccessibleName(u"Fire ignitor disabled"_s);
-    fireRow->addWidget(timerButton);
-    fireRow->addWidget(fireButton);
-    layout->addLayout(fireRow);
-    layout->addStretch(1);
+    auto *description =
+        std::make_unique<QLabel>(tr("Ignition controls are unavailable.\nThis station is in monitoring mode."), panel)
+            .release();
+    description->setProperty("kind", u"caption"_s);
+    description->setWordWrap(true);
+    layout->addWidget(description);
 
     return panel;
 }
@@ -668,43 +626,6 @@ void LiveTelemetryPage::updateFollowButtonState(bool enabled) {
             : tr("Camera follow is off. Activate to follow the latest position."));
 }
 
-void LiveTelemetryPage::refreshDeviceRows() {
-    if (!m_deviceRowsLayout) {
-        return;
-    }
-
-    while (QLayoutItem *item = m_deviceRowsLayout->takeAt(0)) {
-        if (auto *widget = item->widget()) {
-            widget->deleteLater();
-        }
-        delete item;
-    }
-
-    if (m_availablePorts.isEmpty()) {
-        auto *label = new QLabel(u"No serial devices found"_s, this);
-        label->setProperty("kind", u"caption"_s);
-        m_deviceRowsLayout->addWidget(label);
-        return;
-    }
-
-    for (const auto &port : m_availablePorts) {
-        auto *row = new QFrame(this);
-        row->setObjectName(u"deviceRow"_s);
-        auto *layout = new QHBoxLayout(row);
-        layout->setContentsMargins(8, 6, 8, 6);
-        layout->setSpacing(6);
-        auto *dot = new QLabel(u"●"_s, row);
-        dot->setProperty("kind", u"deviceDot"_s);
-        auto *label = new QLabel(port, row);
-        label->setProperty("kind", u"caption"_s);
-        label->setWordWrap(true);
-        label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-        layout->addWidget(dot);
-        layout->addWidget(label, 1);
-        m_deviceRowsLayout->addWidget(row);
-    }
-}
-
 void LiveTelemetryPage::updateResponsiveLayout() {
     if (!m_scrollArea || !m_responsiveLayout || !m_mapPanel
         || !m_metricsPanel || !m_sideColumn) {
@@ -718,7 +639,7 @@ void LiveTelemetryPage::updateResponsiveLayout() {
     const int nextMode = availableWidth >= kWideLayoutWidth
         ? 0
         : (availableWidth >= kTwoColumnLayoutWidth ? 1 : 2);
-    const int nextMetricColumns = availableWidth < kSingleMetricColumnWidth ? 1 : 2;
+    const int nextMetricColumns = nextMode == 0 ? 6 : (availableWidth < kSingleMetricColumnWidth ? 1 : 3);
     if (nextMode == m_responsiveMode
         && nextMetricColumns == m_metricColumnCount) {
         return;
@@ -735,25 +656,16 @@ void LiveTelemetryPage::updateResponsiveLayout() {
             m_responsiveLayout->setRowStretch(row, 0);
         }
 
-        if (nextMode == 0) {
-            m_responsiveLayout->addWidget(m_mapPanel, 0, 0);
-            m_responsiveLayout->addWidget(m_metricsPanel, 0, 1);
-            m_responsiveLayout->addWidget(m_sideColumn, 0, 2);
-            m_responsiveLayout->setColumnStretch(0, 5);
-            m_responsiveLayout->setColumnStretch(1, 4);
-            m_responsiveLayout->setColumnStretch(2, 3);
-            m_responsiveLayout->setRowStretch(0, 1);
-        } else if (nextMode == 1) {
-            m_responsiveLayout->addWidget(m_mapPanel, 0, 0, 1, 2);
-            m_responsiveLayout->addWidget(m_metricsPanel, 1, 0);
+        if (nextMode <= 1) {
+            m_responsiveLayout->addWidget(m_metricsPanel, 0, 0, 1, 2);
+            m_responsiveLayout->addWidget(m_mapPanel, 1, 0);
             m_responsiveLayout->addWidget(m_sideColumn, 1, 1);
-            m_responsiveLayout->setColumnStretch(0, 5);
-            m_responsiveLayout->setColumnStretch(1, 3);
-            m_responsiveLayout->setRowStretch(0, 5);
-            m_responsiveLayout->setRowStretch(1, 4);
+            m_responsiveLayout->setColumnStretch(0, nextMode == 0 ? 3 : 2);
+            m_responsiveLayout->setColumnStretch(1, 1);
+            m_responsiveLayout->setRowStretch(1, 1);
         } else {
-            m_responsiveLayout->addWidget(m_mapPanel, 0, 0);
-            m_responsiveLayout->addWidget(m_metricsPanel, 1, 0);
+            m_responsiveLayout->addWidget(m_metricsPanel, 0, 0);
+            m_responsiveLayout->addWidget(m_mapPanel, 1, 0);
             m_responsiveLayout->addWidget(m_sideColumn, 2, 0);
             m_responsiveLayout->setColumnStretch(0, 1);
         }

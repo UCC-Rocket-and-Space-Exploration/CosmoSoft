@@ -157,57 +157,33 @@ QVariantMap mapPointPayload(const FlightSample &sample, int sampleIndex, double 
     };
 }
 
-/** @brief Web view that exposes predictable keyboard and modified-wheel page zoom. */
-class AccessibleMapWebView : public QWebEngineView {
-public:
-    explicit AccessibleMapWebView(QWidget *parent = nullptr)
-        : QWebEngineView(parent) {}
+/** @brief Keeps browser-page scaling out of the embedded map surface. */
+class MapWebView : public QWebEngineView {
+  public:
+    explicit MapWebView(QWidget *parent = nullptr) : QWebEngineView(parent) {}
 
-protected:
+  protected:
     void wheelEvent(QWheelEvent *event) override {
         const bool zoomModifier = event->modifiers().testFlag(Qt::ControlModifier)
             || event->modifiers().testFlag(Qt::MetaModifier);
-        const int verticalDelta = !event->angleDelta().isNull()
-            ? event->angleDelta().y()
-            : event->pixelDelta().y();
-        if (!zoomModifier || verticalDelta == 0) {
-            QWebEngineView::wheelEvent(event);
+        if (zoomModifier) {
+            event->accept();
             return;
         }
-
-        const double scale = verticalDelta > 0 ? 1.1 : 1.0 / 1.1;
-        setZoomFactor(std::clamp(zoomFactor() * scale, 0.5, 3.0));
-        event->accept();
+        QWebEngineView::wheelEvent(event);
     }
 
     void keyPressEvent(QKeyEvent *event) override {
         const bool zoomModifier = event->modifiers().testFlag(Qt::ControlModifier)
             || event->modifiers().testFlag(Qt::MetaModifier);
-        if (!zoomModifier) {
-            QWebEngineView::keyPressEvent(event);
+        const bool zoomKey = event->key() == Qt::Key_0 || event->key() == Qt::Key_Equal ||
+                             event->key() == Qt::Key_Plus || event->key() == Qt::Key_Minus ||
+                             event->key() == Qt::Key_Underscore;
+        if (zoomModifier && zoomKey) {
+            event->accept();
             return;
         }
-
-        double nextZoom = zoomFactor();
-        switch (event->key()) {
-        case Qt::Key_0:
-            nextZoom = 1.0;
-            break;
-        case Qt::Key_Equal:
-        case Qt::Key_Plus:
-            nextZoom = zoomFactor() * 1.1;
-            break;
-        case Qt::Key_Minus:
-        case Qt::Key_Underscore:
-            nextZoom = zoomFactor() / 1.1;
-            break;
-        default:
-            QWebEngineView::keyPressEvent(event);
-            return;
-        }
-
-        setZoomFactor(std::clamp(nextZoom, 0.5, 3.0));
-        event->accept();
+        QWebEngineView::keyPressEvent(event);
     }
 };
 
@@ -421,13 +397,10 @@ void Map3DWidget::ensureMapInitialized() {
     connect(page, &QWebEnginePage::loadFinished,
             this, &Map3DWidget::onMapLoadFinished);
 
-    // Keep standard page zoom and pinch gestures available for low-vision
-    // users. Unmodified map zoom remains handled by Leaflet/OrbitControls.
-    m_webView = new AccessibleMapWebView(this);
+    m_webView = new MapWebView(this);
     m_webView->setContextMenuPolicy(Qt::NoContextMenu);
     m_webView->setAccessibleName(tr("Flight map content"));
-    m_webView->setAccessibleDescription(
-        tr("Use Control or Command with plus, minus, or scroll to resize map text."));
+    m_webView->setAccessibleDescription(tr("Use the map zoom controls or the mouse wheel to zoom the flight path."));
     m_webView->setPage(page);
     m_webView->setZoomFactor(1.0);
     static_cast<QVBoxLayout *>(layout())->insertWidget(0, m_webView);
