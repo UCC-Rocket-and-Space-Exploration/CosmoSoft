@@ -1,5 +1,5 @@
 #include "catch2/catch_test_macros.hpp"
-#include "gateway/comms/windows/SerialCommsWindows.h"
+#include "gateway/comms/Windows/SerialCommsWindows.h"
 #include "include/helpers.h"
 #include "services/telemetry/ParserWorker.h"
 #include "Mocks/onDataMock.cpp"

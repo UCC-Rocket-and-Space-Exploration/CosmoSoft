@@ -7,7 +7,7 @@
 #include <mutex>
 #include <string>
 
-#include "../IComms.h"
+#include "../interfaces/IComms.h"
 
 /** @brief POSIX non-blocking serial connection with bounded read cancellation. */
 class SerialCommsPosix : public IComms {

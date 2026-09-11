@@ -1,7 +1,7 @@
 #include "services/import/SampleFileLoader.h"
 
-// #include "services/telemetry/Framer.h"
-// #include "services/telemetry/Parser.h"
+#include "services/telemetry/Framer.h"
+#include "services/telemetry/Parser.h"
 
 #include <QByteArray>
 #include <QLocale>

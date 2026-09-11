@@ -1,7 +1,7 @@
 
 #include <thread>
 #include "gateway/comms/SerialFramerWorker.h"
-#include "gateway/comms/windows/SerialCommsWindows.h"
+#include "gateway/comms/Windows/SerialCommsWindows.h"
 #include "shared/exceptions/SerialTimeout.h"
 
 std::string error_start = "Error: ";

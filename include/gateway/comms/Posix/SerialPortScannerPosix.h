@@ -1,7 +1,7 @@
 #ifndef COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
 #define COSMO_SOFT_SERIALPORTSCANNERPOSIX_H
 #if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
-#include "gateway/comms/ISerialPortScanner.h"
+#include "gateway/comms/interfaces/ISerialPortScanner.h"
 
 /**
  * @brief Discovers POSIX serial device nodes without opening candidate devices.

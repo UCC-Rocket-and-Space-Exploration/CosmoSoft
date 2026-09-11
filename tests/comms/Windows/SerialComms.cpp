@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "catch2/catch_test_macros.hpp"
-#include "gateway/comms/windows/SerialCommsWindows.h"
+#include "gateway/comms/Windows/SerialCommsWindows.h"
 #include "../../../include/shared/exceptions/SerialTimeout.h"
 #include  "include/SerialWriter.h"
 

@@ -18,10 +18,6 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-set(ZLIB_LIBRARY "D:\\Libraries\\CppLibs\\vcpkg\\packages\\zlib_x64-windows\\lib\\z.lib")
-set(ZLIB_INCLUDE_DIR "D:\\Libraries\\CppLibs\\vcpkg\\packages\\zlib_x64-windows\\include")
-include(D:\\Libraries\\CppLibs\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake)
-
 set(HEADERS "${CMAKE_SOURCE_DIR}/include")
 
 
