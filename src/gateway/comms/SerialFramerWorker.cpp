@@ -1,37 +1,29 @@
-
-#include <thread>
 #include "gateway/comms/SerialFramerWorker.h"
-#include "gateway/comms/Windows/SerialCommsWindows.h"
-#include "shared/exceptions/SerialTimeout.h"
+#include <chrono>
 
 void SerialFramerWorker::m_process() {
-    std::string error_start = "Error: ";
+  while (m_running) {
     try {
-        while (m_running) {
-            Frame frame;
-            try {
-                frame = m_framer->get_frame(m_running);
-            }
-            catch (const std::exception& ex) {
-                m_debug_logger->LogLine(error_start + ex.what());
-                continue;
-            }
-            if (!frame.data.empty()) {
-                unsigned char *str(frame.data.data());
-                m_results_logger->LogLine(str);
-                try {
-                    m_buffer->put(frame);
-                }
-                catch (const std::exception& ex) {
-                    // std::string message = "Got exception when putting into the buffer: ";
-                    // message += ex.what();
-                    // m_debug_logger->LogLine(message);
-                }
-            }
-        }
+      Frame frame = m_framer->get_frame(m_running);
+      if (!frame.data.empty()) {
+        if (m_results_logger)
+          m_results_logger->LogLine(
+              std::string(frame.data.begin(), frame.data.end()));
+        m_buffer->put(std::move(frame));
+      } else if (m_framer->finished()) {
+        break;
+      } else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      }
+    } catch (const std::exception &error) {
+      if (m_debug_logger)
+        m_debug_logger->LogLine(std::string(error.what()));
+      if (m_framer->finished())
+        break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
-    catch(const std::exception& e)
-    {
-        m_debug_logger->LogLine(error_start + e.what());
-    }
+  }
+  m_running = false;
+  if (m_completed)
+    m_completed();
 }

@@ -6,27 +6,24 @@
 #include <QString>
 #include <QTextStream>
 
+#include <cmath>
 #include <utility>
 
 namespace {
 
 void writeCsvSample(QTextStream &output, const FlightSample &sample) {
-    constexpr QChar kSeparator = u',';
-    output << sample.timestamp
-           << kSeparator << sample.altitude
-           << kSeparator << sample.temperature
-           << kSeparator << sample.pressure
-           << kSeparator << sample.acceleration.x
-           << kSeparator << sample.acceleration.y
-           << kSeparator << sample.acceleration.z
-           << kSeparator << sample.coordinates.latitude
-           << kSeparator << sample.coordinates.longitude
-           << kSeparator << sample.batteryVoltage
-           << kSeparator << sample.rssi
-           << kSeparator << sample.angularVelocity.x
-           << kSeparator << sample.angularVelocity.y
-           << kSeparator << sample.angularVelocity.z
-           << u'\n';
+  output << sample.timestamp;
+  for (const double value :
+       {sample.altitude, sample.temperature, sample.pressure,
+        sample.acceleration.x, sample.acceleration.y, sample.acceleration.z,
+        sample.coordinates.latitude, sample.coordinates.longitude,
+        sample.batteryVoltage, sample.rssi, sample.angularVelocity.x,
+        sample.angularVelocity.y, sample.angularVelocity.z}) {
+    output << u',';
+    if (std::isfinite(value))
+      output << value;
+  }
+  output << u'\n';
 }
 
 } // namespace
@@ -71,8 +68,10 @@ bool FlightLogManager::exportSessionToCsv(const FlightSession &session) const {
     {
         QTextStream output(&outputFile);
         output.setLocale(QLocale::c());
+        output.setRealNumberPrecision(17);
         output << QStringLiteral(
-            "time,altitude,temperature,pressure,acceleration_x,acceleration_y,"
+            "time_ms,altitude,temperature,pressure,acceleration_x,acceleration_"
+            "y,"
             "acceleration_z,latitude,longitude,battery_voltage,rssi,"
             "angular_velocity_x,angular_velocity_y,angular_velocity_z\n");
         for (const auto &sample : session.samples) {

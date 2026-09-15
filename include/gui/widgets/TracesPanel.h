@@ -86,6 +86,7 @@ private:
     bool m_haveLatestSample = false;
     bool m_imperialUnits = false;
     QFrame *m_secondaryGroupSeparator = nullptr;
+    QLabel *m_selectionSummary = nullptr;
     /** Row index where the secondary group starts (after separator). */
     static constexpr int kSecondaryGroupFirst = 6;
 };

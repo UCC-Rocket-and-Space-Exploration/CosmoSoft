@@ -119,7 +119,7 @@ TracesPanel::TracesPanel(QWidget *parent)
     outer->setContentsMargins(12, 16, 12, 12);
     outer->setSpacing(6);
 
-    // ── Header: "TRACES" title + ALL / NONE buttons ──────────────────────────
+    // ── Header: trace count + multi-selection controls ───────────────────────
     auto *headerRow = new QHBoxLayout();
     headerRow->setContentsMargins(4, 0, 0, 4);
     headerRow->setSpacing(6);
@@ -131,6 +131,10 @@ TracesPanel::TracesPanel(QWidget *parent)
                       u"Each trace uses its own scale and actual units.\n"
                       u"Click the row (not only the box) to toggle."_s);
     headerRow->addWidget(title, 1, Qt::AlignVCenter);
+
+    m_selectionSummary = new QLabel(this);
+    m_selectionSummary->setObjectName(u"traceSelectionSummary"_s);
+    headerRow->addWidget(m_selectionSummary, 0, Qt::AlignVCenter);
 
     auto *allBtn = new QPushButton(u"ALL"_s, this);
     allBtn->setObjectName(u"tracesAllNoneBtn"_s);
@@ -176,9 +180,9 @@ TracesPanel::TracesPanel(QWidget *parent)
         auto *row = new TraceRowFrame(inner);
         row->setObjectName(u"traceRow"_s);
         row->setProperty("noData", false);
-        auto *rowLay = std::make_unique<QVBoxLayout>(row).release();
-        rowLay->setContentsMargins(6, 8, 8, 8);
-        rowLay->setSpacing(4);
+        auto *rowLay = std::make_unique<QHBoxLayout>(row).release();
+        rowLay->setContentsMargins(8, 7, 8, 7);
+        rowLay->setSpacing(8);
 
         const QColor col = MetricDefs::metricColor(i);
         auto *swatch = new QLabel(row);
@@ -197,17 +201,14 @@ TracesPanel::TracesPanel(QWidget *parent)
 
         auto *valLabel = new QLabel(u"—"_s, row);
         valLabel->setObjectName(u"traceValueLabel"_s);
-        valLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-        valLabel->setIndent(24);
+        valLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         valLabel->setMinimumWidth(52);
         valLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
         m_traceValueLabels[static_cast<std::size_t>(i)] = valLabel;
 
-        auto *selectionRow = std::make_unique<QHBoxLayout>().release();
-        selectionRow->addWidget(cb, 1);
-        selectionRow->addWidget(swatch, 0, Qt::AlignVCenter);
-        rowLay->addLayout(selectionRow);
-        rowLay->addWidget(valLabel);
+        rowLay->addWidget(swatch, 0, Qt::AlignVCenter);
+        rowLay->addWidget(cb, 1);
+        rowLay->addWidget(valLabel, 0, Qt::AlignVCenter);
         listLay->addWidget(row);
         m_traceRows[static_cast<std::size_t>(i)] = row;
 
@@ -255,6 +256,12 @@ void TracesPanel::applyThemeStyleSheet()
             padding-bottom: 2px;
             font-weight: 600;
         }
+        QLabel#traceSelectionSummary {
+            font-size: %9px;
+            font-family: %5;
+            color: %6;
+            padding-right: 2px;
+        }
         QPushButton#tracesAllNoneBtn {
             font-size: 10px;
             font-family: %5;
@@ -286,6 +293,8 @@ void TracesPanel::applyThemeStyleSheet()
             border-radius: 6px;
         }
         QFrame#traceRow:hover { background-color: %13; }
+        QFrame#traceRow[metricEnabled="true"] { background-color: %14; }
+        QFrame#traceRow[metricEnabled="true"]:hover { background-color: %13; }
         QFrame#traceRow[noData="true"] QCheckBox#traceCheck { color: %6; }
         QFrame#traceRow[noData="true"] QLabel#traceValueLabel { color: %6; }
         QCheckBox#traceCheck {
@@ -563,6 +572,11 @@ void TracesPanel::refreshSwatchStates()
         auto *swatch = m_traceSwatches[static_cast<std::size_t>(i)];
         if (!swatch) continue;
         const bool on = m_metricEnabled[static_cast<std::size_t>(i)];
+        if (auto *row = m_traceRows[static_cast<std::size_t>(i)]) {
+            row->setProperty("metricEnabled", on);
+            row->style()->unpolish(row);
+            row->style()->polish(row);
+        }
         const QColor col = MetricDefs::metricColor(i);
         if (on) {
             swatch->setStyleSheet(
@@ -582,4 +596,19 @@ void TracesPanel::refreshSwatchStates()
             cb->update();
         }
     }
+
+    if (!m_selectionSummary) {
+        return;
+    }
+    int selected = 0;
+    int available = 0;
+    for (int i = 0; i < kMetricCount; ++i) {
+        const auto *row = m_traceRows[static_cast<std::size_t>(i)];
+        if (row && !row->isHidden()) {
+            ++available;
+            selected += m_metricEnabled[static_cast<std::size_t>(i)] ? 1 : 0;
+        }
+    }
+    m_selectionSummary->setText(
+        QStringLiteral("%1/%2 selected").arg(selected).arg(available));
 }

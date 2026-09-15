@@ -505,11 +505,20 @@ std::optional<FlightSample> sampleFromCells(
     const std::vector<std::string> &cells,
     const TelemetryColumns &columns) {
     FlightSample sample{};
+    const double missing = std::numeric_limits<double>::quiet_NaN();
+    sample.altitude = sample.temperature = sample.pressure =
+        sample.batteryVoltage = sample.rssi = missing;
+    sample.coordinates = {missing, missing};
+    sample.acceleration = {missing, missing, missing};
+    sample.angularVelocity = {missing, missing, missing};
+    sample.angularRotation = {missing, missing, missing};
+    sample.distanceFromLaunchPoint = missing;
     double timeValue = 0;
-    if (!parseCellDouble(cells, columns.iTime, timeValue)
-        || !parseCellDouble(cells, columns.iAlt, sample.altitude)
-        || std::abs(sample.altitude) > MAXIMUM_TELEMETRY_MAGNITUDE) {
-        return std::nullopt;
+    if (!parseCellDouble(cells, columns.iTime, timeValue) ||
+        static_cast<int>(cells.size()) <= columns.iAlt ||
+        !parseOptionalTelemetryCell(cells, columns.iAlt, sample.altitude) ||
+        std::abs(sample.altitude) > MAXIMUM_TELEMETRY_MAGNITUDE) {
+      return std::nullopt;
     }
 
     const long double timestampMilliseconds = columns.timeInMilliseconds
@@ -544,7 +553,7 @@ std::optional<FlightSample> sampleFromCells(
         return std::nullopt;
     }
     if (columns.iAccel >= 0) {
-        sample.acceleration.z = acceleration;
+      sample.acceleration = {0, 0, acceleration};
     }
     if (!parseOptionalTelemetryCell(cells, columns.iAccelX, sample.acceleration.x)
         || !parseOptionalTelemetryCell(cells, columns.iAccelY, sample.acceleration.y)

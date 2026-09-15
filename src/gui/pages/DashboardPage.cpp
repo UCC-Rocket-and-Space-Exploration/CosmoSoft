@@ -51,6 +51,7 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QInputDialog>
+#include <QIcon>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
@@ -61,6 +62,8 @@
 #include <QPainter>
 #include <QPen>
 #include <QPointF>
+#include <QPolygonF>
+#include <QPixmap>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
@@ -117,6 +120,38 @@ static_assert(
         out[i] = session->metricsInSource[i];
     }
     return out;
+}
+
+[[nodiscard]] QIcon graphViewIcon()
+{
+    QPixmap pixmap(20, 20);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(QColor(Theme::kTextPrimary()), 1.8, Qt::SolidLine,
+                        Qt::RoundCap, Qt::RoundJoin));
+    painter.drawLine(3, 16, 3, 4);
+    painter.drawLine(3, 16, 17, 16);
+    painter.drawPolyline(QPolygonF{{5, 13}, {9, 10}, {12, 12}, {16, 6}});
+    return QIcon(pixmap);
+}
+
+[[nodiscard]] QIcon mapViewIcon()
+{
+    QPixmap pixmap(20, 20);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(QPen(QColor(Theme::kTextPrimary()), 1.6, Qt::SolidLine,
+                        Qt::RoundCap, Qt::RoundJoin));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPolyline(QPolygonF{{3, 5}, {8, 3}, {13, 5}, {17, 3}, {17, 15},
+                                   {13, 17}, {8, 15}, {3, 17}, {3, 5}});
+    painter.drawLine(8, 3, 8, 15);
+    painter.drawLine(13, 5, 13, 17);
+    painter.setBrush(QColor(Theme::kAccentLink()));
+    painter.drawEllipse(QPointF(11, 9), 2.1, 2.1);
+    return QIcon(pixmap);
 }
 
 } // namespace
@@ -862,7 +897,8 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
     m_graphViewBtn->setChecked(true);
     m_graphViewBtn->setCursor(Qt::PointingHandCursor);
     m_graphViewBtn->setToolTip(u"Show telemetry chart"_s);
-    m_graphViewBtn->setIcon(style()->standardIcon(QStyle::SP_FileDialogDetailedView));
+    m_graphViewBtn->setIcon(graphViewIcon());
+    m_graphViewBtn->setIconSize(QSize(20, 20));
     viewGroupLay->addWidget(m_graphViewBtn);
 
     m_mapViewBtn = new QPushButton(u"Map"_s, m_viewSwitchGroup);
@@ -871,7 +907,8 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
     m_mapViewBtn->setChecked(false);
     m_mapViewBtn->setCursor(Qt::PointingHandCursor);
     m_mapViewBtn->setToolTip(u"Show flight path map"_s);
-    m_mapViewBtn->setIcon(style()->standardIcon(QStyle::SP_FileDialogContentsView));
+    m_mapViewBtn->setIcon(mapViewIcon());
+    m_mapViewBtn->setIconSize(QSize(20, 20));
     viewGroupLay->addWidget(m_mapViewBtn);
     chartToolbar->insertWidget(0, m_viewSwitchGroup);
 
@@ -1234,6 +1271,7 @@ QString DashboardPage::buildDashboardQss() {
 
 void DashboardPage::refreshPageStyleSheet() {
     setStyleSheet(buildDashboardQss());
+    refreshViewSwitcherIcons();
 
     if (m_emptyStateLabel) {
         m_emptyStateLabel->setText(QString(u"<b>Your flight, in focus.</b><br><br>"
@@ -1264,6 +1302,16 @@ void DashboardPage::refreshPageStyleSheet() {
     forceButtonStyleUpdate(m_showPointValuesToggle);
     forceButtonStyleUpdate(m_followToggle);
     forceButtonStyleUpdate(m_actionGroup);
+}
+
+void DashboardPage::refreshViewSwitcherIcons()
+{
+    if (m_graphViewBtn) {
+        m_graphViewBtn->setIcon(graphViewIcon());
+    }
+    if (m_mapViewBtn) {
+        m_mapViewBtn->setIcon(mapViewIcon());
+    }
 }
 
 void DashboardPage::updateToolbarForView() {

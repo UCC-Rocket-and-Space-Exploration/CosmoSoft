@@ -151,6 +151,7 @@ private:
     void rebuildComparisonChart();
     void updateComparisonControls();
     void updateCompactToolbar();
+    void refreshViewSwitcherIcons();
     [[nodiscard]] const FlightSample *hoverSample(int index1Based) const;
     void refreshPageStyleSheet();
     [[nodiscard]] static QString buildDashboardQss();

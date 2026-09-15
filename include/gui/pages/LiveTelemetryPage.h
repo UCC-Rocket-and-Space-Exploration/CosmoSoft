@@ -84,7 +84,10 @@ signals:
     /** @brief User requested deterministic fake live telemetry. */
     void startDemoRequested();
 
-protected:
+    /** @brief User requested a recorded AltOS IMU byte stream. */
+    void recordedImuRequested();
+
+  protected:
     /** @brief Refresh deferred telemetry presentation when the page becomes visible. */
     void showEvent(QShowEvent *event) override;
 

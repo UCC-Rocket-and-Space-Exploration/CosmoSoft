@@ -1,83 +1,55 @@
 #include "services/telemetry/FrameDecoderVault.h"
 
-#include <iostream>
-#include <stdexcept>
-#include <QDebug>
-
-#include "services/telemetry/frame_decoders/ConfigFrameDecoder.h"
-#include "services/telemetry/frame_decoders/CsvFrameDecoder.h"
-#include "services/telemetry/frame_decoders/GpsFrameDecoder.h"
-#include "services/telemetry/frame_decoders/TeleMegaImuFrameDecoder.h"
 #include "shared/AltosPacketTypes.h"
 #include "shared/ByteHelper.h"
 #include "shared/exceptions/IncorrectAltosPacketType.h"
 
-//exceptions:
-//IncorrectAltosPacketType - if altos packet type is incorrect
-//std::logic_error if format is incorrect
-std::shared_ptr<IFrameDecoder> FrameDecoderVault::select(const Frame& frame) {
-    switch (frame.format) {
-        case Csv: {
-            return m_cvs_frame_decoder;
-        }
-        case AltosFrame: {
-            const auto packet_type_value = getAltosPacketType(frame);
-            return selectAltosPacketDecoder(packet_type_value);
-        }
-        default:
-            throw std::logic_error("Unknown frame format");
-    }
-}
-bool FrameDecoderVault::exists(const std::string& element) {
-    return std::find(m_types.begin(), m_types.end(), element) != m_types.end();
+#include <algorithm>
+#include <stdexcept>
+
+std::shared_ptr<IFrameDecoder> FrameDecoderVault::select(const Frame &frame) {
+  switch (frame.format) {
+  case Csv:
+    return m_cvs_frame_decoder;
+  case AltosFrame:
+    return selectAltosPacketDecoder(getAltosPacketType(frame));
+  default:
+    throw std::logic_error("Unknown frame format");
+  }
 }
 
-// void FrameDecoderVault::printTypes() const
-// {
-//     for (const std::string& type : m_types) {
-//         qWarning() << type;
-//     }
-//     qWarning() << '\n';
-// }
-
-uint8_t FrameDecoderVault::getAltosPacketType(const Frame& frame) {
-    size_t packet_start_index = 8;
-    frame.packet_start_index = 8;
-    size_t packet_type_offset = packet_start_index + 4 * 2;
-
-    std::string byte_pts;
-    byte_pts += frame.data[packet_type_offset];
-    byte_pts += frame.data[packet_type_offset+1];
-
-    // std::cout << "bytepts: " << byte_pts << "\n";
-    if (!exists(byte_pts)) {
-        m_types.push_back(byte_pts);
-    }
-    // qInfo() << "Types: ";
-    // printTypes();
-    return ByteHelper::get_byte_from_str(byte_pts);
+bool FrameDecoderVault::exists(const std::string &element) {
+  return std::find(m_types.begin(), m_types.end(), element) != m_types.end();
 }
 
-std::shared_ptr<IFrameDecoder> FrameDecoderVault::selectAltosPacketDecoder(uint8_t packet_type_value) {
-    switch (packet_type_value) {
-        case AltosPacketTypes::TeleMega15VKalman:
-        case AltosPacketTypes::TeleMega30VKalman:
-            return m_tele_mega_kalman_frame_decoder;
-        case AltosPacketTypes::TeleMegaBMI088IMU:
-        case AltosPacketTypes::TeleMegaInvensenseIMU:
-        case AltosPacketTypes::TeleMegaMPU6000IMU:
-        case AltosPacketTypes::TeleMegaBMX160IMU:
-            return m_tele_mega_imu_frame_decoder;
-        case AltosPacketTypes::Gps:
-            return m_gps_frame_decoder;
-        case AltosPacketTypes::Config:
-            return m_config_frame_decoder;
-        case AltosPacketTypes::TeleMiniV3:
-            return m_tele_mini_v3_frame_decoder;
-        case AltosPacketTypes::TeleMiniV1:
-            return m_tele_mini_v1_frame_decoder;
-        default:
-            throw IncorrectAltosPacketType(packet_type_value);
-    }
+uint8_t FrameDecoderVault::getAltosPacketType(const Frame &frame) {
+  const auto start = frame.packet_start_index;
+  if (start > frame.data.size() || frame.data.size() - start != 70)
+    throw std::invalid_argument("Invalid AltOS packet length");
+  return ByteHelper::get_byte_from_str(std::string(
+      frame.data.begin() + start + 8, frame.data.begin() + start + 10));
 }
 
+std::shared_ptr<IFrameDecoder>
+FrameDecoderVault::selectAltosPacketDecoder(uint8_t type) {
+  switch (type) {
+  case AltosPacketTypes::TeleMega15VKalman:
+  case AltosPacketTypes::TeleMega30VKalman:
+    return m_tele_mega_kalman_frame_decoder;
+  case AltosPacketTypes::TeleMegaInvensenseIMU:
+  case AltosPacketTypes::TeleMegaBMI088IMU:
+  case AltosPacketTypes::TeleMegaMPU6000IMU:
+  case AltosPacketTypes::TeleMegaBMX160IMU:
+    return m_tele_mega_imu_frame_decoder;
+  case AltosPacketTypes::Gps:
+    return m_gps_frame_decoder;
+  case AltosPacketTypes::Config:
+    return m_config_frame_decoder;
+  case AltosPacketTypes::TeleMiniV3:
+    return m_tele_mini_v3_frame_decoder;
+  case AltosPacketTypes::TeleMiniV1:
+    return m_tele_mini_v1_frame_decoder;
+  default:
+    throw IncorrectAltosPacketType(type);
+  }
+}

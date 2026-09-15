@@ -38,14 +38,14 @@ namespace {
 
 [[nodiscard]] QString formatMetric(double value, const QString &unit, int precision = 1) {
     if (!std::isfinite(value)) {
-        return u"-NA-"_s;
+      return u"—"_s;
     }
     return QStringLiteral("%1 %2").arg(value, 0, 'f', precision).arg(unit);
 }
 
 [[nodiscard]] QString formatSignedMetric(double value, const QString &unit, int precision = 1) {
     if (!std::isfinite(value)) {
-        return u"-NA-"_s;
+      return u"—"_s;
     }
     return QStringLiteral("%1%2 %3")
         .arg(value >= 0.0 ? u"+"_s : QString())
@@ -56,7 +56,7 @@ namespace {
 [[nodiscard]] QString formatDisplayMetric(
     int metricIndex, double siValue, bool imperial) {
     if (!std::isfinite(siValue)) {
-        return u"-NA-"_s;
+      return u"—"_s;
     }
     return QStringLiteral("%1 %2")
         .arg(MetricDefs::formatMetricDisplayValue(metricIndex, siValue, imperial),
@@ -472,12 +472,13 @@ QWidget *LiveTelemetryPage::buildMetricsPanel() {
         u"RSSI"_s,
     };
     for (int i = 0; i < static_cast<int>(labels.size()); ++i) {
-        auto *tile = new StatTileWidget(labels[static_cast<std::size_t>(i)], u"-NA-"_s, panel);
-        tile->setMinimumHeight(88);
-        tile->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        tile->setAccentColor(QColor(Theme::kAccentLink()));
-        m_metricTiles[static_cast<std::size_t>(i)] = tile;
-        m_metricsGrid->addWidget(tile, i / 2, i % 2);
+      auto *tile = new StatTileWidget(labels[static_cast<std::size_t>(i)],
+                                      u"—"_s, panel);
+      tile->setMinimumHeight(88);
+      tile->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+      tile->setAccentColor(QColor(Theme::kAccentLink()));
+      m_metricTiles[static_cast<std::size_t>(i)] = tile;
+      m_metricsGrid->addWidget(tile, i / 2, i % 2);
     }
     m_metricColumnCount = 2;
     layout->addLayout(m_metricsGrid, 1);
@@ -539,6 +540,13 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
 
     m_demoButton = createPanelButton(u"Run telemetry demo"_s, panel);
     layout->addWidget(m_demoButton);
+    auto *recordedButton = createPanelButton(tr("Recorded IMU input…"), panel);
+    recordedButton->setObjectName(u"recordedImuInput"_s);
+    recordedButton->setToolTip(
+        tr("Read recorded AltOS packets at one line every 250 ms."));
+    layout->addWidget(recordedButton);
+    connect(recordedButton, &QPushButton::clicked, this,
+            &LiveTelemetryPage::recordedImuRequested);
 
     m_lastPacketLabel = new QLabel(panel);
     m_lastPacketLabel->setProperty("kind", u"caption"_s);
@@ -726,7 +734,7 @@ void LiveTelemetryPage::refreshTelemetryDisplay() {
 void LiveTelemetryPage::resetMetricTiles() {
     for (auto *tile : m_metricTiles) {
         if (tile) {
-            tile->setValue(u"-NA-"_s);
+          tile->setValue(u"—"_s);
         }
     }
     updateLastPacketLabel();

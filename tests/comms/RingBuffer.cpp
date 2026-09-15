@@ -5,7 +5,7 @@
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/internal/catch_stdstreams.hpp"
 #include "domain/Frame.h"
-#include "gateway/comms/windows/SerialCommsWindows.h"
+#include "gateway/comms/Windows/SerialCommsWindows.h"
 // #include "include/functions.h"
 
 // TEST_CASE("putItemsUntilBufferIsFull_getPutItems") {

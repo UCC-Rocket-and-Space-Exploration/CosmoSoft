@@ -22,10 +22,12 @@
 #include <QMainWindow>
 #include <QString>
 
+#include <QStringList>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <utility>
 #include <vector>
 
@@ -56,6 +58,7 @@ class IComms;
 namespace cosmo::telemetry {
 class LineTelemetryBatchMailbox;
 class LineTelemetryDecodeWorker;
+class TelemetrySession;
 }
 
 /** @brief Top-level application window. */
@@ -96,8 +99,10 @@ private slots:
     void onConnectLiveDevice(const QString &portName, int baud);
     void onDisconnectLiveDevice();
     void onStartLiveDemo();
+    void onRecordedImuInput();
+    void startRecordedImuInput(const QString &path);
 
-private:
+  private:
     void setupActions();
     void setupMenuBar();
     void setupToolbar();
@@ -202,9 +207,12 @@ private:
     // ── Live-telemetry pipeline ───────────────────────────────────────────────
     std::unique_ptr<cosmo::telemetry::LineTelemetryBatchMailbox> m_liveBatchMailbox;
     std::unique_ptr<cosmo::telemetry::LineTelemetryDecodeWorker> m_lineDecodeWorker;
+    std::unique_ptr<cosmo::telemetry::TelemetrySession> m_telemetrySession;
     std::unique_ptr<SerialWorker> m_serialWorker;
     std::unique_ptr<IComms> m_comms;
     std::uint64_t m_liveGeneration = 0;
+    std::mutex m_recordedDiagnosticMutex;
+    QStringList m_recordedDiagnostics;
     QString m_serialPortSummary;
 
     // ── Timers ────────────────────────────────────────────────────────────────

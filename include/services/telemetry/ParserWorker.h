@@ -1,38 +1,37 @@
-#ifndef COSMO_SOFT_IPARSERWORKER_H
-#define COSMO_SOFT_IPARSERWORKER_H
-#include <memory>
-#include <thread>
-
-#include "FrameDecoderVault.h"
-#include "shared/abstraction/Worker.h"
-#include "domain/FlightSample.h"
-#include "services/RingBuffer.h"
+#ifndef COSMO_SOFT_PARSERWORKER_H
+#define COSMO_SOFT_PARSERWORKER_H
+#include "services/interfaces/IBuffer.h"
 #include "services/interfaces/ILogger.h"
+#include "services/telemetry/FrameDecoderVault.h"
+#include "shared/abstraction/Worker.h"
+#include <functional>
+#include <memory>
 
-#define Buffer std::shared_ptr<IBuffer<Frame>>
+/** @brief Background packet decoder with per-session timing and instance
+ * callbacks. */
+class ParserWorker : public Worker {
+public:
+  using SampleCallback = std::function<void(const FlightSample &)>;
+  /** @brief Construct with the original function-pointer callback contract. */
+  ParserWorker(const std::shared_ptr<IBuffer<Frame>> &buffer,
+               void (*callback)(const FlightSample &),
+               const std::shared_ptr<ILogger> &logger)
+      : ParserWorker(buffer, SampleCallback(callback), logger) {}
+  /** @brief Construct with an instance-bound callback; callbacks run on the
+   * worker. */
+  ParserWorker(std::shared_ptr<IBuffer<Frame>> buffer, SampleCallback callback,
+               std::shared_ptr<ILogger> logger)
+      : m_callback(std::move(callback)), m_buffer(std::move(buffer)),
+        m_logger(std::move(logger)) {}
+  /** @brief Drain accepted frames and join before members are destroyed. */
+  ~ParserWorker() override { stop(); }
 
-class ParserWorker : public Worker{
-    public:
-    explicit ParserWorker(
-            const Buffer& buffer,
-            void (*on_parsed_data_callback)(const FlightSample& flight_sample),
-            const std::shared_ptr<ILogger>& debug_logger) {
-        m_on_parsed_data_callback = on_parsed_data_callback;
-        m_buffer = buffer;
-        m_decoder_vault = FrameDecoderVault();
-        m_debug_logger = debug_logger;
-    }
-    ~ParserWorker() override = default;
 protected:
     void m_process() override;
-
 private:
-    FrameDecoderVault m_decoder_vault;
-    void (*m_on_parsed_data_callback)(const FlightSample& flight_sample);
-    Buffer m_buffer;
-    std::shared_ptr<ILogger> m_debug_logger;
-    std::atomic_bool m_first_frame {true};
-    int m_initial_timestamp = 0;
+  FrameDecoderVault m_vault;
+  SampleCallback m_callback;
+  std::shared_ptr<IBuffer<Frame>> m_buffer;
+  std::shared_ptr<ILogger> m_logger;
 };
-
-#endif //COSMO_SOFT_IPARSERWORKER_H
+#endif

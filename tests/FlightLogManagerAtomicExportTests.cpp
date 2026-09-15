@@ -89,8 +89,8 @@ TEST_CASE("FlightLogManager transactionally replaces a CSV destination",
     REQUIRE(manager.exportSessionToCsv(sessionWithOneSample()));
 
     const QByteArray exported = readAll(path);
-    REQUIRE(exported.startsWith(
-        "time,altitude,temperature,pressure,acceleration_x,acceleration_y,"));
+    REQUIRE(exported.startsWith("time_ms,altitude,temperature,pressure,"
+                                "acceleration_x,acceleration_y,"));
     REQUIRE(exported.contains("123,456.5,21.25,101325"));
     REQUIRE_FALSE(exported.contains("previous-content"));
 

@@ -12,17 +12,18 @@ include(Catch)
 add_executable(cosmo-tests
 #    FileLoadCancellationTests.cpp
 #    EventLogFormattingTests.cpp
-#    FlightLogManagerAtomicExportTests.cpp
-#    FlightReplayControllerTests.cpp
-#    LineTelemetryPipelineTests.cpp
-#    LineTelemetryBatchMailboxTests.cpp
-#    MetricDisplayUnitTests.cpp
+    FlightLogManagerAtomicExportTests.cpp
+    FlightReplayControllerTests.cpp
+    LineTelemetryPipelineTests.cpp
+    LineTelemetryBatchMailboxTests.cpp
+    MetricDisplayUnitTests.cpp
 #    MockFlightLinkTests.cpp
-#    SampleFileLoaderTests.cpp
+    SampleFileLoaderTests.cpp
 #    SerialPortScannerHardeningTests.cpp
 #    SerialWorkerLifecycleTests.cpp
 #    SkinLoaderTests.cpp
 #    "${CMAKE_SOURCE_DIR}/assets/resources.qrc" - return
+    RecordedTelemetryTests.cpp
         include/SerialWriter.h
         comms/Mocks/ConsoleLogger.cpp
         include/ConsoleLogger.h
@@ -45,3 +46,19 @@ target_compile_definitions(cosmo-tests PRIVATE
 
 list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
 catch_discover_tests(cosmo-tests)
+
+# Separate QApplication process keeps widget tests isolated from QCoreApplication tests.
+add_executable(cosmo-recorded-gui-tests
+    RecordedTelemetryGuiTests.cpp
+    "${CMAKE_SOURCE_DIR}/assets/resources.qrc"
+)
+target_link_libraries(cosmo-recorded-gui-tests PRIVATE
+    Catch2::Catch2 # Custom QApplication test entry point; uses the existing dependency.
+    cosmo-backend
+)
+target_compile_definitions(cosmo-recorded-gui-tests PRIVATE COSMO_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+add_test(NAME recorded-imu-widgets COMMAND cosmo-recorded-gui-tests --rng-seed 1)
+set_tests_properties(recorded-imu-widgets PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu --no-sandbox"
+    TIMEOUT 30
+)

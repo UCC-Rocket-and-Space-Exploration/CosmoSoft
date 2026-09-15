@@ -1,4 +1,6 @@
 #include "gui/MainWindow.h"
+#include "services/telemetry/RecordedComms.h"
+#include "services/telemetry/TelemetrySession.h"
 
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
@@ -871,6 +873,8 @@ void MainWindow::setupPages() {
     connect(m_liveTelemetryPage, &LiveTelemetryPage::startDemoRequested,
             this, &MainWindow::onStartLiveDemo);
 
+    connect(m_liveTelemetryPage, &LiveTelemetryPage::recordedImuRequested, this,
+            &MainWindow::onRecordedImuInput);
     onScanLiveDevices();
 }
 
@@ -1417,8 +1421,9 @@ void MainWindow::onConnectLiveDevice(const QString &portName, int baud) {
 }
 
 void MainWindow::onDisconnectLiveDevice() {
-    stopSerial();
-    showStatusMessage(u"Live telemetry disconnected."_s, 2500);
+  stopFakeTransmission(false);
+  stopSerial();
+  showStatusMessage(u"Live telemetry disconnected."_s, 2500);
 }
 
 void MainWindow::prepareLiveSession(const QString &context) {
@@ -1557,6 +1562,16 @@ void MainWindow::drainLiveTelemetryBatches(const std::uint64_t generation) {
         return;
     }
 
+    QStringList diagnostics;
+    {
+      std::lock_guard lock(m_recordedDiagnosticMutex);
+      diagnostics.swap(m_recordedDiagnostics);
+    }
+    for (const auto &message : diagnostics) {
+      appendToLog(message.startsWith(u"Skipped"_s) ||
+                      message.startsWith(u"Failed"_s),
+                  message);
+    }
     auto result = m_liveBatchMailbox->take(generation);
     for (auto &batch : result.batches) {
         constexpr auto kMaxByteCount = static_cast<std::uint64_t>(
@@ -1598,6 +1613,10 @@ void MainWindow::drainLiveTelemetryBatches(const std::uint64_t generation) {
 
 void MainWindow::stopSerial() {
     const std::uint64_t generation = m_liveGeneration;
+    if (m_telemetrySession) {
+      m_telemetrySession->stop();
+      m_telemetrySession.reset();
+    }
     if (m_serialWorker) {
         m_serialWorker->stop();
         m_serialWorker.reset();
@@ -1616,10 +1635,69 @@ void MainWindow::stopSerial() {
     const QString previous = m_serialPortSummary;
     m_serialPortSummary.clear();
     if (wasConnected) {
-        const QString msg = QStringLiteral("Serial port disconnected: %1").arg(previous);
-        appendToLog(false, msg);
-        if (m_liveTelemetryPage) {
-            m_liveTelemetryPage->setActiveConnection(QString(), false);
-        }
+      const QString msg =
+          QStringLiteral("Input disconnected: %1").arg(previous);
+      appendToLog(false, msg);
+      if (m_liveTelemetryPage) {
+        m_liveTelemetryPage->setActiveConnection(QString(), false);
+      }
     }
+}
+
+void MainWindow::onRecordedImuInput() {
+  const QString path = QFileDialog::getOpenFileName(
+      this, tr("Recorded IMU input"), QString(),
+      tr("Recorded AltOS packets (*.telem *.txt);;All files (*)"));
+  if (!path.isEmpty())
+    startRecordedImuInput(path);
+}
+
+void MainWindow::startRecordedImuInput(const QString &path) {
+  stopSerial();
+  stopFakeTransmission(false);
+  prepareLiveSession(tr("Recorded IMU input"));
+  const auto generation = ++m_liveGeneration;
+  m_telemetrySession = std::make_unique<cosmo::telemetry::TelemetrySession>(
+      std::make_shared<RecordedComms>(path.toStdString()),
+      [this, generation](cosmo::telemetry::LineTelemetryBatch batch) {
+        if (m_liveBatchMailbox->push(generation, std::move(batch))) {
+          QMetaObject::invokeMethod(
+              this,
+              [this, generation] { drainLiveTelemetryBatches(generation); },
+              Qt::QueuedConnection);
+        }
+      },
+      [this, generation](const std::string &message) {
+        {
+          std::lock_guard lock(m_recordedDiagnosticMutex);
+          m_recordedDiagnostics.append(QString::fromStdString(message));
+        }
+        QMetaObject::invokeMethod(
+            this, [this, generation] { drainLiveTelemetryBatches(generation); },
+            Qt::QueuedConnection);
+      },
+      [this, generation] {
+        QMetaObject::invokeMethod(
+            this,
+            [this, generation] {
+              if (generation != m_liveGeneration)
+                return;
+              drainLiveTelemetryBatches(generation);
+              m_liveTelemetryPage->setActiveConnection(
+                  tr("Recorded IMU input finished"), false);
+              showStatusMessage(tr(
+                  "Recorded IMU input finished. Session retained for export."));
+            },
+            Qt::QueuedConnection);
+      });
+  if (!m_telemetrySession->start()) {
+    m_telemetrySession.reset();
+    m_liveTelemetryPage->setActiveConnection(QString(), false);
+    onParserError(tr("Could not start recorded IMU input."));
+    return;
+  }
+  m_serialPortSummary = tr("Recorded IMU: %1").arg(QFileInfo(path).fileName());
+  m_liveTelemetryPage->setActiveConnection(m_serialPortSummary, true);
+  m_liveTelemetryAction->trigger();
+  appendToLog(false, tr("Recorded IMU input started: %1").arg(path));
 }

@@ -1,3 +1,5 @@
+> Historical, unverified interpretation. For supported recorded IMU input use [the verified protocol notes](../docs/protocol.md).
+
 # TELEM File Format Explanation
 
 ## Overview
