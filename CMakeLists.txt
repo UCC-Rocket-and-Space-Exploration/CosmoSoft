@@ -30,20 +30,14 @@ set(HEADERS "${CMAKE_SOURCE_DIR}/include")
 include(CTest)
 
 find_package(Qt6 6.7.3 REQUIRED COMPONENTS Core Gui Widgets Charts Concurrent WebEngineWidgets WebChannel)
-message(STATUS "========== QT DEBUG ==========")
-message(STATUS "Qt6_VERSION       = ${Qt6_VERSION}")
-message(STATUS "Qt6_DIR            = ${Qt6_DIR}")
-message(STATUS "Qt6Core_DIR        = ${Qt6Core_DIR}")
-message(STATUS "CMAKE_PREFIX_PATH  = ${CMAKE_PREFIX_PATH}")
-message(STATUS "CMAKE_CXX_COMPILER = ${CMAKE_CXX_COMPILER}")
-message(STATUS "==============================")
+qt_standard_project_setup()
 
 find_package(ZLIB REQUIRED) # for compressing
 add_subdirectory(src)
 
 #target_compile_features(cosmo-backend PUBLIC cxx_std_20)
 
-#add_subdirectory(tests)
+add_subdirectory(tests)
 
 #if(BUILD_TESTING)
 #    add_subdirectory(tests)
@@ -51,3 +45,29 @@ add_subdirectory(src)
 
 target_link_libraries(cosmo-soft-bin PRIVATE cosmo-backend)
 target_compile_features(cosmo-soft-bin PRIVATE cxx_std_20)
+
+# Install the executable
+install(TARGETS cosmo-soft-bin
+        RUNTIME DESTINATION .
+)
+message(STATUS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/z.dll")
+if(WIN32)
+    install(FILES
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin/z.dll"
+            DESTINATION .
+    )
+endif()
+
+# Generate Qt deployment script
+qt_generate_deploy_app_script(
+        TARGET cosmo-soft-bin
+        OUTPUT_SCRIPT deploy_script
+        NO_UNSUPPORTED_PLATFORM_ERROR
+)
+#install(FILES
+#        "${CMAKE_CURRENT_BINARY_DIR}/z.dll"
+#        DESTINATION .
+#)
+# Run the generated deployment script during installation
+install(SCRIPT ${deploy_script})
+

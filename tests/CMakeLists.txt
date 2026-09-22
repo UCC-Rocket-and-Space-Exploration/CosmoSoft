@@ -7,6 +7,7 @@ FetchContent_Declare(
     GIT_TAG v3.7.1
 )
 FetchContent_MakeAvailable(Catch2)
+include(Catch)
 
 add_executable(cosmo-tests
 #    FileLoadCancellationTests.cpp
@@ -23,6 +24,8 @@ add_executable(cosmo-tests
 #    SkinLoaderTests.cpp
 #    "${CMAKE_SOURCE_DIR}/assets/resources.qrc" - return
         include/SerialWriter.h
+        comms/Mocks/ConsoleLogger.cpp
+        include/ConsoleLogger.h
 )
 
 add_subdirectory("comms")
@@ -41,5 +44,4 @@ target_compile_definitions(cosmo-tests PRIVATE
 )
 
 list(APPEND CMAKE_MODULE_PATH "${catch2_SOURCE_DIR}/extras")
-include(Catch)
 catch_discover_tests(cosmo-tests)

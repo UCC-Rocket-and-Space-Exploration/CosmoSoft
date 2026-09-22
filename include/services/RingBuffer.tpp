@@ -18,12 +18,13 @@ RingBuffer<T>::RingBuffer(RingBuffer&& other) noexcept {
      m_head = other.m_head;
      m_tail = other.m_tail;
      m_occupancy = other.m_occupancy;
- }
+}
 
 template <typename T>
 RingBuffer<T>::~RingBuffer() {
     delete[] m_buffer;
 }
+
 // //for tests
 // template <typename T>
 // void RingBuffer<T>::show() {
@@ -34,13 +35,14 @@ RingBuffer<T>::~RingBuffer() {
 //     // }
 //     // this->
 // }
+
 /// overwrite slot once buffer is full. Defined by policy
 template <typename T>
 void RingBuffer<T>::put(T item) {
     std::lock_guard<std::mutex> lk(m_locker);
-     if (std::is_same<T, Frame>::value) {
-         std::cout << "PUT: Size: " << item.data.size() << std::endl;
-     }
+     // if (std::is_same<T, Frame>::value) {
+     //     // std::cout << "PUT: Size: " << item.data.size() << std::endl;
+     // }
 
     m_buffer[m_head] = item;
 

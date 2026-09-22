@@ -8,13 +8,13 @@
 
 class FileLogger : public ILogger{
 public:
-    FileLogger(const std::string& file_path) {
+    explicit FileLogger(const std::string& file_path) {
         m_file_stream.open(file_path);
     }
     void Log(std::string record) override;
-    void Log(unsigned char* record) override;
+    void Log(const unsigned char *record) override;
     void LogLine(std::string record) override;
-    void LogLine(unsigned char* record) override;
+    void LogLine(const unsigned char* record) override;
 
     ~FileLogger() override {
         m_file_stream.close();

@@ -4,6 +4,7 @@ add_library(cosmo-backend ""
         ../include/services/interfaces/ILogger.h
         services/telemetry/FileLogger.cpp
         ../include/services/telemetry/FileLogger.h
+        ../tests/comms/Decoders/ValultSelectorTests.cpp
 )
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 

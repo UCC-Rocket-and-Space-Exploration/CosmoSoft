@@ -1,14 +1,17 @@
-#include "catch2/catch_test_macros.hpp"
-#include "gateway/comms/windows/SerialCommsWindows.h"
-#include "include/helpers.h"
-#include "services/telemetry/ParserWorker.h"
-#include "Mocks/onDataMock.cpp"
-
+// #include "catch2/catch_test_macros.hpp"
+// #include "catch2/internal/catch_windows_h_proxy.hpp"
+// #include "gateway/comms/windows/SerialCommsWindows.h"
+// #include "include/helpers.h"
+// #include "services/telemetry/ParserWorker.h"
+// #include "Mocks/onDataMock.cpp"
+// #include "services/telemetry/FileLogger.h"
+// #include "include/ConsoleLogger.h"
+//
 // TEST_CASE("Added two frames into the buffer, parses them and returns two flight_samples") {
 //     std::shared_ptr<RingBuffer<Frame>> buffer = std::make_shared<RingBuffer<Frame>>(5);
 //     void (*onDataCallback)(const FlightSample& f_s) = onData;
-//
-//     ParserWorker worker(buffer, onDataCallback);
+//     const std::shared_ptr<ILogger> &debug_logger = std::make_shared<ConsoleLogger>();
+//     ParserWorker worker(buffer, onDataCallback, debug_logger);
 //
 //     char frame_content1[] = "0,19.24,100896.15,165.59,0.704,-0.927,9.850,-0.047,0.091,0.091,-4.822,-2.985,16.506,0.000000,0.000000,0.00";
 //     char frame_content2[] = "1000,19.24,100896.15,165.59,0.704,-0.927,9.850,-0.047,0.091,0.091,-4.822,-2.985,16.506,0.000000,0.000000,0.50";
@@ -30,3 +33,4 @@
 //     REQUIRE(parsed_samples[1].timestamp == 1000);
 //     REQUIRE(almost_equal(parsed_samples[1].distanceFromLaunchPoint, 0.5));
 // }
+//

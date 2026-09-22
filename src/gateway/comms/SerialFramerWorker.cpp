@@ -4,8 +4,8 @@
 #include "gateway/comms/windows/SerialCommsWindows.h"
 #include "shared/exceptions/SerialTimeout.h"
 
-std::string error_start = "Error: ";
 void SerialFramerWorker::m_process() {
+    std::string error_start = "Error: ";
     try {
         while (m_running) {
             Frame frame;
@@ -19,7 +19,14 @@ void SerialFramerWorker::m_process() {
             if (!frame.data.empty()) {
                 unsigned char *str(frame.data.data());
                 m_results_logger->LogLine(str);
-                m_buffer->put(frame);
+                try {
+                    m_buffer->put(frame);
+                }
+                catch (const std::exception& ex) {
+                    // std::string message = "Got exception when putting into the buffer: ";
+                    // message += ex.what();
+                    // m_debug_logger->LogLine(message);
+                }
             }
         }
     }

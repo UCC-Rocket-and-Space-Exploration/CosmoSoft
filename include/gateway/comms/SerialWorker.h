@@ -48,7 +48,7 @@ public:
     void stop();
 
 private:
-    void run(std::stop_token stopToken);
+    void run(const std::stop_token& stopToken);
 
     IComms* m_connectedPort;
     DataCallback m_onData;

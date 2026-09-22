@@ -76,7 +76,7 @@ void SerialWorker::stop() {
     }
 }
 
-void SerialWorker::run(const std::stop_token stopToken) {
+void SerialWorker::run(const std::stop_token& stopToken) {
     uint8_t buffer[256];
     const auto reportError = [this](const std::string &message) {
         if (!m_onError) {

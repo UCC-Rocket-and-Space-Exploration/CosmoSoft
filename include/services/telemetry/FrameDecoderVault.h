@@ -7,6 +7,8 @@
 #include "frame_decoders/GpsFrameDecoder.h"
 #include "frame_decoders/TeleMegaImuFrameDecoder.h"
 #include "frame_decoders/TeleMegaKalmanFrameDecoder.h"
+#include "frame_decoders/TeleMiniV1FrameDecoder.h"
+#include "frame_decoders/TeleMiniV3FrameDecoder.h"
 #include "services/interfaces/IFrameDecoder.h"
 
 
@@ -19,9 +21,13 @@ private:
     std::shared_ptr<TeleMegaImuFrameDecoder> m_tele_mega_imu_frame_decoder = std::make_shared<TeleMegaImuFrameDecoder>();
     std::shared_ptr<GpsFrameDecoder> m_gps_frame_decoder = std::make_shared<GpsFrameDecoder>();
     std::shared_ptr<ConfigFrameDecoder> m_config_frame_decoder = std::make_shared<ConfigFrameDecoder>();
+    std::shared_ptr<TeleMiniV1FrameDecoder> m_tele_mini_v1_frame_decoder = std::make_shared<TeleMiniV1FrameDecoder>();
+    std::shared_ptr<TeleMiniV3FrameDecoder> m_tele_mini_v3_frame_decoder = std::make_shared<TeleMiniV3FrameDecoder>();
 
-    static uint8_t getAltosPacketType(const Frame& frame);
+    std::vector<std::string> m_types = std::vector<std::string>();
+    uint8_t getAltosPacketType(const Frame& frame);
     std::shared_ptr<IFrameDecoder> selectAltosPacketDecoder(uint8_t packet_type_value);
-
+    bool exists(const std::string& element);
+    void printTypes() const;
 };
 #endif //COSMO_SOFT_FRAMEDECODERFACTORY_H

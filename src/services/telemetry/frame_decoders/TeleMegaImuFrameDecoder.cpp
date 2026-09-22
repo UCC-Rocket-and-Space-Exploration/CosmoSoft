@@ -7,10 +7,12 @@
 
 
 FlightSample TeleMegaImuFrameDecoder::decode(const Frame& frame) {
-    FlightSample sample{};
+    // FlightSample sample{};
+    FlightSample sample = decode_base(frame);
+
     throw_if_checksum_not_valid(frame);
 
-    sample.timestamp = get_numerical_field_le<int>(frame, 2, 2);
+    // sample.timestamp = get_numerical_field_le<int>(frame, 2, 2);
 
     sample.pressure = static_cast<double>(get_numerical_field_le<int>(frame, 8, 4)) / 10;
 
