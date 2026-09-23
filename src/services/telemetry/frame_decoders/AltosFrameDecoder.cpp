@@ -12,6 +12,15 @@ void AltosFrameDecoder::throw_if_checksum_not_valid(const Frame& frame) {
         throw IncorrectChecksum();
     }
 }
+
+FlightSample AltosFrameDecoder::decode_base(const Frame &frame) {
+    FlightSample sample{};
+    size_t bytes_count = frame.data.size() / 2;
+    sample.rssi = static_cast<double>(get_numerical_field_le<int16_t>(frame, bytes_count - 2, 2)) / 2 - 74;
+    sample.timestamp = get_numerical_field_le<int>(frame, 2, 2);
+    return sample;
+}
+
 bool AltosFrameDecoder::checksum_valid(const Frame& frame) {
     constexpr size_t packet_byte_len = 35;
     char pts[] = {

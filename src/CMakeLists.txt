@@ -1,7 +1,10 @@
+
+
 add_library(cosmo-backend ""
         ../include/services/interfaces/ILogger.h
         services/telemetry/FileLogger.cpp
         ../include/services/telemetry/FileLogger.h
+        ../tests/comms/Decoders/ValultSelectorTests.cpp
 )
 target_include_directories(cosmo-backend PUBLIC "${HEADERS}")
 
@@ -26,5 +29,5 @@ add_executable(cosmo-soft-bin
 
 set_target_properties(cosmo-soft-bin PROPERTIES
     OUTPUT_NAME "cosmo-soft"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+#    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 )

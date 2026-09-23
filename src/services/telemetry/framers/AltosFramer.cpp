@@ -21,7 +21,6 @@ Frame AltosFramer::get_frame(const bool& running) {
     size_t current_pos = 5;
     do {
         m_comms->read(len_byte_buf, 1);
-        std::cout << len_byte_buf[0] << std::endl;
         full_frame_data.push_back(len_byte_buf[0]);
         if (len_byte_buf[0] == '2') {
             if (packet_len[0] != '2') {
@@ -36,7 +35,6 @@ Frame AltosFramer::get_frame(const bool& running) {
             break;
         }
         current_pos++;
-
     }while (running);
     frame.packet_start_index = current_pos + 1;
 
@@ -53,7 +51,7 @@ bool AltosFramer::sign_start(uint8_t byte) {
     return static_cast<int>(byte) == static_cast<int>('T');
 }
 
-void AltosFramer::verify_sign(bool running) const {
+void AltosFramer::verify_sign(const bool running) const {
     uint8_t sign[4] = {};
     while (running) {
         size_t read_bytes = this->m_comms->read(sign, 1);

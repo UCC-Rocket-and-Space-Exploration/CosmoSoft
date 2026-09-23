@@ -6,6 +6,7 @@
 
 #include "domain/FlightSession.h"
 #include "services/Cancellation.h"
+#include "services/telemetry/FrameDecoderVault.h"
 
 class Framer;
 class Parser;
@@ -95,6 +96,7 @@ public:
      * @brief Decode a TELEM file with cooperative cancellation.
      * @param path Source file path.
      * @param out Destination session, unchanged on cancellation.
+     * @param decoder_vault
      * @param framer Binary frame extractor.
      * @param parser Telemetry frame decoder.
      * @param cancellation_check Callback polled during line, hex, and frame processing.
@@ -103,8 +105,7 @@ public:
     static LoadResult loadTelemFile(
         const std::string &path,
         FlightSession &out,
-        Framer &framer,
-        Parser &parser,
+        FrameDecoderVault& decoder_vault,
         const cosmo::CancellationCheck &cancellation_check);
 };
 

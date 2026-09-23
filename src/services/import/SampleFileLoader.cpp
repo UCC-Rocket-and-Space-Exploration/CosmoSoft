@@ -1,12 +1,13 @@
 #include "services/import/SampleFileLoader.h"
 
-#include "services/telemetry/Framer.h"
-#include "services/telemetry/Parser.h"
+// #include "services/telemetry/Framer.h"
+// #include "services/telemetry/Parser.h"
 
 #include <QByteArray>
 #include <QLocale>
 #include <QString>
 #include <QXmlStreamReader>
+#include <QDebug>
 
 #include <algorithm>
 #include <array>
@@ -24,7 +25,10 @@
 
 #include <zlib.h>
 
-#include "domain/Frame.h"
+#include "services/telemetry/FrameDecoderVault.h"
+#include "shared/exceptions/IncorrectAltosPacketType.h"
+
+class IncorrectAltosPacketType;
 
 namespace {
 
@@ -1194,19 +1198,59 @@ SampleFileLoader::LoadResult SampleFileLoader::loadXlsx(
     return completed_load_result(load_error);
 }
 
+void convertStrToVector(std::string& str, std::vector<uint8_t>& out) {
+    for (auto s : str) {
+        out.push_back(static_cast<uint8_t>(s));
+    }
+}
+
 std::optional<std::string> SampleFileLoader::loadTelemFile(
     const std::string &path,
     FlightSession &out,
     Framer &framer,
     Parser &parser) {
-    return loadTelemFile(path, out, framer, parser, cosmo::CancellationCheck{}).error;
+    FrameDecoderVault vault{};
+    return loadTelemFile(path, out, vault, cosmo::CancellationCheck{}).error;
+}
+
+void printFlightSample(const FlightSample& sample)
+{
+    qDebug().noquote()
+        << "========== Flight Sample =========="
+        << "\nTimestamp:              " << sample.timestamp
+        << "\nRSSI:                   " << sample.rssi
+
+        << "\n\nAngular Velocity:"
+        << "\n  X:                    " << sample.angularVelocity.x
+        << "\n  Y:                    " << sample.angularVelocity.y
+        << "\n  Z:                    " << sample.angularVelocity.z
+
+        << "\n\nAcceleration:"
+        << "\n  X:                    " << sample.acceleration.x
+        << "\n  Y:                    " << sample.acceleration.y
+        << "\n  Z:                    " << sample.acceleration.z
+
+        << "\n\nCoordinates:"
+        << "\n  Latitude:             " << sample.coordinates.latitude
+        << "\n  Longitude:            " << sample.coordinates.longitude
+
+        << "\n\nAngular Rotation:"
+        << "\n  X:                    " << sample.angularRotation.x
+        << "\n  Y:                    " << sample.angularRotation.y
+        << "\n  Z:                    " << sample.angularRotation.z
+
+        << "\n\nAltitude:               " << sample.altitude
+        << "\nPressure:               " << sample.pressure
+        << "\nTemperature:            " << sample.temperature
+        << "\nBattery Voltage:        " << sample.batteryVoltage
+        << "\nDistance From Launch:   " << sample.distanceFromLaunchPoint
+        << "\n====================================";
 }
 
 SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
     const std::string &path,
     FlightSession &out,
-    Framer &framer,
-    Parser &parser,
+    FrameDecoderVault& decoder_vault,
     const cosmo::CancellationCheck &cancellation_check) {
     CancellationState cancellation(cancellation_check);
     if (cancellation.poll()) {
@@ -1235,7 +1279,7 @@ SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
             continue;
         }
         const std::string_view hexPart(line.data() + kPrefix.size(), line.size() - kPrefix.size());
-        auto bytesOpt = hexDecodeLine(hexPart, cancellation);
+        std::optional<std::vector<uint8_t>> bytesOpt = hexDecodeLine(hexPart, cancellation);
         if (cancellation.is_canceled()) {
             return canceled_load_result();
         }
@@ -1243,22 +1287,41 @@ SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
             continue;
         }
         //Use decoder instead
-        framer.ingest(bytesOpt->data(), bytesOpt->size());
         Frame frame{};
-        while (framer.try_next_frame(frame)) {
-            if (cancellation.poll_periodically()) {
-                return canceled_load_result();
-            }
-            auto decoded = parser.decode(frame);
-            if (decoded) {
-                decoded_samples.push_back(std::move(*decoded));
-            }
+        frame.format = AltosFrame;
+        qWarning() <<"Line: " << line << "\n";
+
+        convertStrToVector(line, frame.data);
+        try {
+            std::shared_ptr<IFrameDecoder> decoder = decoder_vault.select(frame);
+            FlightSample sample = decoder->decode(frame);
+            decoded_samples.push_back(sample);
+            printFlightSample(sample);
         }
+        catch (IncorrectAltosPacketType& ex) {
+            //add logging
+            qWarning() <<"Error with vault: " << ex.what() << "\n";
+        }
+
+        // framer.ingest(bytesOpt->data(), bytesOpt->size());
+        // Frame frame{};
+        //
+        // while (framer.try_next_frame(frame)) {
+        //     if (cancellation.poll_periodically()) {
+        //         return canceled_load_result();
+        //     }
+        //     auto decoded = parser.decode(frame);
+        //     if (decoded) {
+        //         decoded_samples.push_back(std::move(*decoded));
+        //     }
+        // }
     }
+    // qWarning() <<"LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL" << "\n";
 
     if (cancellation.poll()) {
         return canceled_load_result();
     }
+
     if (decoded_samples.empty() && out.samples.empty()) {
         return failed_load_result(std::string(
             "No telemetry samples decoded from TELEM file. "

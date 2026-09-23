@@ -1,4 +1,9 @@
 #include "services/telemetry/FrameDecoderVault.h"
+
+#include <iostream>
+#include <stdexcept>
+#include <QDebug>
+
 #include "services/telemetry/frame_decoders/ConfigFrameDecoder.h"
 #include "services/telemetry/frame_decoders/CsvFrameDecoder.h"
 #include "services/telemetry/frame_decoders/GpsFrameDecoder.h"
@@ -11,7 +16,6 @@
 //IncorrectAltosPacketType - if altos packet type is incorrect
 //std::logic_error if format is incorrect
 std::shared_ptr<IFrameDecoder> FrameDecoderVault::select(const Frame& frame) {
-
     switch (frame.format) {
         case Csv: {
             return m_cvs_frame_decoder;
@@ -24,10 +28,33 @@ std::shared_ptr<IFrameDecoder> FrameDecoderVault::select(const Frame& frame) {
             throw std::logic_error("Unknown frame format");
     }
 }
+bool FrameDecoderVault::exists(const std::string& element) {
+    return std::find(m_types.begin(), m_types.end(), element) != m_types.end();
+}
+
+// void FrameDecoderVault::printTypes() const
+// {
+//     for (const std::string& type : m_types) {
+//         qWarning() << type;
+//     }
+//     qWarning() << '\n';
+// }
 
 uint8_t FrameDecoderVault::getAltosPacketType(const Frame& frame) {
-    size_t packet_type_offset = frame.packet_start_index + 4 * 2;
-    std::string byte_pts = std::to_string(frame.data[packet_type_offset]) + std::to_string(frame.data[packet_type_offset+1]);
+    size_t packet_start_index = 8;
+    frame.packet_start_index = 8;
+    size_t packet_type_offset = packet_start_index + 4 * 2;
+
+    std::string byte_pts;
+    byte_pts += frame.data[packet_type_offset];
+    byte_pts += frame.data[packet_type_offset+1];
+
+    // std::cout << "bytepts: " << byte_pts << "\n";
+    if (!exists(byte_pts)) {
+        m_types.push_back(byte_pts);
+    }
+    // qInfo() << "Types: ";
+    // printTypes();
     return ByteHelper::get_byte_from_str(byte_pts);
 }
 
@@ -45,6 +72,10 @@ std::shared_ptr<IFrameDecoder> FrameDecoderVault::selectAltosPacketDecoder(uint8
             return m_gps_frame_decoder;
         case AltosPacketTypes::Config:
             return m_config_frame_decoder;
+        case AltosPacketTypes::TeleMiniV3:
+            return m_tele_mini_v3_frame_decoder;
+        case AltosPacketTypes::TeleMiniV1:
+            return m_tele_mini_v1_frame_decoder;
         default:
             throw IncorrectAltosPacketType(packet_type_value);
     }
