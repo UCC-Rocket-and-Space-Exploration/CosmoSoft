@@ -15,8 +15,9 @@ void AltosFrameDecoder::throw_if_checksum_not_valid(const Frame& frame) {
 
 FlightSample AltosFrameDecoder::decode_base(const Frame &frame) {
     FlightSample sample{};
-    size_t bytes_count = frame.data.size() / 2;
-    sample.rssi = static_cast<double>(get_numerical_field_le<int16_t>(frame, bytes_count - 2, 2)) / 2 - 74;
+    const size_t bytes_count = (frame.data.size() - 8) / 2;
+    const auto rssi_byte = static_cast<double>(get_numerical_field_le<int16_t>(frame, bytes_count - 3, 1));
+    sample.rssi = rssi_byte / 2 - 74; // TODO: ERROR
     sample.timestamp = get_numerical_field_le<int>(frame, 2, 2);
     return sample;
 }
@@ -45,7 +46,7 @@ bool AltosFrameDecoder::checksum_valid(const Frame& frame) {
     return expected_checksum == actual_checksum;
 }
 
-void AltosFrameDecoder::get_field_bytes(const Frame& frame, uint8_t* bytes_buf, size_t packet_field_start_offset, size_t read_count) {
+void AltosFrameDecoder::get_field_bytes(const Frame& frame, uint8_t* bytes_buf, size_t packet_field_start_offset, const size_t read_count) {
     for (int i = 0; i < read_count; i++) {
         size_t byte_pos = frame.packet_start_index + packet_field_start_offset*2 + i*2;
         char byte_part[2] = {

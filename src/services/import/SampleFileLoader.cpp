@@ -1266,6 +1266,7 @@ SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
     std::string line;
     constexpr std::string_view kPrefix = "TELEM ";
     while (std::getline(in, line)) {
+        qWarning() <<"Entering" << "\n";
         if (cancellation.poll_periodically()) {
             return canceled_load_result();
         }
@@ -1296,6 +1297,7 @@ SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
             std::shared_ptr<IFrameDecoder> decoder = decoder_vault.select(frame);
             FlightSample sample = decoder->decode(frame);
             decoded_samples.push_back(sample);
+
             printFlightSample(sample);
         }
         catch (IncorrectAltosPacketType& ex) {
@@ -1303,20 +1305,9 @@ SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
             qWarning() <<"Error with vault: " << ex.what() << "\n";
         }
 
-        // framer.ingest(bytesOpt->data(), bytesOpt->size());
-        // Frame frame{};
-        //
-        // while (framer.try_next_frame(frame)) {
-        //     if (cancellation.poll_periodically()) {
-        //         return canceled_load_result();
-        //     }
-        //     auto decoded = parser.decode(frame);
-        //     if (decoded) {
-        //         decoded_samples.push_back(std::move(*decoded));
-        //     }
-        // }
     }
-    // qWarning() <<"LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL" << "\n";
+    //TODO: dead lock after
+    qWarning() <<"Exited!! " << "\n";
 
     if (cancellation.poll()) {
         return canceled_load_result();
