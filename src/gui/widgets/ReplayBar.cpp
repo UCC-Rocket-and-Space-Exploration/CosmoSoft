@@ -16,6 +16,7 @@
 #include <QHBoxLayout>
 #include <QKeySequence>
 #include <QLabel>
+#include <QPainter>
 #include <QResizeEvent>
 #include <QShortcut>
 #include <QSignalBlocker>
@@ -143,7 +144,7 @@ void ReplayBar::applyThemeStyleSheet()
     const auto bgButton     = Theme::kBgButton();
     const auto btnHover     = Theme::kBtnHover();
     const auto btnPressed   = Theme::kBtnPressed();
-    const auto borderPanel  = Theme::kBorderPanel();
+    const auto borderPanel = Theme::kBorderSubtle();
     const auto borderDefault = Theme::kBorderDefault();
     const auto borderLight  = Theme::kBorderLight();
     const auto accent       = Theme::kAccentLink();
@@ -172,96 +173,24 @@ void ReplayBar::applyThemeStyleSheet()
             border-radius: 6px;
         }
 
-        /* Navigation buttons - 32×32px, 3D raised look */
-        QToolButton#replaySkipBtn {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 %24, stop:0.45 %4, stop:1 %25);
-            border: 1px solid %5;
-            border-bottom: 2px solid %25;
-            border-radius: 4px;
-            padding: 2px;
-            min-width: 32px; max-width: 32px;
-            min-height: 32px; max-height: 32px;
-        }
-        QToolButton#replaySkipBtn:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 %26, stop:0.45 %6, stop:1 %25);
-            border-color: %7;
-            border-bottom-color: %25;
-        }
-        QToolButton#replaySkipBtn:pressed {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 %25, stop:1 %4);
-            border-top-color: %25;
-            border-bottom-color: %5;
-            padding-top: 3px;
-        }
-        QToolButton#replaySkipBtn:disabled {
-            color: %9;
-            border-color: %2;
-            background: %4;
-        }
-
-        /* Play/Pause button - 40×40px, prominent 3D */
+        QToolButton#replaySkipBtn, QToolButton#replayTransportBtn,
         QToolButton#replayPlayPauseBtn {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 %24, stop:0.45 %4, stop:1 %25);
-            border: 2px solid %10;
-            border-bottom: 3px solid %27;
+            background: %4;
+            border: 1px solid %5;
             border-radius: 6px;
             padding: 2px;
-            min-width: 40px; max-width: 40px;
-            min-height: 40px; max-height: 40px;
             color: %11;
         }
-        QToolButton#replayPlayPauseBtn:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 %26, stop:0.45 %6, stop:1 %25);
-            border-color: %10;
-            border-bottom-color: %27;
-        }
-        QToolButton#replayPlayPauseBtn:pressed {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 %25, stop:1 %4);
-            border-top-color: %27;
-            border-bottom-color: %10;
-            padding-top: 3px;
-        }
+        QToolButton#replayPlayPauseBtn { border: 2px solid %10; }
+        QToolButton#replaySkipBtn:hover, QToolButton#replayTransportBtn:hover,
+        QToolButton#replayPlayPauseBtn:hover { background: %6; border-color: %10; }
+        QToolButton#replaySkipBtn:pressed, QToolButton#replayTransportBtn:pressed,
+        QToolButton#replayPlayPauseBtn:pressed { background: %8; }
+        QToolButton#replaySkipBtn:disabled, QToolButton#replayTransportBtn:disabled,
         QToolButton#replayPlayPauseBtn:disabled {
-            color: %9;
+            background: transparent;
             border-color: %2;
-            background: %4;
-        }
-
-        /* Stop button - 30×30px, de-emphasized 3D */
-        QToolButton#replayTransportBtn {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 %24, stop:0.45 %4, stop:1 %25);
-            border: 1px solid %2;
-            border-bottom: 2px solid %25;
-            border-radius: 4px;
-            padding: 2px;
-            min-width: 30px; max-width: 30px;
-            min-height: 30px; max-height: 30px;
             color: %9;
-        }
-        QToolButton#replayTransportBtn:hover {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 %26, stop:0.45 %6, stop:1 %25);
-            border-color: %7;
-            border-bottom-color: %25;
-        }
-        QToolButton#replayTransportBtn:pressed {
-            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                stop:0 %25, stop:1 %4);
-            border-top-color: %25;
-            border-bottom-color: %2;
-            padding-top: 3px;
-        }
-        QToolButton#replayTransportBtn:disabled {
-            color: %9;
-            border-color: %2;
-            background: %4;
         }
         QToolButton#replaySkipBtn:focus,
         QToolButton#replayPlayPauseBtn:focus,
@@ -385,33 +314,38 @@ void ReplayBar::applyThemeStyleSheet()
             color: %9;
         }
     )"_s)
-        .arg(bgPanel)           // %1
-        .arg(borderPanel)       // %2
-        .arg(Theme::kRadiusMd)  // %3
-        .arg(bgButton)          // %4
-        .arg(borderDefault)     // %5
-        .arg(btnHover)          // %6
-        .arg(borderLight)       // %7
-        .arg(btnPressed)        // %8
-        .arg(textMuted)         // %9
-        .arg(accent)            // %10
-        .arg(textPri)           // %11
-        .arg(Theme::kFontSizeBase) // %12
-        .arg(fontMono)          // %13
-        .arg(Theme::kSelectBg()) // %14
-        .arg(successBg)         // %15
-        .arg(success)           // %16
-        .arg(warningBg)         // %17
-        .arg(warning)           // %18
-        .arg(infoBg)            // %19
-        .arg(QColor(bgPanel).lighter(105).name()) // %20 - nav group bg
-        .arg(QColor(accent).lighter(140).name())  // %21 - slider gradient end
-        .arg(info)              // %22
-        .arg(Theme::kFocusRing())                          // %23
-        .arg(QColor(bgButton).lighter(130).name())         // %24 - btn top highlight
-        .arg(QColor(bgButton).darker(140).name())          // %25 - btn bottom shadow
-        .arg(QColor(btnHover).lighter(115).name())         // %26 - hover top highlight
-        .arg(QColor(accent).darker(130).name()));          // %27 - accent shadow
+                      .arg(bgPanel)                             // %1
+                      .arg(borderPanel)                         // %2
+                      .arg(Theme::kRadiusMd)                    // %3
+                      .arg(bgButton)                            // %4
+                      .arg(borderDefault)                       // %5
+                      .arg(btnHover)                            // %6
+                      .arg(borderLight)                         // %7
+                      .arg(btnPressed)                          // %8
+                      .arg(textMuted)                           // %9
+                      .arg(accent)                              // %10
+                      .arg(textPri)                             // %11
+                      .arg(Theme::kFontSizeBase)                // %12
+                      .arg(fontMono)                            // %13
+                      .arg(Theme::kSelectBg())                  // %14
+                      .arg(successBg)                           // %15
+                      .arg(success)                             // %16
+                      .arg(warningBg)                           // %17
+                      .arg(warning)                             // %18
+                      .arg(infoBg)                              // %19
+                      .arg(QColor(bgPanel).lighter(105).name()) // %20 - nav group bg
+                      .arg(QColor(accent).lighter(140).name())  // %21 - slider gradient end
+                      .arg(info)                                // %22
+                      .arg(Theme::kFocusRing()));               // %23
+
+    refreshTransportIcons();
+    for (auto *button : {m_jumpStartBtn, m_stepBackBtn, m_playPauseBtn, m_stepFwdBtn, m_jumpEndBtn, m_stopBtn}) {
+        if (button) {
+            button->style()->unpolish(button);
+            button->style()->polish(button);
+            button->update();
+        }
+    }
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -525,7 +459,7 @@ void ReplayBar::onReplayModeChanged(bool)
 void ReplayBar::buildUi()
 {
     setObjectName(u"replayBar"_s);
-    setFocusPolicy(Qt::StrongFocus);
+    setFocusPolicy(Qt::TabFocus);
     setAccessibleName(u"Replay controls"_s);
     setToolTip(
         u"Replay controls · Space: play/pause · Left/Right: step frame · "
@@ -555,7 +489,7 @@ void ReplayBar::buildUi()
         b->setObjectName(objName);
         b->setToolButtonStyle(Qt::ToolButtonIconOnly);
         b->setAutoRaise(false);
-        b->setFocusPolicy(Qt::StrongFocus);
+        b->setFocusPolicy(Qt::TabFocus);
         b->setIconSize(iconSz);
     };
 
@@ -564,46 +498,40 @@ void ReplayBar::buildUi()
     m_jumpStartBtn->setFixedSize(32, 32);
     m_jumpStartBtn->setToolTip(u"Jump to start  [Home key]"_s);
     m_jumpStartBtn->setAccessibleName(u"Jump to start"_s);
-    m_jumpStartBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipBackward));
 
     m_stepBackBtn = new QToolButton(this);
     setupBtn(m_stepBackBtn, u"replaySkipBtn"_s, QSize(16, 16));
     m_stepBackBtn->setFixedSize(32, 32);
     m_stepBackBtn->setToolTip(u"Step back one sample  [← key]"_s);
     m_stepBackBtn->setAccessibleName(u"Step backward"_s);
-    m_stepBackBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSeekBackward));
 
     m_playPauseBtn = new QToolButton(this);
     m_playPauseBtn->setObjectName(u"replayPlayPauseBtn"_s);
     m_playPauseBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
     m_playPauseBtn->setAutoRaise(false);
-    m_playPauseBtn->setFocusPolicy(Qt::StrongFocus);
+    m_playPauseBtn->setFocusPolicy(Qt::TabFocus);
     m_playPauseBtn->setIconSize(QSize(20, 20));
     m_playPauseBtn->setFixedSize(40, 40);
     m_playPauseBtn->setToolTip(u"Play replay  [Space]"_s);
     m_playPauseBtn->setAccessibleName(u"Play replay"_s);
-    m_playPauseBtn->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
 
     m_stepFwdBtn = new QToolButton(this);
     setupBtn(m_stepFwdBtn, u"replaySkipBtn"_s, QSize(16, 16));
     m_stepFwdBtn->setFixedSize(32, 32);
     m_stepFwdBtn->setToolTip(u"Step forward one sample  [→ key]"_s);
     m_stepFwdBtn->setAccessibleName(u"Step forward"_s);
-    m_stepFwdBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSeekForward));
 
     m_jumpEndBtn = new QToolButton(this);
     setupBtn(m_jumpEndBtn, u"replaySkipBtn"_s, QSize(16, 16));
     m_jumpEndBtn->setFixedSize(32, 32);
     m_jumpEndBtn->setToolTip(u"Jump to end  [End key]"_s);
     m_jumpEndBtn->setAccessibleName(u"Jump to end"_s);
-    m_jumpEndBtn->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
 
     m_stopBtn = new QToolButton(this);
     setupBtn(m_stopBtn, u"replayTransportBtn"_s, QSize(14, 14));
     m_stopBtn->setFixedSize(30, 30);
     m_stopBtn->setToolTip(u"Stop replay and reset position"_s);
     m_stopBtn->setAccessibleName(u"Stop replay"_s);
-    m_stopBtn->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
 
     // Create navigation button group container
     m_navButtonGroup = new QFrame(this);
@@ -627,6 +555,7 @@ void ReplayBar::buildUi()
     m_replaySlider->setSingleStep(1);
     m_replaySlider->setPageStep(10);
     m_replaySlider->setTracking(true);
+    m_replaySlider->setFocusPolicy(Qt::TabFocus);
     m_replaySlider->setToolTip(u"Timeline — drag to scrub through the log"_s);
     m_replaySlider->setAccessibleName(u"Replay position"_s);
 
@@ -661,6 +590,7 @@ void ReplayBar::buildUi()
     m_speedCombo->setObjectName(u"replaySpeedCombo"_s);
     m_speedCombo->setToolTip(u"Playback speed (1× = real-time)"_s);
     m_speedCombo->setAccessibleName(u"Playback speed"_s);
+    m_speedCombo->setFocusPolicy(Qt::TabFocus);
     m_speedCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     m_speedCombo->setMaxVisibleItems(12);
     const QList<double> speedRates{0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0};
@@ -816,6 +746,7 @@ void ReplayBar::updateLabels()
 
 void ReplayBar::syncTransportChrome()
 {
+    refreshTransportIcons();
     if (!m_playPauseBtn) return;
 
     const bool live     = !m_model || !m_model->replayMode();
@@ -852,10 +783,6 @@ void ReplayBar::syncTransportChrome()
         }
     }
 
-    if (style()) {
-        m_playPauseBtn->setIcon(style()->standardIcon(
-            isPlaying ? QStyle::SP_MediaPause : QStyle::SP_MediaPlay));
-    }
     const QString playPauseAction = isPlaying ? u"Pause replay"_s : u"Play replay"_s;
     m_playPauseBtn->setAccessibleName(playPauseAction);
     m_playPauseBtn->setToolTip(
@@ -873,5 +800,25 @@ void ReplayBar::syncTransportChrome()
             m_replaySlider->setEnabled(false);
         else
             m_replaySlider->setEnabled(static_cast<int>(m_session->samples.size()) > 0);
+    }
+}
+
+void ReplayBar::refreshTransportIcons() {
+    const std::pair<QToolButton *, QStyle::StandardPixmap> controls[] = {
+        {m_jumpStartBtn, QStyle::SP_MediaSkipBackward},
+        {m_stepBackBtn, QStyle::SP_MediaSeekBackward},
+        {m_playPauseBtn, m_replay && m_replay->isPlaying() ? QStyle::SP_MediaPause : QStyle::SP_MediaPlay},
+        {m_stepFwdBtn, QStyle::SP_MediaSeekForward},
+        {m_jumpEndBtn, QStyle::SP_MediaSkipForward},
+        {m_stopBtn, QStyle::SP_MediaStop},
+    };
+    for (const auto &[button, symbol] : controls) {
+        if (!button) continue;
+        QPixmap icon = style()->standardIcon(symbol).pixmap(button->iconSize());
+        QPainter painter(&icon);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+        painter.fillRect(icon.rect(), QColor(Theme::kTextPrimary()));
+        painter.end();
+        button->setIcon(QIcon(icon));
     }
 }

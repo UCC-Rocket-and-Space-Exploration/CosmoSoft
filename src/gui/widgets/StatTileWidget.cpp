@@ -17,9 +17,8 @@ namespace {
 
 QString buildTileQss(const QString &accentBorder = QString())
 {
-    const QString topBorder = accentBorder.isEmpty()
-        ? QString()
-        : QStringLiteral("border-top: 2px solid %1;").arg(accentBorder);
+    const QString topBorder =
+        accentBorder.isEmpty() ? QString() : QStringLiteral("border-left: 2px solid %1;").arg(accentBorder);
 
     return QString(uR"(
         StatTileWidget {
@@ -47,7 +46,7 @@ QString buildTileQss(const QString &accentBorder = QString())
         }
     )"_s)
         .arg(Theme::kBgPanel())
-        .arg(Theme::kBorderPanel())
+        .arg(Theme::kBorderSubtle())
         .arg(topBorder)
         .arg(Theme::kRadiusMd)
         .arg(Theme::kTextMuted())
@@ -63,8 +62,8 @@ StatTileWidget::StatTileWidget(const QString &label,
     : QFrame(parent)
 {
     auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(12, 8, 12, 8);
-    layout->setSpacing(4);
+    layout->setContentsMargins(16, 12, 16, 12);
+    layout->setSpacing(8);
 
     m_titleLabel = new QLabel(label.toUpper(), this);
     m_titleLabel->setProperty("kind", u"statLabel"_s);

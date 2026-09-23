@@ -45,7 +45,6 @@
 #include <QResizeEvent>
 #include <QSettings>
 #include <QStringList>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QLabel>
@@ -189,31 +188,13 @@ struct SerialPortScanResult {
     }
 }
 
-QPushButton* createActionButton(QWidget *parent, const QString &tooltip, const QString &iconName) {
+QPushButton *createActionButton(QWidget *parent, const QString &tooltip) {
     auto *btn = new QPushButton(parent);
     btn->setProperty("kind", "actionButton");
     btn->setToolTip(tooltip);
     btn->setAccessibleName(tooltip);
     btn->setCursor(Qt::PointingHandCursor);
     btn->setFocusPolicy(Qt::TabFocus);
-
-    // Use Qt standard icons as placeholders
-    QStyle::StandardPixmap iconType = QStyle::SP_FileIcon;
-    if (iconName == u"folder-open"_s) {
-        iconType = QStyle::SP_DirOpenIcon;
-    } else if (iconName == u"trash"_s) {
-        iconType = QStyle::SP_TrashIcon;
-    } else if (iconName == u"export"_s) {
-        iconType = QStyle::SP_DialogSaveButton;
-    } else if (iconName == u"play"_s) {
-        iconType = QStyle::SP_MediaPlay;
-    } else if (iconName == u"stop"_s) {
-        iconType = QStyle::SP_MediaStop;
-    }
-
-    QIcon icon = btn->style()->standardIcon(iconType);
-    btn->setIcon(icon);
-    btn->setIconSize(QSize(20, 20));
 
     return btn;
 }
@@ -295,7 +276,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
             this, &MainWindow::onThemeChanged);
 
-    statusBar()->showMessage(u"DO NOT FORGET TO CONNECT WIFI AND CABLE TO ROCKET."_s);
+    statusBar()->showMessage(u"Ready · Open a flight log or connect a device in Live Telemetry."_s);
 
     if (const auto geom = QSettings(kSettingsOrg, kSettingsApp).value(kSettingsWindowMainGeo).toByteArray(); !geom.isEmpty())
         restoreGeometry(geom);
@@ -477,169 +458,82 @@ void MainWindow::rebuildRecentFilesMenu() {
 }
 
 QString MainWindow::buildToolbarStyleSheet() {
-    const auto bgPanel = Theme::kBgPanel();
-    const auto textPri = Theme::kTextPrimary();
-    const auto textMid = Theme::kTextMid();
-    const auto btnBg = Theme::kBgButton();
-    const auto btnHov = Theme::kBtnHover();
-    const auto borderDef = Theme::kBorderDefault();
-    const auto borderLight = Theme::kBorderLight();
-    const auto accent = Theme::kAccentLink();
-    const auto textDim = Theme::kTextDim();
-
     return QString(uR"(
         QToolBar#missionToolbar {
             background: %1;
-            padding: 10px 10px;
             border: none;
+            border-right: 1px solid %2;
+            padding: 16px 10px;
         }
-        QWidget#toolbarContent {
-            background: transparent;
-            margin: 0;
-        }
-        QWidget#brandBlock QLabel#brandLabel {
+        QWidget#toolbarContent, QWidget#brandBlock { background: transparent; }
+        QLabel#brandLabel {
             font-size: 26px;
             font-weight: 500;
-            font-family: %2;
+            font-family: %3;
             letter-spacing: 0.05em;
-            color: %3;
+            color: %4;
         }
-        QWidget#brandBlock QLabel#missionMeta {
+        QLabel#missionMeta {
             font-size: 14px;
-            color: %4;
-            font-family: %5;
+            color: %5;
+            font-family: %6;
         }
-        QLabel#missionPageTitle {
-            font-size: 15px;
-            font-weight: 600;
-            color: %4;
-            letter-spacing: 0.08em;
-            font-family: %5;
-        }
-        QToolButton[kind="navButton"] {
+        QToolButton[kind="navButton"], QToolButton[kind="iconButton"] {
             font-size: 13px;
-            min-width: 120px;
-            padding: 8px 16px;
-            border: none;
-            border-bottom: 3px solid transparent;
-            border-radius: 0;
-            background-color: transparent;
-            color: %4;
-            font-family: %5;
+            font-family: %6;
+            color: %5;
+            background: transparent;
+            border: 1px solid transparent;
+            border-left: 3px solid transparent;
+            border-radius: 6px;
+            padding: 12px 8px;
+            text-align: left;
         }
-        QToolButton[kind="navButton"]:hover {
-            background-color: %9;
-            color: %3;
-        }
-    )"_s)
-        .arg(bgPanel)               // %1
-        .arg(Theme::kFontDisplay)   // %2
-        .arg(textPri)               // %3
-        .arg(textMid)               // %4
-        .arg(Theme::kFontMono)      // %5
-        .arg(Theme::kFontSizeBase)  // %6
-        .arg(borderDef)             // %7
-        .arg(btnBg)                 // %8
-        .arg(btnHov)                // %9
-    + [&]() {
-        QColor accentColor(accent);
-        accentColor.setAlpha(28);
-        const QString accentSubtle = accentColor.name(QColor::HexArgb);
-        return QString(uR"(
-        QToolButton[kind="navButton"]:checked {
-            background-color: %8;
-            color: %1;
-            border-top: none;
-            border-left: none;
-            border-right: none;
-            border-bottom: 3px solid %3;
-        }
-        QToolButton[kind="navButton"]:disabled {
-            color: %4;
-            background-color: transparent;
-        }
-        QToolButton[kind="iconButton"] {
-            min-width: 30px;
-            min-height: 30px;
-            border: none;
-            background-color: transparent;
-        }
-        QToolButton[kind="iconButton"]:hover {
-            background-color: %6;
-        }
+        QToolButton[kind="navButton"]:hover,
+        QToolButton[kind="iconButton"]:hover { background: %7; color: %4; }
+        QToolButton[kind="navButton"]:checked,
         QToolButton[kind="iconButton"]:checked {
-            background-color: %7;
+            background: %8;
+            color: %9;
+            border-left-color: %9;
         }
-        QToolBar#missionToolbar[compact="true"] QToolButton[kind="navButton"] {
-            min-width: 76px;
-            padding-left: 6px;
-            padding-right: 6px;
-        }
-        QToolBar#missionToolbar[narrow="true"] QToolButton[kind="navButton"] {
-            min-width: 62px;
-        }
-    )"_s)
-            .arg(accent)            // %1
-            .arg(Theme::kBgBase())  // %2
-            .arg(accent)            // %3
-            .arg(textDim)           // %4
-            .arg(borderLight)       // %5
-            .arg(btnHov)            // %6
-            .arg(btnBg)             // %7
-            .arg(accentSubtle);     // %8
-    }()
-    + QString(uR"(
         QToolButton[kind="navButton"]:focus,
-        QToolButton[kind="iconButton"]:focus {
-            border: 2px solid %1;
-        }
+        QToolButton[kind="iconButton"]:focus { border: 1px solid %10; }
     )"_s)
-        .arg(Theme::kFocusRing());
+        .arg(Theme::kBgPanel(), Theme::kBorderSubtle(), Theme::kFontDisplay, Theme::kTextPrimary(), Theme::kTextMid(),
+             Theme::kFontMono, Theme::kBtnHover(), Theme::kBgBase(), Theme::kAccentLink(), Theme::kFocusRing());
 }
 
 QString MainWindow::buildActionBarStyleSheet() {
     return QString(uR"(
         QWidget#connectionStrip {
             background: %1;
-            color: %2;
-            border-bottom: 1px solid %3;
-            padding: 8px 16px;
+            border-bottom: 1px solid %2;
         }
         QLabel#connectionStripContext {
-            font-size: %4px;
-            color: %5;
-            font-family: %6;
+            font-size: %3px;
+            color: %4;
+            font-family: %5;
             font-weight: 500;
         }
         QPushButton[kind="actionButton"] {
-            min-width: 32px;
-            min-height: 32px;
-            max-width: 32px;
-            max-height: 32px;
-            border: none;
-            border-radius: 4px;
-            background-color: transparent;
-            padding: 4px;
+            min-height: 28px;
+            padding: 5px 10px;
+            color: %4;
+            background: transparent;
+            border: 1px solid %2;
+            border-radius: 6px;
         }
-        QPushButton[kind="actionButton"]:hover {
-            background-color: %7;
-        }
-        QPushButton[kind="actionButton"]:pressed {
-            background-color: %8;
-        }
-        QPushButton[kind="actionButton"]:focus {
-            border: 2px solid %9;
-        }
+        QPushButton#openFlightLog { border-color: %6; color: %6; }
+        QPushButton[kind="actionButton"]:hover { background: %7; }
+        QPushButton[kind="actionButton"]:pressed { background: %8; }
+        QPushButton[kind="actionButton"]:focus { border-color: %9; }
+        QPushButton[kind="actionButton"]:disabled { color: %10; border-color: %2; }
     )"_s)
-        .arg(Theme::kBgBase())          // %1 - lighter than toolbar
-        .arg(Theme::kTextPrimary())     // %2
-        .arg(Theme::kBorderSubtle())    // %3
-        .arg(Theme::kFontSizeBase)      // %4
-        .arg(Theme::kTextMid())         // %5
-        .arg(Theme::kFontMono)          // %6
-        .arg(Theme::kBtnHover())        // %7
-        .arg(Theme::kBtnPressed())      // %8
-        .arg(Theme::kFocusRing());      // %9
+        .arg(Theme::kBgBase(), Theme::kBorderSubtle())
+        .arg(Theme::kFontSizeBase)
+        .arg(Theme::kTextPrimary(), Theme::kFontMono, Theme::kAccentLink(), Theme::kBtnHover(), Theme::kBtnPressed(),
+             Theme::kFocusRing(), Theme::kTextDim());
 }
 
 void MainWindow::setupToolbar() {
@@ -649,29 +543,24 @@ void MainWindow::setupToolbar() {
     toolbar->setMovable(false);
     toolbar->setFloatable(false);
     toolbar->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    toolbar->setAllowedAreas(Qt::TopToolBarArea);
-    toolbar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    toolbar->setAllowedAreas(Qt::LeftToolBarArea);
+    toolbar->setOrientation(Qt::Vertical);
+    toolbar->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
     toolbar->setStyleSheet(buildToolbarStyleSheet());
-    addToolBar(Qt::TopToolBarArea, toolbar);
-
-    m_brandShadow = new QGraphicsDropShadowEffect(this);
-    m_brandShadow->setBlurRadius(5);
-    m_brandShadow->setOffset(1, 1);
-    updateBrandShadowColor();
+    addToolBar(Qt::LeftToolBarArea, toolbar);
 
     auto *content = new QWidget(toolbar);
     m_toolbarContent = content;
     content->setObjectName(u"toolbarContent"_s);
     content->setMinimumWidth(0);
-    content->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    auto *contentLayout = new QHBoxLayout(content);
+    content->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    auto *contentLayout = new QVBoxLayout(content);
     LayoutHelpers::setZeroMargins(contentLayout);
     contentLayout->setSpacing(Theme::kSpaceXl);
 
     auto *brandBlock = new QWidget(content);
     m_brandBlock = brandBlock;
     brandBlock->setObjectName(u"brandBlock"_s);
-    brandBlock->setGraphicsEffect(m_brandShadow);
     auto *brandLayout = new QVBoxLayout(brandBlock);
     brandLayout->setContentsMargins(0, 0, 0, 0);
     brandLayout->setSpacing(2);
@@ -703,7 +592,7 @@ void MainWindow::setupToolbar() {
         m_missionClockTimer->start();
     }
 
-    contentLayout->addStretch(1);
+    contentLayout->addSpacing(16);
 
     auto makeNavButton = [](QAction *action,
                           QWidget *parent,
@@ -716,6 +605,7 @@ void MainWindow::setupToolbar() {
         button->setCheckable(true);
         button->setCursor(Qt::PointingHandCursor);
         button->setFocusPolicy(Qt::TabFocus);
+        button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         button->setDefaultAction(action);
         button->setAccessibleName(action->text());
         button->setToolTip(action->toolTip());
@@ -727,25 +617,22 @@ void MainWindow::setupToolbar() {
     };
 
     auto *navContainer = new QWidget(content);
-    auto *navLayout = new QHBoxLayout(navContainer);
+    auto *navLayout = new QVBoxLayout(navContainer);
     navLayout->setContentsMargins(0, 0, 0, 0);
-    navLayout->setSpacing(12);
+    navLayout->setSpacing(6);
 
     m_liveNavButton = makeNavButton(m_liveTelemetryAction, navContainer);
     m_dashboardNavButton = makeNavButton(m_dashboardAction, navContainer);
     m_eventLogNavButton = makeNavButton(m_eventLogAction, navContainer);
-    m_settingsNavButton = makeNavButton(
-        m_openSettingsAction,
-        navContainer,
-        Qt::ToolButtonIconOnly,
-        u"iconButton"_s,
-        QSize(44, 44));
-    navLayout->addWidget(m_liveNavButton);
+    m_settingsNavButton =
+        makeNavButton(m_openSettingsAction, navContainer, Qt::ToolButtonTextBesideIcon, u"iconButton"_s, QSize(20, 20));
     navLayout->addWidget(m_dashboardNavButton);
+    navLayout->addWidget(m_liveNavButton);
     navLayout->addWidget(m_eventLogNavButton);
-    navLayout->addWidget(m_settingsNavButton);
 
     contentLayout->addWidget(navContainer);
+    contentLayout->addStretch(1);
+    contentLayout->addWidget(m_settingsNavButton);
 
     toolbar->addWidget(content);
     updateToolbarLayout();
@@ -761,7 +648,7 @@ void MainWindow::updateToolbarLayout() {
         return;
     }
 
-    constexpr int kCompactWidth = 900;
+    constexpr int kCompactWidth = 1100;
     constexpr int kNarrowWidth = 540;
     const int toolbarWidth = width();
     const int nextMode = toolbarWidth < kNarrowWidth
@@ -772,6 +659,7 @@ void MainWindow::updateToolbarLayout() {
 
     const bool compact = nextMode >= 1;
     const bool narrow = nextMode >= 2;
+    m_missionToolbar->setFixedWidth(compact ? 104 : 208);
     m_missionToolbar->setProperty("compact", compact);
     m_missionToolbar->setProperty("narrow", narrow);
 
@@ -779,7 +667,7 @@ void MainWindow::updateToolbarLayout() {
         m_missionMetaLabel->setVisible(!compact);
     }
     if (m_brandBlock) {
-        m_brandBlock->setVisible(!narrow);
+        m_brandBlock->setVisible(!compact);
     }
     if (m_liveNavButton) {
         m_liveNavButton->setText(compact ? u"Live"_s : m_liveTelemetryAction->text());
@@ -793,8 +681,17 @@ void MainWindow::updateToolbarLayout() {
     if (m_toolbarContent && m_toolbarContent->layout()) {
         m_toolbarContent->layout()->setSpacing(compact ? Theme::kSpaceBase : Theme::kSpaceXl);
     }
+    if (m_settingsNavButton) {
+        m_settingsNavButton->setToolButtonStyle(compact ? Qt::ToolButtonIconOnly : Qt::ToolButtonTextBesideIcon);
+    }
+    if (m_openLogBtn) {
+        m_openLogBtn->setText(compact ? u"Open"_s : u"Open flight log"_s);
+        m_exportBtn->setText(u"Export"_s);
+        m_clearFlightBtn->setText(u"Clear"_s);
+        refreshFakeTransmissionButton();
+    }
     if (m_connectionPageLabel) {
-        m_connectionPageLabel->setMinimumWidth(compact ? 0 : 200);
+        m_connectionPageLabel->setMinimumWidth(0);
         m_connectionPageLabel->setVisible(!narrow);
     }
 
@@ -838,26 +735,25 @@ void MainWindow::setupConnectionBar() {
     m_connectionBar->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     auto *row = new QHBoxLayout(m_connectionBar);
-    row->setContentsMargins(16, 8, 16, 8);
+    row->setContentsMargins(24, 16, 24, 16);
     row->setSpacing(12);
 
-    m_connectionPageLabel = new QLabel(u"Flight Monitoring"_s, m_connectionBar);
+    m_connectionPageLabel = new QLabel(u"Flight analysis"_s, m_connectionBar);
     m_connectionPageLabel->setObjectName(u"connectionStripContext"_s);
     m_connectionPageLabel->setWordWrap(false);
-    m_connectionPageLabel->setMinimumWidth(200);
+    m_connectionPageLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
-    m_openLogBtn = createActionButton(m_connectionBar, u"Open flight log"_s, u"folder-open"_s);
-    m_clearFlightBtn = createActionButton(m_connectionBar, u"Clear flight data"_s, u"trash"_s);
-    m_exportBtn = createActionButton(m_connectionBar, u"Export session to CSV"_s, u"export"_s);
-    m_fakeTransmissionBtn = createActionButton(m_connectionBar, u"Start fake live transmission"_s, u"play"_s);
+    m_openLogBtn = createActionButton(m_connectionBar, u"Open flight log"_s);
+    m_clearFlightBtn = createActionButton(m_connectionBar, u"Clear flight data"_s);
+    m_exportBtn = createActionButton(m_connectionBar, u"Export session to CSV"_s);
+    m_fakeTransmissionBtn = createActionButton(m_connectionBar, u"Start fake live transmission"_s);
 
-    row->addWidget(m_connectionPageLabel);
-    row->addSpacing(16);
+    m_openLogBtn->setObjectName(u"openFlightLog"_s);
+    row->addWidget(m_connectionPageLabel, 1);
     row->addWidget(m_openLogBtn);
     row->addWidget(m_clearFlightBtn);
     row->addWidget(m_exportBtn);
     row->addWidget(m_fakeTransmissionBtn);
-    row->addStretch(1);
 
     connect(m_openLogBtn, &QPushButton::clicked, this, &MainWindow::onOpenReplayFile);
     connect(m_clearFlightBtn, &QPushButton::clicked, this, &MainWindow::onClearFlightData);
@@ -873,11 +769,11 @@ void MainWindow::updateBreadcrumb(const QString &context) {
         return;
     }
 
+    m_connectionPageLabel->setToolTip(context);
     if (context.isEmpty()) {
-        m_connectionPageLabel->setText(u"Flight Monitoring"_s);
+        m_connectionPageLabel->setText(u"Flight analysis"_s);
     } else {
-        m_connectionPageLabel->setText(
-            QStringLiteral("Flight Monitoring › %1").arg(context));
+        m_connectionPageLabel->setText(context);
     }
 }
 
@@ -931,6 +827,8 @@ void MainWindow::setupPages() {
 
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_flightDataPage);
+    connect(m_flightDataPage, &DashboardPage::openLogRequested, this, &MainWindow::onOpenReplayFile);
+    connect(m_flightDataPage, &DashboardPage::liveTelemetryRequested, m_liveTelemetryAction, &QAction::trigger);
 
     m_liveTelemetryPage = new LiveTelemetryPage(m_flightModel.get(), this);
     m_pages->addWidget(m_liveTelemetryPage);
@@ -1032,8 +930,9 @@ void MainWindow::updateMissionClock() {
         offsetString += QStringLiteral(":%1").arg(offsetMinutes, 2, 10, QLatin1Char('0'));
     }
 
-    const QString timestamp = QStringLiteral("%1 | %2")
-                                  .arg(offsetString, localNow.toString(u"HH:mm:ss | dd MMM yyyy"_s));
+    const QString timestamp =
+        QStringLiteral("%1  %2\n%3")
+            .arg(offsetString, localNow.toString(u"HH:mm:ss"_s), localNow.toString(u"dd MMM yyyy"_s));
     m_missionMetaLabel->setText(timestamp);
 }
 
@@ -1114,8 +1013,7 @@ void MainWindow::refreshFakeTransmissionButton() {
     const bool active = m_fakeTransmissionTimer && m_fakeTransmissionTimer->isActive();
     m_fakeTransmissionBtn->setToolTip(active ? u"Stop fake live transmission"_s : u"Start fake live transmission"_s);
     m_fakeTransmissionBtn->setAccessibleName(m_fakeTransmissionBtn->toolTip());
-    m_fakeTransmissionBtn->setIcon(
-        m_fakeTransmissionBtn->style()->standardIcon(active ? QStyle::SP_MediaStop : QStyle::SP_MediaPlay));
+    m_fakeTransmissionBtn->setText(active ? u"Stop demo"_s : u"Demo"_s);
 }
 
 void MainWindow::stopFakeTransmission(bool completed) {
@@ -1373,27 +1271,8 @@ void MainWindow::onShowAbout() {
     dlg.exec();
 }
 
-void MainWindow::updateBrandShadowColor() {
-    if (!m_brandShadow) {
-        return;
-    }
-    const QColor toolbarSurface(Theme::kBgPanel());
-    const bool lightBackground = toolbarSurface.isValid()
-        && relativeLuminance(toolbarSurface) > 0.5;
-    QColor shadowColor(lightBackground
-                           ? Theme::kTextPrimary()
-                           : Theme::kBgDark());
-    if (!shadowColor.isValid()) {
-        shadowColor = QColor(Theme::kBorderPanel());
-    }
-    shadowColor.setAlpha(lightBackground ? 110 : 175);
-    m_brandShadow->setColor(shadowColor);
-}
-
 void MainWindow::onThemeChanged() {
     updateSettingsIcon();
-
-    updateBrandShadowColor();
 
     auto *toolbar = findChild<QToolBar *>(u"missionToolbar"_s);
     if (toolbar) {

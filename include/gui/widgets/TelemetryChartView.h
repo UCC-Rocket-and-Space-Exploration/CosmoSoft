@@ -10,7 +10,7 @@
  *  - Cmd/Ctrl + swipe   → zoom at cursor
  *  - Mouse hover        → floating text overlay + vertical crosshair
  *
- * Callers wire three std::function callbacks:
+ * The owning dashboard provides sample lookup and navigation callbacks:
  *  - hoverReadout(text) — fired on every hover (empty = cleared)
  *  - hoverDetail(tSec, idx1Based, total) → returns formatted multi-metric text
  *  - onUserAdjustedAxes() — fired after any pan/zoom
@@ -28,6 +28,7 @@
 #include <vector>
 
 class QLabel;
+class QLineSeries;
 class QValueAxis;
 
 class TelemetryChartView : public QChartView {
@@ -41,8 +42,8 @@ public:
     /**
      * Returns the multi-line text for the floating detail overlay.
      * @param tSec              X-axis value at the cursor (seconds).
-     * @param sampleIndex1Based 1-based index of the nearest display point.
-     * @param totalSamples      Total number of display points in the series.
+     * @param sampleIndex1Based 1-based index in the original-sample lookup.
+     * @param totalSamples      Number of original samples in the lookup.
      */
     std::function<QString(double tSec, int sampleIndex1Based, int totalSamples)> hoverDetail;
 
@@ -51,6 +52,11 @@ public:
      * set a "preserve axes" flag and suppress automatic rescaling on rebuild.
      */
     std::function<void()> onUserAdjustedAxes;
+
+    /** @brief Read the original Y value for the requested one-based logical sample. */
+    std::function<double(const QLineSeries *, int)> hoverValue;
+    /** @brief Restore the complete data range after a double-click. */
+    std::function<void()> onResetAxes;
 
     explicit TelemetryChartView(QChart *chart, QWidget *parent = nullptr);
 
@@ -72,22 +78,26 @@ public:
     void invalidateHoverSeriesCache();
 
 protected:
-    void mousePressEvent(QMouseEvent *event) override;
-    void mouseMoveEvent(QMouseEvent *event) override;
-    void mouseReleaseEvent(QMouseEvent *event) override;
-    void wheelEvent(QWheelEvent *event) override;
-    void leaveEvent(QEvent *event) override;
-    void focusOutEvent(QFocusEvent *event) override;
-    bool eventFilter(QObject *obj, QEvent *event) override;
+  void keyPressEvent(QKeyEvent *event) override;
+  void mouseDoubleClickEvent(QMouseEvent *event) override;
+  void resizeEvent(QResizeEvent *event) override;
+  void mousePressEvent(QMouseEvent *event) override;
+  void mouseMoveEvent(QMouseEvent *event) override;
+  void mouseReleaseEvent(QMouseEvent *event) override;
+  void wheelEvent(QWheelEvent *event) override;
+  void leaveEvent(QEvent *event) override;
+  void focusOutEvent(QFocusEvent *event) override;
+  bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     void hideHoverOverlays();
-    void updateHoverReadoutAt(const QPoint &widgetPos);
+    void updateHoverReadoutAt(const QPoint &widgetPos, int requestedIndex = -1);
     void endPanningIfActive();
     void panAxesByPixels(const QPoint &delta);
     static void zoomAxisAtFocal(QValueAxis *ax, double focal, double spanScale);
     void refreshHoverOverlayStyleSheet();
     void rebuildHoverSeriesCache();
+    void updateAxisTicks();
 
     struct HoverSeriesCacheEntry {
         QPointer<QObject> series;
@@ -105,6 +115,7 @@ private:
     QVector<double> m_hoverXValues;
     std::vector<HoverSeriesCacheEntry> m_hoverSeriesCache;
     bool m_hoverSeriesCacheDirty = true;
+    int m_hoverIndex = -1;
 
     int      m_hoverThrottleCounter = 0;    ///< Skips N hover updates during pan for performance.
 };

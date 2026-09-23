@@ -105,7 +105,6 @@ private:
     QFrame *buildIgnitorPanel();
     QPushButton *createPanelButton(const QString &text, QWidget *parent);
     QToolButton *createMapToolButton(const QString &text, QWidget *parent);
-    void refreshDeviceRows();
     void refreshTelemetryDisplay();
     void resetMetricTiles();
     void updateLastPacketLabel();
@@ -138,7 +137,6 @@ private:
     QPushButton *m_connectButton = nullptr;
     QPushButton *m_disconnectButton = nullptr;
     QPushButton *m_demoButton = nullptr;
-    QVBoxLayout *m_deviceRowsLayout = nullptr;
 
     QStringList m_availablePorts;
     QString m_activeConnectionLabel;

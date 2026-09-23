@@ -10,7 +10,7 @@
 
 #include "domain/FlightSample.h"
 #include "gateway/comms/SerialFramerWorker.h"
-#include "gateway/comms/windows/SerialCommsWindows.h"
+#include "gateway/comms/Windows/SerialCommsWindows.h"
 #include "gui/MainWindow.h"
 #include "gui/SettingsKeys.h"
 #include "gui/ThemeManager.h"

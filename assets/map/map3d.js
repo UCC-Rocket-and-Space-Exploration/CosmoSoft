@@ -17,7 +17,7 @@ let allPos = [], allAlt = [], allTs = [], allIdx = [], trailLen = 0, following =
 let allPos3d = [], allAlt3d = [], allIdx3d = [], totalRawSamples = 0, currentExactPoint = null;
 let cumulativeLiveTotal = "", cumulativeLiveValid = "", cumulativeLivePathLength = NaN;
 let activeView = "2d";
-let activeLayer = "map";
+let activeLayer = "terrain";
 let tileLayerMap = null, tileLayerLight = null, tileLayerTerrain = null, tileLayerSat = null;
 let currentThemeDark = true;
 let hostVisible = true;
@@ -282,9 +282,9 @@ function apply3DTheme() {
     groundMesh3d.material.color.set(0xffffff);
   }
 
-  setLineStyle(ghostLine3d, ghost, isDark ? 3.0 : 3.5, isDark ? 0.55 : 0.50);
-  setLineStyle(trailLine3d, trail, isDark ? 7.0 : 8.0, 1.0);
-  setLineStyle(pathLine3d, drop, isDark ? 2.0 : 2.5, isDark ? 0.22 : 0.34);
+  setLineStyle(ghostLine3d, ghost, isDark ? 2.0 : 2.25, isDark ? 0.48 : 0.44);
+  setLineStyle(trailLine3d, trail, isDark ? 4.5 : 5.0, 1.0);
+  setLineStyle(pathLine3d, drop, isDark ? 1.25 : 1.5, isDark ? 0.18 : 0.28);
 
   if (launchSphere3d?.material) {
     launchSphere3d.material.color.set(launch);
@@ -328,7 +328,7 @@ function initMap() {
     maxZoom:19,
     attribution:'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
   });
-  tileLayerMap.addTo(map);
+  tileLayerTerrain.addTo(map);
 
   pathLine = L.polyline([],{color:"rgba(60,100,140,0.35)",weight:5,lineCap:"round",lineJoin:"round",interactive:false}).addTo(map);
   trailLine = L.polyline([],{color:"#4fa5de",weight:4,lineCap:"round",lineJoin:"round",interactive:false}).addTo(map);
@@ -437,15 +437,15 @@ function init3D() {
   scene3d.add(dLight);
 
   // ghost line (full path, dimmed)
-  ghostLine3d = createWideLine(0x3a5a78, 3.0, 0.55);
+  ghostLine3d = createWideLine(0x3a5a78, 2.0, 0.48);
   scene3d.add(ghostLine3d);
 
   // trail line (active, bright)
-  trailLine3d = createWideLine(0x64c8ff, 7.0, 1.0);
+  trailLine3d = createWideLine(0x64c8ff, 4.5, 1.0);
   scene3d.add(trailLine3d);
 
   // vertical drop lines from trail to ground
-  pathLine3d = createWideLine(0x64c8ff, 2.0, 0.22, true);
+  pathLine3d = createWideLine(0x64c8ff, 1.25, 0.18, true);
   scene3d.add(pathLine3d);
 
   // launch sphere

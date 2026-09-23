@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "gateway/comms/IComms.h"
+#include "gateway/comms/interfaces/IComms.h"
 #include "gateway/comms/SerialWorker.h"
 
 #include <atomic>

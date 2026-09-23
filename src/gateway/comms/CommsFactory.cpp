@@ -1,7 +1,7 @@
 #include "gateway/comms/CommsFactory.h"
 
 #if defined(_WIN32) || defined(_WIN64)
-#include "gateway/comms/windows/SerialCommsWindows.h"
+#include "gateway/comms/Windows/SerialCommsWindows.h"
 #endif
 
 #if defined(__unix__) || defined(__APPLE__) || defined(_POSIX_VERSION)
