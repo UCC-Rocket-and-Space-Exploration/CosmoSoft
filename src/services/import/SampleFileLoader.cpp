@@ -24,6 +24,8 @@
 
 #include <zlib.h>
 
+#include "domain/Frame.h"
+
 namespace {
 
 constexpr std::uint32_t kZipLocalFileHeaderSignature = 0x04034b50;
@@ -1240,7 +1242,7 @@ SampleFileLoader::LoadResult SampleFileLoader::loadTelemFile(
         if (!bytesOpt || bytesOpt->empty()) {
             continue;
         }
-        //Use decoder insatead
+        //Use decoder instead
         framer.ingest(bytesOpt->data(), bytesOpt->size());
         Frame frame{};
         while (framer.try_next_frame(frame)) {
