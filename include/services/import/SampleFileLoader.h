@@ -15,7 +15,7 @@ class Parser;
  * Loads flight logs into FlightSession.
  * - CSV: first non-comment row is the header with supported telemetry column names.
  * - XLSX: first worksheet with supported telemetry column names in the first non-empty row.
- * - TELEM: hex lines fed through Framer + Parser (samples only if decode is implemented).
+ * - TELEM: validated AltOS packets decoded into elapsed-time replay samples.
  */
 class SampleFileLoader {
 public:
@@ -79,11 +79,11 @@ public:
         const cosmo::CancellationCheck &cancellation_check);
 
     /**
-     * @brief Decode Altos-style "TELEM <hex>" lines through Framer and Parser.
+     * @brief Decode Altos-style "TELEM <hex>" lines using registered packet decoders.
      * @param path Source file path.
-     * @param out Destination session.
-     * @param framer Binary frame extractor.
-     * @param parser Telemetry frame decoder.
+     * @param out Destination session, unchanged on failure.
+     * @param framer Legacy argument, retained for compatibility.
+     * @param parser Legacy argument, retained for compatibility.
      * @return Error if file unreadable; if decoding yields no samples, returns an explanatory message.
      */
     static std::optional<std::string> loadTelemFile(
@@ -95,10 +95,8 @@ public:
     /**
      * @brief Decode a TELEM file with cooperative cancellation.
      * @param path Source file path.
-     * @param out Destination session, unchanged on cancellation.
-     * @param decoder_vault
-     * @param framer Binary frame extractor.
-     * @param parser Telemetry frame decoder.
+     * @param out Destination session, replaced on success; unchanged on failure or cancellation.
+     * @param decoder_vault Registered AltOS packet decoders.
      * @param cancellation_check Callback polled during line, hex, and frame processing.
      * @return Structured success, error, or cancellation outcome.
      */

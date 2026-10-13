@@ -5,6 +5,7 @@
 #include "gui/pages/DashboardPage.h"
 #include "gui/pages/LiveTelemetryPage.h"
 #include "gui/widgets/StatTileWidget.h"
+#include "services/import/SampleFileLoader.h"
 #include "services/telemetry/LineTelemetryBatchMailbox.h"
 #include "services/telemetry/RecordedComms.h"
 #include "services/telemetry/TelemetrySession.h"
@@ -23,6 +24,7 @@
 #include <QStackedWidget>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QValueAxis>
 #include <QWebEngineProfile>
 #include <QWebEngineUrlRequestInfo>
 #include <QWebEngineUrlRequestInterceptor>
@@ -175,6 +177,56 @@ TEST_CASE("Recorded telemetry pages update in both themes and survive page "
   pages.close();
   for (auto *profile : qApp->findChildren<QWebEngineProfile *>()) {
     profile->setUrlRequestInterceptor(nullptr);
+  }
+}
+
+TEST_CASE("TELEM imports render and replay while the GUI processes events",
+          "[import][widgets]") {
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  dashboard.resize(1440, 950);
+  dashboard.show();
+  for (const auto *name : {"recorded_imu.telem", "altos_sample_data.telem",
+                           "altos_sample_data2.telem"}) {
+    auto session = std::make_shared<FlightSession>();
+    FrameDecoderVault vault;
+    const auto result = SampleFileLoader::loadTelemFile(
+        std::string(COSMO_SOURCE_DIR) + "/sample_data/" + name, *session, vault,
+        cosmo::CancellationCheck{});
+    REQUIRE(result.succeeded());
+    auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+    REQUIRE(preview);
+    model.setReplayMode(true);
+    replay.setSession(session, preview);
+    dashboard.setReplaySession(session, preview);
+    for (auto *check : dashboard.findChildren<QCheckBox *>()) {
+      if (check->objectName() == QStringLiteral("traceCheck"))
+        check->setChecked(true);
+    }
+    replay.setPosition(static_cast<int>(session->samples.size()));
+    bool tick = false;
+    QTimer::singleShot(100, &dashboard, [&] { tick = true; });
+    REQUIRE(pumpUntil([&] { return tick; }));
+    bool plotted = false;
+    for (auto *view : dashboard.findChildren<QChartView *>()) {
+      for (auto *abstractAxis : view->chart()->axes()) {
+        if (auto *axis = qobject_cast<QValueAxis *>(abstractAxis)) {
+          REQUIRE(axis->tickType() == QValueAxis::TicksFixed);
+          REQUIRE(axis->tickCount() <= 9);
+        }
+      }
+      for (auto *series : view->chart()->series()) {
+        if (auto *line = qobject_cast<QLineSeries *>(series)) {
+          plotted |= line->count() > 0;
+          for (const auto &point : line->points()) {
+            REQUIRE(std::isfinite(point.x()));
+            REQUIRE(std::isfinite(point.y()));
+          }
+        }
+      }
+    }
+    REQUIRE(plotted);
   }
 }
 

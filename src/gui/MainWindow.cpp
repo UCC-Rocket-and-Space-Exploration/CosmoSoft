@@ -363,7 +363,7 @@ void MainWindow::setupActions() {
     auto *pageGroup = new QActionGroup(this);
     pageGroup->setExclusive(true);
 
-    m_dashboardAction = new QAction(u"Dashboard"_s, this);
+    m_dashboardAction = new QAction(u"Replay"_s, this);
     m_dashboardAction->setToolTip(u"Show the flight replay dashboard."_s);
     m_dashboardAction->setShortcut(QKeySequence(u"Ctrl+1"_s));
     m_dashboardAction->setCheckable(true);

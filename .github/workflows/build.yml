@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,21 +14,61 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-14]
+        include:
+          - os: ubuntu-22.04
+            qt_arch: linux_gcc_64
+          - os: macos-14
+            qt_arch: clang_64
+          - os: windows-2022
+            qt_arch: win64_msvc2019_64
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zlib1g-dev libnss3 libasound2
+
+      - name: Install Windows Zlib
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install zlib:x64-windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/bin" >> $env:GITHUB_PATH
+          "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/debug/bin" >> $env:GITHUB_PATH
+
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.7.*'
-          modules: 'qtcharts'
+          version: '6.7.3'
+          arch: ${{ matrix.qt_arch }}
+          modules: 'qtcharts qtwebengine qtwebchannel qtpositioning'
           cache: true
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        if: runner.os != 'Windows'
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Configure Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: >-
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x64-windows
 
       - name: Build
-        run: cmake --build build --parallel $(nproc 2>/dev/null || sysctl -n hw.logicalcpu)
+        run: cmake --build build --config Debug --parallel 4
+
+      - name: Test
+        run: ctest --test-dir build -C Debug --output-on-failure
+
+      - name: Upload test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics-${{ matrix.os }}
+          path: build/Testing/Temporary/
+          if-no-files-found: ignore

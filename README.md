@@ -65,7 +65,7 @@ Before building, make sure you have:
 
 - CMake 3.21 or newer
 - a C++20 compiler
-- Qt 6.2 or newer with these modules:
+- Qt 6.7.3 or newer with these modules:
   - `Core`
   - `Gui`
   - `Widgets`
@@ -105,6 +105,17 @@ If you use a multi-config generator such as Visual Studio or Xcode, build a conf
 cmake -S . -B build
 cmake --build build --config Release
 ```
+
+For debugging, configure with `-DCMAKE_BUILD_TYPE=Debug` for single-config
+generators, or build with `--config Debug` for Visual Studio and Xcode.
+Run tests with `ctest --test-dir build -C Debug --output-on-failure`.
+
+GitHub Actions builds and tests Debug configurations on Linux, macOS, and
+Windows using Qt 6.7.3. Runs start for pushes and pull requests to `main`,
+or manually through Actions → Build → Run workflow. Open the failing job's
+Configure, Build, or Test step to inspect errors; failed runs also upload
+CTest diagnostics when available. Windows uses MSVC and vcpkg for Zlib.
+Qt WebEngine's Positioning dependency is installed alongside the UI modules.
 
 ## Start the app
 

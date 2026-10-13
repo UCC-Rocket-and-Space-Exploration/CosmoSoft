@@ -617,25 +617,39 @@ void TelemetryChartView::keyPressEvent(QKeyEvent *event) {
 }
 
 void TelemetryChartView::updateAxisTicks() {
-    if (!m_chartPtr) return;
-    for (auto *abstractAxis : m_chartPtr->axes()) {
-        auto *axis = qobject_cast<QValueAxis *>(abstractAxis);
-        if (!axis) continue;
-        const double span = axis->max() - axis->min();
-        if (!std::isfinite(span) || span <= 0) continue;
-        const int divisions = axis->orientation() == Qt::Horizontal
-                                  ? std::clamp(static_cast<int>(m_chartPtr->plotArea().width() / 100), 2, 8)
-                                  : 3;
-        const double roughStep = span / divisions;
-        const double magnitude = std::pow(10.0, std::floor(std::log10(roughStep)));
-        const double fraction = roughStep / magnitude;
-        const double step = (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 5 ? 5 : 10) * magnitude;
-        if (!std::isfinite(step) || step <= 0) continue;
-        axis->setTickType(QValueAxis::TicksDynamic);
-        axis->setTickAnchor(0);
-        axis->setTickInterval(step);
-        const int decimals = std::clamp(static_cast<int>(-std::floor(std::log10(step))), 0, 9);
-        axis->setLabelFormat(QStringLiteral("%.") + QString::number(decimals) +
-                             (axis->orientation() == Qt::Horizontal ? u"f s"_s : u"f"_s));
-    }
+  if (!m_chartPtr)
+    return;
+  for (auto *abstractAxis : m_chartPtr->axes()) {
+    auto *axis = qobject_cast<QValueAxis *>(abstractAxis);
+    if (!axis)
+      continue;
+    const double span = axis->max() - axis->min();
+    if (!std::isfinite(span) || span <= 0)
+      continue;
+    const int divisions =
+        axis->orientation() == Qt::Horizontal
+            ? std::clamp(static_cast<int>(m_chartPtr->plotArea().width() / 100),
+                         2, 8)
+            : 3;
+    const double roughStep = span / divisions;
+    const double magnitude = std::pow(10.0, std::floor(std::log10(roughStep)));
+    const double fraction = roughStep / magnitude;
+    const double step = (fraction <= 1   ? 1
+                         : fraction <= 2 ? 2
+                         : fraction <= 5 ? 5
+                                         : 10) *
+                        magnitude;
+    if (!std::isfinite(step) || step <= 0)
+      continue;
+    // A range change reaches Qt Charts before our rangeChanged slot.
+    // Fixed ticks prevent a stale tiny interval from allocating millions
+    // of labels when the next capture has a much wider range.
+    axis->setTickType(QValueAxis::TicksFixed);
+    axis->setTickCount(divisions + 1);
+    const int decimals =
+        std::clamp(static_cast<int>(-std::floor(std::log10(step))), 0, 9);
+    axis->setLabelFormat(
+        QStringLiteral("%.") + QString::number(decimals) +
+        (axis->orientation() == Qt::Horizontal ? u"f s"_s : u"f"_s));
+  }
 }

@@ -144,6 +144,131 @@ TEST_CASE("IMU fixture has independently specified physical values and no "
   REQUIRE(std::isnan(sample.angularVelocity.z));
   REQUIRE(std::isnan(sample.batteryVoltage));
 }
+TEST_CASE("TELEM file import sets the payload offset and skips invalid packets",
+          "[import][imu]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("input.telem");
+  auto badChecksum = fixture;
+  badChecksum.back() = '3';
+  auto badRadioCrc = fixture;
+  badRadioCrc[74] = '2';
+  badRadioCrc[76] = 'C';
+  writeFile(path, "TELEM 223412\n" + badChecksum + "\n" + badRadioCrc + "\n" +
+                      packet(100, 0xff) + "\n" + fixture + "\n");
+  FlightSession session;
+  FrameDecoderVault vault;
+  const auto result = SampleFileLoader::loadTelemFile(
+      path.toStdString(), session, vault, cosmo::CancellationCheck{});
+  INFO(result.error.value_or("no error"));
+  REQUIRE(result.succeeded());
+  REQUIRE(session.samples.size() == 1);
+  REQUIRE(session.samples.front().timestamp == 0);
+  REQUIRE(session.samples.front().temperature == Catch::Approx(-0.06));
+  REQUIRE(session.samples.front().rssi == -117.0);
+}
+
+TEST_CASE("TELEM file import reports an error when no packets decode",
+          "[import][imu]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("invalid.telem");
+  writeFile(path, "TELEM 223412\n");
+  FlightSession session;
+  FrameDecoderVault vault;
+  const auto result = SampleFileLoader::loadTelemFile(
+      path.toStdString(), session, vault, cosmo::CancellationCheck{});
+  REQUIRE(result.error.has_value());
+  REQUIRE_FALSE(result.canceled);
+  REQUIRE(session.samples.empty());
+}
+
+TEST_CASE("TELEM import normalizes rollover and excludes placeholder and "
+          "reordered packets",
+          "[import][imu]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("rollover.telem");
+  writeFile(path, packet(65530, 4) + "\n" + packet(65530) + "\n" + packet(4) +
+                      "\n" + packet(3) + "\n" + packet(5, 5) + "\n" +
+                      packet(6) + "\n");
+  FlightSession session;
+  FrameDecoderVault vault;
+  const auto result = SampleFileLoader::loadTelemFile(
+      path.toStdString(), session, vault, cosmo::CancellationCheck{});
+  INFO(result.error.value_or("no error"));
+  REQUIRE(result.succeeded());
+  REQUIRE(session.samples.size() == 3);
+  REQUIRE(session.samples[0].timestamp == 0);
+  REQUIRE(session.samples[1].timestamp == 100);
+  REQUIRE(session.samples[2].timestamp == 120);
+  const std::array<bool, FlightSession::kTraceMetricCount> metrics{
+      false, true, false, false, false, true, false, false, false};
+  REQUIRE(session.metricsInSource == metrics);
+  REQUIRE(std::isnan(session.samples.back().altitude));
+}
+
+TEST_CASE(
+    "TELEM import cancels a large capture without replacing the active session",
+    "[import][cancel]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("large.telem");
+  std::string input;
+  for (int i = 0; i < 10000; ++i)
+    input += packet(static_cast<uint16_t>(i)) + "\n";
+  writeFile(path, input);
+  FlightSession session;
+  session.samples.resize(1);
+  session.samples.front().timestamp = 4242;
+  FrameDecoderVault vault;
+  size_t polls = 0;
+  const auto result = SampleFileLoader::loadTelemFile(
+      path.toStdString(), session, vault, [&] { return ++polls == 6; });
+  REQUIRE(result.canceled);
+  REQUIRE_FALSE(result.error);
+  REQUIRE(session.samples.size() == 1);
+  REQUIRE(session.samples.front().timestamp == 4242);
+}
+
+TEST_CASE(
+    "TELEM import rejects invalid input even when a previous session exists",
+    "[import][imu]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("invalid.telem");
+  writeFile(path,
+            "TELEM 223412\n" + packet(100, 4) + "\n" + packet(100, 5) + "\n");
+  FlightSession session;
+  session.samples.resize(1);
+  session.samples.front().timestamp = 4242;
+  FrameDecoderVault vault;
+  const auto result = SampleFileLoader::loadTelemFile(
+      path.toStdString(), session, vault, cosmo::CancellationCheck{});
+  REQUIRE(result.error);
+  REQUIRE(session.samples.size() == 1);
+  REQUIRE(session.samples.front().timestamp == 4242);
+}
+
+TEST_CASE("TELEM import loads the recorded and TeleMini capture fixtures",
+          "[import]") {
+  for (const auto *name : {"recorded_imu.telem", "altos_sample_data.telem",
+                           "altos_sample_data2.telem"}) {
+    FlightSession session;
+    FrameDecoderVault vault;
+    const auto result = SampleFileLoader::loadTelemFile(
+        std::string(COSMO_SOURCE_DIR) + "/sample_data/" + name, session, vault,
+        cosmo::CancellationCheck{});
+    INFO(name);
+    INFO(result.error.value_or("no error"));
+    REQUIRE(result.succeeded());
+    REQUIRE_FALSE(session.samples.empty());
+    REQUIRE(session.samples.front().timestamp == 0);
+    for (size_t i = 1; i < session.samples.size(); ++i)
+      REQUIRE(session.samples[i].timestamp >= session.samples[i - 1].timestamp);
+  }
+}
+
 TEST_CASE("IMU rejects every truncation, bad hex, checksum, radio CRC, and "
           "unsupported type",
           "[imu]") {
