@@ -8,6 +8,7 @@
 #include "gui/widgets/Map3DWidget.h"
 #include "gui/widgets/RocketAttitudeWidget.h"
 #include "gui/widgets/StatTileWidget.h"
+#include "gui/widgets/TelemetryChartView.h"
 #include "services/import/SampleFileLoader.h"
 #include "services/preview/FlightPreviewCache.h"
 #include "services/telemetry/LineTelemetryBatchMailbox.h"
@@ -22,6 +23,8 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QFontDatabase>
+#include <QInputDialog>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QLineSeries>
 #include <QMenu>
@@ -75,6 +78,261 @@ bool pumpUntil(const std::function<bool()> &predicate) {
   return predicate();
 }
 } // namespace
+
+TEST_CASE("Flight event markers stay with their recording",
+          "[replay-ui][markers]") {
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  dashboard.resize(1280, 900);
+  dashboard.show();
+  auto session = std::make_shared<FlightSession>();
+  for (int i = 0; i < 3; ++i) {
+    FlightSample sample;
+    sample.timestamp = i * 1000;
+    sample.altitude = 100 + i;
+    sample.temperature = 20 + i;
+    session->samples.push_back(sample);
+  }
+  auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+  model.setReplayMode(true);
+  replay.setSession(session, preview);
+  dashboard.setReplaySession(session, preview);
+  for (auto *check : dashboard.findChildren<QCheckBox *>("traceCheck"))
+    check->setChecked(check->text() == "Alt" || check->text() == "Temp");
+  QPushButton *compare = nullptr;
+  for (auto *button : dashboard.findChildren<QPushButton *>())
+    if (button->text() == "Compare selected")
+      compare = button;
+  REQUIRE(compare);
+  compare->click();
+
+  QAction *addMarker = nullptr;
+  for (auto *action : dashboard.findChildren<QAction *>())
+    if (action->text() == "Add event marker…")
+      addMarker = action;
+  REQUIRE(addMarker);
+  bool enteredName = false;
+  QTimer::singleShot(0, &dashboard, [&] {
+    if (auto *dialog =
+            qobject_cast<QInputDialog *>(QApplication::activeModalWidget())) {
+      enteredName = true;
+      dialog->setTextValue("Flight A event");
+      dialog->accept();
+    }
+  });
+  addMarker->trigger();
+  REQUIRE(enteredName);
+  const auto markerCount = [&] {
+    int count = 0;
+    for (auto *view : dashboard.findChildren<QChartView *>())
+      for (auto *series : view->chart()->series())
+        if (series->name() == "Flight A event")
+          ++count;
+    return count;
+  };
+  REQUIRE(markerCount() == 2); // Original trace and its comparison copy.
+  dashboard.setReplayTrailLength(1);
+  dashboard.setReplaySession(session, preview);
+  REQUIRE(markerCount() == 2);
+  QPushButton *back = nullptr;
+  for (auto *button : dashboard.findChildren<QPushButton *>())
+    if (button->text() == "Back")
+      back = button;
+  REQUIRE(back);
+  back->click();
+  REQUIRE(markerCount() == 2);
+  compare->click();
+  REQUIRE(markerCount() == 2);
+
+  SECTION("Clearing a recording removes its markers") {
+    dashboard.setReplaySession(nullptr, nullptr);
+    REQUIRE(markerCount() == 0);
+  }
+  SECTION("Replacing a recording removes its markers") {
+    auto replacement = std::make_shared<FlightSession>(*session);
+    auto replacementPreview =
+        cosmo::preview::FlightPreviewCache::build(*replacement);
+    replay.setSession(replacement, replacementPreview);
+    dashboard.setReplaySession(replacement, replacementPreview);
+    REQUIRE(markerCount() == 0);
+  }
+  SECTION("Reset removes markers from the original and comparison charts") {
+    model.resetSession();
+    REQUIRE(markerCount() == 0);
+  }
+}
+
+TEST_CASE("Comparison clears telemetry when replay returns to zero",
+          "[replay-ui][comparison]") {
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  dashboard.show();
+  auto session = std::make_shared<FlightSession>();
+  for (int i = 0; i < 3; ++i) {
+    FlightSample sample;
+    sample.timestamp = i * 1000;
+    sample.altitude = 100 + i;
+    sample.temperature = 20 + i;
+    session->samples.push_back(sample);
+  }
+  auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+  model.setReplayMode(true);
+  replay.setSession(session, preview);
+  dashboard.setReplaySession(session, preview);
+  for (auto *check : dashboard.findChildren<QCheckBox *>("traceCheck"))
+    check->setChecked(check->text() == "Alt" || check->text() == "Temp");
+  for (auto *button : dashboard.findChildren<QPushButton *>())
+    if (button->text() == "Compare selected")
+      button->click();
+  QChartView *comparison = nullptr;
+  for (auto *view : dashboard.findChildren<QChartView *>())
+    if (view->chart()->title().startsWith("Comparison:"))
+      comparison = view;
+  REQUIRE(comparison);
+  const auto pointCount = [&] {
+    qsizetype count = 0;
+    for (auto *series : comparison->chart()->series())
+      if (auto *line = qobject_cast<QLineSeries *>(series))
+        count += line->count();
+    return count;
+  };
+  REQUIRE(pointCount() > 0);
+  dashboard.setReplayTrailLength(0);
+  REQUIRE(pumpUntil([&] { return pointCount() == 0; }));
+  dashboard.setReplayTrailLength(2);
+  REQUIRE(pumpUntil([&] { return pointCount() > 0; }));
+}
+
+TEST_CASE("Live packet age follows receipt time through hiding and disconnect",
+          "[live-age][widgets]") {
+  qint64 now = 0;
+  FlightDataModel model;
+  LiveTelemetryPage live(&model, nullptr, [&] { return now; });
+  live.show();
+  for (auto *profile : live.findChildren<QWebEngineProfile *>()) {
+    auto block = std::make_unique<BlockNetwork>();
+    block->setParent(profile);
+    profile->setUrlRequestInterceptor(block.release());
+  }
+  QLabel *age = nullptr;
+  for (auto *label : live.findChildren<QLabel *>())
+    if (label->text().startsWith("Last packet:"))
+      age = label;
+  REQUIRE(age);
+  FlightSample sample;
+  sample.timestamp = -100000;
+  model.appendLiveBatch({sample});
+  REQUIRE(age->text().contains("now"));
+  now = 6500;
+  live.hide();
+  live.show();
+  REQUIRE(age->text().contains("6 s ago"));
+  auto *timer = live.findChild<QTimer *>("packetAgeTimer");
+  REQUIRE(timer);
+  REQUIRE(timer->isActive());
+  now = 9000;
+  REQUIRE(QMetaObject::invokeMethod(timer, "timeout", Qt::DirectConnection));
+  REQUIRE(age->text().contains("9 s ago"));
+  live.setActiveConnection({}, false);
+  now = 12000;
+  REQUIRE(QMetaObject::invokeMethod(timer, "timeout", Qt::DirectConnection));
+  REQUIRE(age->text().contains("12 s ago"));
+  live.hide();
+  REQUIRE_FALSE(timer->isActive());
+  now = 20000;
+  model.appendLiveBatch({sample});
+  REQUIRE_FALSE(timer->isActive());
+  now = 23000;
+  live.show();
+  REQUIRE(age->text().contains("3 s ago"));
+  model.resetSession();
+  REQUIRE(age->text().contains("—"));
+  REQUIRE_FALSE(timer->isActive());
+}
+
+TEST_CASE(
+    "Shared hover timelines cannot inspect samples outside the active range",
+    "[hover-range][widgets]") {
+  auto chart = std::make_unique<QChart>();
+  auto line = std::make_unique<QLineSeries>();
+  line->setProperty("metricIndex", 0);
+  line->append(0, 0);
+  line->append(5, 5);
+  chart->addSeries(line.release());
+  chart->createDefaultAxes();
+  TelemetryChartView view(chart.release());
+  view.resize(600, 400);
+  view.show();
+  QApplication::processEvents();
+  int inspected = -1;
+  view.hoverDetail = [&](double, int index, int) {
+    inspected = index;
+    return QString::number(index);
+  };
+  const QVector<double> times{0, 1, 2, 3, 4, 5};
+  view.setHoverXValues(times, 2, 4);
+  const auto press = [&](int key) {
+    QKeyEvent event(QEvent::KeyPress, key, Qt::NoModifier);
+    QApplication::sendEvent(&view, &event);
+  };
+  press(Qt::Key_Right);
+  REQUIRE(inspected == 3);
+  REQUIRE_FALSE(times.isDetached());
+  press(Qt::Key_Right);
+  REQUIRE(inspected == 4);
+  press(Qt::Key_Right);
+  REQUIRE(inspected == 4);
+  press(Qt::Key_Left);
+  REQUIRE(inspected == 3);
+  view.setHoverXValues(times, 1, 2);
+  press(Qt::Key_Right);
+  REQUIRE(inspected == 2);
+  view.setHoverXValues({});
+  inspected = -1;
+  press(Qt::Key_Right);
+  REQUIRE(inspected == -1);
+}
+
+TEST_CASE("Replay hover retains original rows and excludes future samples",
+          "[hover-range][replay-ui]") {
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  dashboard.resize(1280, 900);
+  dashboard.show();
+  auto session = std::make_shared<FlightSession>();
+  for (int i = 0; i < 5000; ++i) {
+    FlightSample sample;
+    sample.timestamp = i * 10;
+    sample.altitude = i * 0.1;
+    session->samples.push_back(sample);
+  }
+  auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+  model.setReplayMode(true);
+  replay.setSession(session, preview);
+  dashboard.setReplaySession(session, preview);
+  TelemetryChartView *view = nullptr;
+  QLineSeries *altitude = nullptr;
+  for (auto *candidate : dashboard.findChildren<QChartView *>())
+    for (auto *series : candidate->chart()->series())
+      if (series->property("metricIndex").isValid() &&
+          series->property("metricIndex").toInt() == 0) {
+        view = dynamic_cast<TelemetryChartView *>(candidate);
+        altitude = qobject_cast<QLineSeries *>(series);
+      }
+  REQUIRE(view);
+  REQUIRE(altitude);
+  REQUIRE(view->hoverDetail(17.76, 1777, 5000).contains("row 1777 / 5000"));
+  REQUIRE(std::abs(view->hoverValue(altitude, 1777) - 177.6) < 1e-8);
+  dashboard.setReplayTrailLength(1800);
+  REQUIRE(
+      pumpUntil([&] { return view->hoverDetail(20, 2001, 5000).isEmpty(); }));
+  REQUIRE(view->hoverDetail(17.76, 1777, 5000).contains("row 1777 / 5000"));
+  dashboard.setReplayTrailLength(0);
+  REQUIRE(pumpUntil([&] { return view->hoverDetail(0, 1, 5000).isEmpty(); }));
+}
 
 TEST_CASE(
     "Replay and live pages contain their own embedded attitude instrument",
@@ -581,6 +839,19 @@ TEST_CASE("3D replay displays recording angles with the original path and an "
               "String(document.getElementById('path3dOptions') === null)")) ==
           "true");
   evaluate(QStringLiteral("document.getElementById('btnFit').click();"));
+  REQUIRE(
+      evaluate(QStringLiteral("document.getElementById('btnFollow').click(); "
+                              "document.getElementById('btnFollow')."
+                              "getAttribute('aria-pressed')")) == "true");
+  REQUIRE(evaluate(QStringLiteral(
+              "document.querySelector('#view3d canvas').dispatchEvent("
+              "new WheelEvent('wheel', {deltaY:100, clientX:400, clientY:260, "
+              "cancelable:true})); "
+              "document.getElementById('btnFollow').getAttribute('aria-pressed'"
+              ")")) == "true");
+  REQUIRE(evaluate(QStringLiteral(
+              "String(document.getElementById('btnFollow').scrollWidth <= "
+              "document.getElementById('btnFollow').clientWidth)")) == "true");
   const QString captureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
   if (!captureDir.isEmpty()) {
     for (const QString &theme :

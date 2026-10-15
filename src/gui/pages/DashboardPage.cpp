@@ -10,8 +10,8 @@
  *  │  Replay / live-buffer transport bar (bottom)            │
  *  └─────────────────────────────────────────────────────────┘
  *
- * The traces panel and chart are separated by a QSplitter so the user can resize
- * them; the splitter state is persisted in QSettings.
+ * The traces panel and chart are separated by a QSplitter so the user can
+ * resize them; the splitter state is persisted in QSettings.
  *
  * Two data sources are supported:
  *  - Live mode  — samples arrive in batches from the serial decoder worker.
@@ -22,7 +22,8 @@
  *    Chart updates are capped at 30 Hz so scrolling the scrubber stays smooth.
  *
  * Peak-preserving selection keeps dense overviews responsive without averaging.
- * m_hoverSampleIndexMap indexes every source sample in the visible time range,
+ * Replay shares the immutable preview timeline and limits hover to the visible
+ * source range. Live/raw-time views use m_hoverSampleIndexMap for source order,
  * independently of the reduced overview used for drawing.
  */
 
@@ -832,7 +833,7 @@ void DashboardPage::rebuildComparisonChart()
             line->setName(sourceLine->name());
             line->setPen(sourceLine->pen());
             line->replace(sourceLine->points());
-            applySeriesPointDisplay(line, static_cast<int>(m_hoverSampleIndexMap.size()));
+            applySeriesPointDisplay(line, m_chartHoverEnd - m_chartHoverBegin);
             m_comparisonChart->addSeries(line);
             line->attachAxis(m_comparisonAxisX);
             line->attachAxis(axis);
@@ -863,7 +864,8 @@ void DashboardPage::rebuildComparisonChart()
         line->attachAxis(m_comparisonAxisLeft);
     }
 
-    m_comparisonView->setHoverXValues(m_chartHoverXValues);
+    m_comparisonView->setHoverXValues(m_chartHoverXValues, m_chartHoverBegin,
+                                      m_chartHoverEnd);
     m_comparisonView->invalidateHoverSeriesCache();
     applyChartTheme();
 }
@@ -1415,7 +1417,8 @@ void DashboardPage::onChartVisualOptionsToggled() {
         for (auto *abstract : chart->series()) {
             auto *series = qobject_cast<QLineSeries *>(abstract);
             if (series && series->property("metricIndex").isValid()) {
-                applySeriesPointDisplay(series, static_cast<int>(m_hoverSampleIndexMap.size()));
+              applySeriesPointDisplay(series,
+                                      m_chartHoverEnd - m_chartHoverBegin);
             }
         }
     }
@@ -1454,10 +1457,12 @@ void DashboardPage::applySeriesPointDisplay(QLineSeries *series, int pointCount)
  * the overview contains fewer display points. No curve interpolation is used.
  */
 const FlightSample *DashboardPage::hoverSample(int displayPointIndex1Based) const {
-    if (displayPointIndex1Based < 1) {
-        return {};
-    }
+  if (displayPointIndex1Based < 1 || m_chartHoverXValues.isEmpty()) {
+    return {};
+  }
     const int di = displayPointIndex1Based - 1;
+    if (di < m_chartHoverBegin || di >= m_chartHoverEnd)
+      return {};
     int si = di;
     if (!m_hoverSampleIndexMap.empty()) {
         if (di >= static_cast<int>(m_hoverSampleIndexMap.size())) {
@@ -1483,7 +1488,9 @@ const FlightSample *DashboardPage::hoverSample(int displayPointIndex1Based) cons
 QString DashboardPage::formatMultiMetricHover(double tSec, int displayPointIndex1Based) const {
     const auto *sp = hoverSample(displayPointIndex1Based);
     if (!sp) return {};
-    const int si = m_hoverSampleIndexMap[displayPointIndex1Based - 1];
+    const int si = m_hoverSampleIndexMap.empty()
+                       ? displayPointIndex1Based - 1
+                       : m_hoverSampleIndexMap[displayPointIndex1Based - 1];
     const int totalLogical = m_hoverLogicalSampleCount > 0 ? m_hoverLogicalSampleCount : static_cast<int>(m_liveSamples.size());
     QStringList lines;
     lines << QStringLiteral("Time %1 s  ·  row %2 / %3")
@@ -1511,11 +1518,20 @@ void DashboardPage::setReplaySession(
     m_preserveChartAxes = false;
     if (m_renderSchedulerTimer) m_renderSchedulerTimer->stop();
 
+    if (m_session != session || !session)
+      clearEventMarkers();
     m_session = std::move(session);
     const bool previewMatchesSession = m_session && preview
         && preview->wasBuiltFor(*m_session)
         && preview->displaySeconds().size() == m_session->samples.size();
+    const bool samePreview = previewMatchesSession && m_preview == preview;
     m_preview = previewMatchesSession ? std::move(preview) : nullptr;
+    if (!m_preview)
+      m_replayHoverXValues.clear();
+    else if (!samePreview)
+      m_replayHoverXValues =
+          QVector<double>(m_preview->displaySeconds().begin(),
+                          m_preview->displaySeconds().end());
     m_liveChartDirty = false;
     m_replayChartDirty = true;
     if (m_tracesPanel) {
@@ -1768,6 +1784,8 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         }
         m_preserveChartAxes = false;
         m_hoverSampleIndexMap.clear();
+        m_chartHoverXValues.clear();
+        m_chartHoverBegin = m_chartHoverEnd = 0;
         m_hoverLogicalSampleCount = 0;
         for (auto *view : m_traceViews) {
             view->setHoverXValues({});
@@ -1778,6 +1796,8 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         m_axisX->setRange(0, 10);
         m_axisY->setRange(-1, 1);
         m_chart->setTitle(u"Flight data"_s);
+        if (m_comparisonActive && countEnabledMetrics() == 2)
+          rebuildComparisonChart();
         return;
     }
 
@@ -1786,6 +1806,8 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
     const int end = std::min(trailLength, n);
     if (end <= 0) {
         m_hoverSampleIndexMap.clear();
+        m_chartHoverXValues.clear();
+        m_chartHoverBegin = m_chartHoverEnd = 0;
         m_hoverLogicalSampleCount = 0;
         for (auto *view : m_traceViews) {
             view->setHoverXValues({});
@@ -1793,6 +1815,8 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         }
         m_replayChartBuiltTrailLength = 0;
         m_replayChartBuiltBucket = 0;
+        if (m_comparisonActive && countEnabledMetrics() == 2)
+          rebuildComparisonChart();
         return;
     }
 
@@ -1822,6 +1846,8 @@ void DashboardPage::onSessionReset() {
   m_liveChartDirty = false;
   m_replayChartDirty = false;
   m_hoverSampleIndexMap.clear();
+  m_chartHoverXValues.clear();
+  m_chartHoverBegin = m_chartHoverEnd = 0;
   m_hoverLogicalSampleCount = 0;
   m_replayChartBuiltTrailLength = -1;
   m_replayChartBuiltBucket = -1;
@@ -1877,6 +1903,8 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         }
         m_preserveChartAxes = false;
         m_hoverSampleIndexMap.clear();
+        m_chartHoverXValues.clear();
+        m_chartHoverBegin = m_chartHoverEnd = 0;
         m_hoverLogicalSampleCount = 0;
         for (auto *view : m_traceViews) {
             view->setHoverXValues({});
@@ -1885,6 +1913,8 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         m_axisX->setRange(0, 10);
         m_axisY->setRange(-1, 1);
         m_chart->setTitle(u"Flight data"_s);
+        if (m_comparisonActive && countEnabledMetrics() == 2)
+          rebuildComparisonChart();
         return;
     }
 
@@ -1962,32 +1992,44 @@ void DashboardPage::buildChartFromSampleIndices(const std::vector<FlightSample> 
             plotSamples.push_back({x, sampleIndex});
         }
     }
-    std::stable_sort(
-        plotSamples.begin(), plotSamples.end(),
-        [](const PlotSample &left, const PlotSample &right) {
-            return left.x < right.x;
-        });
+    if (!usePreviewTime)
+      std::stable_sort(plotSamples.begin(), plotSamples.end(),
+                       [](const PlotSample &left, const PlotSample &right) {
+                         return left.x < right.x;
+                       });
 
     for (auto *axis : m_traceAxesX) {
         axis->setTitleText({});
     }
-    std::vector<PlotSample> hoverSamples;
-    for (int i = begin; i < end; ++i) {
+    m_hoverSampleIndexMap.clear();
+    if (usePreviewTime) {
+      // Corrected replay time is immutable and ordered in source-file order.
+      // Share it between views; only the inspectable range changes per frame.
+      m_chartHoverXValues = m_replayHoverXValues;
+      m_chartHoverBegin = begin;
+      m_chartHoverEnd = end;
+    } else {
+      std::vector<PlotSample> hoverSamples;
+      for (int i = begin; i < end; ++i) {
         const double x = xForIndex(i);
         if (std::isfinite(x)) hoverSamples.push_back({x, i});
-    }
-    std::stable_sort(hoverSamples.begin(), hoverSamples.end(),
-                     [](const PlotSample &a, const PlotSample &b) { return a.x < b.x; });
-    m_hoverSampleIndexMap.clear();
-    QVector<double> hoverXValues;
-    for (const auto &point : hoverSamples) {
+      }
+      std::stable_sort(
+          hoverSamples.begin(), hoverSamples.end(),
+          [](const PlotSample &a, const PlotSample &b) { return a.x < b.x; });
+      QVector<double> hoverXValues;
+      for (const auto &point : hoverSamples) {
         m_hoverSampleIndexMap.push_back(point.sampleIndex);
         hoverXValues.append(point.x);
+      }
+      m_chartHoverXValues = std::move(hoverXValues);
+      m_chartHoverBegin = 0;
+      m_chartHoverEnd = static_cast<int>(m_chartHoverXValues.size());
     }
-    m_chartHoverXValues = hoverXValues;
     m_hoverLogicalSampleCount = std::max(0, logicalSampleCount);
     for (auto *view : m_traceViews)
-        view->setHoverXValues(hoverXValues);
+      view->setHoverXValues(m_chartHoverXValues, m_chartHoverBegin,
+                            m_chartHoverEnd);
     if (plotSamples.empty()) {
         for (QLineSeries *series : m_lineSeries) {
             if (series) {
@@ -2002,6 +2044,8 @@ void DashboardPage::buildChartFromSampleIndices(const std::vector<FlightSample> 
 
         for (auto *view : m_traceViews)
             view->invalidateHoverSeriesCache();
+        if (m_comparisonActive && countEnabledMetrics() == 2)
+          rebuildComparisonChart();
         return;
     }
 

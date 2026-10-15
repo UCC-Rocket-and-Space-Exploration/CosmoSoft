@@ -41,6 +41,7 @@ let groundElevGrid = null;
 let groundRefAlt = 0;
 let groundLoadGeneration = 0;
 let currentRocketAttitude = null;
+let currentRocketAltitude3d = null, last3DPathKey = null;
 
 /** Decode the shared Qt quaternion payload without accepting missing angle data. */
 export function attitudeFromPayload(raw) {
@@ -188,10 +189,14 @@ function setFollowing(enabled, notifyBridge) {
   const nextFollowing = !!enabled;
   const changed = following !== nextFollowing;
   following = nextFollowing;
+  if (controls3d) controls3d.enablePan = !following;
   const btn = document.getElementById("btnFollow");
   if (btn) {
     btn.classList.toggle("active", following);
     btn.setAttribute("aria-pressed", String(following));
+    btn.textContent = following ? "Following" : "Follow";
+    btn.setAttribute("aria-label", following ? "Stop following rocket" : "Follow rocket");
+    btn.title = following ? "Stop following rocket (3D orbit and zoom stay enabled)" : "Follow rocket";
   }
   if (following) window.centerOnCurrent();
   if (changed && bridge && notifyBridge && typeof bridge.onFollowChanged === "function") {
@@ -452,8 +457,8 @@ function init3D() {
   controls3d.minDistance = 20;
   controls3d.maxDistance = 8000;
   controls3d.maxPolarAngle = Math.PI * 0.48;
+  controls3d.enablePan = !following;
   controls3d.addEventListener("start", () => {
-    if (following) setFollowing(false, true);
     request3DRender(12);
   });
   controls3d.addEventListener("change", () => request3DRender(2));
@@ -544,8 +549,35 @@ function animate3D() {
   }
 }
 
+// Retained path points can share horizontal coordinates during vertical flight.
+// Match samples by identity, so an exact seek never loses its current altitude.
+function appendExactPoint(positions, altitudes, lastIndex, point) {
+  if (!point || !validC(point.lat, point.lon)) return lastIndex;
+  const position = {lat:point.lat, lon:point.lon};
+  if (positions.length && lastIndex === point.idx) {
+    positions[positions.length-1] = position;
+    altitudes[altitudes.length-1] = point.alt;
+  } else {
+    positions.push(position); altitudes.push(point.alt);
+  }
+  return point.idx;
+}
+
+function updateRocketInfo3D() {
+  const element = document.getElementById("info3d");
+  if (currentRocketAltitude3d === null) { element.textContent = ""; return; }
+  const altitude = currentRocketAltitude3d;
+  const label = ground3dMode !== "box"
+    ? "AGL " + fmtAlt(altitude-groundRefAlt) + " (MSL " + fmtAlt(altitude) + ")"
+    : "Alt " + fmtAlt(altitude);
+  element.textContent = label + "  ·  " + ALT_EXAGGERATION + "x vert" +
+    (currentRocketAttitude ? "" : "  ·  Attitude unavailable") +
+    "  ·  Locate/Fit/Follow  ·  Drag to orbit";
+}
+
 function update3DEntities() {
   if (!scene3d) return;
+  const pathChanged = path3dDataDirty;
 
   const allValid = [], allValidAlt = [];
   const ghostPos = allPos3d.length ? allPos3d : allPos;
@@ -558,6 +590,8 @@ function update3DEntities() {
     updateWideLine(trailLine3d, []);
     updateWideLine(pathLine3d, []);
     currentRocketWorld3d = null;
+    currentRocketAltitude3d = null;
+    last3DPathKey = null;
     launchSphere3d.visible = false;
     rocketModel3d.visible = false;
     document.getElementById("info3d").textContent = "";
@@ -580,18 +614,23 @@ function update3DEntities() {
   const trailPos = allPos3d.length ? allPos3d : allPos;
   const trailAltSrc = allPos3d.length ? allAlt3d : allAlt;
   const trailIdxSrc = allPos3d.length ? allIdx3d : allIdx;
+  let lastIndex = -1;
   for (let i = 0; i < trailPos.length; i++) {
     if (sampleIdx(trailIdxSrc, i) < trailLen && validC(trailPos[i].lat, trailPos[i].lon)) {
       trailValid.push(trailPos[i]); trailAlt.push(trailAltSrc[i]);
+      lastIndex = sampleIdx(trailIdxSrc, i);
     }
   }
-  if (currentExactPoint && validC(currentExactPoint.lat, currentExactPoint.lon)) {
-    const last = trailValid.length ? trailValid[trailValid.length - 1] : null;
-    if (!last || Math.abs(last.lat - currentExactPoint.lat) > 1e-10 || Math.abs(last.lon - currentExactPoint.lon) > 1e-10) {
-      trailValid.push({lat:currentExactPoint.lat, lon:currentExactPoint.lon});
-      trailAlt.push(currentExactPoint.alt);
-    }
+  lastIndex = appendExactPoint(trailValid, trailAlt, lastIndex, currentExactPoint);
+  const lastPoint = trailValid.at(-1);
+  const pathKey = JSON.stringify([trailValid.length,lastIndex,lastPoint?.lat,
+    lastPoint?.lon,trailAlt.at(-1),refLat,refLon]);
+  if (!pathChanged && pathKey === last3DPathKey) {
+    updateRocketInfo3D();
+    request3DRender(following ? 12 : 2);
+    return;
   }
+  last3DPathKey = pathKey;
 
   if (trailValid.length > 0) {
     const trailPts = toLocal3D(trailValid, trailAlt, refLat, refLon);
@@ -619,19 +658,14 @@ function update3DEntities() {
     rocketModel3d.visible = true;
 
     // info label
-    const lastA = trailAlt[trailAlt.length - 1];
-    const agl = lastA - groundRefAlt;
-    const altLabel = ground3dMode !== "box"
-      ? "AGL " + fmtAlt(agl) + " (MSL " + fmtAlt(lastA) + ")"
-      : "Alt " + fmtAlt(lastA);
-    document.getElementById("info3d").textContent =
-      altLabel + "  ·  " + ALT_EXAGGERATION + "x vert" +
-      (currentRocketAttitude ? "" : "  ·  Attitude unavailable") +
-      "  ·  Locate/Fit/Follow  ·  Drag to orbit";
+    currentRocketAltitude3d = trailAlt[trailAlt.length - 1];
+    updateRocketInfo3D();
   } else {
     updateWideLine(trailLine3d, []);
     updateWideLine(pathLine3d, []);
     currentRocketWorld3d = null;
+    currentRocketAltitude3d = null;
+    updateRocketInfo3D();
     launchSphere3d.visible = false;
     rocketModel3d.visible = false;
   }
@@ -1148,16 +1182,14 @@ function updateEntities(tLen, exactPoint) {
   currentExactPoint = exactPoint || null;
   const vp=[], va=[];
   const total = totalRawSamples || allPos.length;
+  let lastIndex = -1;
   for(let i=0;i<allPos.length;i++){
     const p=allPos[i];
-    if(sampleIdx(allIdx,i) < tLen && validC(p.lat,p.lon)){vp.push(p);va.push(allAlt[i]);}
-  }
-  if(currentExactPoint && validC(currentExactPoint.lat,currentExactPoint.lon)){
-    const last=vp.length?vp[vp.length-1]:null;
-    if(!last || Math.abs(last.lat-currentExactPoint.lat)>1e-10 || Math.abs(last.lon-currentExactPoint.lon)>1e-10){
-      vp.push({lat:currentExactPoint.lat,lon:currentExactPoint.lon});va.push(currentExactPoint.alt);
+    if(sampleIdx(allIdx,i) < tLen && validC(p.lat,p.lon)){
+      vp.push(p);va.push(allAlt[i]);lastIndex=sampleIdx(allIdx,i);
     }
   }
+  appendExactPoint(vp,va,lastIndex,currentExactPoint);
 
   if(pathDataDirty){
     const allValid=[];
@@ -1283,14 +1315,17 @@ window.addPoints = function(payload){
   }
 
   const fallback2d=allPos.length;
+  let added2d=false, added3d=false;
   for(let i=0;i<path.length;i++){
     const r=normalizePoint(path[i],fallback2d+i);if(!r)continue;
     allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
+    added2d=true;
   }
   const fallback3d=allPos3d.length;
   for(let i=0;i<path3d.length;i++){
     const r=normalizePoint(path3d[i],fallback3d+i);if(!r)continue;
     allPos3d.push({lat:r.lat,lon:r.lon});allAlt3d.push(r.alt);allIdx3d.push(r.idx);
+    added3d=true;
   }
   cap2DSeries();
   cap3DSeries();
@@ -1303,8 +1338,8 @@ window.addPoints = function(payload){
     totalRawSamples=Math.min(MAX_MAP_SAMPLE_COUNT,Math.max(totalRawSamples,allPos.length));
   }
   trailLen=totalRawSamples;
-  pathDataDirty=true;
-  path3dDataDirty=true;
+  pathDataDirty ||= replace || added2d;
+  path3dDataDirty ||= replace || added3d || (!allPos3d.length && added2d);
   setRocketAttitude(batch.attitude);
   updateEntities(trailLen,null);
 };

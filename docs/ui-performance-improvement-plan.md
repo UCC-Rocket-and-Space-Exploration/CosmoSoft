@@ -1,10 +1,18 @@
 # UI correctness and performance improvement plan
 
 Reviewed 15 October 2026 on `feat/rocket-attitude-trajectory-ui`, against the
-working tree based on `1ced3f2`. This is a plan; application code was not changed
-during this review. Recording-start attitude correction remains removed.
+working tree based on `1ced3f2`. All six fixes below are implemented.
+Recording-start attitude correction remains removed.
 
-## Findings and proposed changes
+Exact map samples now retain their altitude when coordinates repeat. Empty
+replay ranges clear comparison curves. Session replacement and reset clear
+event markers, while navigation within a recording preserves them. Packet age
+uses monotonic receipt time and catches up after a hidden page becomes visible.
+Replay hover shares the preview timeline and uses an active source range; hover
+and keyboard reads preserve Qt implicit sharing. Overview selection evaluates
+each metric once per sample. Attitude-only map updates reuse path geometries.
+
+## Findings and implemented changes
 
 | Order | Finding and evidence | Smallest useful change | Acceptance check |
 | --- | --- | --- | --- |
@@ -17,51 +25,64 @@ during this review. Recording-start attitude correction remains removed.
 
 ## Measurements and limits
 
-Temporary probes lived under `/tmp`; no application source or build configuration
-was edited. The Qt probe linked the current local libraries and used the offscreen
+Temporary probes lived under `/tmp`; build configuration was unchanged.
+The Qt probe linked the local libraries before and after the fixes and used the offscreen
 platform. Chart timings measure the scheduler callback near the end of a synthetic
 recording with three enabled traces, averaged over five rebuilds. They exclude
 painting and the timer's waiting interval. The current CMake build has no selected
 build type or application optimization flags, so these are local diagnostics,
 not Release performance guarantees.
 
-| Workload | Local average |
-| --- | ---: |
-| Chart rebuild, 1,000 samples | 4.6 ms |
-| Chart rebuild, 25,000 samples | 9.8 ms |
-| Chart rebuild, 100,000 samples | 24.3 ms |
-| Chart rebuild, 1,000,000 samples | 212.7 ms |
-| Attitude update plus software rendering, 260 × 204 pixels | 0.8 ms |
-| Attitude update while hidden | 0.035 ms |
+| Workload | Before | After |
+| --- | ---: | ---: |
+| Chart rebuild, 1,000 samples | 4.6 ms | 4.3 ms |
+| Chart rebuild, 25,000 samples | 9.8 ms | 6.0 ms |
+| Chart rebuild, 100,000 samples | 24.3 ms | 8.7 ms |
+| Chart rebuild, 1,000,000 samples | 212.7 ms | 30.6 ms |
+| Attitude update plus software rendering, 260 × 204 pixels | 0.8 ms | unchanged |
+| Attitude update while hidden | 0.035 ms | unchanged |
 
-Replay's configured chart interval is 33 ms. Large-recording rebuilds therefore
-deserve attention before optimizing the small attitude renderer. Its mesh is
-recreated during painting, but the measured cost does not justify a renderer
-rewrite or a new dependency.
+Replay's configured chart interval is 33 ms. The million-sample callback is
+about seven times faster in this local workload. Painting and event processing
+still need time, so this does not establish a 30 fps guarantee. The attitude
+mesh is recreated during painting, but its measured cost does not justify a
+renderer rewrite or a new dependency.
 
 The JavaScript probe called the current map functions from a temporary module
 copy with added probe entry points. It used the repository's Three.js classes
 and synthetic data. At 5,000 retained points, unchanged 3D updates averaged
-about 0.4 ms in Node and replaced two line geometries. This excludes WebGL uploads,
+about 0.4 ms in Node and replaced two line geometries before the fix. After the
+fix, the same unchanged-path workload averaged about 0.10 ms and disposed no
+line geometries. This excludes WebGL uploads,
 browser layout, terrain fetching, and GPU time. Browser profiling is required
 before predicting a frame-rate improvement.
 
-The comparison, marker, and freshness findings are confirmed code paths; their
-dedicated GUI regressions remain work for implementation. The altitude defect
-was also reproduced through the map functions. Existing tests do not cover all
-these cases, so a passing suite does not dismiss the findings.
+Dedicated GUI regressions cover comparison clearing, marker lifecycle,
+original-row hover, active hover bounds, implicit sharing and packet-age
+lifecycle. Packet-age tests inject a clock and do not sleep. Node regressions
+exercise the actual map module for exact repeated-coordinate altitude and
+geometry reuse, including updates without GPS.
 
-## Implementation sequence
+Release p50/p95, allocation profiling, GUI event latency and long-session GPU
+frame measurements remain follow-up measurements; they were not collected by
+these local callback probes.
 
-1. Add focused regressions for findings 1–4 and fix each in a small patch.
-2. Establish the Release chart baseline, then implement finding 5 using the
-   existing preview data. Retain raw-sample inspection and peak/gap behavior.
-3. Profile QtWebEngine path updates. Implement finding 6 if allocation or frame
-   measurements justify it. Do not change the trajectory's visual design.
-4. Run the full Catch2/CTest suite, Node map checks, warning-free build,
-   `clang-format`, and `cppcheck`. Verify both themes, desktop resizing,
-   empty/reset states, hidden-page behavior, and source separation.
+## Implementation and verification sequence
+
+1. Added focused regressions for findings 1–4 and verified the failures before fixing them.
+2. Implemented finding 5 using existing preview data and measured the same
+   local build before and after. Original-row inspection and peak/gap checks remain.
+3. Implemented finding 6 after reproducing redundant geometry disposals.
+   The trajectory's shape, vertical scale and ground projections remain unchanged.
+4. Latest verification passed: 62 CTest tests, five Node map tests, six native
+   layout/attitude cases (220 assertions), and the explicit native WebGL case
+   (23 assertions), including Follow during zoom.
+   Native captures cover both themes, desktop resizing and empty/reset states.
+   The build produced zero compiler warnings. Changed C++ lines pass
+   `clang-format`; `git diff --check` passes. Whole-source `cppcheck` reports
+   no errors or warnings, with six existing style/performance findings and
+   missing-include information.
 
 Keep `FlightSample`, `FlightDataModel`, and `IComms` unchanged. No new libraries,
-CMake changes, CI changes, resource changes, or attitude recalibration are planned.
+CMake changes, CI changes, resource changes, or attitude recalibration were introduced.
 Existing bounds, render scheduling, and hidden-map suspension should be preserved.

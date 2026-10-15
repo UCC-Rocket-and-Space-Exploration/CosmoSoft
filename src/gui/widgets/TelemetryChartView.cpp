@@ -105,20 +105,22 @@ int nearestIndexByX(const QList<QPointF> &pts, double tx)
 }
 
 /** Returns the index of the sorted X value closest to @p tx. */
-int nearestValueIndexByX(const QVector<double> &values, double tx)
-{
-    const qsizetype boundedSize = std::min(
-        values.size(), static_cast<qsizetype>(std::numeric_limits<int>::max()));
-    const int n = static_cast<int>(boundedSize);
-    if (n <= 0) return -1;
-    if (n == 1) return 0;
-    int lo = 0;
-    int hi = n - 1;
-    while (lo < hi - 1) {
-        const int mid = (lo + hi) / 2;
-        if (values[mid] <= tx) lo = mid; else hi = mid;
-    }
-    return std::abs(values[lo] - tx) <= std::abs(values[hi] - tx) ? lo : hi;
+int nearestValueIndexByX(const QVector<double> &values, double tx, int begin,
+                         int end) {
+  if (end <= begin)
+    return -1;
+  if (end - begin == 1)
+    return begin;
+  int lo = begin;
+  int hi = end - 1;
+  while (lo < hi - 1) {
+    const int mid = (lo + hi) / 2;
+    if (values[mid] <= tx)
+      lo = mid;
+    else
+      hi = mid;
+  }
+  return std::abs(values[lo] - tx) <= std::abs(values[hi] - tx) ? lo : hi;
 }
 
 } // namespace
@@ -172,13 +174,19 @@ void TelemetryChartView::setChart(QChart *c)
     m_chartPtr = c;
     QChartView::setChart(c);
     m_hoverXValues.clear();
+    m_hoverBegin = m_hoverEnd = 0;
     invalidateHoverSeriesCache();
 }
 
-void TelemetryChartView::setHoverXValues(QVector<double> values)
-{
-    m_hoverXValues = std::move(values);
-    m_hoverIndex = std::min(m_hoverIndex, static_cast<int>(m_hoverXValues.size()) - 1);
+void TelemetryChartView::setHoverXValues(QVector<double> values, int begin,
+                                         int end) {
+  m_hoverXValues = std::move(values);
+  const int size = static_cast<int>(std::min<qsizetype>(
+      m_hoverXValues.size(), std::numeric_limits<int>::max()));
+  m_hoverBegin = std::clamp(begin, 0, size);
+  m_hoverEnd = end < 0 ? size : std::clamp(end, m_hoverBegin, size);
+  if (m_hoverIndex < m_hoverBegin || m_hoverIndex >= m_hoverEnd)
+    m_hoverIndex = -1;
 }
 
 void TelemetryChartView::invalidateHoverSeriesCache()
@@ -474,15 +482,18 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos, int reque
         hideHoverOverlays();
         return;
     }
-    const bool hasLogicalLookup = !m_hoverXValues.isEmpty();
-    const int logicalIndex = requestedIndex >= 0 ? requestedIndex
-                             : hasLogicalLookup  ? nearestValueIndexByX(m_hoverXValues, plotVals.x())
-                                                 : nearestIndexByX(referencePoints, plotVals.x());
-    if (logicalIndex < 0) return;
+    const bool hasLogicalLookup = m_hoverEnd > m_hoverBegin;
+    const int logicalIndex =
+        requestedIndex >= 0 ? requestedIndex
+        : hasLogicalLookup  ? nearestValueIndexByX(m_hoverXValues, plotVals.x(),
+                                                   m_hoverBegin, m_hoverEnd)
+                            : nearestIndexByX(referencePoints, plotVals.x());
+    if (logicalIndex < 0 || (hasLogicalLookup && (logicalIndex < m_hoverBegin ||
+                                                  logicalIndex >= m_hoverEnd)))
+      return;
     m_hoverIndex = logicalIndex;
-    const double hoverX = hasLogicalLookup
-        ? m_hoverXValues[logicalIndex]
-        : referencePoints[logicalIndex].x();
+    const double hoverX = hasLogicalLookup ? m_hoverXValues.at(logicalIndex)
+                                           : referencePoints[logicalIndex].x();
 
     QLineSeries *closestSeries = nullptr;
     QPointF closestPoint;
@@ -525,9 +536,8 @@ void TelemetryChartView::updateHoverReadoutAt(const QPoint &widgetPos, int reque
     }
 
     QString text;
-    const qsizetype lookupSize = hasLogicalLookup
-        ? m_hoverXValues.size()
-        : referencePoints.size();
+    const qsizetype lookupSize =
+        hasLogicalLookup ? m_hoverEnd : referencePoints.size();
     const int totalSamples = static_cast<int>(std::min(
         lookupSize, static_cast<qsizetype>(std::numeric_limits<int>::max())));
     if (hoverDetail) {
@@ -592,22 +602,31 @@ void TelemetryChartView::mouseDoubleClickEvent(QMouseEvent *event) {
 }
 
 void TelemetryChartView::keyPressEvent(QKeyEvent *event) {
-    if ((event->key() == Qt::Key_Left || event->key() == Qt::Key_Right) && !m_hoverXValues.isEmpty()) {
-        auto *axis = qobject_cast<QValueAxis *>(m_chartPtr->axes(Qt::Horizontal).value(0));
-        auto *series = firstVisibleNonEmptyLineSeries(m_chartPtr);
-        if (!axis || !series) return;
-        const int first = nearestValueIndexByX(m_hoverXValues, axis->min());
-        const int last = nearestValueIndexByX(m_hoverXValues, axis->max());
-        const int index = m_hoverIndex < first || m_hoverIndex > last
-                              ? first
-                              : std::clamp(m_hoverIndex + (event->key() == Qt::Key_Right ? 1 : -1), first, last);
-        const QPointF position = m_chartPtr->mapToPosition(QPointF(m_hoverXValues[index], 0), series);
-        QPoint point = mapFromScene(m_chartPtr->mapToScene(position));
-        point.setY(static_cast<int>(m_chartPtr->plotArea().center().y()));
-        updateHoverReadoutAt(point, index);
-        event->accept();
-        return;
-    }
+  if ((event->key() == Qt::Key_Left || event->key() == Qt::Key_Right) &&
+      m_hoverEnd > m_hoverBegin) {
+    auto *axis =
+        qobject_cast<QValueAxis *>(m_chartPtr->axes(Qt::Horizontal).value(0));
+    auto *series = firstVisibleNonEmptyLineSeries(m_chartPtr);
+    if (!axis || !series)
+      return;
+    const int first = nearestValueIndexByX(m_hoverXValues, axis->min(),
+                                           m_hoverBegin, m_hoverEnd);
+    const int last = nearestValueIndexByX(m_hoverXValues, axis->max(),
+                                          m_hoverBegin, m_hoverEnd);
+    const int index =
+        m_hoverIndex < first || m_hoverIndex > last
+            ? first
+            : std::clamp(m_hoverIndex +
+                             (event->key() == Qt::Key_Right ? 1 : -1),
+                         first, last);
+    const QPointF position =
+        m_chartPtr->mapToPosition(QPointF(m_hoverXValues.at(index), 0), series);
+    QPoint point = mapFromScene(m_chartPtr->mapToScene(position));
+    point.setY(static_cast<int>(m_chartPtr->plotArea().center().y()));
+    updateHoverReadoutAt(point, index);
+    event->accept();
+    return;
+  }
     if (event->key() == Qt::Key_Escape) {
         hideHoverOverlays();
         event->accept();

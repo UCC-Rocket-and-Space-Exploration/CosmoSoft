@@ -90,7 +90,7 @@
   }
   #btnLocate    { top: 10px; right: 10px; }
   #btnFit       { top: 52px; right: 10px; font-size: 13px; font-weight: 600; }
-  #btnFollow    { top: 94px; right: 10px; font-size: 12px; font-weight: 600; }
+  #btnFollow    { top: 94px; right: 10px; width: 76px; font-size: 12px; font-weight: 600; }
   #btnZoomIn    { bottom: 100px; right: 10px; font-weight: 700; }
   #btnZoomOut   { bottom: 100px; right: 52px; font-weight: 700; }
 

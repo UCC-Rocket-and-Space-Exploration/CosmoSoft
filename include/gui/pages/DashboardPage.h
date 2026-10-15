@@ -268,6 +268,9 @@ private:
      */
     std::vector<int> m_hoverSampleIndexMap;
     QVector<double> m_chartHoverXValues;
+    QVector<double>
+        m_replayHoverXValues; ///< Shared immutable corrected timeline.
+    int m_chartHoverBegin = 0, m_chartHoverEnd = 0;
     int m_hoverLogicalSampleCount    = 0;   ///< Total logical samples at last rebuild.
     int m_replayChartBuiltTrailLength = -1; ///< Trail length at last full replay rebuild.
     int m_replayChartBuiltBucket = -1;      ///< Preview bucket at last replay rebuild.

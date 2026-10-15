@@ -35,7 +35,9 @@ recording-start or FC-mounting correction is applied. Live Telemetry feeds its
 own panel from live batches; replay updates do not replace its live pose.
 Missing angles clear the pose and show dash readouts against the reference
 axes. The panel does not show an unavailable message. Live poses become stale
-after two seconds.
+after two seconds. The packet indicator shows elapsed seconds since the last
+received batch, keeps aging after disconnect, and clears when the session resets.
+It refreshes only while the live page is visible and catches up when reopened.
 
 ## Angle inputs
 
@@ -68,7 +70,16 @@ The new rocket model is entirely orange and has no surrounding glow sphere.
 
 The original trajectory rendering is restored, including its original
 3× vertical scale, ground projections and terrain placement. The added
-smoothing and Path settings have been removed.
+smoothing and Path settings have been removed. An exact replay sample keeps its
+altitude even when its GPS coordinates match an earlier point. Attitude-only
+updates reuse the existing trail and ground-projection geometry.
+
+Replay and Live Telemetry use the same controls inside the map. Live Telemetry
+has no second set of Fit, Center or Follow buttons above it. **Follow** changes
+to **Following** while active. In 3D, orbit and zoom remain available while the
+camera follows the rocket, preserving the chosen viewing angle and distance.
+Panning is disabled until Follow is switched off, so the rocket remains the
+camera target. Dragging the 2D map still releases Follow for manual navigation.
 
 If the mission toolbar is hidden, restore it with **View → Mission toolbar**
 or **Ctrl+Shift+M**. The native View action always reflects its visibility.
@@ -91,8 +102,12 @@ Desktop layout
 checks use populated velocity and RSSI readings, resize through wide and
 narrow modes, and verify that readings and all right-column
 panels fit without page scrolling at 920 × 650, 1024 × 650, and 1440 × 800.
-Node checks the
-actual orange mesh geometry and quaternion payload validation.
+Chart checks retain original-sample hover through overview reduction, bound
+inspection to the active replay range, and verify comparison clearing and
+event-marker lifecycle. Packet-age checks use an injected monotonic clock.
+Node checks the actual orange mesh, quaternion validation, repeated-coordinate
+altitude and path-geometry reuse. See [the performance plan](ui-performance-improvement-plan.md)
+for before/after callback measurements and their limits.
 
 In a desktop graphics session, run these explicit UI checks:
 

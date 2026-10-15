@@ -17,6 +17,8 @@
 #include <QWidget>
 
 #include <array>
+#include <functional>
+#include <optional>
 
 class QComboBox;
 class QFrame;
@@ -26,7 +28,8 @@ class QPushButton;
 class QResizeEvent;
 class QScrollArea;
 class QShowEvent;
-class QToolButton;
+class QHideEvent;
+class QTimer;
 class QVBoxLayout;
 class FlightDataModel;
 class Map3DWidget;
@@ -41,36 +44,41 @@ class LiveTelemetryPage : public QWidget {
     Q_OBJECT
 
 public:
-    /**
-     * @brief Construct the live telemetry page bound to @p model.
-     * @param model Shared flight data model that publishes live samples.
-     * @param parent Optional Qt parent.
-     */
-    explicit LiveTelemetryPage(FlightDataModel *model, QWidget *parent = nullptr);
-    ~LiveTelemetryPage() override = default;
+  /** @brief Monotonic milliseconds used to display time since packet receipt.
+   */
+  using ClockSource = std::function<qint64()>;
+  /**
+   * @brief Construct the live telemetry page bound to @p model.
+   * @param model Shared flight data model that publishes live samples.
+   * @param parent Optional Qt parent.
+   * @param clockSource Monotonic receipt clock; defaults to steady_clock.
+   */
+  explicit LiveTelemetryPage(FlightDataModel *model, QWidget *parent = nullptr,
+                             ClockSource clockSource = {});
+  ~LiveTelemetryPage() override = default;
 
-    /**
-     * @brief Replace the serial device list with @p ports.
-     * Existing selection is preserved when possible.
-     */
-    void setAvailablePorts(const QStringList &ports);
+  /**
+   * @brief Replace the serial device list with @p ports.
+   * Existing selection is preserved when possible.
+   */
+  void setAvailablePorts(const QStringList &ports);
 
-    /**
-     * @brief Update connection chrome.
-     * @param label Human-readable active connection label.
-     * @param connected True when live telemetry is connected or streaming.
-     */
-    void setActiveConnection(const QString &label, bool connected);
+  /**
+   * @brief Update connection chrome.
+   * @param label Human-readable active connection label.
+   * @param connected True when live telemetry is connected or streaming.
+   */
+  void setActiveConnection(const QString &label, bool connected);
 
-    /** @brief Clear samples, metric values, map state, and counters. */
-    void resetLiveState();
+  /** @brief Clear samples, metric values, map state, and counters. */
+  void resetLiveState();
 
-    /**
-     * @brief Selects metric or imperial presentation units for live telemetry.
-     *
-     * Incoming samples and vertical-speed calculations remain in SI units.
-     */
-    void setImperialUnits(bool imperial);
+  /**
+   * @brief Selects metric or imperial presentation units for live telemetry.
+   *
+   * Incoming samples and vertical-speed calculations remain in SI units.
+   */
+  void setImperialUnits(bool imperial);
 
 signals:
     /** @brief User requested serial device scanning. */
@@ -91,6 +99,8 @@ signals:
   protected:
     /** @brief Refresh deferred telemetry presentation when the page becomes visible. */
     void showEvent(QShowEvent *event) override;
+    /** @brief Suspend packet-age refresh while this page is hidden. */
+    void hideEvent(QHideEvent *event) override;
 
     /** @brief Reflow telemetry panels to match the available viewport width. */
     void resizeEvent(QResizeEvent *event) override;
@@ -108,16 +118,17 @@ private:
     QFrame *buildDevicePanel();
     QFrame *buildIgnitorPanel();
     QPushButton *createPanelButton(const QString &text, QWidget *parent);
-    QToolButton *createMapToolButton(const QString &text, QWidget *parent);
     void refreshTelemetryDisplay();
     void resetMetricTiles();
     void updateLastPacketLabel();
     void updateResponsiveLayout();
-    void updateFollowButtonState(bool enabled);
     [[nodiscard]] QString selectedPort() const;
     [[nodiscard]] int selectedBaud() const;
 
     FlightDataModel *m_model = nullptr;
+    ClockSource m_clockSource;
+    std::optional<qint64> m_lastPacketAt;
+    QTimer *m_packetAgeTimer = nullptr;
     Map3DWidget *m_mapWidget = nullptr;
     RocketAttitudeWidget *m_attitudeWidget = nullptr;
     QScrollArea *m_scrollArea = nullptr;
@@ -137,7 +148,6 @@ private:
     QLabel *m_lastPacketLabel = nullptr;
     QComboBox *m_portCombo = nullptr;
     QComboBox *m_baudCombo = nullptr;
-    QToolButton *m_followButton = nullptr;
     QPushButton *m_scanButton = nullptr;
     QPushButton *m_connectButton = nullptr;
     QPushButton *m_disconnectButton = nullptr;

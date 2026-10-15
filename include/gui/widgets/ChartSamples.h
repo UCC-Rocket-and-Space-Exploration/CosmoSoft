@@ -37,16 +37,28 @@ inline std::vector<int> select(const std::vector<FlightSample> &samples, int beg
         for (int metric = 0; metric < MetricDefs::kMetricCount; ++metric) {
             if (!enabled[metric]) continue;
             int low = -1, high = -1;
+            double lowValue = 0, highValue = 0;
+            bool previousFinite =
+                first > begin && std::isfinite(MetricDefs::sampleValueForMetric(
+                                     samples[first - 1], metric));
             for (int i = first; i < last; ++i) {
                 const double value = MetricDefs::sampleValueForMetric(samples[i], metric);
-                if (i > begin &&
-                    std::isfinite(value) != std::isfinite(MetricDefs::sampleValueForMetric(samples[i - 1], metric))) {
-                    indices.push_back(i - 1);
-                    indices.push_back(i);
+                const bool finite = std::isfinite(value);
+                if (i > begin && finite != previousFinite) {
+                  indices.push_back(i - 1);
+                  indices.push_back(i);
                 }
-                if (!std::isfinite(value)) continue;
-                if (low < 0 || value < MetricDefs::sampleValueForMetric(samples[low], metric)) low = i;
-                if (high < 0 || value > MetricDefs::sampleValueForMetric(samples[high], metric)) high = i;
+                previousFinite = finite;
+                if (!finite)
+                  continue;
+                if (low < 0 || value < lowValue) {
+                  low = i;
+                  lowValue = value;
+                }
+                if (high < 0 || value > highValue) {
+                  high = i;
+                  highValue = value;
+                }
             }
             if (low >= 0) indices.push_back(low);
             if (high >= 0) indices.push_back(high);

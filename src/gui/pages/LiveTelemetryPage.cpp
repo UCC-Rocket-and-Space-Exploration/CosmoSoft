@@ -15,23 +15,26 @@
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QHideEvent>
 #include <QLabel>
 #include <QList>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
 #include <QSettings>
-#include <QSignalBlocker>
 #include <QShowEvent>
+#include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QStyle>
-#include <QToolButton>
+#include <QTimer>
 #include <QVBoxLayout>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <utility>
 
 using namespace Qt::StringLiterals;
 
@@ -64,64 +67,46 @@ namespace {
              MetricDefs::metricDisplayUnitShort(metricIndex, imperial));
 }
 
-[[nodiscard]] double relativeLuminance(const QColor &color) {
-    const auto linearChannel = [](const double channel) {
-        return channel <= 0.04045
-            ? channel / 12.92
-            : std::pow((channel + 0.055) / 1.055, 2.4);
-    };
-    return 0.2126 * linearChannel(color.redF())
-        + 0.7152 * linearChannel(color.greenF())
-        + 0.0722 * linearChannel(color.blueF());
-}
-
-[[nodiscard]] double contrastRatio(const QColor &first, const QColor &second) {
-    const double firstLuminance = relativeLuminance(first);
-    const double secondLuminance = relativeLuminance(second);
-    const double lighter = std::max(firstLuminance, secondLuminance);
-    const double darker = std::min(firstLuminance, secondLuminance);
-    return (lighter + 0.05) / (darker + 0.05);
-}
-
-[[nodiscard]] QString checkedButtonForeground() {
-    const QColor accent(Theme::kAccentLink());
-    const QColor base(Theme::kBgBase());
-    const QColor primaryText(Theme::kTextPrimary());
-    if (!accent.isValid() || !base.isValid() || !primaryText.isValid()) {
-        return Theme::kBgBase();
-    }
-    return contrastRatio(accent, base) >= contrastRatio(accent, primaryText)
-        ? Theme::kBgBase()
-        : Theme::kTextPrimary();
-}
-
 } // namespace
 
-LiveTelemetryPage::LiveTelemetryPage(FlightDataModel *model, QWidget *parent)
-    : QWidget(parent), m_model(model) {
-    const QSettings unitSettings(kSettingsOrg, kSettingsApp);
-    m_imperialUnits = unitSettings.value(kSettingsUnitSystem, kUnitSystemMetric)
-                          .toString()
-                          .compare(QString::fromLatin1(kUnitSystemImperial),
-                                   Qt::CaseInsensitive) == 0;
-    setObjectName(u"liveTelemetryPage"_s);
-    buildUi();
-    resetMetricTiles();
-    setActiveConnection(QString(), false);
-    refreshStyleSheet();
+LiveTelemetryPage::LiveTelemetryPage(FlightDataModel *model, QWidget *parent,
+                                     ClockSource clockSource)
+    : QWidget(parent), m_model(model),
+      m_clockSource(clockSource ? std::move(clockSource) : [] {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+            .count();
+      }) {
+  const QSettings unitSettings(kSettingsOrg, kSettingsApp);
+  m_imperialUnits = unitSettings.value(kSettingsUnitSystem, kUnitSystemMetric)
+                        .toString()
+                        .compare(QString::fromLatin1(kUnitSystemImperial),
+                                 Qt::CaseInsensitive) == 0;
+  setObjectName(u"liveTelemetryPage"_s);
+  buildUi();
+  auto ageTimer = std::make_unique<QTimer>(this);
+  m_packetAgeTimer = ageTimer.get();
+  ageTimer->setObjectName("packetAgeTimer");
+  ageTimer->setInterval(1000);
+  connect(ageTimer.release(), &QTimer::timeout, this,
+          &LiveTelemetryPage::updateLastPacketLabel);
+  resetMetricTiles();
+  setActiveConnection(QString(), false);
+  refreshStyleSheet();
 
-    if (m_model) {
-        connect(m_model, &FlightDataModel::liveSamplesReceived,
-                this, &LiveTelemetryPage::onLiveSamplesReceived);
-        connect(m_model, &FlightDataModel::liveSamplesReceived,
-                m_mapWidget, &Map3DWidget::onLiveSamplesReceived);
-        connect(m_model, &FlightDataModel::sessionReset, this, &LiveTelemetryPage::resetLiveState);
-        connect(m_model, &FlightDataModel::bytesReceivedChanged,
-                this, &LiveTelemetryPage::onBytesReceivedChanged);
-    }
+  if (m_model) {
+    connect(m_model, &FlightDataModel::liveSamplesReceived, this,
+            &LiveTelemetryPage::onLiveSamplesReceived);
+    connect(m_model, &FlightDataModel::liveSamplesReceived, m_mapWidget,
+            &Map3DWidget::onLiveSamplesReceived);
+    connect(m_model, &FlightDataModel::sessionReset, this,
+            &LiveTelemetryPage::resetLiveState);
+    connect(m_model, &FlightDataModel::bytesReceivedChanged, this,
+            &LiveTelemetryPage::onBytesReceivedChanged);
+  }
 
-    connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
-            this, &LiveTelemetryPage::refreshStyleSheet);
+  connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
+          this, &LiveTelemetryPage::refreshStyleSheet);
 }
 
 void LiveTelemetryPage::setImperialUnits(bool imperial) {
@@ -187,6 +172,8 @@ void LiveTelemetryPage::setActiveConnection(const QString &label, bool connected
 }
 
 void LiveTelemetryPage::resetLiveState() {
+  m_lastPacketAt.reset();
+  m_packetAgeTimer->stop();
   if (m_attitudeWidget)
     m_attitudeWidget->resetDisplay();
   m_sampleCount = 0;
@@ -249,7 +236,6 @@ void LiveTelemetryPage::refreshStyleSheet() {
             padding: 5px 8px;
         }
         QPushButton[kind="liveButton"],
-        QToolButton[kind="mapButton"],
         QComboBox {
             background-color: %13;
             color: %5;
@@ -260,28 +246,18 @@ void LiveTelemetryPage::refreshStyleSheet() {
             font-size: %8px;
         }
         QPushButton[kind="liveButton"]:hover,
-        QToolButton[kind="mapButton"]:hover,
         QComboBox:hover {
             background-color: %14;
             border-color: %15;
         }
-        QPushButton[kind="liveButton"]:pressed,
-        QToolButton[kind="mapButton"]:pressed {
+        QPushButton[kind="liveButton"]:pressed {
             background-color: %16;
         }
-        QToolButton[kind="mapButton"]:checked {
-            background-color: %20;
-            color: %21;
-            border-color: %20;
-            font-weight: 700;
-        }
         QPushButton[kind="liveButton"]:focus,
-        QToolButton[kind="mapButton"]:focus,
         QComboBox:focus {
             border: 2px solid %19;
         }
         QPushButton[kind="liveButton"]:disabled,
-        QToolButton[kind="mapButton"]:disabled,
         QComboBox:disabled {
             color: %17;
             border-color: %3;
@@ -309,26 +285,24 @@ void LiveTelemetryPage::refreshStyleSheet() {
             padding: 2px 6px;
         }
     )"_s)
-                    .arg(Theme::kBgBase())            // %1
-                    .arg(Theme::kBgPanel())           // %2
-                    .arg(Theme::kBorderSubtle())      // %3
-                    .arg(Theme::kRadiusMd)            // %4
-                    .arg(Theme::kTextPrimary())       // %5
-                    .arg(Theme::kFontMono)            // %6
-                    .arg(Theme::kTextMuted())         // %7
-                    .arg(Theme::kFontSizeBase)        // %8
-                    .arg(Theme::kSuccess())           // %9
-                    .arg(Theme::kSuccessBg())         // %10
-                    .arg(Theme::kBgDark())            // %11
-                    .arg(Theme::kBorderDefault())     // %12
-                    .arg(Theme::kBgButton())          // %13
-                    .arg(Theme::kBtnHover())          // %14
-                    .arg(Theme::kBorderLight())       // %15
-                    .arg(Theme::kBtnPressed())        // %16
-                    .arg(Theme::kTextDim())           // %17
-                    .arg(Theme::kFocusRing())         // %19
-                    .arg(Theme::kAccentLink())        // %20
-                    .arg(checkedButtonForeground())); // %21
+                    .arg(Theme::kBgBase())        // %1
+                    .arg(Theme::kBgPanel())       // %2
+                    .arg(Theme::kBorderSubtle())  // %3
+                    .arg(Theme::kRadiusMd)        // %4
+                    .arg(Theme::kTextPrimary())   // %5
+                    .arg(Theme::kFontMono)        // %6
+                    .arg(Theme::kTextMuted())     // %7
+                    .arg(Theme::kFontSizeBase)    // %8
+                    .arg(Theme::kSuccess())       // %9
+                    .arg(Theme::kSuccessBg())     // %10
+                    .arg(Theme::kBgDark())        // %11
+                    .arg(Theme::kBorderDefault()) // %12
+                    .arg(Theme::kBgButton())      // %13
+                    .arg(Theme::kBtnHover())      // %14
+                    .arg(Theme::kBorderLight())   // %15
+                    .arg(Theme::kBtnPressed())    // %16
+                    .arg(Theme::kTextDim())       // %17
+                    .arg(Theme::kFocusRing()));   // %19
 
   for (auto *tile : m_metricTiles) {
     if (tile) {
@@ -343,6 +317,9 @@ void LiveTelemetryPage::onLiveSamplesReceived(const QVector<FlightSample> &sampl
     }
 
     const FlightSample &sample = samples.constLast();
+    m_lastPacketAt = m_clockSource();
+    if (isVisible() && !m_packetAgeTimer->isActive())
+      m_packetAgeTimer->start();
     if (m_attitudeWidget)
       m_attitudeWidget->setSample(sample);
     const FlightSample *velocityPrevious = nullptr;
@@ -386,6 +363,13 @@ void LiveTelemetryPage::showEvent(QShowEvent *event) {
     QWidget::showEvent(event);
     updateResponsiveLayout();
     refreshTelemetryDisplay();
+    if (m_lastPacketAt)
+      m_packetAgeTimer->start();
+}
+
+void LiveTelemetryPage::hideEvent(QHideEvent *event) {
+  m_packetAgeTimer->stop();
+  QWidget::hideEvent(event);
 }
 
 void LiveTelemetryPage::resizeEvent(QResizeEvent *event) {
@@ -452,13 +436,6 @@ QFrame *LiveTelemetryPage::buildMapPanel() {
     header->addWidget(title);
     header->addStretch(1);
 
-    auto *fitButton = createMapToolButton(u"Fit"_s, panel);
-    auto *centerButton = createMapToolButton(u"Center"_s, panel);
-    m_followButton = createMapToolButton(u"Follow"_s, panel);
-    m_followButton->setCheckable(true);
-    header->addWidget(fitButton);
-    header->addWidget(centerButton);
-    header->addWidget(m_followButton);
     layout->addLayout(header);
 
     m_mapWidget = new Map3DWidget(panel);
@@ -468,15 +445,6 @@ QFrame *LiveTelemetryPage::buildMapPanel() {
     m_mapWidget->setAccessibleDescription(u"Interactive map showing live rocket telemetry coordinates"_s);
     layout->addWidget(m_mapWidget, 1);
 
-    connect(fitButton, &QToolButton::clicked, m_mapWidget, &Map3DWidget::fitPath);
-    connect(centerButton, &QToolButton::clicked, m_mapWidget, &Map3DWidget::centerOnCurrent);
-    connect(m_followButton, &QToolButton::toggled, this, [this](bool enabled) {
-        updateFollowButtonState(enabled);
-        m_mapWidget->setCameraFollow(enabled);
-    });
-    connect(m_mapWidget, &Map3DWidget::cameraFollowChanged,
-            this, &LiveTelemetryPage::updateFollowButtonState);
-    updateFollowButtonState(false);
 
     return panel;
 }
@@ -651,40 +619,6 @@ QPushButton *LiveTelemetryPage::createPanelButton(const QString &text, QWidget *
     return button;
 }
 
-QToolButton *LiveTelemetryPage::createMapToolButton(const QString &text, QWidget *parent) {
-    auto *button = new QToolButton(parent);
-    button->setText(text);
-    button->setProperty("kind", u"mapButton"_s);
-    button->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    button->setCursor(Qt::PointingHandCursor);
-    button->setFocusPolicy(Qt::TabFocus);
-    button->setAccessibleName(text);
-    return button;
-}
-
-void LiveTelemetryPage::updateFollowButtonState(bool enabled) {
-    if (!m_followButton) {
-        return;
-    }
-
-    if (m_followButton->isChecked() != enabled) {
-        const QSignalBlocker blocker(m_followButton);
-        m_followButton->setChecked(enabled);
-    }
-
-    m_followButton->setText(enabled ? tr("Following") : tr("Follow"));
-    m_followButton->setAccessibleName(
-        enabled ? tr("Camera follow on") : tr("Camera follow off"));
-    m_followButton->setAccessibleDescription(
-        enabled
-            ? tr("The map camera follows the latest position. Activate to stop following.")
-            : tr("The map camera is free to move. Activate to follow the latest position."));
-    m_followButton->setToolTip(
-        enabled
-            ? tr("Camera follow is on. Activate to stop following.")
-            : tr("Camera follow is off. Activate to follow the latest position."));
-}
-
 void LiveTelemetryPage::updateResponsiveLayout() {
     if (!m_scrollArea || !m_responsiveLayout || !m_mapPanel
         || !m_metricsPanel || !m_sideColumn) {
@@ -798,8 +732,14 @@ void LiveTelemetryPage::resetMetricTiles() {
 
 void LiveTelemetryPage::updateLastPacketLabel() {
     if (m_lastPacketLabel) {
-        m_lastPacketLabel->setText(
-            m_sampleCount > 0 ? u"Last packet: now"_s : u"Last packet: -NA- ms"_s);
+      const qint64 elapsed =
+          m_lastPacketAt
+              ? std::max<qint64>(0, m_clockSource() - *m_lastPacketAt)
+              : 0;
+      m_lastPacketLabel->setText(
+          !m_lastPacketAt  ? tr("Last packet: —")
+          : elapsed < 1000 ? tr("Last packet: now")
+                           : tr("Last packet: %1 s ago").arg(elapsed / 1000));
     }
     if (m_sampleCountLabel) {
         m_sampleCountLabel->setText(QStringLiteral("Samples: %1").arg(m_sampleCount));
