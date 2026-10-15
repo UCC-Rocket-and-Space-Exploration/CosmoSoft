@@ -5,9 +5,9 @@
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
 #include "gateway/comms/CommsFactory.h"
-#include "gateway/comms/interfaces/ISerialPortScanner.h"
 #include "gateway/comms/SerialPortScannerFactory.h"
 #include "gateway/comms/SerialWorker.h"
+#include "gateway/comms/interfaces/ISerialPortScanner.h"
 #include "gui/AboutDialog.h"
 #include "gui/FlightDataModel.h"
 #include "gui/FlightReplayController.h"
@@ -19,8 +19,8 @@
 #include "gui/pages/EventLogPage.h"
 #include "gui/pages/LiveTelemetryPage.h"
 #include "gui/pages/SettingsPage.h"
-#include "services/import/SampleFileLoader.h"
 #include "services/flight/FakeFlightLink.h"
+#include "services/import/SampleFileLoader.h"
 #include "services/persistence/FlightLogManager.h"
 #include "services/telemetry/LineTelemetryBatchMailbox.h"
 #include "services/telemetry/LineTelemetryDecodeWorker.h"
@@ -74,6 +74,13 @@
 using namespace Qt::StringLiterals;
 
 namespace {
+
+FlightSample emptyDisplayedSample() {
+  FlightSample sample;
+  const double missing = std::numeric_limits<double>::quiet_NaN();
+  sample.angularRotation = {missing, missing, missing};
+  return sample;
+}
 
 struct FlightLogLoadResult {
     std::optional<std::string> error;
@@ -259,11 +266,11 @@ MainWindow::MainWindow(QWidget *parent)
             m_replayTelemetryCoalesceTimer->stop();
         }
         if (!m_flightDataPage || !m_flightDataPage->isVisible()) {
-            return;
+          return;
         }
         const int idx = m_replay ? m_replay->index() : 0;
         if (idx <= 0) {
-            m_flightModel->setDisplayedSample(FlightSample{});
+          m_flightModel->setDisplayedSample(emptyDisplayedSample());
         } else {
             applyReplayTelemetrySample(idx);
         }
@@ -398,6 +405,7 @@ void MainWindow::setupMenuBar() {
     fileMenu->addAction(u"&Quit"_s, QKeySequence::Quit, qApp, &QApplication::quit);
 
     auto *viewMenu = mb->addMenu(u"&View"_s);
+    viewMenu->setObjectName(u"viewMenu"_s);
     viewMenu->addAction(m_dashboardAction);
     viewMenu->addAction(m_liveTelemetryAction);
     viewMenu->addAction(m_eventLogAction);
@@ -547,6 +555,14 @@ void MainWindow::setupToolbar() {
     toolbar->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
     toolbar->setStyleSheet(buildToolbarStyleSheet());
     addToolBar(Qt::LeftToolBarArea, toolbar);
+    auto *visibilityAction = toolbar->toggleViewAction();
+    visibilityAction->setText(tr("Mission toolbar"));
+    visibilityAction->setShortcut(QKeySequence(u"Ctrl+Shift+M"_s));
+    visibilityAction->setShortcutContext(Qt::ApplicationShortcut);
+    if (auto *viewMenu = menuBar()->findChild<QMenu *>(u"viewMenu"_s)) {
+      viewMenu->addSeparator();
+      viewMenu->addAction(visibilityAction);
+    }
 
     auto *content = new QWidget(toolbar);
     m_toolbarContent = content;
@@ -810,15 +826,15 @@ void MainWindow::persistSerialPrefs() {
 */
 
 void MainWindow::setupPages() {
-    auto *central = new QWidget(this);
-    auto *centralLayout = new QVBoxLayout(central);
-    centralLayout->setContentsMargins(0, 0, 0, 0);
-    centralLayout->setSpacing(0);
+  auto *central = new QWidget(this);
+  auto *centralLayout = new QVBoxLayout(central);
+  centralLayout->setContentsMargins(0, 0, 0, 0);
+  centralLayout->setSpacing(0);
 
-    setupConnectionBar();
-    if (m_connectionBar) {
-        centralLayout->addWidget(m_connectionBar);
-    }
+  setupConnectionBar();
+  if (m_connectionBar) {
+    centralLayout->addWidget(m_connectionBar);
+  }
 
     m_pages = new QStackedWidget(central);
     centralLayout->addWidget(m_pages, 1);
@@ -842,7 +858,7 @@ void MainWindow::setupPages() {
         if (m_flightModel && m_flightModel->replayMode() && m_replay) {
             const int replayIndex = m_replay->index();
             if (replayIndex <= 0) {
-                m_flightModel->setDisplayedSample(FlightSample{});
+              m_flightModel->setDisplayedSample(emptyDisplayedSample());
             } else {
                 applyReplayTelemetrySample(replayIndex);
             }
@@ -973,7 +989,7 @@ void MainWindow::onReplayPositionChanged(int trailLength) {
             m_replayTelemetryCoalesceTimer->stop();
         }
         if (m_flightDataPage && m_flightDataPage->isVisible()) {
-            m_flightModel->setDisplayedSample(FlightSample{});
+          m_flightModel->setDisplayedSample(emptyDisplayedSample());
         }
         return;
     }
@@ -981,7 +997,7 @@ void MainWindow::onReplayPositionChanged(int trailLength) {
         return;
     }
     if (!m_flightDataPage || !m_flightDataPage->isVisible()) {
-        return;
+      return;
     }
     if (m_replay && m_replay->isPlaying()) {
         if (m_replayTelemetryCoalesceTimer
@@ -1001,9 +1017,9 @@ void MainWindow::applyReplayTelemetrySample(int trailLength) {
 }
 
 void MainWindow::applyPendingReplayTelemetryStrip() {
-    if (m_flightDataPage && m_flightDataPage->isVisible()) {
-        applyReplayTelemetrySample(m_pendingReplayTelemetryTrail);
-    }
+  if (m_flightDataPage && m_flightDataPage->isVisible()) {
+    applyReplayTelemetrySample(m_pendingReplayTelemetryTrail);
+  }
 }
 
 void MainWindow::refreshFakeTransmissionButton() {

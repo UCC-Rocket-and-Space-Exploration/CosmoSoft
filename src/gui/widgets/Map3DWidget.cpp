@@ -1,4 +1,5 @@
 #include "gui/widgets/Map3DWidget.h"
+#include "gui/AttitudeMath.h"
 #include "gui/ThemeManager.h"
 #include "services/preview/FlightPreviewCache.h"
 
@@ -122,6 +123,15 @@ bool isUsableMapPoint(const FlightSample &sample, double displayTime) {
         && (std::abs(latitude) >= 1.0e-9 || std::abs(longitude) >= 1.0e-9);
 }
 
+QVariantList attitudePayload(const FlightSample &sample) {
+  const auto orientation =
+      cosmo::gui::attitudeQuaternion(sample.angularRotation);
+  if (!orientation)
+    return {};
+  return {orientation->x(), orientation->y(), orientation->z(),
+          orientation->scalar()};
+}
+
 double horizontalDistanceMetres(
     double firstLatitude,
     double firstLongitude,
@@ -144,17 +154,18 @@ double horizontalDistanceMetres(
 }
 
 QVariantMap mapPointPayload(const FlightSample &sample, int sampleIndex, double displayTime) {
-    if (!isUsableMapPoint(sample, displayTime)) {
-        return {};
-    }
+  if (!isUsableMapPoint(sample, displayTime)) {
+    return {};
+  }
 
-    return {
-        {QStringLiteral("idx"), sampleIndex},
-        {QStringLiteral("lat"), sample.coordinates.latitude},
-        {QStringLiteral("lon"), sample.coordinates.longitude},
-        {QStringLiteral("alt"), sample.altitude},
-        {QStringLiteral("ts"), displayTime},
-    };
+  return {
+      {QStringLiteral("idx"), sampleIndex},
+      {QStringLiteral("lat"), sample.coordinates.latitude},
+      {QStringLiteral("lon"), sample.coordinates.longitude},
+      {QStringLiteral("alt"), sample.altitude},
+      {QStringLiteral("ts"), displayTime},
+      {QStringLiteral("attitude"), attitudePayload(sample)},
+  };
 }
 
 /** @brief Keeps browser-page scaling out of the embedded map surface. */
@@ -663,6 +674,10 @@ void Map3DWidget::sendPendingTrailLength() {
             : static_cast<double>(s.timestamp) / 1000.0;
         current = mapPointPayload(s, idx, displayTime);
     }
+    if (m_pendingTrailLength > 0) {
+      const auto &sample = m_session->samples[static_cast<std::size_t>(idx)];
+      current.insert(QStringLiteral("attitude"), attitudePayload(sample));
+    }
     m_bridge->publishTrailLength(m_pendingTrailLength, current);
 }
 
@@ -672,6 +687,8 @@ void Map3DWidget::onSampleUpdated(const FlightSample &sample) {
 
 void Map3DWidget::onLiveSamplesReceived(const QVector<FlightSample> &samples) {
     if (m_session) return;
+    if (!samples.isEmpty())
+      m_liveAttitude = attitudePayload(samples.back());
 
     bool totalChanged = false;
     for (const auto &sample : samples) {
@@ -754,13 +771,12 @@ void Map3DWidget::sendPendingLiveSamples() {
     if (replace) {
         path2d.reserve(static_cast<qsizetype>(m_liveSamples.size()));
         for (const auto &entry : m_liveSamples) {
-            const QVariantMap point = mapPointPayload(
-                entry.sample,
-                entry.sampleIndex,
-                static_cast<double>(entry.sample.timestamp));
-            if (!point.isEmpty()) {
-                path2d.append(point);
-            }
+          const QVariantMap point = mapPointPayload(
+              entry.sample, entry.sampleIndex,
+              static_cast<double>(entry.sample.timestamp) / 1000.0);
+          if (!point.isEmpty()) {
+            path2d.append(point);
+          }
         }
 
         const auto positions3d = cappedSourceIndices(
@@ -770,9 +786,8 @@ void Map3DWidget::sendPendingLiveSamples() {
         for (const std::size_t position : positions3d) {
             const auto &entry = m_liveSamples[position];
             const QVariantMap point = mapPointPayload(
-                entry.sample,
-                entry.sampleIndex,
-                static_cast<double>(entry.sample.timestamp));
+                entry.sample, entry.sampleIndex,
+                static_cast<double>(entry.sample.timestamp) / 1000.0);
             if (!point.isEmpty()) {
                 path3d.append(point);
             }
@@ -783,9 +798,8 @@ void Map3DWidget::sendPendingLiveSamples() {
                 continue;
             }
             const QVariantMap point = mapPointPayload(
-                entry.sample,
-                entry.sampleIndex,
-                static_cast<double>(entry.sample.timestamp));
+                entry.sample, entry.sampleIndex,
+                static_cast<double>(entry.sample.timestamp) / 1000.0);
             if (!point.isEmpty()) {
                 path2d.append(point);
                 path3d.append(point);
@@ -803,6 +817,7 @@ void Map3DWidget::sendPendingLiveSamples() {
         {QStringLiteral("cumulativePathLength"), m_liveCumulativePathLength},
         {QStringLiteral("path"), path2d},
         {QStringLiteral("path3d"), path3d},
+        {QStringLiteral("attitude"), m_liveAttitude},
     });
     m_lastPublishedLiveIndex = m_liveTotalSamples - 1;
     if (replace) {
@@ -818,6 +833,7 @@ void Map3DWidget::onSessionReset() {
     m_session.reset();
     m_preview.reset();
     m_liveSamples.clear();
+    m_liveAttitude.clear();
     m_liveTotalSamples = 0;
     m_liveReceivedSamples = 0;
     m_liveValidGpsSamples = 0;

@@ -158,6 +158,10 @@ The `sample_data/` folder contains example logs:
 
 ## Project structure
 
+The embedded [rocket attitude instrument](docs/rocket-attitude.md) in Replay
+and Live Telemetry shows orientation against fixed axes. A synthetic replay is available at
+`sample_data/rocket_attitude_demo.csv`.
+
 - `src/gui` — Qt UI (`MainWindow`, `DashboardPage`, `LiveTelemetryPage`, `EventLogPage`, `SettingsPage`, replay controller, `FlightDataModel`, widgets)
 - `src/services/import` — `SampleFileLoader` (CSV, XLSX, and `.telem` ingestion)
 - `src/services/telemetry` — framing and parsing pipeline (worker thread)

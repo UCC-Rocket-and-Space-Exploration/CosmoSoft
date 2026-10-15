@@ -1,3 +1,4 @@
+#include "gui/AttitudeMath.h"
 #include "gui/widgets/ChartSamples.h"
 #include "gui/widgets/MetricDefs.h"
 
@@ -6,6 +7,32 @@
 
 #include <cmath>
 #include <limits>
+
+TEST_CASE("Rocket attitude uses a right handed upright XYZ reference",
+          "[gui][attitude]") {
+  using cosmo::gui::attitudeQuaternion;
+  const auto upright = attitudeQuaternion({0, 0, 0});
+  REQUIRE(upright.has_value());
+  REQUIRE(upright->rotatedVector({0, 1, 0}).y() == Catch::Approx(1));
+  const auto tiltX = attitudeQuaternion({90, 0, 0});
+  REQUIRE(tiltX.has_value());
+  REQUIRE(tiltX->rotatedVector({0, 1, 0}).z() == Catch::Approx(1));
+  const auto tiltZ = attitudeQuaternion({0, 0, 90});
+  REQUIRE(tiltZ.has_value());
+  REQUIRE(tiltZ->rotatedVector({0, 1, 0}).x() == Catch::Approx(-1));
+  const auto roll = attitudeQuaternion({0, 90, 0});
+  REQUIRE(roll.has_value());
+  REQUIRE(roll->rotatedVector({0, 1, 0}).y() == Catch::Approx(1));
+  REQUIRE(roll->rotatedVector({1, 0, 0}).z() == Catch::Approx(-1));
+  const auto wrapped = attitudeQuaternion({0, 720, 0});
+  REQUIRE(wrapped.has_value());
+  REQUIRE(wrapped->rotatedVector({1, 0, 0}).x() == Catch::Approx(1));
+  const double missing = std::numeric_limits<double>::quiet_NaN();
+  REQUIRE_FALSE(attitudeQuaternion({missing, 0, 0}).has_value());
+  REQUIRE_FALSE(
+      attitudeQuaternion({0, std::numeric_limits<double>::infinity(), 0})
+          .has_value());
+}
 
 TEST_CASE("Chart overview preserves spikes in every trace and missing-value boundaries", "[gui][chart]") {
     std::vector<FlightSample> samples(12000);

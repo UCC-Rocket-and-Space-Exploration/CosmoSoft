@@ -74,6 +74,9 @@ struct TelemetryColumns {
     int iGyroX = -1;
     int iGyroY = -1;
     int iGyroZ = -1;
+    int iAttitudeX = -1;
+    int iAttitudeY = -1;
+    int iAttitudeZ = -1;
     int iPress = -1;
     int iAlt = -1;
     int iTemp = -1;
@@ -469,6 +472,13 @@ std::optional<TelemetryColumns> resolveTelemetryColumns(
     columns.iGyroX = findColumnAny(header, {"angular_velocity_x", "gyro_x", "gx", "gx_rads"});
     columns.iGyroY = findColumnAny(header, {"angular_velocity_y", "gyro_y", "gy", "gy_rads"});
     columns.iGyroZ = findColumnAny(header, {"angular_velocity_z", "gyro_z", "gz", "gz_rads"});
+    // Only explicit degree columns opt into the documented display convention.
+    columns.iAttitudeX =
+        findColumnAny(header, {"attitude_x_deg", "anglex_deg", "angle_x_deg"});
+    columns.iAttitudeY =
+        findColumnAny(header, {"attitude_y_deg", "angley_deg", "angle_y_deg"});
+    columns.iAttitudeZ =
+        findColumnAny(header, {"attitude_z_deg", "anglez_deg", "angle_z_deg"});
     columns.iPress = findColumnAny(header, {"pressure", "pressure_pa"});
     columns.iAlt = findColumnAny(header, {"altitude", "altitude_m", "alt_m"});
     columns.iTemp = findColumnAny(header, {"temperature", "temperature_c", "temp", "temp_c"});
@@ -550,13 +560,25 @@ std::optional<FlightSample> sampleFromCells(
     if (columns.iAccel >= 0) {
       sample.acceleration = {0, 0, acceleration};
     }
-    if (!parseOptionalTelemetryCell(cells, columns.iAccelX, sample.acceleration.x)
-        || !parseOptionalTelemetryCell(cells, columns.iAccelY, sample.acceleration.y)
-        || !parseOptionalTelemetryCell(cells, columns.iAccelZ, sample.acceleration.z)
-        || !parseOptionalTelemetryCell(cells, columns.iGyroX, sample.angularVelocity.x)
-        || !parseOptionalTelemetryCell(cells, columns.iGyroY, sample.angularVelocity.y)
-        || !parseOptionalTelemetryCell(cells, columns.iGyroZ, sample.angularVelocity.z)) {
-        return std::nullopt;
+    if (!parseOptionalTelemetryCell(cells, columns.iAccelX,
+                                    sample.acceleration.x) ||
+        !parseOptionalTelemetryCell(cells, columns.iAccelY,
+                                    sample.acceleration.y) ||
+        !parseOptionalTelemetryCell(cells, columns.iAccelZ,
+                                    sample.acceleration.z) ||
+        !parseOptionalTelemetryCell(cells, columns.iGyroX,
+                                    sample.angularVelocity.x) ||
+        !parseOptionalTelemetryCell(cells, columns.iGyroY,
+                                    sample.angularVelocity.y) ||
+        !parseOptionalTelemetryCell(cells, columns.iGyroZ,
+                                    sample.angularVelocity.z) ||
+        !parseOptionalTelemetryCell(cells, columns.iAttitudeX,
+                                    sample.angularRotation.x) ||
+        !parseOptionalTelemetryCell(cells, columns.iAttitudeY,
+                                    sample.angularRotation.y) ||
+        !parseOptionalTelemetryCell(cells, columns.iAttitudeZ,
+                                    sample.angularRotation.z)) {
+      return std::nullopt;
     }
     return sample;
 }

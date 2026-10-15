@@ -31,6 +31,7 @@ class QVBoxLayout;
 class FlightDataModel;
 class Map3DWidget;
 class StatTileWidget;
+class RocketAttitudeWidget;
 
 /**
  * @class LiveTelemetryPage
@@ -118,6 +119,7 @@ private:
 
     FlightDataModel *m_model = nullptr;
     Map3DWidget *m_mapWidget = nullptr;
+    RocketAttitudeWidget *m_attitudeWidget = nullptr;
     QScrollArea *m_scrollArea = nullptr;
     QWidget *m_scrollContent = nullptr;
     QGridLayout *m_responsiveLayout = nullptr;

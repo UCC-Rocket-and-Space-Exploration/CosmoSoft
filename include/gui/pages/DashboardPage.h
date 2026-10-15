@@ -38,6 +38,7 @@ class Map3DWidget;
 class ReplayBar;
 class TelemetryChartView;
 class TracesPanel;
+class RocketAttitudeWidget;
 
 /**
  * @class DashboardPage
@@ -101,6 +102,7 @@ public:
     void liveTelemetryRequested();
 
   protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void showEvent(QShowEvent *event) override;
@@ -172,6 +174,8 @@ private:
 
     // ── Widgets ───────────────────────────────────────────────────────────────
     TracesPanel *m_tracesPanel       = nullptr;   ///< Metric toggle + live readout panel.
+    RocketAttitudeWidget *m_attitudeWidget = nullptr;
+    QWidget *m_instrumentColumn = nullptr;
     ReplayBar   *m_replayBar       = nullptr;   ///< Transport bar (buttons, scrubber, labels).
     QLabel      *m_emptyStateLabel   = nullptr;  ///< Guidance shown when no data is loaded.
     QLabel      *m_sessionInfoLabel  = nullptr;  ///< Session metadata summary.

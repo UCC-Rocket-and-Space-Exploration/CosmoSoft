@@ -18,9 +18,10 @@
 #ifndef COSMO_SOFT_MAP3DWIDGET_H
 #define COSMO_SOFT_MAP3DWIDGET_H
 
-#include <QWidget>
-#include <QVector>
+#include <QVariantList>
 #include <QVariantMap>
+#include <QVector>
+#include <QWidget>
 
 #include <cstdint>
 #include <memory>
@@ -181,6 +182,7 @@ private:
     bool m_haveLastLiveCoordinate = false;
 
     std::vector<IndexedLiveSample> m_liveSamples;
+    QVariantList m_liveAttitude;
 };
 
 /**

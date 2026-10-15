@@ -37,6 +37,7 @@
 #include "gui/widgets/Map3DWidget.h"
 #include "gui/widgets/MetricDefs.h"
 #include "gui/widgets/ReplayBar.h"
+#include "gui/widgets/RocketAttitudeWidget.h"
 #include "gui/widgets/TelemetryChartView.h"
 #include "gui/widgets/TracesPanel.h"
 
@@ -234,6 +235,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     chartHeaderLay->setSpacing(4);
 
     buildChartToolbar(chartHeader, chartHeaderLay);
+    chartHeader->installEventFilter(this);
 
     chartFrameLayout->addWidget(chartHeader, 0);
 
@@ -530,7 +532,20 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     auto *dashSplitter = new QSplitter(Qt::Horizontal, this);
     dashSplitter->setChildrenCollapsible(false);
     dashSplitter->setHandleWidth(12);
-    dashSplitter->addWidget(m_tracesPanel);
+    auto instruments = std::make_unique<QWidget>(this);
+    auto instrumentLayout = std::make_unique<QVBoxLayout>();
+    instrumentLayout->setContentsMargins(0, 0, 0, 0);
+    instrumentLayout->setSpacing(12);
+    instrumentLayout->setAlignment(Qt::AlignTop);
+    instrumentLayout->addWidget(m_tracesPanel, 1);
+    auto attitude = std::make_unique<RocketAttitudeWidget>(instruments.get());
+    m_attitudeWidget = attitude.get();
+    m_attitudeWidget->hide();
+    instrumentLayout->addWidget(attitude.release());
+    instruments->setLayout(instrumentLayout.release());
+    auto *instrumentColumn = instruments.get();
+    m_instrumentColumn = instrumentColumn;
+    dashSplitter->addWidget(instruments.release());
     dashSplitter->addWidget(chartHost);
     dashSplitter->setStretchFactor(0, 0);
     dashSplitter->setStretchFactor(1, 1);
@@ -556,15 +571,14 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     });
     connect(m_tracesToggleBtn, &QToolButton::toggled, this,
             [this, dashSplitter](bool show) {
-        if (show) {
-            m_tracesPanel->setVisible(true);
-            dashSplitter->setSizes({260, dashSplitter->width() - 260});
-        } else {
-            m_tracesPanel->setVisible(false);
-        }
-    });
+              updateToolbarForView();
+              if (show) {
+                dashSplitter->setSizes({260, dashSplitter->width() - 260});
+              }
+            });
     rootLayout->addWidget(dashSplitter, 1);
     rootLayout->addWidget(m_replayBar);
+    updateToolbarForView();
 
     if (m_model) {
         connect(m_model, &FlightDataModel::displayedSampleChanged,
@@ -861,12 +875,13 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
 
     m_tracesToggleBtn = new QToolButton(chartHeader);
     m_tracesToggleBtn->setObjectName(u"chartToggleBtn"_s);
-    m_tracesToggleBtn->setText(u"Traces"_s);
+    m_tracesToggleBtn->setText(u"Instruments"_s);
     m_tracesToggleBtn->setCheckable(true);
     m_tracesToggleBtn->setChecked(true);
     m_tracesToggleBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
     m_tracesToggleBtn->setCursor(Qt::PointingHandCursor);
-    m_tracesToggleBtn->setToolTip(u"Show/hide the traces side panel  [T key]"_s);
+    m_tracesToggleBtn->setToolTip(
+        u"Show/hide traces and rocket attitude  [T key]"_s);
     chartToolbar->addWidget(m_tracesToggleBtn);
 
     m_compareSelectedBtn = new QPushButton(chartHeader);
@@ -875,7 +890,6 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
     m_compareSelectedBtn->setToolTip(
         u"Focus one trace, compare two with separate axes, or align several traces by time."_s);
     connect(m_compareSelectedBtn, &QPushButton::clicked, this, &DashboardPage::enterComparisonView);
-    chartToolbar->addWidget(m_compareSelectedBtn);
 
     m_exitComparisonBtn = new QPushButton(u"Back"_s, chartHeader);
     m_exitComparisonBtn->setObjectName(u"chartToolbarBtn"_s);
@@ -883,7 +897,6 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
     m_exitComparisonBtn->setToolTip(u"Return to separate graphs"_s);
     m_exitComparisonBtn->setVisible(false);
     connect(m_exitComparisonBtn, &QPushButton::clicked, this, &DashboardPage::exitComparisonView);
-    chartToolbar->addWidget(m_exitComparisonBtn);
 
     m_viewSwitchGroup = new QWidget(chartHeader);
     m_viewSwitchGroup->setObjectName(u"viewSwitchGroup"_s);
@@ -1090,7 +1103,13 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
 
     chartHeaderLay->addLayout(chartToolbar);
     chartHeaderLay->addWidget(m_chartHelpHint);
-    chartHeaderLay->addWidget(m_toggleGroup, 0, Qt::AlignLeft);
+    auto optionsRow = std::make_unique<QHBoxLayout>();
+    optionsRow->setSpacing(6);
+    optionsRow->addWidget(m_toggleGroup);
+    optionsRow->addWidget(m_compareSelectedBtn);
+    optionsRow->addWidget(m_exitComparisonBtn);
+    optionsRow->addStretch(1);
+    chartHeaderLay->addLayout(optionsRow.release());
     updateCompactToolbar();
 }
 
@@ -1315,42 +1334,66 @@ void DashboardPage::refreshViewSwitcherIcons()
 }
 
 void DashboardPage::updateToolbarForView() {
-    const bool graphMode = m_viewStack && m_viewStack->currentIndex() == 0;
-    if (m_zoomGroup)      m_zoomGroup->setVisible(graphMode);
-    if (m_toggleGroup)    m_toggleGroup->setVisible(graphMode);
-    if (m_actionGroup)    m_actionGroup->setVisible(graphMode);
-    if (m_chartHelpBtn)   m_chartHelpBtn->setVisible(graphMode);
-    if (!graphMode && m_chartHelpBtn) m_chartHelpBtn->setChecked(false);
-    if (m_chartHelpHint)  m_chartHelpHint->setVisible(graphMode && m_chartHelpBtn && m_chartHelpBtn->isChecked());
-    if (m_tracesToggleBtn) m_tracesToggleBtn->setVisible(graphMode);
-    if (m_compareSelectedBtn) m_compareSelectedBtn->setVisible(graphMode && !m_comparisonActive);
-    if (m_exitComparisonBtn) m_exitComparisonBtn->setVisible(graphMode && m_comparisonActive);
-    if (m_tracesPanel) m_tracesPanel->setVisible(graphMode && m_tracesToggleBtn->isChecked());
-    for (auto *shortcut : m_chartShortcuts) {
-        if (shortcut) {
-            shortcut->setEnabled(graphMode);
-        }
+  const bool hasData =
+      !m_liveSamples.empty() || (m_session && !m_session->samples.empty());
+  const bool graphMode = m_viewStack && m_viewStack->currentIndex() == 0;
+  if (m_zoomGroup)
+    m_zoomGroup->setVisible(graphMode);
+  if (m_toggleGroup)
+    m_toggleGroup->setVisible(graphMode);
+  if (m_actionGroup)
+    m_actionGroup->setVisible(graphMode);
+  if (m_chartHelpBtn)
+    m_chartHelpBtn->setVisible(graphMode);
+  if (!graphMode && m_chartHelpBtn)
+    m_chartHelpBtn->setChecked(false);
+  if (m_chartHelpHint)
+    m_chartHelpHint->setVisible(graphMode && m_chartHelpBtn &&
+                                m_chartHelpBtn->isChecked());
+  if (m_tracesToggleBtn)
+    m_tracesToggleBtn->setVisible(hasData && m_viewStack &&
+                                  m_viewStack->currentIndex() != 2);
+  if (m_compareSelectedBtn)
+    m_compareSelectedBtn->setVisible(graphMode && !m_comparisonActive);
+  if (m_exitComparisonBtn)
+    m_exitComparisonBtn->setVisible(graphMode && m_comparisonActive);
+  if (m_tracesPanel)
+    m_tracesPanel->setVisible(hasData && graphMode &&
+                              m_tracesToggleBtn->isChecked());
+  if (m_instrumentColumn)
+    m_instrumentColumn->setVisible(hasData && m_viewStack &&
+                                   m_viewStack->currentIndex() != 2 &&
+                                   m_tracesToggleBtn->isChecked());
+  for (auto *shortcut : m_chartShortcuts) {
+    if (shortcut) {
+      shortcut->setEnabled(graphMode);
     }
+  }
 }
 
 void DashboardPage::updateCompactToolbar() {
-    constexpr int kCompactToolbarWidth = 900;
-    const bool compact = width() > 0 && width() < kCompactToolbarWidth;
-    if (!m_viewSwitchGroup || !m_graphViewBtn || !m_mapViewBtn) {
-        return;
-    }
+  constexpr int kCompactToolbarWidth = 900;
+  if (!m_viewSwitchGroup || !m_graphViewBtn || !m_mapViewBtn) {
+    return;
+  }
+  const int availableWidth = m_viewSwitchGroup->parentWidget()->width();
+  const bool compact =
+      availableWidth > 0 && availableWidth < kCompactToolbarWidth;
+  const QVariant previous = m_viewSwitchGroup->property("compact");
+  if (previous.isValid() && previous.toBool() == compact)
+    return;
 
-    m_viewSwitchGroup->setProperty("compact", compact);
-    m_graphViewBtn->setText(compact ? QString() : tr("Graph"));
-    m_mapViewBtn->setText(compact ? QString() : tr("Map"));
-    m_graphViewBtn->setAccessibleName(tr("Show telemetry chart"));
-    m_mapViewBtn->setAccessibleName(tr("Show flight path map"));
+  m_viewSwitchGroup->setProperty("compact", compact);
+  m_graphViewBtn->setText(compact ? QString() : tr("Graph"));
+  m_mapViewBtn->setText(compact ? QString() : tr("Map"));
+  m_graphViewBtn->setAccessibleName(tr("Show telemetry chart"));
+  m_mapViewBtn->setAccessibleName(tr("Show flight path map"));
 
-    for (auto *button : {m_graphViewBtn, m_mapViewBtn}) {
-        button->style()->unpolish(button);
-        button->style()->polish(button);
-        button->update();
-    }
+  for (auto *button : {m_graphViewBtn, m_mapViewBtn}) {
+    button->style()->unpolish(button);
+    button->style()->polish(button);
+    button->update();
+  }
 }
 
 int DashboardPage::countEnabledMetrics() const {
@@ -1479,6 +1522,13 @@ void DashboardPage::setReplaySession(
         m_tracesPanel->setMetricsOffered(traceOfferMaskForSession(m_session.get()));
     }
     const int n = m_session ? static_cast<int>(m_session->samples.size()) : 0;
+    if (m_attitudeWidget) {
+      m_attitudeWidget->setVisible(n > 0);
+      if (n > 0)
+        m_attitudeWidget->setSample(m_session->samples.back(), true);
+      else
+        m_attitudeWidget->resetDisplay();
+    }
 
     if (m_replayBar) m_replayBar->setSession(m_session, m_preview);
 
@@ -1502,8 +1552,14 @@ void DashboardPage::setReplaySession(
         m_viewStack->setCurrentIndex(0);
         if (m_graphViewBtn) m_graphViewBtn->setChecked(true);
         if (m_mapViewBtn) m_mapViewBtn->setChecked(false);
+    } else if (n == 0 && m_liveSamples.empty() && m_viewStack) {
+      m_viewStack->setCurrentIndex(2);
+      if (m_graphViewBtn)
+        m_graphViewBtn->setChecked(true);
+      if (m_mapViewBtn)
+        m_mapViewBtn->setChecked(false);
     }
-
+    updateToolbarForView();
 
     if (n > 0) {
         m_lastReplayTrailLength = n;
@@ -1529,6 +1585,14 @@ void DashboardPage::setReplaySession(
  * redundant and expensive series rebuild.
  */
 void DashboardPage::applyReplayControllerPosition(int trailLength) {
+  if (m_attitudeWidget) {
+    if (m_session && trailLength > 0 &&
+        trailLength <= static_cast<int>(m_session->samples.size()))
+      m_attitudeWidget->setSample(
+          m_session->samples[static_cast<std::size_t>(trailLength - 1)], true);
+    else
+      m_attitudeWidget->resetDisplay();
+  }
     if (!m_followToggle || m_followToggle->isChecked())
         m_preserveChartAxes = false;
     m_lastReplayTrailLength = trailLength;
@@ -1752,42 +1816,42 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
 }
 
 void DashboardPage::onSessionReset() {
-    m_preserveChartAxes = false;
-    if (m_renderSchedulerTimer) m_renderSchedulerTimer->stop();
-    m_liveChartDirty = false;
-    m_replayChartDirty = false;
-    m_hoverSampleIndexMap.clear();
-    m_hoverLogicalSampleCount = 0;
-    m_replayChartBuiltTrailLength = -1;
-    m_replayChartBuiltBucket = -1;
-    m_liveSamples.clear();
-    m_liveChartScratch.clear();
-    configureTracePlots();
-    for (int mi = 0; mi < kMetricCount; ++mi) {
-        if (m_lineSeries[static_cast<std::size_t>(mi)]) {
-            m_lineSeries[static_cast<std::size_t>(mi)]->clear();
-            m_lineSeries[static_cast<std::size_t>(mi)]->setVisible(false);
-        }
+  m_preserveChartAxes = false;
+  if (m_renderSchedulerTimer)
+    m_renderSchedulerTimer->stop();
+  m_liveChartDirty = false;
+  m_replayChartDirty = false;
+  m_hoverSampleIndexMap.clear();
+  m_hoverLogicalSampleCount = 0;
+  m_replayChartBuiltTrailLength = -1;
+  m_replayChartBuiltBucket = -1;
+  m_liveSamples.clear();
+  m_liveChartScratch.clear();
+  configureTracePlots();
+  for (int mi = 0; mi < kMetricCount; ++mi) {
+    if (m_lineSeries[static_cast<std::size_t>(mi)]) {
+      m_lineSeries[static_cast<std::size_t>(mi)]->clear();
+      m_lineSeries[static_cast<std::size_t>(mi)]->setVisible(false);
     }
-    for (auto *view : m_traceViews) {
-        view->setHoverXValues({});
-        view->invalidateHoverSeriesCache();
-    }
-    if (m_axisX) {
-        m_axisX->setRange(0, 10);
-    }
-    if (m_axisY) {
-        m_axisY->setRange(-1, 1);
-    }
-    if (m_chart) {
-        m_chart->setTitle(u"Flight data"_s);
-    }
-    if (m_replayBar) m_replayBar->setLiveSampleCount(0);
-    if (m_model && !m_model->replayMode()) m_liveChartDirty = true;
-    if (m_viewStack && m_liveSamples.empty() && (!m_session || m_session->samples.empty())) {
-        m_viewStack->setCurrentIndex(2);
-    }
-    scheduleRenderPass();
+  }
+  for (auto *view : m_traceViews) {
+    view->setHoverXValues({});
+    view->invalidateHoverSeriesCache();
+  }
+  if (m_axisX) {
+    m_axisX->setRange(0, 10);
+  }
+  if (m_axisY) {
+    m_axisY->setRange(-1, 1);
+  }
+  if (m_chart) {
+    m_chart->setTitle(u"Flight data"_s);
+  }
+  if (m_replayBar)
+    m_replayBar->setLiveSampleCount(0);
+  if (m_model && !m_model->replayMode())
+    m_liveChartDirty = true;
+  setReplaySession(nullptr, nullptr);
 }
 
 /**
@@ -2129,6 +2193,8 @@ void DashboardPage::onLiveSamplesReceived(const QVector<FlightSample> &samples) 
     if (!m_model || m_model->replayMode()) {
         return;
     }
+    if (m_attitudeWidget && !samples.isEmpty())
+      m_attitudeWidget->setSample(samples.back());
 
     for (const auto &sample : samples) {
         m_liveSamples.push_back(sample);
@@ -2220,6 +2286,13 @@ void DashboardPage::showEvent(QShowEvent *event) {
         m_tracesPanel->updateLiveValues(m_model->latestSample());
     }
     processScheduledUpdates(true);
+}
+
+bool DashboardPage::eventFilter(QObject *watched, QEvent *event) {
+  if (event->type() == QEvent::Resize && m_viewSwitchGroup &&
+      watched == m_viewSwitchGroup->parentWidget())
+    updateCompactToolbar();
+  return QWidget::eventFilter(watched, event);
 }
 
 void DashboardPage::resizeEvent(QResizeEvent *event) {

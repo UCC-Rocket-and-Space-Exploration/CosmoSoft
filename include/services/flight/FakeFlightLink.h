@@ -175,6 +175,7 @@ inline LaunchTelemetryPacket buildLaunchTelemetryPacket(std::size_t index) {
     sample.angularVelocity.x = gx;
     sample.angularVelocity.y = gy;
     sample.angularVelocity.z = gz;
+    sample.angularRotation = {angleX, angleY, angleZ};
     sample.coordinates.latitude = index == 0 ? kLaunchLatitude : latitude;
     sample.coordinates.longitude = index == 0 ? kLaunchLongitude : longitude;
     sample.batteryVoltage = std::max(10.8, 12.6 - 0.012 * t);

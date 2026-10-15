@@ -26,6 +26,24 @@ namespace {
 
 } // namespace
 
+TEST_CASE("Live CSV keeps supplied degree attitude", "[telemetry][attitude]") {
+  const auto sample = cosmo::telemetry::decodeTelemetryCsvRow(
+      "1,18,101325,100,0,0,9.81,0,0,0,30,45,-90,54,-5,0");
+  REQUIRE(sample.has_value());
+  REQUIRE(sample->angularRotation.x == 30);
+  REQUIRE(sample->angularRotation.y == 45);
+  REQUIRE(sample->angularRotation.z == -90);
+}
+
+TEST_CASE("Built-in demo supplies the same attitude as its wire packet",
+          "[telemetry][attitude]") {
+  const auto packet = cosmo::flightlink::buildLaunchTelemetryPacket(40);
+  REQUIRE(packet.sample.angularRotation.z == 16);
+  REQUIRE(packet.sample.angularRotation.x > 7);
+  REQUIRE(packet.sample.angularRotation.x < 9);
+  REQUIRE(packet.sample.angularRotation.y < -1);
+}
+
 TEST_CASE("LineTelemetryDecoder bounds oversized partial lines and recovers", "[telemetry][worker]") {
     cosmo::telemetry::LineTelemetryDecoder decoder(256);
     const std::string input = std::string(300, 'x') + '\n'

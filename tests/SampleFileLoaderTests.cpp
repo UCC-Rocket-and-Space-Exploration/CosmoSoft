@@ -2,10 +2,12 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "services/import/SampleFileLoader.h"
+#include "services/persistence/FlightLogManager.h"
 
 #include <QTemporaryDir>
 
 #include <array>
+#include <cmath>
 #include <fstream>
 #include <string>
 
@@ -16,6 +18,34 @@ namespace {
 }
 
 } // namespace
+
+TEST_CASE("Explicit degree attitude survives CSV import and export",
+          "[import][attitude]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("attitude.csv").toStdString();
+  {
+    std::ofstream file(path);
+    file << "time_ms,altitude,attitude_x_deg,attitude_y_deg,attitude_z_deg\n"
+            "0,100,90,0,-30\n100,101,,,\n200,102,0,359,0\n";
+  }
+  FlightSession session;
+  REQUIRE_FALSE(SampleFileLoader::loadTheseusCsv(path, session).has_value());
+  REQUIRE(session.samples.size() == 3);
+  REQUIRE(session.samples[0].angularRotation.x == Catch::Approx(90));
+  REQUIRE(session.samples[0].angularRotation.z == Catch::Approx(-30));
+  REQUIRE(std::isnan(session.samples[1].angularRotation.x));
+  REQUIRE(session.samples[2].angularRotation.y == Catch::Approx(359));
+  FlightLogManager logs;
+  logs.setOutputPath(directory.filePath("export.csv").toStdString());
+  REQUIRE(logs.exportSessionToCsv(session));
+  FlightSession roundTrip;
+  REQUIRE_FALSE(SampleFileLoader::loadTheseusCsv(logs.outputPath(), roundTrip)
+                    .has_value());
+  REQUIRE(roundTrip.samples[0].angularRotation.x == Catch::Approx(90));
+  REQUIRE(roundTrip.samples[0].angularRotation.z == Catch::Approx(-30));
+  REQUIRE(std::isnan(roundTrip.samples[1].angularRotation.y));
+}
 
 TEST_CASE("SampleFileLoader loads telemetry XLSX workbook", "[import]") {
     FlightSession session;
@@ -41,6 +71,9 @@ TEST_CASE("SampleFileLoader loads telemetry XLSX workbook", "[import]") {
     REQUIRE(first.angularVelocity.z == Catch::Approx(0.015));
     REQUIRE(first.coordinates.latitude == Catch::Approx(54.303349));
     REQUIRE(first.coordinates.longitude == Catch::Approx(-5.582283));
+    REQUIRE(first.angularRotation.x == Catch::Approx(-9.785));
+    REQUIRE(first.angularRotation.y == Catch::Approx(-3.195));
+    REQUIRE(first.angularRotation.z == Catch::Approx(-19.417));
 
     const std::array<bool, FlightSession::kTraceMetricCount> expectedMetrics{
         true, true, true, true, false, false, true, true, true};
@@ -61,6 +94,9 @@ TEST_CASE("SampleFileLoader loads corrected telemetry CSV coordinates", "[import
     const FlightSample &first = session.samples.front();
     REQUIRE(first.coordinates.latitude == Catch::Approx(54.303349));
     REQUIRE(first.coordinates.longitude == Catch::Approx(-5.582283));
+    REQUIRE(first.angularRotation.x == Catch::Approx(-9.785));
+    REQUIRE(first.angularRotation.y == Catch::Approx(-3.195));
+    REQUIRE(first.angularRotation.z == Catch::Approx(-19.417));
 }
 
 TEST_CASE("SampleFileLoader skips malformed and unsafe numeric CSV rows", "[import]") {

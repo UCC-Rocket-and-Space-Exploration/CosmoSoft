@@ -28,7 +28,7 @@ let pathDataDirty = true, path3dDataDirty = true;
 let scene3d, camera3d, renderer3d, controls3d, animId3d = null;
 let renderFramesRemaining3d = 0;
 let pathLine3d, trailLine3d, ghostLine3d;
-let launchSphere3d, rocketSphere3d, rocketGlow3d;
+let launchSphere3d, rocketModel3d;
 let groundGrid3d, groundMesh3d;
 let currentRocketWorld3d = null;
 let currentThemePalette = null;
@@ -40,6 +40,47 @@ let groundTexBounds = null;
 let groundElevGrid = null;
 let groundRefAlt = 0;
 let groundLoadGeneration = 0;
+let currentRocketAttitude = null;
+
+/** Decode the shared Qt quaternion payload without accepting missing angle data. */
+export function attitudeFromPayload(raw) {
+  return Array.isArray(raw) && raw.length === 4
+    && raw.every(value => typeof value === "number" && Number.isFinite(value))
+    && Math.abs(Math.hypot(...raw) - 1) < 0.01
+    ? new THREE.Quaternion(...raw).normalize() : null;
+}
+
+function setRocketAttitude(raw) {
+  currentRocketAttitude = attitudeFromPayload(raw);
+  if (rocketModel3d)
+    rocketModel3d.quaternion.copy(currentRocketAttitude || new THREE.Quaternion());
+}
+
+/** Rounded nose, tapered tail and swept fins; every surface shares one orange material. */
+export function createRocketModel(color) {
+  const rocket = new THREE.Group();
+  const material = new THREE.MeshPhongMaterial({color, emissive: color,
+    emissiveIntensity: 0.12, shininess: 35});
+  const profile = [[0, -7.6], [0.9, -7.6], [1.2, -6.5], [1.6, -6],
+    [1.6, 4], [1.55, 5.5], [1.3, 6.8], [1, 8], [0.55, 9.2], [0, 10]];
+  rocket.add(new THREE.Mesh(new THREE.LatheGeometry(
+    profile.map(([radius, height]) => new THREE.Vector2(radius, height)), 48), material));
+  const shape = new THREE.Shape();
+  shape.moveTo(1.4, -1);
+  shape.lineTo(4.2, -5.5);
+  shape.lineTo(4.2, -7);
+  shape.lineTo(1.4, -6);
+  shape.closePath();
+  const finGeometry = new THREE.ExtrudeGeometry(shape, {depth: 0.24,
+    bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.08, bevelThickness: 0.08});
+  finGeometry.translate(0, 0, -0.12);
+  for (let i = 0; i < 4; ++i) {
+    const fin = new THREE.Mesh(finGeometry, material);
+    fin.rotation.y = i * Math.PI / 2;
+    rocket.add(fin);
+  }
+  return rocket;
+}
 
 const MAX_ABS_ALTITUDE = 10000000;
 const MAX_ABS_TIMESTAMP = 1e15;
@@ -290,13 +331,12 @@ function apply3DTheme() {
     launchSphere3d.material.color.set(launch);
     launchSphere3d.material.emissive.set(launchEmissive);
   }
-  if (rocketSphere3d?.material) {
-    rocketSphere3d.material.color.set(rocket);
-    rocketSphere3d.material.emissive.set(rocketEmissive);
-  }
-  if (rocketGlow3d?.material) {
-    rocketGlow3d.material.color.set(rocket);
-  }
+  rocketModel3d?.traverse(part => {
+    if (!part.material) return;
+    part.material.color.set(rocket);
+    if (!isDark) part.material.color.offsetHSL(0, 0, 0.16);
+    part.material.emissive.set(rocketEmissive);
+  });
   const info = document.getElementById("info3d");
   if (info) info.style.color = currentThemePalette?.text_dim || (isDark ? "#9fb4c8" : "#1f3142");
   updateLineMaterialResolution();
@@ -456,20 +496,11 @@ function init3D() {
   launchSphere3d.visible = false;
   scene3d.add(launchSphere3d);
 
-  // rocket sphere + glow
-  rocketSphere3d = new THREE.Mesh(
-    new THREE.SphereGeometry(6, 16, 16),
-    new THREE.MeshPhongMaterial({ color: 0xff7a30, emissive: 0x993300 })
-  );
-  rocketSphere3d.visible = false;
-  scene3d.add(rocketSphere3d);
-
-  rocketGlow3d = new THREE.Mesh(
-    new THREE.SphereGeometry(14, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xff7a30, transparent: true, opacity: 0.12 })
-  );
-  rocketGlow3d.visible = false;
-  scene3d.add(rocketGlow3d);
+  // Orange rocket model
+  rocketModel3d = createRocketModel(currentThemePalette?.warning || 0xff9800);
+  setRocketAttitude(currentRocketAttitude?.toArray());
+  rocketModel3d.visible = false;
+  scene3d.add(rocketModel3d);
 
   resize3D();
   apply3DTheme();
@@ -503,14 +534,6 @@ function animate3D() {
   const followChanged = update3DFollowCamera();
   const controlsChanged = controls3d.update();
 
-  // Pulse briefly after data/camera changes, then leave the renderer idle.
-  if (rocketGlow3d && rocketGlow3d.visible) {
-    const t = performance.now() * 0.002;
-    const s = 1.0 + 0.3 * Math.sin(t);
-    rocketGlow3d.scale.setScalar(s);
-    rocketGlow3d.material.opacity = 0.08 + 0.06 * Math.sin(t);
-  }
-
   if (needsUpdate3d || followChanged || controlsChanged || renderFramesRemaining3d > 0) {
     renderer3d.render(scene3d, camera3d);
   }
@@ -536,8 +559,7 @@ function update3DEntities() {
     updateWideLine(pathLine3d, []);
     currentRocketWorld3d = null;
     launchSphere3d.visible = false;
-    rocketSphere3d.visible = false;
-    rocketGlow3d.visible = false;
+    rocketModel3d.visible = false;
     document.getElementById("info3d").textContent = "";
     path3dDataDirty = false;
     request3DRender(2);
@@ -593,10 +615,8 @@ function update3DEntities() {
     // rocket
     const rp = trailPts[trailPts.length - 1];
     currentRocketWorld3d = rp.clone();
-    rocketSphere3d.position.copy(rp);
-    rocketSphere3d.visible = true;
-    rocketGlow3d.position.copy(rp);
-    rocketGlow3d.visible = true;
+    rocketModel3d.position.copy(rp);
+    rocketModel3d.visible = true;
 
     // info label
     const lastA = trailAlt[trailAlt.length - 1];
@@ -606,14 +626,14 @@ function update3DEntities() {
       : "Alt " + fmtAlt(lastA);
     document.getElementById("info3d").textContent =
       altLabel + "  ·  " + ALT_EXAGGERATION + "x vert" +
+      (currentRocketAttitude ? "" : "  ·  Attitude unavailable") +
       "  ·  Locate/Fit/Follow  ·  Drag to orbit";
   } else {
     updateWideLine(trailLine3d, []);
     updateWideLine(pathLine3d, []);
     currentRocketWorld3d = null;
     launchSphere3d.visible = false;
-    rocketSphere3d.visible = false;
-    rocketGlow3d.visible = false;
+    rocketModel3d.visible = false;
   }
   request3DRender(following ? 12 : 2);
 }
@@ -1285,6 +1305,7 @@ window.addPoints = function(payload){
   trailLen=totalRawSamples;
   pathDataDirty=true;
   path3dDataDirty=true;
+  setRocketAttitude(batch.attitude);
   updateEntities(trailLen,null);
 };
 window.loadSession = function(payload){
@@ -1292,6 +1313,7 @@ window.loadSession = function(payload){
   try { s=(typeof payload==="string")?JSON.parse(payload):payload; }
   catch (_) { return; }
   if (!s || typeof s !== "object") return;
+  setRocketAttitude(null);
   cumulativeLiveTotal="";cumulativeLiveValid="";cumulativeLivePathLength=NaN;
   const sourcePath=Array.isArray(s)?s:(s.path||[]);
   const sourcePath3d=Array.isArray(s)?s:(s.path3d||sourcePath);
@@ -1329,6 +1351,7 @@ window.setTrailLength = function(nn,current){
   const requested=Number(nn);
   if(!Number.isFinite(requested))return;
   trailLen=Math.max(0,Math.min(Math.trunc(requested),totalRawSamples||allPos.length));
+  setRocketAttitude(current?.attitude);
   updateEntities(trailLen,normalizePoint(current,Math.max(0,trailLen-1))||null);
 };
 window.fitCamera = function(){
@@ -1354,6 +1377,7 @@ window.followRocket = function(en){
   setFollowing(en,false);
 };
 window.clearAll = function(){
+  setRocketAttitude(null);
   invalidateGroundData();
   allPos=[];allAlt=[];allTs=[];allIdx=[];trailLen=0;
   allPos3d=[];allAlt3d=[];allIdx3d=[];totalRawSamples=0;currentExactPoint=null;

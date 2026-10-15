@@ -142,6 +142,9 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
     sample.angularVelocity.x = values[7];
     sample.angularVelocity.y = values[8];
     sample.angularVelocity.z = values[9];
+    // Text protocol angles use the explicit degree convention in
+    // rocket-attitude.md.
+    sample.angularRotation = {values[10], values[11], values[12]};
     sample.coordinates.latitude = values[13];
     sample.coordinates.longitude = values[14];
     return sample;
