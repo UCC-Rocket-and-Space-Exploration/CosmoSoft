@@ -194,7 +194,7 @@ function setFollowing(enabled, notifyBridge) {
   if (btn) {
     btn.classList.toggle("active", following);
     btn.setAttribute("aria-pressed", String(following));
-    btn.textContent = following ? "Following" : "Follow";
+    btn.textContent = "F";
     btn.setAttribute("aria-label", following ? "Stop following rocket" : "Follow rocket");
     btn.title = following ? "Stop following rocket (3D orbit and zoom stay enabled)" : "Follow rocket";
   }
