@@ -5,29 +5,40 @@
 #include "gui/ThemeManager.h"
 #include "gui/pages/DashboardPage.h"
 #include "gui/pages/LiveTelemetryPage.h"
+#include "gui/pages/SettingsPage.h"
 #include "gui/widgets/Map3DWidget.h"
+#include "gui/widgets/RecoveryPanel.h"
 #include "gui/widgets/RocketAttitudeWidget.h"
 #include "gui/widgets/StatTileWidget.h"
 #include "gui/widgets/TelemetryChartView.h"
+#include "gui/widgets/VisualHorizonWidget.h"
 #include "services/import/SampleFileLoader.h"
 #include "services/preview/FlightPreviewCache.h"
 #include "services/telemetry/LineTelemetryBatchMailbox.h"
 #include "services/telemetry/RecordedComms.h"
 #include "services/telemetry/TelemetrySession.h"
 
+#include "gui/SettingsKeys.h"
+#include "gui/widgets/PreflightChecklistWidget.h"
 #include <QAction>
 #include <QApplication>
 #include <QChartView>
 #include <QCheckBox>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QEventLoop>
 #include <QFile>
+#include <QFileDialog>
 #include <QFontDatabase>
 #include <QInputDialog>
+#include <QJsonObject>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineSeries>
+#include <QListWidget>
 #include <QMenu>
+#include <QMenuBar>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QQuaternion>
 #include <QScreen>
@@ -37,8 +48,10 @@
 #include <QSlider>
 #include <QSplitter>
 #include <QStackedWidget>
+#include <QStatusBar>
 #include <QStyle>
 #include <QStyleOptionButton>
+#include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QToolBar>
@@ -78,6 +91,270 @@ bool pumpUntil(const std::function<bool()> &predicate) {
   return predicate();
 }
 } // namespace
+
+TEST_CASE(
+    "Checklist profiles save edits and clear manual confirmations per session",
+    "[mission-ui][checklist]") {
+  struct RestoreProfiles {
+    QVariant previous =
+        QSettings(kSettingsOrg, kSettingsApp).value(kSettingsChecklistProfiles);
+    ~RestoreProfiles() {
+      QSettings settings(kSettingsOrg, kSettingsApp);
+      if (previous.isValid())
+        settings.setValue(kSettingsChecklistProfiles, previous);
+      else
+        settings.remove(kSettingsChecklistProfiles);
+    }
+  } restore;
+  PreflightProfileEditor editor;
+  auto *table = editor.findChild<QTableWidget *>("preflightItemsEditor");
+  auto *save = editor.findChild<QPushButton *>("savePreflightProfiles");
+  REQUIRE(table);
+  REQUIRE(save);
+  REQUIRE(table->rowCount() > 0);
+  table->item(0, 0)->setText("Inspect fins");
+  bool saved = false;
+  editor.profilesSaved = [&] { saved = true; };
+  save->click();
+  REQUIRE(saved);
+  PreflightChecklistWidget checklist;
+  auto *list = checklist.findChild<QListWidget *>();
+  REQUIRE(list);
+  REQUIRE(list->count() > 0);
+  REQUIRE(list->item(0)->text() == "Inspect fins");
+  list->item(0)->setCheckState(Qt::Checked);
+  REQUIRE(list->item(0)->checkState() == Qt::Checked);
+  checklist.resetChecks();
+  REQUIRE(list->item(0)->checkState() == Qt::Unchecked);
+  const QString captureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
+  if (!captureDir.isEmpty()) {
+    editor.resize(650, 420);
+    editor.show();
+    QApplication::processEvents();
+    for (const QString &theme :
+         {QStringLiteral("dark"), QStringLiteral("light")}) {
+      const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+      REQUIRE(skin);
+      cosmo::ThemeManager::instance().setActiveSkin(*skin);
+      QApplication::processEvents();
+      REQUIRE(editor.grab().save(captureDir + "/preflight-editor-" + theme +
+                                 ".png"));
+    }
+  }
+}
+
+TEST_CASE("Saving before close waits for both telemetry and metadata",
+          "[mission-ui][save-close]") {
+  struct DialogScope {
+    bool previous = QApplication::testAttribute(Qt::AA_DontUseNativeDialogs);
+    DialogScope() {
+      QApplication::setAttribute(Qt::AA_DontUseNativeDialogs, true);
+    }
+    ~DialogScope() {
+      QApplication::setAttribute(Qt::AA_DontUseNativeDialogs, previous);
+    }
+  } scope;
+  QTemporaryDir directory;
+  const QString path = directory.filePath("flight.csv");
+  bool failMetadata = false;
+  SECTION("Successful save closes and retains telemetry with metadata") {}
+  SECTION("Metadata failure keeps the recording open and unsaved") {
+    REQUIRE(QDir().mkdir(path + ".mission.json"));
+    failMetadata = true;
+  }
+  MainWindow window;
+  window.resize(1280, 900);
+  window.show();
+  REQUIRE(QMetaObject::invokeMethod(&window, "onStartLiveDemo",
+                                    Qt::DirectConnection));
+  REQUIRE(QMetaObject::invokeMethod(&window, "onToggleFakeTransmission",
+                                    Qt::DirectConnection));
+  bool choseFile = false;
+  QTimer dialogs;
+  QObject::connect(&dialogs, &QTimer::timeout, &window, [&] {
+    auto *modal = QApplication::activeModalWidget();
+    if (auto *warning = qobject_cast<QMessageBox *>(modal))
+      warning->done(QMessageBox::Save);
+    else if (auto *file = qobject_cast<QFileDialog *>(modal)) {
+      file->selectFile(path);
+      choseFile = true;
+      QMetaObject::invokeMethod(file, "accept", Qt::DirectConnection);
+    }
+  });
+  dialogs.start(10);
+  window.close();
+  const bool completed = pumpUntil([&] {
+    return choseFile &&
+           (failMetadata
+                ? window.statusBar()->currentMessage().contains("failed")
+                : !window.isVisible());
+  });
+  CAPTURE(choseFile, failMetadata, window.isVisible(),
+          window.statusBar()->currentMessage().toStdString());
+  REQUIRE(completed);
+  dialogs.stop();
+  REQUIRE(QFile::exists(path));
+  if (failMetadata) {
+    REQUIRE(window.isVisible());
+    bool warnedAgain = false;
+    QTimer::singleShot(0, &window, [&] {
+      if (auto *box =
+              qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        warnedAgain = true;
+        box->done(QMessageBox::Discard);
+      }
+    });
+    window.close();
+    REQUIRE(pumpUntil([&] { return !window.isVisible(); }));
+    REQUIRE(warnedAgain);
+  } else
+    REQUIRE(QFile::exists(path + ".mission.json"));
+}
+
+TEST_CASE(
+    "Packet diagnostics keep the newest complete row and suppress repetitions",
+    "[mission-ui][diagnostics]") {
+  FlightDataModel model;
+  LiveTelemetryPage live(&model);
+  QString message;
+  int changes = 0;
+  QObject::connect(&live, &LiveTelemetryPage::packetDiagnosticChanged, &live,
+                   [&](const QString &text) {
+                     message = text;
+                     ++changes;
+                   });
+  cosmo::telemetry::LineTelemetryBatch batch;
+  batch.rowDiagnostic =
+      cosmo::telemetry::TelemetryRowDiagnostic{2, 1U << 3, 0, true};
+  live.updateLinkDiagnostics(batch);
+  REQUIRE(message.contains("altitude"));
+  REQUIRE(changes == 1);
+  batch.rowDiagnostic->sequence = 3;
+  live.updateLinkDiagnostics(batch);
+  REQUIRE(changes == 1);
+  batch.rowDiagnostic =
+      cosmo::telemetry::TelemetryRowDiagnostic{1, 1U << 10, 0, true};
+  live.updateLinkDiagnostics(batch);
+  REQUIRE(message.contains("altitude"));
+  REQUIRE(changes == 1);
+  batch.rowDiagnostic =
+      cosmo::telemetry::TelemetryRowDiagnostic{4, 0, 0, false};
+  live.updateLinkDiagnostics(batch);
+  REQUIRE(message.isEmpty());
+  REQUIRE(changes == 2);
+}
+
+TEST_CASE("Changing chart traces preserves saved event annotations",
+          "[mission-ui][events]") {
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  auto session = std::make_shared<FlightSession>();
+  for (int i = 0; i < 3; ++i) {
+    FlightSample sample;
+    sample.timestamp = i * 1000;
+    session->samples.push_back(sample);
+  }
+  const auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+  model.setReplayMode(true);
+  replay.setSession(session, preview);
+  dashboard.setReplaySession(session, preview);
+  int edits = 0;
+  QObject::connect(&dashboard, &DashboardPage::annotationsChanged, &dashboard,
+                   [&] { ++edits; });
+  const QJsonArray annotations{QJsonObject{{"time", 1.0}, {"name", "Event A"}}};
+  dashboard.setEventAnnotations(annotations);
+  REQUIRE(edits == 0);
+  for (auto *check : dashboard.findChildren<QCheckBox *>("traceCheck"))
+    if (check->text() == "Alt")
+      check->setChecked(false);
+  REQUIRE(edits == 0);
+  REQUIRE(dashboard.eventAnnotations() == annotations);
+  QAction *manage = nullptr;
+  for (auto *action : dashboard.findChildren<QAction *>())
+    if (action->text() == "Manage flight events…")
+      manage = action;
+  REQUIRE(manage);
+  QTimer::singleShot(0, &dashboard, [&] {
+    auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+    if (!dialog)
+      return;
+    auto *table = dialog->findChild<QTableWidget *>("flightEventsEditor");
+    if (!table)
+      return;
+    table->item(0, 1)->setText("Renamed");
+    table->item(0, 0)->setText("2");
+    dialog->findChild<QDialogButtonBox *>()
+        ->button(QDialogButtonBox::Save)
+        ->click();
+  });
+  manage->trigger();
+  REQUIRE(
+      dashboard.eventAnnotations().at(0).toObject().value("name").toString() ==
+      "Renamed");
+  REQUIRE(
+      dashboard.eventAnnotations().at(0).toObject().value("time").toDouble() ==
+      2);
+  REQUIRE(edits == 1);
+}
+
+TEST_CASE("Horizon and rocket are independent embedded instruments",
+          "[mission-ui][navball]") {
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  LiveTelemetryPage live(&model);
+  auto *horizon = dashboard.findChild<QWidget *>("visualHorizonWidget");
+  auto *liveHorizon = live.findChild<QWidget *>("visualHorizonWidget");
+  REQUIRE(horizon);
+  REQUIRE(liveHorizon);
+  REQUIRE(dashboard.findChild<QWidget *>("rocketAttitudeWidget"));
+  REQUIRE(horizon->isHidden());
+  auto session = std::make_shared<FlightSession>();
+  FlightSample sample;
+  sample.angularRotation = {30, 0, 45};
+  session->samples.push_back(sample);
+  auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+  model.setReplayMode(true);
+  replay.setSession(session, preview);
+  dashboard.setReplaySession(session, preview);
+  REQUIRE_FALSE(horizon->isHidden());
+  dashboard.setReplaySession(nullptr, nullptr);
+  REQUIRE(horizon->isHidden());
+}
+
+TEST_CASE("Closing and clearing captured data require an explicit discard",
+          "[mission-ui][unsaved]") {
+  MainWindow window;
+  window.resize(1280, 900);
+  window.show();
+  REQUIRE(QMetaObject::invokeMethod(&window, "onStartLiveDemo",
+                                    Qt::DirectConnection));
+  REQUIRE(QMetaObject::invokeMethod(&window, "onToggleFakeTransmission",
+                                    Qt::DirectConnection));
+  int warnings = 0;
+  const auto choose = [&](QMessageBox::StandardButton button) {
+    QTimer::singleShot(0, &window, [&, button] {
+      if (auto *box =
+              qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        ++warnings;
+        box->done(button);
+      }
+    });
+  };
+  choose(QMessageBox::Cancel);
+  REQUIRE_FALSE(window.close());
+  REQUIRE(warnings == 1);
+  REQUIRE(window.isVisible());
+  choose(QMessageBox::Cancel);
+  REQUIRE(QMetaObject::invokeMethod(&window, "onClearFlightData",
+                                    Qt::DirectConnection));
+  REQUIRE(warnings == 2);
+  choose(QMessageBox::Discard);
+  window.close();
+  REQUIRE(pumpUntil([&] { return !window.isVisible(); }));
+  REQUIRE(warnings == 3);
+}
 
 TEST_CASE("Flight event markers stay with their recording",
           "[replay-ui][markers]") {
@@ -459,12 +736,9 @@ TEST_CASE("Replay empty state and instruments survive loading and clearing",
   REQUIRE(attitude);
   REQUIRE(slider);
   auto *instruments = attitude->parentWidget();
-  QToolButton *toggle = nullptr;
+  auto *toggle = dashboard.findChild<QAction *>("replayInstrumentSidebar");
   QPushButton *graph = nullptr;
   QPushButton *map = nullptr;
-  for (auto *button : dashboard.findChildren<QToolButton *>())
-    if (button->text() == "Instruments")
-      toggle = button;
   for (auto *button : dashboard.findChildren<QPushButton *>()) {
     if (button->accessibleName() == "Show telemetry chart")
       graph = button;
@@ -478,7 +752,7 @@ TEST_CASE("Replay empty state and instruments survive loading and clearing",
     QApplication::processEvents();
     CHECK(empty->isVisible());
     CHECK_FALSE(instruments->isVisible());
-    CHECK_FALSE(toggle->isVisible());
+    CHECK_FALSE(toggle->isEnabled());
     CHECK_FALSE(slider->isEnabled());
     CHECK(std::abs(empty->mapTo(&dashboard, empty->rect().center()).x() -
                    dashboard.rect().center().x()) <= 2);
@@ -708,6 +982,12 @@ TEST_CASE(
                                    QString::number(size.width()) + ".png"));
         REQUIRE(scroll->verticalScrollBar()->maximum() == 0);
         REQUIRE(scroll->horizontalScrollBar()->maximum() == 0);
+        const auto *recovery = live.findChild<QWidget *>("recoveryPanel");
+        REQUIRE(recovery);
+        REQUIRE(recovery->isHidden());
+        const auto *browser = live.findChild<QWebEngineView *>();
+        REQUIRE(browser);
+        REQUIRE(browser->height() >= browser->parentWidget()->height());
         for (auto *tile : live.findChildren<StatTileWidget *>())
           for (auto *label : tile->findChildren<QLabel *>()) {
             CAPTURE(label->text().toStdString());
@@ -886,12 +1166,13 @@ TEST_CASE("Recorded telemetry pages update in both themes and survive page "
     blocker->setParent(profile);
     profile->setUrlRequestInterceptor(blocker.release());
   }
+  SettingsPage settings;
   auto *button =
-      live->findChild<QPushButton *>(QStringLiteral("recordedImuInput"));
+      settings.findChild<QPushButton *>(QStringLiteral("recordedImuInput"));
   REQUIRE(button);
   bool requested = false;
-  QObject::connect(live.get(), &LiveTelemetryPage::recordedImuRequested,
-                   live.get(), [&] { requested = true; });
+  QObject::connect(&settings, &SettingsPage::recordedInputRequested, &settings,
+                   [&] { requested = true; });
   button->click();
   REQUIRE(requested);
 
@@ -1044,6 +1325,7 @@ TEST_CASE("TELEM imports render and replay while the GUI processes events",
 
 int main(int argc, char **argv) {
   QApplication application(argc, argv);
+  application.setQuitOnLastWindowClosed(false);
   QTemporaryDir settings;
   QSettings::setDefaultFormat(QSettings::IniFormat);
   QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
@@ -1059,4 +1341,150 @@ int main(int argc, char **argv) {
   const int result = Catch::Session().run(argc, argv);
   QWebEngineProfile::defaultProfile()->setUrlRequestInterceptor(nullptr);
   return result;
+}
+
+TEST_CASE("Recovery and horizon remain compact through theme changes",
+          "[mission-ui][recovery][navball]") {
+  RecoveryPanel recovery;
+  VisualHorizonWidget horizon;
+  const QJsonObject record{
+      {"lat", 51.9},
+      {"lon", -8.5},
+      {"receivedUtcMs", 1000.0},
+      {"earlier", true},
+      {"source", "Serial"},
+      {"session", "visual-check"},
+      {"reference", QJsonObject{{"lat", 51.899},
+                                {"lon", -8.501},
+                                {"name", "launch point"}}}};
+  recovery.setRecord(record);
+  recovery.modeAction()->setChecked(true);
+  recovery.resize(420, recovery.sizeHint().height());
+  auto *position = recovery.findChild<QLabel *>("lastKnownPosition");
+  REQUIRE(position);
+  REQUIRE(position->text().contains("Earlier session"));
+  REQUIRE(position->text().contains("launch point"));
+  const QString captureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
+  for (const QString &theme :
+       {QStringLiteral("dark"), QStringLiteral("light")}) {
+    const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+    REQUIRE(skin.has_value());
+    cosmo::ThemeManager::instance().setActiveSkin(*skin);
+    recovery.show();
+    horizon.resize(150, 204);
+    horizon.show();
+    FlightSample pose;
+    for (int angle : {0, 45, 90, 180}) {
+      pose.angularRotation = {static_cast<double>(angle), 0, 0};
+      horizon.setSample(pose, true);
+      QApplication::processEvents();
+      if (angle == 45) {
+        const auto rendered = horizon.grab().toImage();
+        const auto scale = rendered.devicePixelRatio();
+        const auto sky =
+            rendered.pixelColor(qRound(75 * scale), qRound(87 * scale));
+        REQUIRE(sky.blue() > sky.red());
+      }
+      if (!captureDir.isEmpty())
+        REQUIRE(horizon.grab().save(captureDir + "/horizon-" + theme + "-" +
+                                    QString::number(angle) + ".png"));
+    }
+    if (!captureDir.isEmpty())
+      REQUIRE(recovery.grab().save(captureDir + "/recovery-" + theme + ".png"));
+  }
+}
+
+TEST_CASE("Top mission controls follow the active page without duplicates",
+          "[mission-ui][mission-controls]") {
+  MainWindow window;
+  window.resize(1024, 650);
+  window.show();
+  auto *menu = window.findChild<QMenu *>("instrumentsMenu");
+  REQUIRE(menu);
+  const auto menus = window.menuBar()->actions();
+  const int viewIndex =
+      menus.indexOf(window.findChild<QMenu *>("viewMenu")->menuAction());
+  REQUIRE(menus.indexOf(menu->menuAction()) == viewIndex + 1);
+  auto *recovery = window.findChild<QToolButton *>("missionRecovery");
+  auto *open = window.findChild<QPushButton *>("openFlightLog");
+  REQUIRE(recovery);
+  REQUIRE(open);
+  REQUIRE(recovery->parentWidget() == open->parentWidget());
+  REQUIRE(recovery->geometry().right() < open->geometry().left());
+  auto *dashboard = window.findChild<DashboardPage *>();
+  auto *live = window.findChild<LiveTelemetryPage *>();
+  auto *pages = qobject_cast<QStackedWidget *>(dashboard->parentWidget());
+  REQUIRE(pages);
+  REQUIRE_FALSE(recovery->isEnabled());
+  auto session = std::make_shared<FlightSession>();
+  FlightSample sample;
+  sample.angularRotation = {30, 0, 45};
+  sample.coordinates = {51.9, -8.5};
+  session->samples.push_back(sample);
+  dashboard->setReplaySession(
+      session, cosmo::preview::FlightPreviewCache::build(*session));
+  REQUIRE(recovery->isEnabled());
+  const auto actionNamed = [&](const QString &text) -> QAction * {
+    for (auto *action : menu->actions())
+      if (action->text() == text)
+        return action;
+    return nullptr;
+  };
+  auto *replayHorizon = actionNamed("Visual horizon");
+  REQUIRE(replayHorizon);
+  replayHorizon->trigger();
+  REQUIRE(dashboard->findChild<QWidget *>("visualHorizonWidget")->isHidden());
+  recovery->click();
+  auto *replayDetails = dashboard->findChild<QWidget *>("recoveryPanel");
+  REQUIRE(replayDetails->isVisible());
+  REQUIRE(recovery->isChecked());
+  pages->setCurrentWidget(live);
+  auto *liveHorizon = actionNamed("Visual horizon");
+  REQUIRE(liveHorizon);
+  REQUIRE(liveHorizon != replayHorizon);
+  REQUIRE(recovery->actions().size() == 1);
+  REQUIRE(liveHorizon->isChecked());
+  REQUIRE_FALSE(recovery->isChecked());
+  recovery->click();
+  REQUIRE(live->findChild<QWidget *>("recoveryPanel")->isVisible());
+  pages->setCurrentWidget(dashboard);
+  REQUIRE(recovery->isChecked());
+  REQUIRE_FALSE(replayHorizon->isChecked());
+  for (auto *map : window.findChildren<Map3DWidget *>())
+    REQUIRE(map->findChildren<QToolButton *>("recoveryMode").isEmpty());
+  for (auto *button : live->findChildren<QToolButton *>())
+    REQUIRE(button->text() != "Instruments");
+  for (auto *button : dashboard->findChildren<QToolButton *>())
+    REQUIRE(button->text() != "Instruments");
+  const QString captureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
+  for (const QString &theme :
+       {QStringLiteral("dark"), QStringLiteral("light")}) {
+    const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+    REQUIRE(skin);
+    cosmo::ThemeManager::instance().setActiveSkin(*skin);
+    for (const auto size :
+         {QSize(920, 650), QSize(1024, 650), QSize(1440, 800)}) {
+      window.resize(size);
+      for (auto *page :
+           {static_cast<QWidget *>(dashboard), static_cast<QWidget *>(live)}) {
+        pages->setCurrentWidget(page);
+        if (recovery->isChecked())
+          recovery->click();
+        QApplication::processEvents();
+        CAPTURE(theme, size.width(), page == live);
+        REQUIRE(window.width() == size.width());
+        REQUIRE(recovery->geometry().right() < open->geometry().left());
+        REQUIRE(
+            recovery->parentWidget()->rect().contains(recovery->geometry()));
+        REQUIRE(recovery->parentWidget()->rect().contains(open->geometry()));
+        if (!captureDir.isEmpty())
+          REQUIRE(window.grab().save(captureDir + "/mission-controls-" + theme +
+                                     (page == live ? "-live-" : "-replay-") +
+                                     QString::number(size.width()) + ".png"));
+      }
+    }
+  }
+  pages->setCurrentIndex(2);
+  REQUIRE_FALSE(recovery->isVisible());
+  REQUIRE_FALSE(menu->menuAction()->isVisible());
 }

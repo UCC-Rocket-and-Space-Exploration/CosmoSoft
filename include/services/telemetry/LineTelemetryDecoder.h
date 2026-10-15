@@ -150,6 +150,14 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
     return sample;
 }
 
+/** @brief Diagnostic for the latest complete data row, separate from accepted
+ * samples. */
+struct TelemetryRowDiagnostic {
+  std::uint64_t sequence = 0;
+  std::uint16_t missing = 0, invalid = 0;
+  bool malformed = false;
+};
+
 /**
  * @class LineTelemetryDecoder
  * @brief Accumulates serial chunks and decodes complete newline-delimited rows.
@@ -169,7 +177,15 @@ public:
     void reset() {
         m_pending.clear();
         m_malformedLines = 0;
+        m_lastDiagnostic = {};
         m_discardingDamagedLine = false;
+        m_oversizedLine = false;
+    }
+
+    /** @brief Latest completed-row diagnostic; partial chunks do not change it.
+     */
+    [[nodiscard]] TelemetryRowDiagnostic lastRowDiagnostic() const {
+      return m_lastDiagnostic;
     }
 
     /** @brief Return the cumulative number of malformed non-empty rows seen. */
@@ -204,6 +220,11 @@ public:
 
             if (m_discardingDamagedLine) {
                 if (byte == '\n') {
+                  if (m_oversizedLine) {
+                    m_lastDiagnostic = {m_lastDiagnostic.sequence + 1, 0, 0,
+                                        true};
+                    m_oversizedLine = false;
+                  }
                     m_discardingDamagedLine = false;
                 }
                 continue;
@@ -219,6 +240,7 @@ public:
                 m_pending.clear();
                 m_discardingDamagedLine = true;
                 ++m_malformedLines;
+                m_oversizedLine = true;
                 continue;
             }
 
@@ -234,6 +256,10 @@ public:
      */
     std::vector<FlightSample> finish() {
         std::vector<FlightSample> samples;
+        if (m_oversizedLine) {
+          m_lastDiagnostic = {m_lastDiagnostic.sequence + 1, 0, 0, true};
+          m_oversizedLine = false;
+        }
         if (!m_discardingDamagedLine && !m_pending.empty()) {
             processLine(m_pending, samples);
         }
@@ -250,6 +276,28 @@ private:
         }
 
         auto sample = decodeTelemetryCsvRow(clean);
+        const auto sequence = m_lastDiagnostic.sequence + 1;
+        m_lastDiagnostic = {sequence, 0, 0, !sample.has_value()};
+        if (!sample) {
+          const auto cells = splitTelemetryCsvCells(clean);
+          for (std::size_t i = 0; i < kLiveTelemetryCsvFieldCount; ++i) {
+            const auto bit = static_cast<std::uint16_t>(1U << i);
+            if (i >= cells.size() ||
+                cells[i].find_first_not_of(" \t\r") == std::string::npos)
+              m_lastDiagnostic.missing |= bit;
+            else if (const auto value = parseFiniteDouble(cells[i]);
+                     !value || std::abs(*value) > kMaxLiveTelemetryMagnitude ||
+                     (i == 13 && std::abs(*value) > 90) ||
+                     (i == 14 && std::abs(*value) > 180) ||
+                     (i == 0 &&
+                      (*value * 1000 <=
+                           static_cast<double>(
+                               std::numeric_limits<long>::lowest()) ||
+                       *value * 1000 >= static_cast<double>(
+                                            std::numeric_limits<long>::max()))))
+              m_lastDiagnostic.invalid |= bit;
+          }
+        }
         if (sample) {
             samples.push_back(*sample);
             return;
@@ -257,10 +305,12 @@ private:
         ++m_malformedLines;
     }
 
+    TelemetryRowDiagnostic m_lastDiagnostic;
     std::string m_pending;
     std::size_t m_malformedLines = 0;
     std::size_t m_maxLineBytes;
     bool m_discardingDamagedLine = false;
+    bool m_oversizedLine = false;
 };
 
 } // namespace cosmo::telemetry

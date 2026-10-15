@@ -1556,6 +1556,7 @@ function init() {
       connectSignal(bridge.fitRequested, () => window.fitCamera());
       connectSignal(bridge.centerRequested, () => window.centerOnCurrent());
       connectSignal(bridge.followRequested, enabled => window.followRocket(Boolean(enabled)));
+      connectSignal(bridge.recoveryRequested, record => window.showRecovery(record));
       if(typeof bridge.mapReady === "function")bridge.mapReady();
     });
   }
@@ -1563,3 +1564,21 @@ function init() {
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);
 else init();
+
+
+let recoveryMarker=null, recoveryActive=false;
+window.showRecovery=function(record) {
+  const active=Boolean(record?.active), wasActive=recoveryActive, hadMarker=Boolean(recoveryMarker);
+  recoveryActive=active;
+  if (!map) return;
+  if (recoveryMarker) {map.removeLayer(recoveryMarker);recoveryMarker=null;}
+  const stats=document.getElementById("statsOverlay");
+  if(stats)stats.style.visibility=active?"hidden":"";
+  if (!active) return;
+  if (activeView!=="2d") switchView("2d");
+  setFollowing(false,true);
+  if (!validC(record.lat,record.lon) || (record.lat===0 && record.lon===0)) return;
+  recoveryMarker=L.circleMarker([record.lat,record.lon],{radius:8,color:currentThemePalette?.warning,
+    fillColor:currentThemePalette?.warning,fillOpacity:1,weight:2}).addTo(map);
+  if (!wasActive || !hadMarker) map.setView([record.lat,record.lon],Math.max(map.getZoom(),16));
+};

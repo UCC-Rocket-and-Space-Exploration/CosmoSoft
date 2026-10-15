@@ -410,3 +410,74 @@ TEST_CASE("Live telemetry velocity rejects non-increasing and extreme timestamps
     current.timestamp = std::numeric_limits<long>::lowest();
     REQUIRE_FALSE(cosmo::gui::verticalVelocityMetersPerSecond(previous, current));
 }
+
+TEST_CASE("Live diagnostics identify missing and invalid fields without "
+          "accepting partial rows",
+          "[mission][telemetry][diagnostics]") {
+  cosmo::telemetry::LineTelemetryDecoder decoder;
+  const auto first = asBytes("1,18,101325,,0,0,9.81,0,0,0,bad,0,0,54,-5,0");
+  REQUIRE(decoder.ingest(first.data(), first.size()).empty());
+  REQUIRE(decoder.lastRowDiagnostic().sequence == 0);
+  const auto newline = asBytes("\n");
+  REQUIRE(decoder.ingest(newline.data(), newline.size()).empty());
+  const auto issue = decoder.lastRowDiagnostic();
+  REQUIRE(issue.sequence == 1);
+  REQUIRE(issue.missing == (1U << 3));
+  REQUIRE(issue.invalid == (1U << 10));
+  REQUIRE(issue.malformed);
+  const auto valid = asBytes("2,0,101325,0,0,0,0,0,0,0,0,0,0,54,-5,0\n");
+  REQUIRE(decoder.ingest(valid.data(), valid.size()).size() == 1);
+  REQUIRE(decoder.lastRowDiagnostic().sequence == 2);
+  REQUIRE_FALSE(decoder.lastRowDiagnostic().malformed);
+  REQUIRE(decoder.lastRowDiagnostic().missing == 0);
+  decoder.reset();
+  REQUIRE(decoder.lastRowDiagnostic().sequence == 0);
+}
+
+TEST_CASE("An oversized completed row replaces an older field diagnostic",
+          "[mission][telemetry][diagnostics]") {
+  cosmo::telemetry::LineTelemetryDecoder decoder(80);
+  const auto input = asBytes("1,18,101325,,0,0,9.81,0,0,0,0,0,0,54,-5,0\n");
+  REQUIRE(decoder.ingest(input.data(), input.size()).empty());
+  REQUIRE(decoder.lastRowDiagnostic().missing == (1U << 3));
+  const auto oversized = asBytes(std::string(100, 'x'));
+  REQUIRE(decoder.ingest(oversized.data(), oversized.size()).empty());
+  REQUIRE(decoder.lastRowDiagnostic().sequence == 1);
+  const auto newline = asBytes("\n");
+  decoder.ingest(newline.data(), newline.size());
+  REQUIRE(decoder.lastRowDiagnostic().sequence == 2);
+  REQUIRE(decoder.lastRowDiagnostic().missing == 0);
+  REQUIRE(decoder.lastRowDiagnostic().malformed);
+}
+
+TEST_CASE(
+    "Worker delivers a final oversized-row diagnostic after counter flush",
+    "[telemetry][worker][diagnostics]") {
+  std::mutex mutex;
+  std::condition_variable delivered;
+  std::size_t malformed = 0;
+  std::uint64_t latestSequence = 0;
+  cosmo::telemetry::LineTelemetryWorkerConfig config;
+  config.flushInterval = std::chrono::milliseconds(5);
+  cosmo::telemetry::LineTelemetryDecodeWorker worker(
+      [&](cosmo::telemetry::LineTelemetryBatch batch) {
+        std::scoped_lock lock(mutex);
+        malformed += batch.malformedLines;
+        if (batch.rowDiagnostic)
+          latestSequence = batch.rowDiagnostic->sequence;
+        delivered.notify_one();
+      },
+      config);
+  REQUIRE(worker.start());
+  REQUIRE(worker.enqueueChunk(asBytes(
+      std::string(cosmo::telemetry::kMaxLiveTelemetryLineBytes + 1, 'x'))));
+  bool countersFlushed = false;
+  {
+    std::unique_lock lock(mutex);
+    countersFlushed = delivered.wait_for(lock, std::chrono::seconds(1),
+                                         [&] { return malformed == 1; });
+  }
+  worker.stop();
+  REQUIRE(countersFlushed);
+  REQUIRE(latestSequence == 1);
+}

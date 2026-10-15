@@ -35,6 +35,7 @@ bool LineTelemetryDecodeWorker::start() {
 
     m_decoder.reset();
     m_lastDeliveredMalformedLines = 0;
+    m_lastDeliveredRow = 0;
     {
         std::scoped_lock queueLock(m_queueMutex);
         m_chunks.clear();
@@ -148,16 +149,19 @@ bool LineTelemetryDecodeWorker::deliver(std::vector<FlightSample> &samples) {
     batch.droppedBytes = counters.droppedBytes - m_lastDeliveredCounters.droppedBytes;
     batch.malformedLines = malformedLines - m_lastDeliveredMalformedLines;
     batch.samples.swap(samples);
+    const auto row = m_decoder.lastRowDiagnostic();
+    if (row.sequence != m_lastDeliveredRow) {
+      batch.rowDiagnostic = row;
+      m_lastDeliveredRow = row.sequence;
+    }
 
     m_lastDeliveredCounters = counters;
     m_lastDeliveredMalformedLines = malformedLines;
 
-    if (batch.samples.empty()
-        && batch.receivedBytes == 0
-        && batch.malformedLines == 0
-        && batch.droppedChunks == 0
-        && batch.droppedBytes == 0) {
-        return true;
+    if (!batch.rowDiagnostic && batch.samples.empty() &&
+        batch.receivedBytes == 0 && batch.malformedLines == 0 &&
+        batch.droppedChunks == 0 && batch.droppedBytes == 0) {
+      return true;
     }
 
     if (m_callback) {

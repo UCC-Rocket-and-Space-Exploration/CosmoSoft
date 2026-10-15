@@ -2,6 +2,7 @@
 #define COSMO_SOFT_DASHBOARDPAGE_H
 
 #include <QElapsedTimer>
+#include <QJsonArray>
 #include <QPointer>
 #include <QVector>
 #include <QWidget>
@@ -15,6 +16,7 @@
 #include "domain/FlightSession.h"
 #include "services/preview/FlightPreviewCache.h"
 
+class QAction;
 class QChart;
 class QChartView;
 class QFrame;
@@ -39,6 +41,10 @@ class ReplayBar;
 class TelemetryChartView;
 class TracesPanel;
 class RocketAttitudeWidget;
+class VisualHorizonWidget;
+class FlightEventTrack;
+class QMenu;
+class QComboBox;
 
 /**
  * @class DashboardPage
@@ -62,50 +68,71 @@ class DashboardPage : public QWidget {
     Q_OBJECT
 
 public:
-    /** Total number of supported telemetry metrics (matches the metric lookup tables). */
-    static constexpr int kMetricCount = 9;
+  /** @brief Page-specific instrument actions for the main Instruments menu. */
+  [[nodiscard]] QMenu *instrumentsMenu() const { return m_instrumentsMenu; }
 
-    explicit DashboardPage(FlightDataModel *model, FlightReplayController *replay, QWidget *parent = nullptr);
+  /** Total number of supported telemetry metrics (matches the metric lookup
+   * tables). */
+  static constexpr int kMetricCount = 9;
 
-    /**
-     * @brief Selects metric or imperial presentation units for dashboard views.
-     *
-     * Stored flight samples and preview selection remain in their raw SI form.
-     */
-    void setImperialUnits(bool imperial);
+  explicit DashboardPage(FlightDataModel *model, FlightReplayController *replay,
+                         QWidget *parent = nullptr);
 
-    /**
-     * Switches to replay mode and loads @p session.
-     * Resets the scrubber, rebuilds the chart from the full session, and
-     * positions the replay controller at the end (most recent sample).
-     * Pass nullptr to return to an idle state.
-     */
-    void setReplaySession(std::shared_ptr<const FlightSession> session,
-                          std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview);
+  /**
+   * @brief Selects metric or imperial presentation units for dashboard views.
+   *
+   * Stored flight samples and preview selection remain in their raw SI form.
+   */
+  void setImperialUnits(bool imperial);
 
-    /**
-     * Updates the visible replay trail to @p trailLength samples.
-     * Also synchronizes the ReplayBar when an external caller changes the trail.
-     */
-    void setReplayTrailLength(int trailLength);
+  /**
+   * Switches to replay mode and loads @p session.
+   * Resets the scrubber, rebuilds the chart from the full session, and
+   * positions the replay controller at the end (most recent sample).
+   * Pass nullptr to return to an idle state.
+   */
+  void setReplaySession(
+      std::shared_ptr<const FlightSession> session,
+      std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview);
 
-    /** Target display budget per series; missing-value boundaries are retained in addition. */
-    static constexpr int kMaxChartDisplayPoints = 6000;
+  /**
+   * Updates the visible replay trail to @p trailLength samples.
+   * Also synchronizes the ReplayBar when an external caller changes the trail.
+   */
+  void setReplayTrailLength(int trailLength);
 
-    /** Maximum live samples kept in memory; older samples are discarded. */
-    static constexpr int kMaxLiveBufferSamples = 25000;
+  /** Target display budget per series; missing-value boundaries are retained in
+   * addition. */
+  static constexpr int kMaxChartDisplayPoints = 6000;
 
-  signals:
-    /** @brief Request the main window flight-log picker. */
-    void openLogRequested();
-    /** @brief Request the live telemetry connection page. */
-    void liveTelemetryRequested();
+  /** Maximum live samples kept in memory; older samples are discarded. */
+  static constexpr int kMaxLiveBufferSamples = 25000;
 
-  protected:
-    bool eventFilter(QObject *watched, QEvent *event) override;
-    void paintEvent(QPaintEvent *event) override;
-    void resizeEvent(QResizeEvent *event) override;
-    void showEvent(QShowEvent *event) override;
+  /** @brief Export flight annotations in the sidecar format. */
+  [[nodiscard]] QJsonArray eventAnnotations() const;
+  /** @brief Restore validated flight annotations without treating them as
+   * edits. */
+  void setEventAnnotations(const QJsonArray &events);
+  /** @brief Read the map reference included in a saved flight. */
+  [[nodiscard]] QJsonObject recoveryReference() const;
+  /** @brief Restore the map reference from matching flight metadata. */
+  void setRecoveryReference(const QJsonObject &reference);
+
+signals:
+  /** @brief Request the main window flight-log picker. */
+  void openLogRequested();
+  /** @brief Notify the owner that annotations have unsaved changes. */
+  void annotationsChanged();
+  /** @brief Notify the owner of an explicitly edited recovery reference. */
+  void recoveryReferenceChanged();
+  /** @brief Request the live telemetry connection page. */
+  void liveTelemetryRequested();
+
+protected:
+  bool eventFilter(QObject *watched, QEvent *event) override;
+  void paintEvent(QPaintEvent *event) override;
+  void resizeEvent(QResizeEvent *event) override;
+  void showEvent(QShowEvent *event) override;
 
 private slots:
     void onDisplayedSampleChanged(const FlightSample &sample);
@@ -115,129 +142,147 @@ private slots:
     void onChartVisualOptionsToggled();
 
 private:
-    // ── Replay chart management ───────────────────────────────────────────────
-    void applyReplayControllerPosition(int trailLength);
-    void scheduleReplayChartRebuild();   ///< Mark replay chart data dirty.
-    void flushReplayChartRebuild();      ///< Flush the latest visible replay state.
-    void rebuildReplayCharts(int trailLength);
+  QMenu *m_instrumentsMenu = nullptr;
+  // ── Replay chart management ───────────────────────────────────────────────
+  void applyReplayControllerPosition(int trailLength);
+  void scheduleReplayChartRebuild(); ///< Mark replay chart data dirty.
+  void flushReplayChartRebuild();    ///< Flush the latest visible replay state.
+  void rebuildReplayCharts(int trailLength);
 
-    // ── Live chart management ─────────────────────────────────────────────────
-    void scheduleLiveChartRebuild();     ///< Mark live chart data dirty.
-    void rebuildLiveSeriesFromHistory();
+  // ── Live chart management ─────────────────────────────────────────────────
+  void scheduleLiveChartRebuild(); ///< Mark live chart data dirty.
+  void rebuildLiveSeriesFromHistory();
 
-    // ── Shared chart render scheduler ─────────────────────────────────────
-    void scheduleRenderPass();
-    void processScheduledUpdates(bool forceImmediate = false);
-    [[nodiscard]] bool graphViewIsActive() const;
+  // ── Shared chart render scheduler ─────────────────────────────────────
+  void scheduleRenderPass();
+  void processScheduledUpdates(bool forceImmediate = false);
+  [[nodiscard]] bool graphViewIsActive() const;
 
-    // ── Chart helpers ─────────────────────────────────────────────────────────
+  // ── Chart helpers ─────────────────────────────────────────────────────────
 
-    /** Common chart-building pipeline shared by replay and live chart rebuilds. */
-    void buildChartFromSamples(const std::vector<FlightSample> &samples, int end);
-    void buildChartFromSampleIndices(const std::vector<FlightSample> &samples, const std::vector<int> &sampleIndices,
-                                     int logicalSampleCount, int begin, int end);
-    [[nodiscard]] int chartPointBudget() const;
+  /** Common chart-building pipeline shared by replay and live chart rebuilds.
+   */
+  void buildChartFromSamples(const std::vector<FlightSample> &samples, int end);
+  void buildChartFromSampleIndices(const std::vector<FlightSample> &samples,
+                                   const std::vector<int> &sampleIndices,
+                                   int logicalSampleCount, int begin, int end);
+  [[nodiscard]] int chartPointBudget() const;
 
-    /** Builds the chart toolbar and populates all toolbar member pointers. */
-    void buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHeaderLay);
+  /** Builds the chart toolbar and populates all toolbar member pointers. */
+  void buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHeaderLay);
 
-    /** Zooms both axes in or out by one step, centered on the current view. */
-    void zoomChartAxesAtCenter(bool zoomIn);
+  /** Zooms both axes in or out by one step, centered on the current view. */
+  void zoomChartAxesAtCenter(bool zoomIn);
 
-    /** Dispatches to rebuildReplayCharts or rebuildLiveSeriesFromHistory depending on mode. */
-    void refreshAllSeriesFromData();
-    void applyChartTheme();
-    void configureTracePlots();
-    void enterComparisonView();
-    void exitComparisonView();
-    void rebuildComparisonChart();
-    void updateComparisonControls();
-    void updateCompactToolbar();
-    void refreshViewSwitcherIcons();
-    [[nodiscard]] const FlightSample *hoverSample(int index1Based) const;
-    void refreshPageStyleSheet();
-    [[nodiscard]] static QString buildDashboardQss();
+  /** Dispatches to rebuildReplayCharts or rebuildLiveSeriesFromHistory
+   * depending on mode. */
+  void refreshAllSeriesFromData();
+  void applyChartTheme();
+  void configureTracePlots();
+  void enterComparisonView();
+  void exitComparisonView();
+  void rebuildComparisonChart();
+  void updateComparisonControls();
+  void updateCompactToolbar();
+  void refreshViewSwitcherIcons();
+  [[nodiscard]] const FlightSample *hoverSample(int index1Based) const;
+  void refreshPageStyleSheet();
+  [[nodiscard]] static QString buildDashboardQss();
 
-    /**
-     * Applies per-series point-marker and label visibility based on point count
-     * in the visible range.
-     */
-    void applySeriesPointDisplay(QLineSeries *series, int pointCount) const;
-    [[nodiscard]] int countEnabledMetrics() const;
-    [[nodiscard]] QString formatMultiMetricHover(double tSec, int displayPointIndex1Based) const;
+  /**
+   * Applies per-series point-marker and label visibility based on point count
+   * in the visible range.
+   */
+  void applySeriesPointDisplay(QLineSeries *series, int pointCount) const;
+  [[nodiscard]] int countEnabledMetrics() const;
+  [[nodiscard]] QString
+  formatMultiMetricHover(double tSec, int displayPointIndex1Based) const;
 
-    // ── Data sources ──────────────────────────────────────────────────────────
-    FlightDataModel              *m_model   = nullptr;
-    QPointer<FlightReplayController> m_replay;
-    std::shared_ptr<const FlightSession> m_session;  ///< Shared loaded replay session.
-    std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
+  // ── Data sources ──────────────────────────────────────────────────────────
+  FlightDataModel *m_model = nullptr;
+  QPointer<FlightReplayController> m_replay;
+  std::shared_ptr<const FlightSession>
+      m_session; ///< Shared loaded replay session.
+  std::shared_ptr<const cosmo::preview::FlightPreviewCache> m_preview;
 
-    // ── Widgets ───────────────────────────────────────────────────────────────
-    TracesPanel *m_tracesPanel       = nullptr;   ///< Metric toggle + live readout panel.
-    RocketAttitudeWidget *m_attitudeWidget = nullptr;
-    QWidget *m_instrumentColumn = nullptr;
-    ReplayBar   *m_replayBar       = nullptr;   ///< Transport bar (buttons, scrubber, labels).
-    QLabel      *m_emptyStateLabel   = nullptr;  ///< Guidance shown when no data is loaded.
-    QLabel      *m_sessionInfoLabel  = nullptr;  ///< Session metadata summary.
+  // ── Widgets ───────────────────────────────────────────────────────────────
+  TracesPanel *m_tracesPanel = nullptr; ///< Metric toggle + live readout panel.
+  RocketAttitudeWidget *m_attitudeWidget = nullptr;
+  VisualHorizonWidget *m_horizonWidget = nullptr;
+  bool m_showHorizon = true, m_showAttitude = true;
+  QWidget *m_instrumentColumn = nullptr;
+  ReplayBar *m_replayBar =
+      nullptr; ///< Transport bar (buttons, scrubber, labels).
+  QLabel *m_emptyStateLabel =
+      nullptr; ///< Guidance shown when no data is loaded.
+  QLabel *m_sessionInfoLabel = nullptr; ///< Session metadata summary.
 
-    // ── Chart ─────────────────────────────────────────────────────────────────
-    QChart             *m_chart     = nullptr;
-    TelemetryChartView *m_chartView = nullptr;
-    std::array<QLineSeries *, kMetricCount> m_lineSeries{};
-    QValueAxis *m_axisX  = nullptr;
-    QValueAxis *m_axisY  = nullptr;
-    std::array<QChart *, kMetricCount> m_traceCharts{};
-    std::array<TelemetryChartView *, kMetricCount> m_traceViews{};
-    std::array<QValueAxis *, kMetricCount> m_traceAxesX{};
-    std::array<QValueAxis *, kMetricCount> m_traceAxesY{};
-    QScrollArea *m_chartScroll = nullptr;
-    QWidget *m_chartContent = nullptr;
-    QStackedWidget *m_graphStack = nullptr;
-    QChart *m_comparisonChart = nullptr;
-    TelemetryChartView *m_comparisonView = nullptr;
-    QValueAxis *m_comparisonAxisX = nullptr;
-    QValueAxis *m_comparisonAxisLeft = nullptr;
-    QValueAxis *m_comparisonAxisRight = nullptr;
-    bool m_syncingChartAxes = false;
-    bool m_syncingComparisonAxes = false;
-    bool m_comparisonActive = false;
-    QVector<QShortcut *> m_chartShortcuts; ///< Shortcuts active only inside the graph view.
+  // ── Chart ─────────────────────────────────────────────────────────────────
+  QChart *m_chart = nullptr;
+  TelemetryChartView *m_chartView = nullptr;
+  std::array<QLineSeries *, kMetricCount> m_lineSeries{};
+  QValueAxis *m_axisX = nullptr;
+  QValueAxis *m_axisY = nullptr;
+  std::array<QChart *, kMetricCount> m_traceCharts{};
+  std::array<TelemetryChartView *, kMetricCount> m_traceViews{};
+  std::array<QValueAxis *, kMetricCount> m_traceAxesX{};
+  std::array<QValueAxis *, kMetricCount> m_traceAxesY{};
+  QScrollArea *m_chartScroll = nullptr;
+  QWidget *m_chartContent = nullptr;
+  QStackedWidget *m_graphStack = nullptr;
+  QChart *m_comparisonChart = nullptr;
+  TelemetryChartView *m_comparisonView = nullptr;
+  QValueAxis *m_comparisonAxisX = nullptr;
+  QValueAxis *m_comparisonAxisLeft = nullptr;
+  QValueAxis *m_comparisonAxisRight = nullptr;
+  bool m_syncingChartAxes = false;
+  bool m_syncingComparisonAxes = false;
+  bool m_comparisonActive = false;
+  QVector<QShortcut *>
+      m_chartShortcuts; ///< Shortcuts active only inside the graph view.
 
-    // ── View switcher (Graph / Map) ───────────────────────────────────────────
-    QStackedWidget *m_viewStack    = nullptr;
-    Map3DWidget    *m_mapWidget    = nullptr;
-    QPushButton    *m_graphViewBtn = nullptr;
-    QPushButton    *m_mapViewBtn   = nullptr;
-    QWidget *m_viewSwitchGroup = nullptr;
+  // ── View switcher (Graph / Map) ───────────────────────────────────────────
+  QStackedWidget *m_viewStack = nullptr;
+  Map3DWidget *m_mapWidget = nullptr;
+  QPushButton *m_graphViewBtn = nullptr;
+  QPushButton *m_mapViewBtn = nullptr;
+  QWidget *m_viewSwitchGroup = nullptr;
 
-    // ── Chart toolbar buttons ─────────────────────────────────────────────────
-    QPushButton  *m_zoomOutBtn            = nullptr;
-    QPushButton  *m_zoomInBtn             = nullptr;
-    QPushButton  *m_zoomResetBtn          = nullptr;
-    QToolButton  *m_showMarkersToggle     = nullptr;
-    QToolButton  *m_showPointValuesToggle = nullptr;
-    QToolButton  *m_followToggle          = nullptr;
-    QToolButton  *m_tracesToggleBtn       = nullptr;
-    QPushButton  *m_compareSelectedBtn    = nullptr;
-    QPushButton  *m_exitComparisonBtn     = nullptr;
+  // ── Chart toolbar buttons ─────────────────────────────────────────────────
+  QPushButton *m_zoomOutBtn = nullptr;
+  QPushButton *m_zoomInBtn = nullptr;
+  QPushButton *m_zoomResetBtn = nullptr;
+  QToolButton *m_showMarkersToggle = nullptr;
+  QToolButton *m_showPointValuesToggle = nullptr;
+  QToolButton *m_followToggle = nullptr;
+  QAction *m_instrumentsAction = nullptr;
+  QPushButton *m_compareSelectedBtn = nullptr;
+  QPushButton *m_exitComparisonBtn = nullptr;
 
-    // ── Graph-only toolbar groups (hidden in Map view) ────────────────────────
-    QWidget *m_zoomGroup    = nullptr;
-    QWidget *m_toggleGroup  = nullptr;
-    QWidget *m_actionGroup  = nullptr;
-    QToolButton *m_chartHelpBtn = nullptr;
-    QLabel *m_chartHelpHint = nullptr;
+  // ── Graph-only toolbar groups (hidden in Map view) ────────────────────────
+  QWidget *m_zoomGroup = nullptr;
+  QWidget *m_toggleGroup = nullptr;
+  QWidget *m_actionGroup = nullptr;
+  QToolButton *m_chartHelpBtn = nullptr;
+  QLabel *m_chartHelpHint = nullptr;
 
-    /** Shows/hides toolbar buttons appropriate to the current view (Graph vs Map). */
-    void updateToolbarForView();
+  /** Shows/hides toolbar buttons appropriate to the current view (Graph vs
+   * Map). */
+  void updateToolbarForView();
 
-    // ── Event markers ─────────────────────────────────────────────────────────
-    struct EventMarker {
-        double timeSec;
-        QString name;
-    };
+  // ── Event markers ─────────────────────────────────────────────────────────
+  struct EventMarker {
+    double timeSec;
+    QString name;
+  };
     std::vector<EventMarker> m_eventMarkers;
     std::vector<QLineSeries *> m_markerSeries;
+    void refreshEventControls(bool annotationsChanged = true);
+    void editFlightEvents();
+    void seekEvent(double seconds);
+    FlightEventTrack *m_eventTrack = nullptr;
+    QComboBox *m_eventList = nullptr;
+    QWidget *m_eventBar = nullptr;
     void addEventMarker(double timeSec, const QString &name);
     void clearEventMarkers();
     void applyEventMarkerTheme(QLineSeries *series) const;

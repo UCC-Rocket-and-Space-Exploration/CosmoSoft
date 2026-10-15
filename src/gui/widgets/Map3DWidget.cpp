@@ -1,6 +1,7 @@
 #include "gui/widgets/Map3DWidget.h"
 #include "gui/AttitudeMath.h"
 #include "gui/ThemeManager.h"
+#include "gui/widgets/RecoveryPanel.h"
 #include "services/preview/FlightPreviewCache.h"
 
 #include <QApplication>
@@ -337,12 +338,28 @@ MapProfileResources &sharedMapProfileResources() {
 
 } // namespace
 
+QAction *Map3DWidget::recoveryAction() const {
+  return m_recoveryPanel->modeAction();
+}
+
 Map3DWidget::Map3DWidget(QWidget *parent)
     : QWidget(parent)
 {
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
+    m_recoveryPanel = std::make_unique<RecoveryPanel>(this).release();
+    layout->addWidget(m_recoveryPanel);
+    m_recoveryPanel->modeChanged = [this](bool active,
+                                          const QJsonObject &record) {
+      m_recoveryPayload = record.toVariantMap();
+      m_recoveryPayload.insert("active", active);
+      m_recoveryPending = true;
+      scheduleMapUpdate();
+    };
+    m_recoveryPanel->referenceChanged = [this] {
+      emit recoveryReferenceChanged();
+    };
 
     m_loadError = new QWidget(this);
     auto *errorLayout = new QVBoxLayout(m_loadError);
@@ -414,7 +431,7 @@ void Map3DWidget::ensureMapInitialized() {
     m_webView->setAccessibleDescription(tr("Use the map zoom controls or the mouse wheel to zoom the flight path."));
     m_webView->setPage(page);
     m_webView->setZoomFactor(1.0);
-    static_cast<QVBoxLayout *>(layout())->insertWidget(0, m_webView);
+    static_cast<QVBoxLayout *>(layout())->insertWidget(1, m_webView, 1);
 }
 
 void Map3DWidget::loadMapPage() {
@@ -478,6 +495,7 @@ void Map3DWidget::onMapReady() {
     }
     m_loadAttemptActive = false;
     m_mapReady = true;
+    m_recoveryPending = true;
     m_liveSnapshotPending = !m_liveSamples.empty();
     m_liveUpdatePending = m_liveTotalSamples > 0;
     if (isVisible()) {
@@ -919,6 +937,10 @@ void Map3DWidget::flushPendingUpdates() {
     if (m_session && m_trailUpdatePending) {
         sendPendingTrailLength();
     }
+    if (m_recoveryPending) {
+      emit m_bridge->recoveryRequested(m_recoveryPayload);
+      m_recoveryPending = false;
+    }
     if (m_followUpdatePending) {
         m_bridge->requestFollow(m_followEnabled);
         m_followUpdatePending = false;
@@ -945,9 +967,26 @@ void Map3DWidget::onBridgeStatsUpdated(double lat, double lon, double alt,
     if (!statsValid) {
         return;
     }
+    if (m_session) {
+      if (validGpsSamples > 0)
+        m_recoveryPanel->setRecord(
+            QJsonObject{{"lat", lat}, {"lon", lon}, {"replay", true}});
+      else
+        m_recoveryPanel->setRecord({});
+    }
     emit positionStatsChanged(lat, lon, alt, distFromLaunch, bearing,
                               pathLength, totalSamples, validGpsSamples,
                               launchLat, launchLon);
 }
 
 #include "Map3DWidget.moc"
+
+void Map3DWidget::setRecoveryRecord(const QJsonObject &record) {
+  m_recoveryPanel->setRecord(record);
+}
+QJsonObject Map3DWidget::recoveryReference() const {
+  return m_recoveryPanel->reference();
+}
+void Map3DWidget::setRecoveryReference(const QJsonObject &reference) {
+  m_recoveryPanel->setReference(reference);
+}

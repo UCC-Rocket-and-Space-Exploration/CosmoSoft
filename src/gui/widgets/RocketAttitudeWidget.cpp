@@ -275,5 +275,19 @@ void RocketAttitudeWidget::refreshStyleSheet() {
           .arg(Theme::kRadiusMd)
           .arg(Theme::kFontMono)
           .arg(Theme::kFontSizeSm));
+  if (m_compact)
+    m_angles->setStyleSheet(
+        QStringLiteral("font-size:9px;color:%1;").arg(Theme::kTextPrimary()));
   m_canvas->update();
+}
+
+void RocketAttitudeWidget::setCompact(bool compact) {
+  m_compact = compact;
+  setMinimumWidth(compact ? 136 : 240);
+  m_canvas->setMinimumWidth(compact ? 100 : 140);
+  layout()->setContentsMargins(compact ? 8 : 12, 8, compact ? 8 : 12, 8);
+  findChild<QLabel *>("attitudeTitle")
+      ->setText(compact ? tr("ATTITUDE") : tr("ROCKET ATTITUDE"));
+  m_status->setVisible(!compact);
+  refreshStyleSheet();
 }

@@ -28,6 +28,7 @@
  */
 
 #include "gui/pages/DashboardPage.h"
+#include "gui/widgets/VisualHorizonWidget.h"
 
 #include "domain/FlightSession.h"
 #include "gui/FlightDataModel.h"
@@ -42,30 +43,37 @@
 #include "gui/widgets/TelemetryChartView.h"
 #include "gui/widgets/TracesPanel.h"
 
+#include "gui/widgets/FlightEventTrack.h"
+#include "services/persistence/FlightMetadata.h"
 #include <QAction>
 #include <QApplication>
 #include <QChart>
 #include <QClipboard>
 #include <QColor>
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QEvent>
 #include <QFocusEvent>
 #include <QFont>
 #include <QFrame>
 #include <QHBoxLayout>
-#include <QInputDialog>
 #include <QIcon>
+#include <QInputDialog>
+#include <QJsonObject>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QList>
 #include <QMenu>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPen>
-#include <QPointF>
-#include <QPolygonF>
 #include <QPixmap>
+#include <QPointF>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
@@ -73,6 +81,7 @@
 #include <QShortcut>
 #include <QShowEvent>
 #include <QStackedWidget>
+#include <QTableWidget>
 
 #include "gui/SettingsKeys.h"
 #include <QSignalBlocker>
@@ -124,36 +133,66 @@ static_assert(
     return out;
 }
 
-[[nodiscard]] QIcon graphViewIcon()
-{
-    QPixmap pixmap(20, 20);
+// Lucide chart-line and map outlines, adapted to QPainterPath.
+// Sources: https://lucide.dev/icons/chart-line and https://lucide.dev/icons/map
+// ISC license: assets/icons/lucide.LICENSE.
+[[nodiscard]] QIcon viewSwitcherIcon(const QPainterPath &path) {
+  QIcon icon;
+  // Supply native-resolution images so Retina screens never upscale 20px art.
+  for (const int scale : {1, 2, 3}) {
+    QPixmap pixmap(20 * scale, 20 * scale);
+    pixmap.setDevicePixelRatio(scale);
     pixmap.fill(Qt::transparent);
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(Theme::kTextPrimary()), 1.8, Qt::SolidLine,
-                        Qt::RoundCap, Qt::RoundJoin));
-    painter.drawLine(3, 16, 3, 4);
-    painter.drawLine(3, 16, 17, 16);
-    painter.drawPolyline(QPolygonF{{5, 13}, {9, 10}, {12, 12}, {16, 6}});
-    return QIcon(pixmap);
-}
-
-[[nodiscard]] QIcon mapViewIcon()
-{
-    QPixmap pixmap(20, 20);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(QColor(Theme::kTextPrimary()), 1.6, Qt::SolidLine,
+    painter.scale(20.0 / 24.0, 20.0 / 24.0);
+    painter.setPen(QPen(QColor(Theme::kTextPrimary()), 2.0, Qt::SolidLine,
                         Qt::RoundCap, Qt::RoundJoin));
     painter.setBrush(Qt::NoBrush);
-    painter.drawPolyline(QPolygonF{{3, 5}, {8, 3}, {13, 5}, {17, 3}, {17, 15},
-                                   {13, 17}, {8, 15}, {3, 17}, {3, 5}});
-    painter.drawLine(8, 3, 8, 15);
-    painter.drawLine(13, 5, 13, 17);
-    painter.setBrush(QColor(Theme::kAccentLink()));
-    painter.drawEllipse(QPointF(11, 9), 2.1, 2.1);
-    return QIcon(pixmap);
+    painter.drawPath(path);
+    painter.end();
+    icon.addPixmap(pixmap);
+  }
+  return icon;
+}
+
+[[nodiscard]] QIcon graphViewIcon() {
+  QPainterPath path;
+  path.moveTo(3, 3);
+  path.lineTo(3, 19);
+  path.quadTo(3, 21, 5, 21);
+  path.lineTo(21, 21);
+  path.moveTo(19, 9);
+  path.lineTo(14, 14);
+  path.lineTo(10, 10);
+  path.lineTo(7, 13);
+  return viewSwitcherIcon(path);
+}
+
+[[nodiscard]] QIcon mapViewIcon() {
+  QPainterPath path;
+  path.moveTo(14.106, 5.553);
+  path.quadTo(15, 6, 15.894, 5.553);
+  path.lineTo(19.553, 3.723);
+  path.quadTo(21, 3, 21, 4.619);
+  path.lineTo(21, 17.383);
+  path.quadTo(21, 18, 20.447, 18.277);
+  path.lineTo(15.894, 20.554);
+  path.quadTo(15, 21, 14.106, 20.554);
+  path.lineTo(9.894, 18.448);
+  path.quadTo(9, 18, 8.106, 18.448);
+  path.lineTo(4.447, 20.278);
+  path.quadTo(3, 21, 3, 19.381);
+  path.lineTo(3, 6.618);
+  path.quadTo(3, 6, 3.553, 5.724);
+  path.lineTo(8.106, 3.447);
+  path.quadTo(9, 3, 9.894, 3.447);
+  path.closeSubpath();
+  path.moveTo(15, 5.764);
+  path.lineTo(15, 20.764);
+  path.moveTo(9, 3.236);
+  path.lineTo(9, 18.236);
+  return viewSwitcherIcon(path);
 }
 
 } // namespace
@@ -470,9 +509,9 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
     });
     connect(scTraces, &QShortcut::activated, this, [this]() {
-        if (m_tracesToggleBtn) {
-            m_tracesToggleBtn->setChecked(!m_tracesToggleBtn->isChecked());
-        }
+      if (m_instrumentsAction) {
+        m_instrumentsAction->setChecked(!m_instrumentsAction->isChecked());
+      }
     });
 
     // ── View stack (Graph / Map / Empty state switcher) ──────────────────────
@@ -480,6 +519,15 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_viewStack->addWidget(m_graphStack); // index 0 — telemetry chart
 
     m_mapWidget = new Map3DWidget(m_viewStack);
+    connect(m_mapWidget, &Map3DWidget::recoveryReferenceChanged, this,
+            &DashboardPage::annotationsChanged);
+    connect(m_mapWidget, &Map3DWidget::recoveryReferenceChanged, this,
+            &DashboardPage::recoveryReferenceChanged);
+    connect(m_mapWidget->recoveryAction(), &QAction::toggled, this,
+            [this](bool active) {
+              if (active && m_mapViewBtn)
+                m_mapViewBtn->click();
+            });
     m_mapWidget->setImperialUnits(m_imperialUnits);
     m_mapWidget->setAccessibleName(u"Flight path map"_s);
     m_mapWidget->setAccessibleDescription(u"Interactive map showing the flight path and GPS coordinates"_s);
@@ -542,7 +590,17 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     auto attitude = std::make_unique<RocketAttitudeWidget>(instruments.get());
     m_attitudeWidget = attitude.get();
     m_attitudeWidget->hide();
-    instrumentLayout->addWidget(attitude.release());
+    m_attitudeWidget->setCompact(true);
+    m_attitudeWidget->setMinimumWidth(132);
+    auto instrumentRow = std::make_unique<QHBoxLayout>();
+    instrumentRow->setSpacing(8);
+    m_horizonWidget =
+        std::make_unique<VisualHorizonWidget>(instruments.get()).release();
+    m_horizonWidget->setMinimumWidth(132);
+    m_horizonWidget->hide();
+    instrumentRow->addWidget(m_horizonWidget, 1);
+    instrumentRow->addWidget(attitude.release(), 1);
+    instrumentLayout->addLayout(instrumentRow.release());
     instruments->setLayout(instrumentLayout.release());
     auto *instrumentColumn = instruments.get();
     m_instrumentColumn = instrumentColumn;
@@ -570,7 +628,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
             });
         }
     });
-    connect(m_tracesToggleBtn, &QToolButton::toggled, this,
+    connect(m_instrumentsAction, &QAction::toggled, this,
             [this, dashSplitter](bool show) {
               updateToolbarForView();
               if (show) {
@@ -578,6 +636,23 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
               }
             });
     rootLayout->addWidget(dashSplitter, 1);
+    m_eventBar = std::make_unique<QWidget>(this).release();
+    auto eventLayout = std::make_unique<QHBoxLayout>(m_eventBar);
+    eventLayout->setContentsMargins(8, 0, 8, 0);
+    m_eventTrack = std::make_unique<FlightEventTrack>(m_eventBar).release();
+    m_eventTrack->eventActivated = [this](double time) { seekEvent(time); };
+    m_eventList = std::make_unique<QComboBox>(m_eventBar).release();
+    m_eventList->setAccessibleName(tr("Flight events"));
+    m_eventList->setMaximumWidth(180);
+    connect(m_eventList, &QComboBox::activated, this, [this](int index) {
+      if (index > 0)
+        seekEvent(m_eventList->itemData(index).toDouble());
+    });
+    eventLayout->addWidget(m_eventTrack, 1);
+    eventLayout->addWidget(m_eventList);
+    eventLayout.release();
+    m_eventBar->hide();
+    rootLayout->addWidget(m_eventBar);
     rootLayout->addWidget(m_replayBar);
     updateToolbarForView();
 
@@ -732,6 +807,8 @@ void DashboardPage::configureTracePlots() {
         m_traceViews[0]->show();
     }
     const bool primaryChanged = m_chart != m_traceCharts[primary];
+    const QSignalBlocker migration(
+        this); // Moving chart representations does not edit annotations.
     const auto markers = m_eventMarkers;
     if (primaryChanged) clearEventMarkers();
     m_chart = m_traceCharts[primary];
@@ -874,17 +951,16 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
     auto *chartToolbar = new QHBoxLayout();
     chartToolbar->setSpacing(6);
 
-
-    m_tracesToggleBtn = new QToolButton(chartHeader);
-    m_tracesToggleBtn->setObjectName(u"chartToggleBtn"_s);
-    m_tracesToggleBtn->setText(u"Instruments"_s);
-    m_tracesToggleBtn->setCheckable(true);
-    m_tracesToggleBtn->setChecked(true);
-    m_tracesToggleBtn->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    m_tracesToggleBtn->setCursor(Qt::PointingHandCursor);
-    m_tracesToggleBtn->setToolTip(
-        u"Show/hide traces and rocket attitude  [T key]"_s);
-    chartToolbar->addWidget(m_tracesToggleBtn);
+    m_instrumentsMenu =
+        std::make_unique<QMenu>(tr("Instruments"), this).release();
+    m_instrumentsAction =
+        m_instrumentsMenu->addAction(tr("Show instrument sidebar"));
+    m_instrumentsAction->setObjectName("replayInstrumentSidebar");
+    m_instrumentsAction->setCheckable(true);
+    m_instrumentsAction->setChecked(true);
+    m_instrumentsAction->setToolTip(
+        tr("Show/hide traces and flight instruments [T key]"));
+    m_instrumentsMenu->addSeparator();
 
     m_compareSelectedBtn = new QPushButton(chartHeader);
     m_compareSelectedBtn->setObjectName(u"chartToolbarBtn"_s);
@@ -1016,6 +1092,20 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
     toolsButton->setPopupMode(QToolButton::InstantPopup);
     auto *toolsMenu = std::make_unique<QMenu>(toolsButton).release();
     toolsButton->setMenu(toolsMenu);
+    for (const auto &label : {tr("Visual horizon"), tr("Rocket attitude")}) {
+      auto *action = m_instrumentsMenu->addAction(label);
+      action->setCheckable(true);
+      action->setChecked(true);
+      connect(action, &QAction::toggled, this, [this, label](bool checked) {
+        if (label == tr("Visual horizon"))
+          m_showHorizon = checked;
+        else
+          m_showAttitude = checked;
+        const bool loaded = m_session && !m_session->samples.empty();
+        m_horizonWidget->setVisible(loaded && m_showHorizon);
+        m_attitudeWidget->setVisible(loaded && m_showAttitude);
+      });
+    }
     auto *addMarkerBtn = toolsMenu->addAction(u"Add event marker…"_s);
     connect(addMarkerBtn, &QAction::triggered, this, [this]() {
         if (!m_axisX) return;
@@ -1030,6 +1120,8 @@ void DashboardPage::buildChartToolbar(QWidget *chartHeader, QVBoxLayout *chartHe
         }
     });
 
+    toolsMenu->addAction(tr("Manage flight events…"), this,
+                         &DashboardPage::editFlightEvents);
     auto *clearMarkersBtn = toolsMenu->addAction(u"Clear event markers"_s);
     connect(clearMarkersBtn, &QAction::triggered, this, &DashboardPage::clearEventMarkers);
     toolsMenu->addSeparator();
@@ -1318,7 +1410,6 @@ void DashboardPage::refreshPageStyleSheet() {
     forceButtonStyleUpdate(m_zoomOutBtn);
     forceButtonStyleUpdate(m_zoomInBtn);
     forceButtonStyleUpdate(m_zoomResetBtn);
-    forceButtonStyleUpdate(m_tracesToggleBtn);
     forceButtonStyleUpdate(m_showMarkersToggle);
     forceButtonStyleUpdate(m_showPointValuesToggle);
     forceButtonStyleUpdate(m_followToggle);
@@ -1352,20 +1443,24 @@ void DashboardPage::updateToolbarForView() {
   if (m_chartHelpHint)
     m_chartHelpHint->setVisible(graphMode && m_chartHelpBtn &&
                                 m_chartHelpBtn->isChecked());
-  if (m_tracesToggleBtn)
-    m_tracesToggleBtn->setVisible(hasData && m_viewStack &&
-                                  m_viewStack->currentIndex() != 2);
+  if (m_instrumentsAction)
+    m_instrumentsAction->setEnabled(hasData);
+  if (m_mapWidget) {
+    if (!hasData)
+      m_mapWidget->recoveryAction()->setChecked(false);
+    m_mapWidget->recoveryAction()->setEnabled(hasData);
+  }
   if (m_compareSelectedBtn)
     m_compareSelectedBtn->setVisible(graphMode && !m_comparisonActive);
   if (m_exitComparisonBtn)
     m_exitComparisonBtn->setVisible(graphMode && m_comparisonActive);
   if (m_tracesPanel)
     m_tracesPanel->setVisible(hasData && graphMode &&
-                              m_tracesToggleBtn->isChecked());
+                              m_instrumentsAction->isChecked());
   if (m_instrumentColumn)
     m_instrumentColumn->setVisible(hasData && m_viewStack &&
                                    m_viewStack->currentIndex() != 2 &&
-                                   m_tracesToggleBtn->isChecked());
+                                   m_instrumentsAction->isChecked());
   for (auto *shortcut : m_chartShortcuts) {
     if (shortcut) {
       shortcut->setEnabled(graphMode);
@@ -1539,13 +1634,20 @@ void DashboardPage::setReplaySession(
     }
     const int n = m_session ? static_cast<int>(m_session->samples.size()) : 0;
     if (m_attitudeWidget) {
-      m_attitudeWidget->setVisible(n > 0);
+      m_attitudeWidget->setVisible(n > 0 && m_showAttitude);
+      m_horizonWidget->setVisible(n > 0 && m_showHorizon);
       if (n > 0)
         m_attitudeWidget->setSample(m_session->samples.back(), true);
       else
         m_attitudeWidget->resetDisplay();
     }
 
+    if (m_horizonWidget) {
+      if (n > 0)
+        m_horizonWidget->setSample(m_session->samples.back(), true);
+      else
+        m_horizonWidget->resetDisplay();
+    }
     if (m_replayBar) m_replayBar->setSession(m_session, m_preview);
 
     if (m_mapWidget) m_mapWidget->setReplaySession(m_session, m_preview);
@@ -1601,6 +1703,14 @@ void DashboardPage::setReplaySession(
  * redundant and expensive series rebuild.
  */
 void DashboardPage::applyReplayControllerPosition(int trailLength) {
+  if (m_horizonWidget) {
+    if (m_session && trailLength > 0 &&
+        trailLength <= static_cast<int>(m_session->samples.size()))
+      m_horizonWidget->setSample(
+          m_session->samples[static_cast<std::size_t>(trailLength - 1)], true);
+    else
+      m_horizonWidget->resetDisplay();
+  }
   if (m_attitudeWidget) {
     if (m_session && trailLength > 0 &&
         trailLength <= static_cast<int>(m_session->samples.size()))
@@ -1612,6 +1722,7 @@ void DashboardPage::applyReplayControllerPosition(int trailLength) {
     if (!m_followToggle || m_followToggle->isChecked())
         m_preserveChartAxes = false;
     m_lastReplayTrailLength = trailLength;
+    refreshEventControls(false);
     if (m_mapWidget) m_mapWidget->setReplayTrailLength(trailLength);
     if (m_replay && m_replay->isPlaying()) {
         if (m_preview) {
@@ -2237,6 +2348,8 @@ void DashboardPage::onLiveSamplesReceived(const QVector<FlightSample> &samples) 
     if (!m_model || m_model->replayMode()) {
         return;
     }
+    if (m_horizonWidget && !samples.isEmpty())
+      m_horizonWidget->setSample(samples.back());
     if (m_attitudeWidget && !samples.isEmpty())
       m_attitudeWidget->setSample(samples.back());
 
@@ -2247,6 +2360,7 @@ void DashboardPage::onLiveSamplesReceived(const QVector<FlightSample> &samples) 
         m_liveSamples.pop_front();
     }
     if (m_replayBar) m_replayBar->setLiveSampleCount(static_cast<int>(m_liveSamples.size()));
+    refreshEventControls(false);
     if (!samples.isEmpty()) {
         scheduleLiveChartRebuild();
     }
@@ -2254,7 +2368,12 @@ void DashboardPage::onLiveSamplesReceived(const QVector<FlightSample> &samples) 
 
 void DashboardPage::addEventMarker(double timeSec, const QString &name) {
     const EventMarker marker{timeSec, name};
+    if (!std::isfinite(timeSec) || timeSec < 0 || name.trimmed().isEmpty() ||
+        name.size() > 256 || m_eventMarkers.size() >= 10000)
+      return;
     m_eventMarkers.push_back(marker);
+    refreshEventControls();
+    emit annotationsChanged();
 
     if (!m_chart || !m_axisX || !m_axisY) {
         return;
@@ -2276,12 +2395,17 @@ void DashboardPage::addEventMarker(double timeSec, const QString &name) {
 }
 
 void DashboardPage::clearEventMarkers() {
-    for (auto *s : m_markerSeries) {
-        if (m_chart) m_chart->removeSeries(s);
-        delete s;
-    }
+  const bool hadMarkers = !m_eventMarkers.empty();
+  for (auto *s : m_markerSeries) {
+    if (m_chart)
+      m_chart->removeSeries(s);
+    delete s;
+  }
     m_markerSeries.clear();
     m_eventMarkers.clear();
+    if (hadMarkers)
+      emit annotationsChanged();
+    refreshEventControls();
     if (m_chartView) m_chartView->invalidateHoverSeriesCache();
     if (m_comparisonActive && countEnabledMetrics() == 2) {
         rebuildComparisonChart();
@@ -2350,4 +2474,144 @@ void DashboardPage::paintEvent(QPaintEvent *event) {
 
     painter.fillRect(rect(), QColor(Theme::kBgBase()));
 
+}
+
+QJsonArray DashboardPage::eventAnnotations() const {
+  QJsonArray events;
+  for (const auto &event : m_eventMarkers)
+    events.append(QJsonObject{{"time", event.timeSec}, {"name", event.name}});
+  return events;
+}
+void DashboardPage::setEventAnnotations(const QJsonArray &events) {
+  if (!cosmo::mission::validMetadata({events, {}}))
+    return;
+  QSignalBlocker restoring(this);
+  clearEventMarkers();
+  for (const auto &value : events) {
+    const auto event = value.toObject();
+    addEventMarker(event.value("time").toDouble(),
+                   event.value("name").toString());
+  }
+}
+
+QJsonObject DashboardPage::recoveryReference() const {
+  return m_mapWidget->recoveryReference();
+}
+void DashboardPage::setRecoveryReference(const QJsonObject &reference) {
+  m_mapWidget->setRecoveryReference(reference);
+}
+
+void DashboardPage::refreshEventControls(bool annotationsChanged) {
+  if (!m_eventTrack || !m_eventList)
+    return;
+  const double duration = m_preview ? m_preview->durationSeconds()
+                          : m_axisX ? m_axisX->max()
+                                    : 1;
+  m_eventTrack->setDuration(duration);
+  if (!annotationsChanged)
+    return;
+  auto markers = m_eventMarkers;
+  std::stable_sort(
+      markers.begin(), markers.end(),
+      [](const auto &a, const auto &b) { return a.timeSec < b.timeSec; });
+  QJsonArray events;
+  for (const auto &marker : markers)
+    events.append(QJsonObject{{"time", marker.timeSec}, {"name", marker.name}});
+  m_eventTrack->setEvents(events, duration);
+  const QSignalBlocker blocked(m_eventList);
+  m_eventList->clear();
+  m_eventList->addItem(tr("Events (%1)").arg(events.size()));
+  for (const auto &value : events) {
+    const auto item = value.toObject();
+    m_eventList->addItem(tr("%1 s · %2")
+                             .arg(item.value("time").toDouble(), 0, 'f', 2)
+                             .arg(item.value("name").toString()),
+                         item.value("time").toDouble());
+  }
+  m_eventBar->setVisible(!events.isEmpty());
+}
+void DashboardPage::seekEvent(double seconds) {
+  if (!m_preview || !m_replay)
+    return;
+  const auto &times = m_preview->displaySeconds();
+  auto point = std::lower_bound(times.begin(), times.end(), seconds);
+  int index = point == times.end() ? static_cast<int>(times.size()) - 1
+                                   : static_cast<int>(point - times.begin());
+  if (index > 0 &&
+      std::abs(times[index - 1] - seconds) < std::abs(times[index] - seconds))
+    --index;
+  m_replay->setPosition(index + 1);
+}
+void DashboardPage::editFlightEvents() {
+  QDialog dialog(this);
+  dialog.setWindowTitle(tr("Flight events"));
+  dialog.resize(460, 320);
+  auto layout = std::make_unique<QVBoxLayout>(&dialog);
+  QTableWidget table(static_cast<int>(m_eventMarkers.size()), 2, &dialog);
+  table.setObjectName("flightEventsEditor");
+  table.setHorizontalHeaderLabels({tr("Time (s)"), tr("Name")});
+  for (int row = 0; row < table.rowCount(); ++row) {
+    table.setItem(row, 0,
+                  std::make_unique<QTableWidgetItem>(
+                      QString::number(m_eventMarkers[row].timeSec, 'g', 12))
+                      .release());
+    table.setItem(
+        row, 1,
+        std::make_unique<QTableWidgetItem>(m_eventMarkers[row].name).release());
+  }
+  layout->addWidget(&table);
+  QHBoxLayout actions;
+  QPushButton add(tr("Add")), remove(tr("Delete selected"));
+  actions.addWidget(&add);
+  actions.addWidget(&remove);
+  actions.addStretch();
+  layout->addLayout(&actions);
+  connect(&add, &QPushButton::clicked, &dialog, [&] {
+    if (table.rowCount() >= 10000)
+      return;
+    const int row = table.rowCount();
+    table.insertRow(row);
+    table.setItem(
+        row, 0,
+        std::make_unique<QTableWidgetItem>(
+            QString::number(m_preview ? m_preview->displaySecondAt(std::max(
+                                            0, m_lastReplayTrailLength - 1))
+                                      : 0))
+            .release());
+    table.setItem(row, 1,
+                  std::make_unique<QTableWidgetItem>(tr("Event")).release());
+    table.setCurrentCell(row, 1);
+  });
+  connect(&remove, &QPushButton::clicked, &dialog, [&] {
+    if (table.currentRow() >= 0)
+      table.removeRow(table.currentRow());
+  });
+  QDialogButtonBox buttons(QDialogButtonBox::Save | QDialogButtonBox::Cancel);
+  layout->addWidget(&buttons);
+  connect(&buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+  connect(&buttons, &QDialogButtonBox::accepted, &dialog, [&] {
+    QJsonArray events;
+    for (int row = 0; row < table.rowCount(); ++row) {
+      bool okay = false;
+      const double time =
+          table.item(row, 0) ? table.item(row, 0)->text().toDouble(&okay) : -1;
+      const auto name =
+          table.item(row, 1) ? table.item(row, 1)->text().trimmed() : QString();
+      if (!okay || !std::isfinite(time) || time < 0 ||
+          (m_preview && time > m_preview->durationSeconds()) ||
+          name.isEmpty() || name.size() > 256) {
+        QMessageBox::warning(&dialog, tr("Invalid event"),
+                             tr("Use a time within this recording and a name "
+                                "of 1–256 characters."));
+        return;
+      }
+      events.append(QJsonObject{{"time", time}, {"name", name}});
+    }
+    if (events != eventAnnotations()) {
+      setEventAnnotations(events);
+      emit annotationsChanged();
+    }
+    dialog.accept();
+  });
+  dialog.exec();
 }

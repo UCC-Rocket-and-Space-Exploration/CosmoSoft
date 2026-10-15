@@ -1,4 +1,8 @@
 #include "gui/pages/LiveTelemetryPage.h"
+#include "gui/widgets/PreflightChecklistWidget.h"
+#include "gui/widgets/VisualHorizonWidget.h"
+#include "services/persistence/RecoveryState.h"
+#include <QMenu>
 
 #include "gui/FlightDataModel.h"
 #include "gui/LayoutHelpers.h"
@@ -27,6 +31,7 @@
 #include <QSizePolicy>
 #include <QStyle>
 #include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -84,6 +89,7 @@ LiveTelemetryPage::LiveTelemetryPage(FlightDataModel *model, QWidget *parent,
                                  Qt::CaseInsensitive) == 0;
   setObjectName(u"liveTelemetryPage"_s);
   buildUi();
+  m_rateAt = m_clockSource();
   auto ageTimer = std::make_unique<QTimer>(this);
   m_packetAgeTimer = ageTimer.get();
   ageTimer->setObjectName("packetAgeTimer");
@@ -147,6 +153,12 @@ void LiveTelemetryPage::setAvailablePorts(const QStringList &ports) {
 void LiveTelemetryPage::setActiveConnection(const QString &label, bool connected) {
     m_activeConnectionLabel = label;
     m_connected = connected;
+    if (m_packetAgeTimer && isVisible()) {
+      if (connected || m_lastPacketAt)
+        m_packetAgeTimer->start();
+      else
+        m_packetAgeTimer->stop();
+    }
 
     if (m_connectionStatusLabel) {
         const QString text = connected
@@ -166,17 +178,28 @@ void LiveTelemetryPage::setActiveConnection(const QString &label, bool connected
     if (m_disconnectButton) {
         m_disconnectButton->setEnabled(connected);
     }
-    if (m_demoButton) {
-        m_demoButton->setEnabled(!connected);
-    }
 }
 
 void LiveTelemetryPage::resetLiveState() {
   m_lastPacketAt.reset();
+  m_lastBytesAt.reset();
+  m_rateAt = m_clockSource();
+  m_rateBytes = 0;
+  m_rateSamples = 0;
+  m_malformedRows = m_droppedChunks = m_discardedSamples = 0;
+  m_droppedBytes = m_lastDiagnosticRow = 0;
+  m_lastDiagnosticMessage.clear();
+  emit packetDiagnosticChanged({});
   m_packetAgeTimer->stop();
+  if (m_horizonWidget)
+    m_horizonWidget->resetDisplay();
   if (m_attitudeWidget)
     m_attitudeWidget->resetDisplay();
   m_sampleCount = 0;
+  if (m_checklist) {
+    m_checklist->setMeasurements({}, {}, false);
+    m_checklist->resetChecks();
+  }
   m_totalBytes = 0;
   m_havePreviousSample = false;
   m_haveLatestDisplaySample = false;
@@ -245,6 +268,16 @@ void LiveTelemetryPage::refreshStyleSheet() {
             font-family: %6;
             font-size: %8px;
         }
+        QToolButton {
+            background-color: %13;
+            color: %5;
+            border: 1px solid %12;
+            border-radius: 4px;
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+        QToolButton:hover { background-color: %14; }
+        QToolButton:checked { color: %15; border-color: %15; }
         QPushButton[kind="liveButton"]:hover,
         QComboBox:hover {
             background-color: %14;
@@ -320,6 +353,8 @@ void LiveTelemetryPage::onLiveSamplesReceived(const QVector<FlightSample> &sampl
     m_lastPacketAt = m_clockSource();
     if (isVisible() && !m_packetAgeTimer->isActive())
       m_packetAgeTimer->start();
+    if (m_horizonWidget)
+      m_horizonWidget->setSample(sample);
     if (m_attitudeWidget)
       m_attitudeWidget->setSample(sample);
     const FlightSample *velocityPrevious = nullptr;
@@ -362,8 +397,9 @@ void LiveTelemetryPage::onBytesReceivedChanged(qint64 totalBytes) {
 void LiveTelemetryPage::showEvent(QShowEvent *event) {
     QWidget::showEvent(event);
     updateResponsiveLayout();
+    reloadChecklists();
     refreshTelemetryDisplay();
-    if (m_lastPacketAt)
+    if (m_lastPacketAt || m_connected)
       m_packetAgeTimer->start();
 }
 
@@ -413,7 +449,14 @@ void LiveTelemetryPage::buildUi() {
     sideLayout->setSpacing(12);
     auto attitude = std::make_unique<RocketAttitudeWidget>(m_sideColumn);
     m_attitudeWidget = attitude.release();
-    sideLayout->addWidget(m_attitudeWidget);
+    m_attitudeWidget->setCompact(true);
+    auto instruments = std::make_unique<QHBoxLayout>();
+    instruments->setSpacing(8);
+    m_horizonWidget =
+        std::make_unique<VisualHorizonWidget>(m_sideColumn).release();
+    instruments->addWidget(m_horizonWidget, 1);
+    instruments->addWidget(m_attitudeWidget, 1);
+    sideLayout->addLayout(instruments.release());
     sideLayout->addWidget(buildDevicePanel());
     sideLayout->addWidget(buildIgnitorPanel());
     sideLayout->addStretch(1);
@@ -435,7 +478,19 @@ QFrame *LiveTelemetryPage::buildMapPanel() {
     title->setProperty("kind", u"sectionTitle"_s);
     header->addWidget(title);
     header->addStretch(1);
-
+    m_instrumentsMenu =
+        std::make_unique<QMenu>(tr("Instruments"), this).release();
+    for (const auto &name : {tr("Visual horizon"), tr("Rocket attitude")}) {
+      auto *action = m_instrumentsMenu->addAction(name);
+      action->setCheckable(true);
+      action->setChecked(true);
+      connect(action, &QAction::toggled, this, [this, name](bool show) {
+        if (name == tr("Visual horizon"))
+          m_horizonWidget->setVisible(show);
+        else
+          m_attitudeWidget->setVisible(show);
+      });
+    }
     layout->addLayout(header);
 
     m_mapWidget = new Map3DWidget(panel);
@@ -551,21 +606,32 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     buttonRow->addWidget(m_disconnectButton);
     layout->addLayout(buttonRow);
 
-    auto inputs = std::make_unique<QHBoxLayout>();
-    inputs->setSpacing(6);
-    m_demoButton = createPanelButton(tr("Demo"), panel);
-    m_demoButton->setAccessibleName(tr("Run telemetry demo"));
-    m_demoButton->setToolTip(tr("Run telemetry demo"));
-    inputs->addWidget(m_demoButton);
-    auto *recordedButton = createPanelButton(tr("Recorded IMU…"), panel);
-    recordedButton->setObjectName(u"recordedImuInput"_s);
-    recordedButton->setAccessibleName(tr("Recorded IMU input"));
-    recordedButton->setToolTip(
-        tr("Read recorded AltOS packets at one line every 250 ms."));
-    inputs->addWidget(recordedButton);
-    layout->addLayout(inputs.release());
-    connect(recordedButton, &QPushButton::clicked, this,
-            &LiveTelemetryPage::recordedImuRequested);
+    auto details = std::make_unique<QToolButton>(panel);
+    details->setText(tr("Link details"));
+    details->setCheckable(true);
+    details->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    details->setArrowType(Qt::RightArrow);
+    details->setObjectName("linkDetailsToggle");
+    m_linkRateLabel = std::make_unique<QLabel>(panel).release();
+    m_linkRateLabel->setObjectName("linkRate");
+    m_linkRateLabel->setText(tr("— Hz · — B/s"));
+    m_linkRateLabel->setProperty("kind", "caption");
+    auto rateRow = std::make_unique<QHBoxLayout>();
+    rateRow->addWidget(m_linkRateLabel, 1);
+    rateRow->addWidget(details.get());
+    layout->addLayout(rateRow.release());
+    m_linkDetails = std::make_unique<QLabel>(panel).release();
+    m_linkDetails->setObjectName("linkDetails");
+    m_linkDetails->setProperty("kind", "caption");
+    m_linkDetails->setWordWrap(true);
+    m_linkDetails->hide();
+    connect(details.get(), &QToolButton::toggled, this,
+            [this, button = details.get()](bool visible) {
+              button->setArrowType(visible ? Qt::DownArrow : Qt::RightArrow);
+              m_linkDetails->setVisible(visible);
+            });
+    details.release();
+    layout->addWidget(m_linkDetails);
 
     m_lastPacketLabel = new QLabel(panel);
     m_lastPacketLabel->setProperty("kind", u"caption"_s);
@@ -585,29 +651,18 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     connect(m_scanButton, &QPushButton::clicked, this, &LiveTelemetryPage::scanDevicesRequested);
     connect(m_connectButton, &QPushButton::clicked, this, &LiveTelemetryPage::onConnectClicked);
     connect(m_disconnectButton, &QPushButton::clicked, this, &LiveTelemetryPage::disconnectRequested);
-    connect(m_demoButton, &QPushButton::clicked, this, &LiveTelemetryPage::startDemoRequested);
 
     return panel;
 }
 
 QFrame *LiveTelemetryPage::buildIgnitorPanel() {
-    auto *panel = new QFrame(this);
-    panel->setObjectName(u"liveIgnitorPanel"_s);
-    auto *layout = new QVBoxLayout(panel);
-    layout->setContentsMargins(12, 10, 12, 10);
-    layout->setSpacing(4);
-
-    auto *title = new QLabel(u"IGNITION · DISABLED"_s, panel);
-    title->setProperty("kind", u"sectionTitle"_s);
-    layout->addWidget(title);
-
-    auto *description =
-        std::make_unique<QLabel>(tr("Monitoring mode"), panel).release();
-    description->setProperty("kind", u"caption"_s);
-    description->setWordWrap(true);
-    layout->addWidget(description);
-
-    return panel;
+  m_checklist = std::make_unique<PreflightChecklistWidget>(this).release();
+  m_checklist->setObjectName("liveIgnitorPanel");
+  return m_checklist;
+}
+void LiveTelemetryPage::reloadChecklists() { m_checklist->reloadProfiles(); }
+void LiveTelemetryPage::setBatteryAvailable(bool available) {
+  m_batteryAvailable = available;
 }
 
 QPushButton *LiveTelemetryPage::createPanelButton(const QString &text, QWidget *parent) {
@@ -730,7 +785,93 @@ void LiveTelemetryPage::resetMetricTiles() {
     updateLastPacketLabel();
 }
 
+void LiveTelemetryPage::updateLinkDiagnostics(
+    const cosmo::telemetry::LineTelemetryBatch &batch,
+    std::size_t discardedSamples) {
+  m_malformedRows += batch.malformedLines;
+  m_droppedChunks += batch.droppedChunks;
+  m_droppedBytes += batch.droppedBytes;
+  m_discardedSamples += discardedSamples;
+  if (batch.receivedBytes)
+    m_lastBytesAt = m_clockSource();
+  if (batch.rowDiagnostic &&
+      batch.rowDiagnostic->sequence > m_lastDiagnosticRow) {
+    m_lastDiagnosticRow = batch.rowDiagnostic->sequence;
+    const auto &row = *batch.rowDiagnostic;
+    const std::array<QString, 16> names{
+        tr("time"),           tr("temperature"),    tr("pressure"),
+        tr("altitude"),       tr("acceleration X"), tr("acceleration Y"),
+        tr("acceleration Z"), tr("gyro X"),         tr("gyro Y"),
+        tr("gyro Z"),         tr("angle X"),        tr("angle Y"),
+        tr("angle Z"),        tr("latitude"),       tr("longitude"),
+        tr("distance")};
+    QStringList missing, invalid;
+    for (std::size_t i = 0; i < names.size(); ++i) {
+      if (row.missing & (1U << i))
+        missing << names[i];
+      if (row.invalid & (1U << i))
+        invalid << names[i];
+    }
+    QStringList issues;
+    if (!missing.isEmpty())
+      issues << tr("Last packet missing: %1").arg(missing.join(", "));
+    if (!invalid.isEmpty())
+      issues << tr("Invalid: %1").arg(invalid.join(", "));
+    if (row.malformed && issues.isEmpty())
+      issues << tr("Last packet invalid: layout or size");
+    const auto message = issues.join(" · ");
+    if (message != m_lastDiagnosticMessage) {
+      m_lastDiagnosticMessage = message;
+      emit packetDiagnosticChanged(message);
+    }
+  }
+}
+
 void LiveTelemetryPage::updateLastPacketLabel() {
+  const qint64 now = m_clockSource();
+  if (m_checklist)
+    m_checklist->setMeasurements(
+        m_lastPacketAt && m_connected
+            ? std::optional(std::max<qint64>(0, now - *m_lastPacketAt) / 1000.0)
+            : std::nullopt,
+        m_batteryAvailable && m_haveLatestDisplaySample &&
+                std::isfinite(m_latestDisplaySample.batteryVoltage)
+            ? std::optional(m_latestDisplaySample.batteryVoltage)
+            : std::nullopt,
+        m_haveLatestDisplaySample &&
+            cosmo::mission::usablePosition(
+                m_latestDisplaySample.coordinates.latitude,
+                m_latestDisplaySample.coordinates.longitude));
+  const qint64 period = now - m_rateAt;
+  if (m_linkRateLabel && period >= 1000) {
+    m_linkRateLabel->setText(
+        tr("%1 Hz · %2 B/s")
+            .arg((m_sampleCount - m_rateSamples) * 1000.0 / period, 0, 'f', 1)
+            .arg((m_totalBytes - m_rateBytes) * 1000.0 / period, 0, 'f', 0));
+    m_rateAt = now;
+    m_rateSamples = m_sampleCount;
+    m_rateBytes = m_totalBytes;
+  }
+  if (m_linkDetails)
+    m_linkDetails->setText(
+        tr("Malformed rows: %1 · Queue drops: %2 chunks / %3 bytes · GUI "
+           "drops: %4 samples")
+            .arg(static_cast<qulonglong>(m_malformedRows))
+            .arg(static_cast<qulonglong>(m_droppedChunks))
+            .arg(static_cast<qulonglong>(m_droppedBytes))
+            .arg(static_cast<qulonglong>(m_discardedSamples)));
+  if (m_connectionStatusLabel && m_connected) {
+    m_connectionStatusLabel->setText(!m_lastPacketAt ? tr("No data")
+                                     : now - *m_lastPacketAt >= 2000
+                                         ? tr("Delayed")
+                                         : tr("Receiving"));
+    m_connectionStatusLabel->setToolTip(
+        m_lastBytesAt && now - *m_lastBytesAt < 2000 &&
+                (!m_lastPacketAt || now - *m_lastPacketAt >= 2000)
+            ? tr("Bytes arriving without valid samples")
+            : m_activeConnectionLabel);
+  }
+
     if (m_lastPacketLabel) {
       const qint64 elapsed =
           m_lastPacketAt

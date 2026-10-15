@@ -25,36 +25,42 @@
 #include "services/telemetry/LineTelemetryBatchMailbox.h"
 #include "services/telemetry/LineTelemetryDecodeWorker.h"
 
+#include "gui/widgets/Map3DWidget.h"
+#include "services/persistence/FlightMetadata.h"
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QCloseEvent>
 #include <QColor>
 #include <QComboBox>
 #include <QDateTime>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFont>
 #include <QFutureWatcher>
+#include <QHBoxLayout>
+#include <QIcon>
+#include <QJsonDocument>
+#include <QLabel>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QFont>
+#include <QMetaObject>
 #include <QPointer>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QResizeEvent>
+#include <QScopedValueRollback>
 #include <QSettings>
-#include <QStringList>
-#include <QHBoxLayout>
-#include <QIcon>
-#include <QLabel>
-#include <QMetaObject>
 #include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStatusBar>
+#include <QStringList>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
+#include <QUuid>
 #include <QVBoxLayout>
 #include <QVariant>
 #include <QWidget>
@@ -86,6 +92,7 @@ struct FlightLogLoadResult {
     std::optional<std::string> error;
     std::shared_ptr<const FlightSession> session;
     std::shared_ptr<const cosmo::preview::FlightPreviewCache> preview;
+    std::optional<cosmo::mission::FlightMetadata> metadata;
     bool canceled = false;
 };
 
@@ -138,6 +145,11 @@ struct SerialPortScanResult {
                 r.preview.reset();
                 r.canceled = true;
                 return r;
+            }
+            r.metadata = cosmo::mission::loadMetadata(path);
+            if (cancellationRequested(cancelFlag)) {
+              r.canceled = true;
+              return r;
             }
             r.session = std::move(loadedSession);
         }
@@ -282,6 +294,23 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&cosmo::ThemeManager::instance(), &cosmo::ThemeManager::themeChanged,
             this, &MainWindow::onThemeChanged);
 
+    m_packetDiagnosticLabel = std::make_unique<QLabel>(this).release();
+    m_packetDiagnosticLabel->setObjectName("packetDiagnostic");
+    m_packetDiagnosticLabel->setSizePolicy(QSizePolicy::Ignored,
+                                           QSizePolicy::Preferred);
+    m_packetDiagnosticLabel->setMinimumWidth(0);
+    statusBar()->addPermanentWidget(m_packetDiagnosticLabel, 1);
+    connect(m_liveTelemetryPage, &LiveTelemetryPage::packetDiagnosticChanged,
+            this, [this](const QString &text) {
+              m_packetDiagnosticLabel->setText(text);
+              m_packetDiagnosticLabel->setToolTip(text);
+            });
+    connect(m_pages, &QStackedWidget::currentChanged, this, [this] {
+      m_packetDiagnosticLabel->setVisible(m_pages->currentWidget() ==
+                                          m_liveTelemetryPage);
+    });
+    m_packetDiagnosticLabel->hide();
+    qApp->installEventFilter(this);
     statusBar()->showMessage(u"Ready · Open a flight log or connect a device in Live Telemetry."_s);
 
     if (const auto geom = QSettings(kSettingsOrg, kSettingsApp).value(kSettingsWindowMainGeo).toByteArray(); !geom.isEmpty())
@@ -289,13 +318,14 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 MainWindow::~MainWindow() {
-    cancelFlightLogLoad(false);
-    ++m_exportGeneration;
-    ++m_scanGeneration;
-    if (m_scanCancelFlag) {
-        m_scanCancelFlag->store(true, std::memory_order_relaxed);
-        m_scanCancelFlag.reset();
-    }
+  qApp->removeEventFilter(this);
+  cancelFlightLogLoad(false);
+  ++m_exportGeneration;
+  ++m_scanGeneration;
+  if (m_scanCancelFlag) {
+    m_scanCancelFlag->store(true, std::memory_order_relaxed);
+    m_scanCancelFlag.reset();
+  }
     QSettings(kSettingsOrg, kSettingsApp).setValue(kSettingsWindowMainGeo, saveGeometry());
     stopFakeTransmission(false);
     stopSerial();
@@ -343,9 +373,27 @@ void MainWindow::playErrorFeedback() {
 }
 
 void MainWindow::recordLiveSample(const FlightSample &sample) {
-    if (m_logManager->appendSample(sample) || m_recordingLimitReported) {
-        return;
+  const auto received = QDateTime::currentMSecsSinceEpoch();
+  if (m_recoveryState.observe(sample, received, m_realLiveInput)) {
+    if (auto *map = m_liveTelemetryPage->findChild<Map3DWidget *>())
+      map->setRecoveryRecord(m_recoveryState.json());
+    m_flightDataPage->setRecoveryReference(
+        m_recoveryState.json().value("reference").toObject());
+    if (received - m_recoverySavedAt >= 1000) {
+      QSettings(kSettingsOrg, kSettingsApp)
+          .setValue(kSettingsRecoveryRecord,
+                    QJsonDocument(m_recoveryState.json())
+                        .toJson(QJsonDocument::Compact));
+      m_recoverySavedAt = received;
     }
+  }
+  if (m_logManager->appendSample(sample)) {
+    m_recordingRevision.changed();
+    return;
+  }
+  if (m_recordingLimitReported) {
+    return;
+  }
 
     m_recordingLimitReported = true;
     const QString message = QStringLiteral(
@@ -402,7 +450,7 @@ void MainWindow::setupMenuBar() {
     fileMenu->addSeparator();
     fileMenu->addAction(u"&Clear flight"_s, this, &MainWindow::onClearFlightData);
     fileMenu->addSeparator();
-    fileMenu->addAction(u"&Quit"_s, QKeySequence::Quit, qApp, &QApplication::quit);
+    fileMenu->addAction(u"&Quit"_s, QKeySequence::Quit, this, &QWidget::close);
 
     auto *viewMenu = mb->addMenu(u"&View"_s);
     viewMenu->setObjectName(u"viewMenu"_s);
@@ -411,6 +459,9 @@ void MainWindow::setupMenuBar() {
     viewMenu->addAction(m_eventLogAction);
     viewMenu->addSeparator();
     viewMenu->addAction(m_openSettingsAction);
+
+    m_instrumentsMenu = mb->addMenu(tr("&Instruments"));
+    m_instrumentsMenu->setObjectName("instrumentsMenu");
 
     auto *helpMenu = mb->addMenu(u"&Help"_s);
     helpMenu->addAction(u"&About CosmoSoft…"_s, this, &MainWindow::onShowAbout);
@@ -512,7 +563,7 @@ QString MainWindow::buildToolbarStyleSheet() {
 }
 
 QString MainWindow::buildActionBarStyleSheet() {
-    return QString(uR"(
+  return QString(uR"(
         QWidget#connectionStrip {
             background: %1;
             border-bottom: 1px solid %2;
@@ -523,7 +574,7 @@ QString MainWindow::buildActionBarStyleSheet() {
             font-family: %5;
             font-weight: 500;
         }
-        QPushButton[kind="actionButton"] {
+        QPushButton[kind="actionButton"], QToolButton#missionRecovery {
             min-height: 28px;
             padding: 5px 10px;
             color: %4;
@@ -531,16 +582,18 @@ QString MainWindow::buildActionBarStyleSheet() {
             border: 1px solid %2;
             border-radius: 6px;
         }
+        QToolButton#missionRecovery:checked { border-color: %6; color: %6; background: %7; }
         QPushButton#openFlightLog { border-color: %6; color: %6; }
-        QPushButton[kind="actionButton"]:hover { background: %7; }
-        QPushButton[kind="actionButton"]:pressed { background: %8; }
-        QPushButton[kind="actionButton"]:focus { border-color: %9; }
-        QPushButton[kind="actionButton"]:disabled { color: %10; border-color: %2; }
+        QPushButton[kind="actionButton"]:hover, QToolButton#missionRecovery:hover { background: %7; }
+        QPushButton[kind="actionButton"]:pressed, QToolButton#missionRecovery:pressed { background: %8; }
+        QPushButton[kind="actionButton"]:focus, QToolButton#missionRecovery:focus { border-color: %9; }
+        QPushButton[kind="actionButton"]:disabled, QToolButton#missionRecovery:disabled { color: %10; border-color: %2; }
     )"_s)
-        .arg(Theme::kBgBase(), Theme::kBorderSubtle())
-        .arg(Theme::kFontSizeBase)
-        .arg(Theme::kTextPrimary(), Theme::kFontMono, Theme::kAccentLink(), Theme::kBtnHover(), Theme::kBtnPressed(),
-             Theme::kFocusRing(), Theme::kTextDim());
+      .arg(Theme::kBgBase(), Theme::kBorderSubtle())
+      .arg(Theme::kFontSizeBase)
+      .arg(Theme::kTextPrimary(), Theme::kFontMono, Theme::kAccentLink(),
+           Theme::kBtnHover(), Theme::kBtnPressed(), Theme::kFocusRing(),
+           Theme::kTextDim());
 }
 
 void MainWindow::setupToolbar() {
@@ -764,7 +817,12 @@ void MainWindow::setupConnectionBar() {
     m_fakeTransmissionBtn = createActionButton(m_connectionBar, u"Start fake live transmission"_s);
 
     m_openLogBtn->setObjectName(u"openFlightLog"_s);
+    m_recoveryButton = std::make_unique<QToolButton>(m_connectionBar).release();
+    m_recoveryButton->setObjectName("missionRecovery");
+    m_recoveryButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    m_recoveryButton->setFocusPolicy(Qt::StrongFocus);
     row->addWidget(m_connectionPageLabel, 1);
+    row->addWidget(m_recoveryButton);
     row->addWidget(m_openLogBtn);
     row->addWidget(m_clearFlightBtn);
     row->addWidget(m_exportBtn);
@@ -842,11 +900,45 @@ void MainWindow::setupPages() {
 
     m_flightDataPage = new DashboardPage(m_flightModel.get(), m_replay.get());
     m_pages->addWidget(m_flightDataPage);
+    connect(m_flightDataPage, &DashboardPage::annotationsChanged, this,
+            [this] { m_recordingRevision.changed(); });
     connect(m_flightDataPage, &DashboardPage::openLogRequested, this, &MainWindow::onOpenReplayFile);
     connect(m_flightDataPage, &DashboardPage::liveTelemetryRequested, m_liveTelemetryAction, &QAction::trigger);
 
     m_liveTelemetryPage = new LiveTelemetryPage(m_flightModel.get(), this);
     m_pages->addWidget(m_liveTelemetryPage);
+    m_recoveryState.restore(
+        QJsonDocument::fromJson(QSettings(kSettingsOrg, kSettingsApp)
+                                    .value(kSettingsRecoveryRecord)
+                                    .toByteArray())
+            .object());
+    auto *liveMap = m_liveTelemetryPage->findChild<Map3DWidget *>();
+    liveMap->setRecoveryRecord(m_recoveryState.json());
+    connect(liveMap, &Map3DWidget::recoveryReferenceChanged, this,
+            [this, liveMap] {
+              m_recoveryState.setReference(liveMap->recoveryReference());
+              QSettings(kSettingsOrg, kSettingsApp)
+                  .setValue(kSettingsRecoveryRecord,
+                            QJsonDocument(m_recoveryState.json())
+                                .toJson(QJsonDocument::Compact));
+              if (m_realLiveInput && !m_flightModel->replayMode()) {
+                m_flightDataPage->setRecoveryReference(
+                    liveMap->recoveryReference());
+                m_recordingRevision.changed();
+              }
+            });
+    connect(m_flightDataPage, &DashboardPage::recoveryReferenceChanged, this,
+            [this, liveMap] {
+              if (!m_realLiveInput || m_flightModel->replayMode())
+                return;
+              const auto reference = m_flightDataPage->recoveryReference();
+              m_recoveryState.setReference(reference);
+              liveMap->setRecoveryReference(reference);
+              QSettings(kSettingsOrg, kSettingsApp)
+                  .setValue(kSettingsRecoveryRecord,
+                            QJsonDocument(m_recoveryState.json())
+                                .toJson(QJsonDocument::Compact));
+            });
 
     m_eventLogPage = new EventLogPage(m_pages);
     m_pages->addWidget(m_eventLogPage);
@@ -891,6 +983,26 @@ void MainWindow::setupPages() {
 
     connect(m_liveTelemetryPage, &LiveTelemetryPage::recordedImuRequested, this,
             &MainWindow::onRecordedImuInput);
+    const auto updateMissionControls = [this] {
+      const bool replay = m_pages->currentWidget() == m_flightDataPage;
+      const bool live = m_pages->currentWidget() == m_liveTelemetryPage;
+      m_instrumentsMenu->clear();
+      m_instrumentsMenu->menuAction()->setVisible(replay || live);
+      m_recoveryButton->setVisible(replay || live);
+      if (!replay && !live)
+        return;
+      const auto *pageMenu = replay ? m_flightDataPage->instrumentsMenu()
+                                    : m_liveTelemetryPage->instrumentsMenu();
+      m_instrumentsMenu->addActions(pageMenu->actions());
+      auto *map = replay ? m_flightDataPage->findChild<Map3DWidget *>()
+                         : m_liveTelemetryPage->findChild<Map3DWidget *>();
+      if (auto *previous = m_recoveryButton->defaultAction())
+        m_recoveryButton->removeAction(previous);
+      m_recoveryButton->setDefaultAction(map->recoveryAction());
+    };
+    connect(m_pages, &QStackedWidget::currentChanged, this,
+            updateMissionControls);
+    updateMissionControls();
     onScanLiveDevices();
 }
 
@@ -901,6 +1013,10 @@ void MainWindow::openSettingsWindow() {
 
     if (!m_settingsWindow) {
         m_settingsWindow = new SettingsPage();
+        connect(m_settingsWindow, &SettingsPage::recordedInputRequested, this,
+                &MainWindow::onRecordedImuInput);
+        connect(m_settingsWindow, &SettingsPage::preflightProfilesChanged,
+                m_liveTelemetryPage, &LiveTelemetryPage::reloadChecklists);
         m_settingsWindow->setAttribute(Qt::WA_DeleteOnClose);
         m_settingsWindow->setWindowTitle(u"CosmoSoft Settings"_s);
         m_settingsWindow->setWindowIcon(
@@ -1063,8 +1179,15 @@ void MainWindow::onToggleFakeTransmission() {
 }
 
 void MainWindow::onStartLiveDemo() {
+  if (!m_discardApproved && sessionGuardNeeded()) {
+    requestSessionChange([this] { onStartLiveDemo(); });
+    return;
+  }
+
     stopSerial();
     stopFakeTransmission(false);
+    m_realLiveInput = false;
+    m_liveTelemetryPage->setBatteryAvailable(false);
     prepareLiveSession(u"Fake live transmission"_s);
     m_fakeTransmissionSamples.clear();
     m_fakeTransmissionByteCounts.clear();
@@ -1128,28 +1251,34 @@ void MainWindow::onOpenReplayFile() {
         return;
     }
 
-    stopFakeTransmission(false);
-    stopSerial();
     s.setValue(kSettingsReplayDir, QFileInfo(path).absolutePath());
 
     loadFlightLogAsync(path);
 }
 
 void MainWindow::loadFlightLogAsync(const QString &path) {
-    cancelFlightLogLoad(false);
-    const std::uint64_t generation = ++m_loadGeneration;
-    auto cancelFlag = std::make_shared<std::atomic_bool>(false);
-    m_loadCancelFlag = cancelFlag;
+  if (!m_discardApproved && sessionGuardNeeded()) {
+    requestSessionChange([this, path] { loadFlightLogAsync(path); });
+    return;
+  }
 
-    auto *progress = new QProgressDialog(u"Loading flight log…"_s, u"Cancel"_s, 0, 0, this);
-    progress->setWindowModality(Qt::WindowModal);
-    progress->setMinimumDuration(0);
-    progress->setAutoClose(false);
-    progress->setAutoReset(false);
-    m_loadProgress = progress;
-    if (m_openLogBtn) {
-        m_openLogBtn->setEnabled(false);
-    }
+  stopFakeTransmission(false);
+  stopSerial();
+  cancelFlightLogLoad(false);
+  const std::uint64_t generation = ++m_loadGeneration;
+  auto cancelFlag = std::make_shared<std::atomic_bool>(false);
+  m_loadCancelFlag = cancelFlag;
+
+  auto *progress =
+      new QProgressDialog(u"Loading flight log…"_s, u"Cancel"_s, 0, 0, this);
+  progress->setWindowModality(Qt::WindowModal);
+  progress->setMinimumDuration(0);
+  progress->setAutoClose(false);
+  progress->setAutoReset(false);
+  m_loadProgress = progress;
+  if (m_openLogBtn) {
+    m_openLogBtn->setEnabled(false);
+  }
     connect(progress, &QObject::destroyed, this, [this, progress]() {
         if (m_loadProgress == progress) {
             m_loadProgress = nullptr;
@@ -1211,6 +1340,13 @@ void MainWindow::loadFlightLogAsync(const QString &path) {
         if (m_liveTelemetryPage) {
             m_liveTelemetryPage->setActiveConnection(QString(), false);
         }
+        if (r.metadata) {
+          m_flightDataPage->setEventAnnotations(r.metadata->events);
+          m_flightDataPage->setRecoveryReference(r.metadata->reference);
+        } else
+          appendToLog(true, tr("Flight annotations could not be loaded or do "
+                               "not match this file."));
+        m_recordingRevision.reset();
         addRecentFile(path);
         const QString filename = QFileInfo(path).fileName();
         updateBreadcrumb(QStringLiteral("Session: %1").arg(filename));
@@ -1247,24 +1383,16 @@ void MainWindow::cancelFlightLogLoad(bool showStatus) {
 }
 
 void MainWindow::onClearFlightData() {
-    const bool hasData = !m_logManager->session().samples.empty()
-                      || (m_loadedSession && !m_loadedSession->samples.empty());
-    if (hasData) {
-        const auto reply = QMessageBox::question(
-            this,
-            u"Clear flight data"_s,
-            u"All loaded and recorded flight data will be lost.\n\nContinue?"_s,
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::No);
-        if (reply != QMessageBox::Yes) {
-            return;
-        }
-    }
+  if (!m_discardApproved && sessionGuardNeeded()) {
+    requestSessionChange([this] { onClearFlightData(); });
+    return;
+  }
     cancelFlightLogLoad(false);
     stopFakeTransmission(false);
     stopSerial();
     m_logManager->clear();
     m_recordingLimitReported = false;
+    m_flightDataPage->setRecoveryReference({});
     m_replay->stop();
     m_loadedSession.reset();
     m_loadedPreview.reset();
@@ -1281,6 +1409,7 @@ void MainWindow::onClearFlightData() {
     updateBreadcrumb();  // Reset to default
     showStatusMessage(u"Cleared flight replay data."_s, 2000);
     appendToLog(false, u"Flight data cleared."_s);
+    m_recordingRevision.reset();
 }
 
 void MainWindow::onShowAbout() {
@@ -1307,79 +1436,158 @@ void MainWindow::onThemeChanged() {
 }
 
 void MainWindow::onExportSession() {
-    if (m_exportInProgress) {
-        showStatusMessage(u"A session export is already in progress."_s, 2500);
-        return;
-    }
+  if (m_exportInProgress) {
+    showStatusMessage(tr("An export is already in progress."), 3000);
+    return;
+  }
+  const auto path = QFileDialog::getSaveFileName(
+      this, tr("Save flight"), QDir::homePath(), tr("CSV (*.csv)"));
+  if (!path.isEmpty())
+    exportSession(path);
+}
 
-    std::shared_ptr<const FlightSession> session;
-    if (m_flightModel && m_flightModel->replayMode() && m_loadedSession) {
-        session = m_loadedSession;
-    }
+bool MainWindow::acquisitionActive() const {
+  return m_serialWorker || m_telemetrySession ||
+         (m_fakeTransmissionTimer && m_fakeTransmissionTimer->isActive());
+}
+bool MainWindow::sessionGuardNeeded() const {
+  return m_recordingRevision.dirty() || m_exportInProgress ||
+         acquisitionActive();
+}
+void MainWindow::requestSessionChange(std::function<void()> action) {
+  if (m_exportInProgress) {
+    showStatusMessage(tr("Wait for the current flight save to finish."), 4000);
+    return;
+  }
+  const auto proceed = [this, action = std::move(action)] {
+    QScopedValueRollback<bool> approved(m_discardApproved, true);
+    action();
+  };
+  if (!m_recordingRevision.dirty() && !acquisitionActive()) {
+    proceed();
+    return;
+  }
+  QMessageBox box(
+      QMessageBox::Warning, tr("Unsaved flight"),
+      tr("Received flight data or edited annotations may be unsaved. Active "
+         "acquisition can also contain queued samples."),
+      QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, this);
+  box.setObjectName("unsavedFlightDialog");
+  box.setDefaultButton(QMessageBox::Save);
+  box.setEscapeButton(QMessageBox::Cancel);
+  const auto choice = box.exec();
+  if (choice == QMessageBox::Cancel)
+    return;
+  if (choice == QMessageBox::Discard) {
+    proceed();
+    return;
+  }
+  const auto path = QFileDialog::getSaveFileName(
+      this, tr("Save flight"), QDir::homePath(), tr("CSV (*.csv)"));
+  if (path.isEmpty())
+    return;
+  stopFakeTransmission(false);
+  stopSerial(); // Stop and drain before snapshotting the final retained sample.
+  exportSession(path, proceed);
+}
 
-    const FlightSession &liveSession = m_logManager->session();
-    const bool hasSamples = session ? !session->samples.empty() : !liveSession.samples.empty();
-    if (!hasSamples) {
-        showStatusMessage(u"No samples to export — connect a serial port or load a log first."_s, 4000);
-        return;
-    }
-
-    const QString path = QFileDialog::getSaveFileName(
-        this,
-        u"Export session"_s,
-        QDir::homePath(),
-        u"CSV (*.csv);;All files (*)"_s);
-    if (path.isEmpty()) {
-        return;
-    }
-
-    if (!session) {
-        try {
-            // Live telemetry remains mutable on the GUI thread, so export a
-            // stable snapshot rather than reading it from the worker thread.
-            session = std::make_shared<FlightSession>(liveSession);
-        } catch (const std::exception &) {
-            const QString message = u"Export failed — could not snapshot the session."_s;
-            showStatusMessage(message, 5000);
-            appendToLog(true, message);
-            return;
-        }
-    }
-
-    const std::uint64_t generation = ++m_exportGeneration;
-    m_exportInProgress = true;
-    if (m_exportBtn) {
-        m_exportBtn->setEnabled(false);
-    }
-    showStatusMessage(QStringLiteral("Exporting session to %1…").arg(path));
-
-    auto *watcher = new QFutureWatcher<bool>(this);
-    connect(watcher, &QFutureWatcher<bool>::finished, this,
-            [this, watcher, path, generation]() {
-        if (generation != m_exportGeneration) {
-            watcher->deleteLater();
-            return;
-        }
-
-        const bool succeeded = watcher->result();
-        watcher->deleteLater();
-        m_exportInProgress = false;
-        if (m_exportBtn) {
-            m_exportBtn->setEnabled(true);
-        }
-        if (succeeded) {
-            const QString exportMsg = QStringLiteral("Session exported to %1").arg(path);
-            showStatusMessage(exportMsg, 4000);
-            appendToLog(false, exportMsg);
-        } else {
-            const QString exportErrMsg = QStringLiteral("Export failed — could not write to %1").arg(path);
-            showStatusMessage(exportErrMsg, 5000);
-            appendToLog(true, exportErrMsg);
-        }
+void MainWindow::closeEvent(QCloseEvent *event) {
+  if (!m_discardApproved && sessionGuardNeeded()) {
+    event->ignore();
+    requestSessionChange([this] {
+      const bool discarded = sessionGuardNeeded();
+      const auto session = m_recordingRevision.snapshot().session;
+      QTimer::singleShot(0, this, [this, discarded, session] {
+        QScopedValueRollback<bool> approved(
+            m_discardApproved,
+            (discarded && session == m_recordingRevision.snapshot().session) ||
+                !sessionGuardNeeded());
+        close();
+      });
     });
-    watcher->setFuture(QtConcurrent::run([path, session]() {
-        return exportFlightSessionAtPath(path, session);
-    }));
+    return;
+  }
+  stopFakeTransmission(false);
+  stopSerial();
+  if (!m_recoveryState.json().isEmpty())
+    QSettings(kSettingsOrg, kSettingsApp)
+        .setValue(kSettingsRecoveryRecord, QJsonDocument(m_recoveryState.json())
+                                               .toJson(QJsonDocument::Compact));
+  if (m_settingsWindow)
+    m_settingsWindow->close();
+  m_exitAccepted = true;
+  QMainWindow::closeEvent(event);
+}
+
+bool MainWindow::eventFilter(QObject *object, QEvent *event) {
+  if (object == qApp && event->type() == QEvent::Quit && !m_exitAccepted &&
+      sessionGuardNeeded()) {
+    close();
+    return true;
+  }
+  return QMainWindow::eventFilter(object, event);
+}
+
+void MainWindow::exportSession(const QString &path,
+                               std::function<void()> afterSave) {
+  if (m_exportInProgress)
+    return;
+  std::shared_ptr<const FlightSession> session;
+  try {
+    session = (m_flightModel->replayMode() && m_loadedSession)
+                  ? m_loadedSession
+                  : std::make_shared<FlightSession>(m_logManager->session());
+  } catch (const std::exception &) {
+    onParserError(tr("Could not snapshot this flight; data remains unsaved."));
+    return;
+  }
+  if (session->samples.empty() &&
+      m_flightDataPage->eventAnnotations().isEmpty()) {
+    showStatusMessage(tr("No samples to save."), 3000);
+    if (afterSave && !m_recordingRevision.dirty())
+      afterSave();
+    return;
+  }
+  const cosmo::mission::FlightMetadata metadata{
+      m_flightDataPage->eventAnnotations(),
+      m_flightDataPage->recoveryReference()};
+  const auto revision = m_recordingRevision.snapshot();
+  const auto generation = ++m_exportGeneration;
+  m_exportInProgress = true;
+  m_exportBtn->setEnabled(false);
+  showStatusMessage(tr("Saving flight to %1…").arg(path));
+  auto watcher = std::make_unique<QFutureWatcher<bool>>(this);
+  auto *task = watcher.get();
+  connect(task, &QFutureWatcher<bool>::finished, this,
+          [this, task, path, generation, revision,
+           afterSave = std::move(afterSave)] {
+            const bool success = task->result();
+            task->deleteLater();
+            if (generation != m_exportGeneration)
+              return;
+            m_exportInProgress = false;
+            m_exportBtn->setEnabled(true);
+            if (!success) {
+              onParserError(tr("Flight save failed. Data remains unsaved; "
+                               "acquisition may be stopped."));
+              return;
+            }
+            m_recordingRevision.saved(revision);
+            showStatusMessage(tr("Flight saved to %1").arg(path), 4000);
+            if (afterSave) {
+              if (m_recordingRevision.dirty())
+                showStatusMessage(tr("Newer changes remain unsaved; the "
+                                     "requested action was canceled."),
+                                  5000);
+              else
+                afterSave();
+            }
+          });
+  task->setFuture(QtConcurrent::run([path, session, metadata] {
+    return exportFlightSessionAtPath(path, session) &&
+           cosmo::mission::saveMetadata(path, metadata);
+  }));
+  watcher.release();
 }
 
 void MainWindow::onScanLiveDevices() {
@@ -1443,26 +1651,37 @@ void MainWindow::onDisconnectLiveDevice() {
 }
 
 void MainWindow::prepareLiveSession(const QString &context) {
-    cancelFlightLogLoad(false);
-    m_replay->stop();
-    m_loadedSession.reset();
-    m_loadedPreview.reset();
-    m_replay->setSession(nullptr, nullptr);
-    m_logManager->clear();
-    m_recordingLimitReported = false;
-    m_flightModel->setReplayMode(false);
-    m_flightModel->resetByteCounter();
-    m_flightModel->resetSession();
-    if (m_flightDataPage) {
-        m_flightDataPage->setReplaySession(nullptr, nullptr);
-    }
+  if (m_realLiveInput)
+    m_recoveryState.beginSession(
+        QUuid::createUuid().toString(QUuid::WithoutBraces), context);
+  m_flightDataPage->setRecoveryReference({});
+  cancelFlightLogLoad(false);
+  m_replay->stop();
+  m_loadedSession.reset();
+  m_loadedPreview.reset();
+  m_replay->setSession(nullptr, nullptr);
+  m_logManager->clear();
+  m_recordingLimitReported = false;
+  m_flightModel->setReplayMode(false);
+  m_flightModel->resetByteCounter();
+  m_flightModel->resetSession();
+  if (m_flightDataPage) {
+    m_flightDataPage->setReplaySession(nullptr, nullptr);
+  }
     if (m_liveTelemetryPage) {
         m_liveTelemetryPage->resetLiveState();
     }
     updateBreadcrumb(context);
+    m_recordingRevision.reset();
 }
 
 void MainWindow::startSerial(const QString &portName, int baud) {
+  if (!m_discardApproved && sessionGuardNeeded()) {
+    requestSessionChange(
+        [this, portName, baud] { startSerial(portName, baud); });
+    return;
+  }
+
     stopSerial();
     if (portName.isEmpty()) {
         showStatusMessage(u"Select a serial port first."_s, 3000);
@@ -1482,6 +1701,8 @@ void MainWindow::startSerial(const QString &portName, int baud) {
     }
 
     m_serialPortSummary = QStringLiteral("%1 @ %2").arg(portName).arg(baud);
+    m_realLiveInput = true;
+    m_liveTelemetryPage->setBatteryAvailable(false);
     prepareLiveSession(m_serialPortSummary);
 
     const std::uint64_t generation = ++m_liveGeneration;
@@ -1598,6 +1819,8 @@ void MainWindow::drainLiveTelemetryBatches(const std::uint64_t generation) {
                 : batch.receivedBytes);
         m_flightModel->addBytesReceived(receivedBytes);
 
+        m_liveTelemetryPage->updateLinkDiagnostics(batch);
+
         FlightSampleBatch samples;
         samples.reserve(static_cast<qsizetype>(batch.samples.size()));
         for (auto &sample : batch.samples) {
@@ -1621,9 +1844,12 @@ void MainWindow::drainLiveTelemetryBatches(const std::uint64_t generation) {
     }
 
     if (result.discardedDecodedSamples > 0) {
-        onParserError(
-            QStringLiteral("Dropped %1 decoded telemetry sample(s) while the GUI was busy.")
-                .arg(static_cast<qulonglong>(result.discardedDecodedSamples)));
+      m_liveTelemetryPage->updateLinkDiagnostics(
+          {}, result.discardedDecodedSamples);
+      onParserError(
+          QStringLiteral(
+              "Dropped %1 decoded telemetry sample(s) while the GUI was busy.")
+              .arg(static_cast<qulonglong>(result.discardedDecodedSamples)));
     }
 }
 
@@ -1643,6 +1869,16 @@ void MainWindow::stopSerial() {
     }
     drainLiveTelemetryBatches(generation);
     ++m_liveGeneration;
+    if (m_realLiveInput) {
+      m_recoveryState.markEarlier();
+      m_liveTelemetryPage->findChild<Map3DWidget *>()->setRecoveryRecord(
+          m_recoveryState.json());
+      if (!m_recoveryState.json().isEmpty())
+        QSettings(kSettingsOrg, kSettingsApp)
+            .setValue(kSettingsRecoveryRecord,
+                      QJsonDocument(m_recoveryState.json())
+                          .toJson(QJsonDocument::Compact));
+    }
     if (m_comms) {
         m_comms->close();
         m_comms.reset();
@@ -1669,8 +1905,15 @@ void MainWindow::onRecordedImuInput() {
 }
 
 void MainWindow::startRecordedImuInput(const QString &path) {
+  if (!m_discardApproved && sessionGuardNeeded()) {
+    requestSessionChange([this, path] { startRecordedImuInput(path); });
+    return;
+  }
+
   stopSerial();
   stopFakeTransmission(false);
+  m_realLiveInput = false;
+  m_liveTelemetryPage->setBatteryAvailable(true);
   prepareLiveSession(tr("Recorded IMU input"));
   const auto generation = ++m_liveGeneration;
   m_telemetrySession = std::make_unique<cosmo::telemetry::TelemetrySession>(

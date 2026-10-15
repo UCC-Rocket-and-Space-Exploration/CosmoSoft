@@ -9,7 +9,8 @@ The project is written in C++20 and uses Qt 6 for the user interface and CMake f
 The app builds and runs with:
 
 - **Dashboard** — interactive telemetry chart: **multiple traces** (checkboxes for altitude, temp, pressure, accel, battery, RSSI, gyro, lat/lon). One trace uses raw Y units; **two or more** use a **normalized 0–1 overlay** (legend shows “(norm)”); **hover** lists elapsed time, sample index, and **engineering values for every enabled trace**. Dotted grid, legend, point markers when ≤400 samples/trace, full-history replay scrubber, zoom, stat tiles.
-- **Live Telemetry** — serial device discovery and connection controls, the latest decoded sample, and its mapped flight path.
+- **Live Telemetry** — serial connection and link health, telemetry readings, separate rocket attitude and navball instruments, a mapped flight path, Recovery and configurable preflight checks.
+- **Flight events and saving** — editable replay markers and references travel with CSV exports in a matching metadata file. Save/Discard/Cancel protects unsaved recordings on close, clear or replacement. See [the flight instrument guide](docs/rocket-attitude.md).
 - **Event Log** — bounded, timestamped application events and errors with live theme updates.
 - **Action bar** (under the toolbar) — **Open flight log**, **Clear flight data**, **Export**, and a deterministic fake live transmission; port, baud, and the last replay folder are persisted via **QSettings** (`CosmoSoft` / `cosmo-soft`).
 - **Settings** (separate window) — built-in and imported skins, metric/imperial display units, rate-limited error feedback sounds, and developer diagnostics.

@@ -19,8 +19,11 @@
 #ifndef COSMO_SOFT_MAINWINDOW_H
 #define COSMO_SOFT_MAINWINDOW_H
 
+#include "services/persistence/MissionState.h"
+#include "services/persistence/RecoveryState.h"
 #include <QMainWindow>
 #include <QString>
+#include <functional>
 
 #include <QStringList>
 #include <atomic>
@@ -36,6 +39,7 @@
 
 class QAction;
 class QComboBox;
+class QCloseEvent;
 class QLabel;
 class QMenu;
 class QProgressDialog;
@@ -83,8 +87,12 @@ public slots:
 protected:
     /** @brief Reflow toolbar controls when the application window is resized. */
     void resizeEvent(QResizeEvent *event) override;
+    /** @brief Protect captured data before accepting a window close. */
+    void closeEvent(QCloseEvent *event) override;
+    /** @brief Route application Quit through the same recording guard. */
+    bool eventFilter(QObject *object, QEvent *event) override;
 
-private slots:
+  private slots:
     void updateMissionClock();
     void applyPendingReplayTelemetryStrip();
     void onReplayPositionChanged(int trailLength);
@@ -103,6 +111,17 @@ private slots:
     void startRecordedImuInput(const QString &path);
 
   private:
+    [[nodiscard]] bool sessionGuardNeeded() const;
+    [[nodiscard]] bool acquisitionActive() const;
+    void requestSessionChange(std::function<void()> action);
+    void exportSession(const QString &path,
+                       std::function<void()> afterSave = {});
+    cosmo::mission::RecordingRevision m_recordingRevision;
+    bool m_discardApproved = false;
+    bool m_exitAccepted = false;
+    bool m_realLiveInput = false;
+    cosmo::mission::RecoveryState m_recoveryState;
+    qint64 m_recoverySavedAt = 0;
     void setupActions();
     void setupMenuBar();
     void setupToolbar();
@@ -152,6 +171,7 @@ private slots:
 
     // ── Menu bar ─────────────────────────────────────────────────────────────
     QMenu *m_recentFilesMenu = nullptr;
+    QMenu *m_instrumentsMenu = nullptr;
 
     // ── Toolbar actions ───────────────────────────────────────────────────────
     QAction *m_openSettingsAction    = nullptr;
@@ -182,6 +202,8 @@ private slots:
     // ── Connection bar ────────────────────────────────────────────────────────
     QWidget  *m_connectionBar       = nullptr;
     QLabel   *m_connectionPageLabel = nullptr;
+    QLabel *m_packetDiagnosticLabel = nullptr;
+    QToolButton *m_recoveryButton = nullptr;
     QPushButton *m_openLogBtn     = nullptr;
     QPushButton *m_clearFlightBtn = nullptr;
     QPushButton *m_exportBtn      = nullptr;

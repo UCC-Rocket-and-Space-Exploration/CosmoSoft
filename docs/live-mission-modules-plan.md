@@ -1,26 +1,31 @@
 # Live mission instruments and recording protection
 
-Status: proposed plan, 15 October 2026. No application changes are part of this document.
+Status: implemented in the working branch, 15 October 2026. The sections below
+record the agreed scope. Follow-up: Instruments moves after View in the top
+menu bar and controls the active Live/Replay page. Recovery moves before Open
+flight log in the top action bar, with no duplicate in-page controls.
+Implementation details and verification are in
+[the instrument guide](rocket-attitude.md).
 
 ## Scope
 
 Keep the existing summary, telemetry readings, orange map rocket and trajectory.
 Add link health to Live Telemetry, improve existing flight events, add Recovery
 mode, protect unsaved recordings, and add a compact missing-field message.
-Make a KSP-inspired visual horizon the default attitude display.
+Add a KSP-inspired visual horizon as a separate embedded module alongside the
+existing rocket attitude module.
 
 Do not add an interval inspector or cross-flight comparison. Existing comparison
 of metrics within one recording stays available.
 
-Item 8 is provisionally interpreted as configurable preflight checklists, from
-the numbered list in the discussion. Clarification is pending; its design is
-listed separately below and does not block the other work.
+Configurable preflight checklists are included, as confirmed in the follow-up.
 
 ## 1. KSP-inspired horizon
 
-Use the existing embedded attitude panel in Replay and Live Telemetry. A small
-selector switches between **Horizon** and **Rocket**; Horizon is the default.
-The orange 3D rocket remains available without creating another panel.
+Create a separate **Visual horizon** module in Replay and Live Telemetry. Keep
+**Rocket attitude** as its own module. They share validated orientation input,
+but have independent presentation and visibility controls. Do not combine them
+behind a Horizon/Rocket mode selector or open either in a separate window.
 
 The horizon uses a shaded sphere with blue sky and brown ground, a clear horizon
 line, pitch markings, a roll scale and a fixed orange rocket indicator. The
@@ -41,7 +46,7 @@ need a verified earth reference or velocity vector and should appear only when
 those inputs exist. Use native Qt painting and the existing update scheduling;
 no second WebEngine view or continuous rendering while hidden.
 
-Keep the current compact instrument height initially. Its frame, labels and
+Use a compact instrument footprint. Its frame, labels and
 controls follow the active theme. Sky/ground colors retain their semantic
 meaning, with contrast checked in both themes. Missing angles show neutral dash
 readouts without an unavailable banner. Stale live attitude is distinguishable
@@ -49,7 +54,11 @@ from fresh attitude. Replay hides the whole instrument without loaded data.
 
 ## 2. Link health inside Live Telemetry
 
-Expand the existing connection panel with a compact status row: **Receiving**,
+Rework Connection around port, baud, Scan, Connect and Disconnect. Remove its
+Demo button. Keep the existing global Demo action; put recorded test input
+access with developer tools rather than the normal connection controls.
+
+Add a compact status row: **Receiving**,
 **Delayed**, **No data**, or **Disconnected**. Reuse its packet-age and counters.
 An expandable Details area shows decoded samples per second, received bytes per
 second, malformed rows and local queue drops. Add a short activity history only
@@ -80,8 +89,9 @@ recording a confirmed apogee or infer parachute deployment from a curve alone.
 
 ## 4. Recovery mode in the existing map
 
-Add a **Flight / Recovery** mode selector within the map. Recovery uses the same
-map surface and camera controls. A small overlay shows:
+Use a checkable **Recovery** control in the top action bar before **Open flight
+log**. Recovery uses the active page's map surface and camera controls.
+A compact details area shows:
 
 - Last valid received coordinates and the time/age of that position.
 - Distance and bearing from a clearly named reference.
@@ -105,7 +115,8 @@ The current export writes a snapshot asynchronously. There is no close-time
 save guard, so add one shared decision flow for window close, menu/keyboard
 Quit, clearing data and starting/replacing a session that would discard data.
 
-Prompt only for unsaved captured data or edited annotations:
+Closing with unsaved received data must always show a warning. Prompt for
+unsaved captured data or edited annotations:
 **Save flight / Discard / Cancel**. Opening an unchanged file does not itself
 make a flight unsaved.
 
@@ -127,9 +138,10 @@ claim that annotations were saved. Report metadata write failures and keep the
 affected changes unsaved. Normal exit protection does not promise full flight
 recovery after a crash or power failure.
 
-## 6. Small missing-field message
+## 6. Missing-field message on the bottom status line
 
-Place one quiet line at the bottom of Live Telemetry, for example:
+Use the application's existing bottom status line while Live Telemetry is
+active, rather than adding a new footer or panel. For example:
 **Last packet missing: altitude, angle Z**. Clear it when the next complete
 valid packet arrives. Separate invalid values from absent fields, and distinguish
 an incomplete received packet from no recent packet.
@@ -142,12 +154,15 @@ RSSI are not present in the current text payload. Diagnose a completed row, not 
 serial chunk that may contain only half a row. Do not replace a valid pose with
 fabricated zero values after a rejected packet.
 
-Keep the footer to one line, with full details available on demand. Deduplicate
-repeated messages and update at a bounded rate rather than flashing per packet.
+Keep the diagnostic to one line, with full details available on demand. Reserve
+a persistent status-line area so temporary status messages do not erase an
+unresolved diagnostic. Do not show an old Live message as Replay's current packet
+status. Deduplicate repeated messages and update at a bounded rate rather than
+flashing per packet.
 
-## 7. Configurable preflight checklists — provisional item 8
+## 7. Configurable preflight checklists
 
-If this is the intended item, provide named profiles such as Bench Test and
+Provide named profiles such as Bench Test and
 Launch Day. A profile controls checklist items, order, required checks and
 thresholds for data that actually exists. Support save, duplicate and reset.
 
@@ -157,27 +172,31 @@ Reset manual confirmations for a new session. Put the editor in Settings and
 keep the live checklist collapsed until needed. Do not add arming or firing
 controls as part of this work.
 
-If item 8 instead refers to custom instrument settings, use the same Settings
-entry for visible instruments, default attitude view, ordering and compact mode;
-do not implement both interpretations without clarification.
-
 ## Layout and implementation order
 
 Keep the map/chart as the largest region. Preserve the desktop layouts at
-920 × 650, 1024 × 650 and 1440 × 800. Horizon occupies the existing attitude slot;
-link health expands inside Connection; Recovery replaces the map's normal
-overlay; Events expands on demand; the missing-field line stays at the bottom.
+920 × 650, 1024 × 650 and 1440 × 800. Horizon and Rocket attitude are separate
+compact modules. Arrange them side by side in the instrument area where space
+allows; adapt the existing attitude layout instead of stacking two full-height
+panels above Connection. Both have independent show/hide controls. The compact
+layout must keep each instrument legible and preserve useful map space.
+
+Link health expands inside the simplified Connection panel; Recovery replaces
+the map's normal overlay; Events expands on demand; the missing-field message
+uses the existing bottom status line. Neither visual instrument appears in
+Replay without loaded data.
 Do not add separate windows or repeated map controls. Compact desktop views
 must still fit without page scrolling; narrower windows can retain scrolling.
 
 Implement in this order:
 
 1. Recording revisions and save/close guard, then annotation persistence.
-2. Shared source-aware diagnostics, link health and the missing-field footer.
-3. Navball rendering and orientation verification.
+2. Shared source-aware diagnostics, simplified Connection, link health and the
+   missing-field status-line message.
+3. Separate navball module, compact instrument layout and orientation verification.
 4. Recovery mode and persistent last-known location.
 5. Event editor and event-track improvements.
-6. The clarified configurable item 8.
+6. Configurable preflight checklists and profile persistence.
 
 Keep computation and persistence in the existing service layer, presentation in
 Qt widgets, and FlightSample, FlightDataModel and IComms interfaces stable.
@@ -192,10 +211,14 @@ and themes. Do not change the original path or introduce attitude recalibration.
   another session's annotations or an old export's saved state.
 - Horizon: upright, horizontal, inverted, compound rotation and the ±180°
   boundary; forward/backward seeking; missing/stale values; hidden pages.
+  Horizon and Rocket attitude can be shown independently and remain separate
+  modules; both hide in empty Replay.
 - Link diagnostics: valid data, malformed-only traffic, quiet links, reconnects,
   local overflow and hidden-page catch-up with an injected clock.
 - Field messages: missing, invalid, zero-valued, unsupported fields and rows
-  split across input chunks. Strict row validation remains intact.
+  split across input chunks. Strict row validation remains intact. Temporary
+  status text cannot erase unresolved diagnostics; page switching shows the
+  correct source context.
 - Recovery: loss of GPS/telemetry, restart, old timestamps, invalid fixes,
   reference changes, Demo isolation and no future fixes in Replay.
 - Both themes and the existing desktop sizes: no duplicated controls, clipped

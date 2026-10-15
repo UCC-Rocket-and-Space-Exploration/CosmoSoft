@@ -22,6 +22,8 @@ public:
   void setSample(const FlightSample &sample, bool replay = false);
   /** @brief Clear the pose and all angle readouts. */
   void resetDisplay();
+  /** @brief Use a narrow layout beside a separate horizon module. */
+  void setCompact(bool compact);
 
 private:
   void refreshStyleSheet();
@@ -31,6 +33,7 @@ private:
   QLabel *m_angles = nullptr;
   QTimer *m_staleTimer = nullptr;
   QElapsedTimer m_lastUpdate;
+  bool m_compact = false;
   bool m_replay = false;
   bool m_available = false;
 };

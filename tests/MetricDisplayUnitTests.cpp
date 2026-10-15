@@ -192,3 +192,20 @@ TEST_CASE("Replay clock formatting rejects invalid and overflowing durations",
     REQUIRE(MetricDefs::formatReplayClockHms(std::numeric_limits<double>::max())
             == QStringLiteral("duration too large"));
 }
+
+#include "gui/NavballMath.h"
+TEST_CASE(
+    "Navball looks along the rocket nose rather than assuming aircraft axes",
+    "[mission][navball]") {
+  using cosmo::gui::NavballFrame;
+  const NavballFrame upright(QQuaternion{});
+  REQUIRE(upright.ray(0, 0)->y() > 0.99);
+  REQUIRE_FALSE(upright.ray(1, 1).has_value());
+  const NavballFrame horizontal(QQuaternion::fromAxisAndAngle(1, 0, 0, 90));
+  REQUIRE(std::abs(horizontal.ray(0, 0)->y()) < 0.001);
+  REQUIRE(horizontal.ray(0, 0)->z() > 0.99);
+  const NavballFrame inverted(QQuaternion::fromAxisAndAngle(0, 0, 1, 180));
+  REQUIRE(inverted.ray(0, 0)->y() < -0.99);
+  REQUIRE(upright.ray(0.6F, 0)->x() > 0.59F);
+  REQUIRE(std::abs(upright.ray(0.6F, 0)->length() - 1) < 0.001);
+}

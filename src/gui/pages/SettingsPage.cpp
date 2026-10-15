@@ -1,4 +1,5 @@
 #include "gui/pages/SettingsPage.h"
+#include "gui/widgets/PreflightChecklistWidget.h"
 
 #include "gui/SettingsKeys.h"
 #include "gui/Theme.h"
@@ -217,6 +218,9 @@ QWidget *SettingsPage::buildDataSection() {
     soundLayout->addWidget(soundHint);
 
     layout->addWidget(m_soundGroup);
+    auto editor = std::make_unique<PreflightProfileEditor>(inner);
+    editor->profilesSaved = [this] { emit preflightProfilesChanged(); };
+    layout->addWidget(editor.release());
     layout->addStretch(1);
 
     return inner;
@@ -337,6 +341,12 @@ QWidget *SettingsPage::buildDeveloperSection() {
     helperLayout->addWidget(helperText);
     layout->addWidget(helperGroup);
 
+    auto recorded =
+        std::make_unique<QPushButton>(tr("Recorded IMU input…"), inner);
+    recorded->setObjectName("recordedImuInput");
+    connect(recorded.get(), &QPushButton::clicked, this,
+            &SettingsPage::recordedInputRequested);
+    layout->addWidget(recorded.release());
     layout->addStretch(1);
 
     return inner;

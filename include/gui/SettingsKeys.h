@@ -83,4 +83,8 @@ constexpr auto kUnitSystemImperial = "imperial";
 /** @brief Unit system preference: "metric" or "imperial". */
 constexpr auto kSettingsUnitSystem = "ui/unitSystem";
 
+/** @brief Persisted last real-live recovery point and UTC receipt time. */
+constexpr auto kSettingsRecoveryRecord = "mission/recoveryRecord";
+/** @brief Configurable preflight checklist profile definitions. */
+constexpr auto kSettingsChecklistProfiles = "mission/checklistProfiles";
 #endif // COSMO_SOFT_SETTINGSKEYS_H
