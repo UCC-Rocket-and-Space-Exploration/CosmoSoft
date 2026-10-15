@@ -18,6 +18,7 @@
 
 class QAction;
 class QChart;
+class QBoxLayout;
 class QChartView;
 class QFrame;
 class QLabel;
@@ -211,6 +212,7 @@ private:
   VisualHorizonWidget *m_horizonWidget = nullptr;
   bool m_showHorizon = true, m_showAttitude = true;
   QWidget *m_instrumentColumn = nullptr;
+  QBoxLayout *m_instrumentLayout = nullptr;
   ReplayBar *m_replayBar =
       nullptr; ///< Transport bar (buttons, scrubber, labels).
   QLabel *m_emptyStateLabel =

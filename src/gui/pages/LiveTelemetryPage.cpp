@@ -277,7 +277,7 @@ void LiveTelemetryPage::refreshStyleSheet() {
             font-size: 11px;
         }
         QToolButton:hover { background-color: %14; }
-        QToolButton:checked { color: %15; border-color: %15; }
+        QToolButton:checked { color: %18; border-color: %18; }
         QPushButton[kind="liveButton"]:hover,
         QComboBox:hover {
             background-color: %14;
@@ -335,6 +335,7 @@ void LiveTelemetryPage::refreshStyleSheet() {
                     .arg(Theme::kBorderLight())   // %15
                     .arg(Theme::kBtnPressed())    // %16
                     .arg(Theme::kTextDim())       // %17
+                    .arg(Theme::kAccentLink())    // %18
                     .arg(Theme::kFocusRing()));   // %19
 
   for (auto *tile : m_metricTiles) {

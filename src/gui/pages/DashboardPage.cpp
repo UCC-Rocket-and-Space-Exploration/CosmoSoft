@@ -593,6 +593,7 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     m_attitudeWidget->setCompact(true);
     m_attitudeWidget->setMinimumWidth(132);
     auto instrumentRow = std::make_unique<QHBoxLayout>();
+    m_instrumentLayout = instrumentRow.get();
     instrumentRow->setSpacing(8);
     m_horizonWidget =
         std::make_unique<VisualHorizonWidget>(instruments.get()).release();
@@ -1430,6 +1431,9 @@ void DashboardPage::updateToolbarForView() {
   const bool hasData =
       !m_liveSamples.empty() || (m_session && !m_session->samples.empty());
   const bool graphMode = m_viewStack && m_viewStack->currentIndex() == 0;
+  if (m_instrumentLayout)
+    m_instrumentLayout->setDirection(graphMode ? QBoxLayout::LeftToRight
+                                               : QBoxLayout::TopToBottom);
   if (m_zoomGroup)
     m_zoomGroup->setVisible(graphMode);
   if (m_toggleGroup)

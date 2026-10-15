@@ -3,8 +3,9 @@
 Replay and Live Telemetry each contain separate **Rocket attitude** and
 **Visual horizon** modules. Both are embedded, reusable Qt widgets.
 
-In Replay, the modules sit side by side below the traces in the existing
-resizable sidebar.
+In Replay Graph, the modules sit side by side below the traces in the existing
+resizable sidebar. In Replay Map, Horizon sits above Rocket attitude and the
+graph-only traces hide. Switching views reuses the same instrument widgets.
 The instrument column stays hidden until a non-empty recording is loaded and
 hides when cleared.
 **Instruments → Show instrument sidebar** shows or hides that column. The chart/map keeps
@@ -25,7 +26,9 @@ Both instruments are 204 logical pixels high and share the host column's width.
 The top menu bar places **Instruments** after **View**. Its actions control the
 active Replay or Live Telemetry page, with independent visibility settings.
 Replay also offers **Show instrument sidebar** and the existing T shortcut.
-There are no Instruments buttons inside the pages.
+There are no Instruments buttons inside the pages. Dropdown selectors and
+expand/collapse controls share small, theme-aware open chevrons. The full
+control remains clickable; the chevron is not a separate tiny target.
 Its border, rounded corners, background, and monospaced headings follow the
 existing panel styles in both themes.
 
@@ -227,3 +230,9 @@ Toolbar follow-up: the full suite still passes 70/70. The native control-routing
 check passes 100 assertions across both themes and 920/1024/1440-pixel layouts.
 It checks menu order, Recovery placement, empty Replay, independent page state,
 and that switching pages never creates a second Recovery action or dropdown.
+
+Instrument/chevron follow-up, 16 October 2026: Replay Map stacks Horizon above
+Rocket attitude; Graph and Live retain the horizontal pair. The full suite passes
+70/70 and the final native checks pass 429 assertions in four cases. See the
+[researched QoL plan](ui-qol-research-plan.md) for design decisions, source links
+and the remaining proposals.

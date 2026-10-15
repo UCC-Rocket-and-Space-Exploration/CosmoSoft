@@ -24,6 +24,7 @@
 #include <QApplication>
 #include <QChartView>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QEventLoop>
@@ -39,6 +40,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPainter>
 #include <QPushButton>
 #include <QQuaternion>
 #include <QScreen>
@@ -51,6 +53,7 @@
 #include <QStatusBar>
 #include <QStyle>
 #include <QStyleOptionButton>
+#include <QStyleOptionComboBox>
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -1487,4 +1490,173 @@ TEST_CASE("Top mission controls follow the active page without duplicates",
   pages->setCurrentIndex(2);
   REQUIRE_FALSE(recovery->isVisible());
   REQUIRE_FALSE(menu->menuAction()->isVisible());
+}
+
+TEST_CASE("Replay instruments follow Graph and Map layouts without recreating "
+          "widgets",
+          "[mission-ui][instrument-layout]") {
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  LiveTelemetryPage live(&model);
+  auto session = std::make_shared<FlightSession>();
+  FlightSample sample;
+  sample.angularRotation = {30, 0, 45};
+  sample.coordinates = {51.9, -8.5};
+  session->samples.push_back(sample);
+  sample.timestamp = 1000;
+  session->samples.push_back(sample);
+  auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+  model.setReplayMode(true);
+  replay.setSession(session, preview);
+  dashboard.setReplaySession(session, preview);
+  auto *horizon = dashboard.findChild<QWidget *>("visualHorizonWidget");
+  auto *attitude = dashboard.findChild<QWidget *>("rocketAttitudeWidget");
+  REQUIRE(horizon);
+  REQUIRE(attitude);
+  QPushButton *graph = nullptr, *map = nullptr;
+  for (auto *button : dashboard.findChildren<QPushButton *>()) {
+    if (button->accessibleName() == "Show telemetry chart")
+      graph = button;
+    if (button->accessibleName() == "Show flight path map")
+      map = button;
+  }
+  REQUIRE(graph);
+  REQUIRE(map);
+  bool mapNetworkBlocked = false;
+  const auto captureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
+  for (const QString &theme :
+       {QStringLiteral("dark"), QStringLiteral("light")}) {
+    const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+    REQUIRE(skin);
+    cosmo::ThemeManager::instance().setActiveSkin(*skin);
+    for (const auto size :
+         {QSize(920, 650), QSize(1024, 650), QSize(1440, 800)}) {
+      dashboard.resize(size);
+      dashboard.show();
+      for (bool mapMode : {false, true, false}) {
+        (mapMode ? map : graph)->click();
+        if (!mapNetworkBlocked)
+          if (auto *browser = dashboard.findChild<QWebEngineView *>()) {
+            auto block = std::make_unique<BlockNetwork>();
+            block->setParent(browser->page()->profile());
+            browser->page()->profile()->setUrlRequestInterceptor(
+                block.release());
+            mapNetworkBlocked = true;
+          }
+        QApplication::processEvents();
+        CAPTURE(theme, size.width(), mapMode);
+        REQUIRE(dashboard.width() == size.width());
+        REQUIRE(dashboard.height() == size.height());
+        if (mapMode) {
+          REQUIRE(horizon->geometry().bottom() < attitude->geometry().top());
+          REQUIRE(horizon->geometry().left() == attitude->geometry().left());
+        } else {
+          REQUIRE(horizon->geometry().right() < attitude->geometry().left());
+          REQUIRE(horizon->geometry().top() == attitude->geometry().top());
+        }
+        for (auto *instrument : {horizon, attitude})
+          REQUIRE(dashboard.rect().contains(QRect(
+              instrument->mapTo(&dashboard, QPoint()), instrument->size())));
+        if (!captureDir.isEmpty())
+          REQUIRE(dashboard.grab().save(captureDir + "/instruments-" + theme +
+                                        (mapMode ? "-map-" : "-graph-") +
+                                        QString::number(size.width()) +
+                                        ".png"));
+      }
+      dashboard.hide();
+    }
+  }
+  dashboard.setReplaySession(nullptr, nullptr);
+  REQUIRE(horizon->isHidden());
+  REQUIRE(attitude->isHidden());
+  live.resize(920, 650);
+  live.show();
+  QApplication::processEvents();
+  auto *liveHorizon = live.findChild<QWidget *>("visualHorizonWidget");
+  auto *liveAttitude = live.findChild<QWidget *>("rocketAttitudeWidget");
+  REQUIRE(liveHorizon->geometry().right() < liveAttitude->geometry().left());
+  REQUIRE(liveHorizon->geometry().top() == liveAttitude->geometry().top());
+}
+
+TEST_CASE("Theme arrows are compact open chevrons in every direction",
+          "[mission-ui][chevrons]") {
+  for (const QString &theme :
+       {QStringLiteral("dark"), QStringLiteral("light")}) {
+    const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+    REQUIRE(skin);
+    cosmo::ThemeManager::instance().setActiveSkin(*skin);
+    for (auto direction :
+         {QStyle::PE_IndicatorArrowDown, QStyle::PE_IndicatorArrowUp,
+          QStyle::PE_IndicatorArrowRight, QStyle::PE_IndicatorArrowLeft}) {
+      QImage image(48, 48, QImage::Format_ARGB32_Premultiplied);
+      image.fill(Qt::transparent);
+      QStyleOption option;
+      option.rect = image.rect();
+      option.state = QStyle::State_Enabled;
+      option.palette = QApplication::palette();
+      QPainter painter(&image);
+      QApplication::style()->drawPrimitive(direction, &option, &painter);
+      painter.end();
+      CAPTURE(theme, direction);
+      // Allow antialiasing at the inside edge, while rejecting filled arrows.
+      REQUIRE(image.pixelColor(24, 24).alpha() < 64);
+      QRect painted;
+      for (int y = 0; y < image.height(); ++y)
+        for (int x = 0; x < image.width(); ++x)
+          if (image.pixelColor(x, y).alpha() > 20)
+            painted = painted.united(QRect(x, y, 1, 1));
+      REQUIRE_FALSE(painted.isEmpty());
+      REQUIRE(painted.width() <= 12);
+      REQUIRE(painted.height() <= 12);
+    }
+    QComboBox selector;
+    selector.addItem("Receiver");
+    selector.setFixedSize(220, 32);
+    selector.show();
+    QApplication::processEvents();
+    QStyleOptionComboBox comboOption;
+    comboOption.initFrom(&selector);
+    const QRect arrow = selector.style()->subControlRect(
+        QStyle::CC_ComboBox, &comboOption, QStyle::SC_ComboBoxArrow, &selector);
+    const auto rendered = selector.grab().toImage();
+    const auto scale = rendered.devicePixelRatio();
+    const auto background = rendered.pixelColor(
+        qRound((arrow.left() + 2) * scale), qRound(arrow.center().y() * scale));
+    int foregroundPixels = 0;
+    const auto inside = arrow.adjusted(3, 3, -3, -3);
+    for (int y = inside.top(); y <= inside.bottom(); ++y)
+      for (int x = inside.left(); x <= inside.right(); ++x) {
+        const auto color =
+            rendered.pixelColor(qRound(x * scale), qRound(y * scale));
+        if (std::abs(color.red() - background.red()) +
+                std::abs(color.green() - background.green()) +
+                std::abs(color.blue() - background.blue()) >
+            120)
+          ++foregroundPixels;
+      }
+    REQUIRE(foregroundPixels > 5);
+    const auto captureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
+    if (!captureDir.isEmpty()) {
+      FlightDataModel model;
+      LiveTelemetryPage live(&model);
+      live.setAvailablePorts({"USB telemetry receiver"});
+      live.resize(1024, 800);
+      live.show();
+      if (auto *browser = live.findChild<QWebEngineView *>()) {
+        auto block = std::make_unique<BlockNetwork>();
+        block->setParent(browser->page()->profile());
+        browser->page()->profile()->setUrlRequestInterceptor(block.release());
+      }
+      for (bool expanded : {false, true}) {
+        for (auto *button : live.findChildren<QToolButton *>())
+          if (button->text() == "Link details" || button->text() == "Preflight")
+            button->setChecked(expanded);
+        QApplication::processEvents();
+        REQUIRE(
+            live.grab().save(captureDir + "/chevrons-" + theme +
+                             (expanded ? "-expanded.png" : "-collapsed.png")));
+      }
+    }
+  }
 }
