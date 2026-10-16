@@ -52,16 +52,15 @@ let probeAltitude;
 export function resetProbe(points) {
   hostVisible=false; activeView="3d"; following=false;
   groundRefAlt=0;groundElevGrid=null;ground3dMode="box";
-  allPos=points.map(p=>({lat:p.lat,lon:p.lon}));
+  allPos=points.map(p=>normalizePoint({...p,ts:p.ts??0},p.idx));
   allAlt=points.map(p=>p.alt);allIdx=points.map(p=>p.idx);
   allTs=points.map(p=>p.ts||0);
   allPos3d=allPos.slice();allAlt3d=allAlt.slice();allIdx3d=allIdx.slice();
   totalRawSamples=10;trailLen=0;currentExactPoint=null;
   pathDataDirty=path3dDataDirty=true;
   scene3d=new THREE.Scene();
-  ghostLine3d=createWideLine(0x888888,2,0.5);
-  trailLine3d=createWideLine(0xff8800,2,1);
-  pathLine3d=createWideLine(0xff8800,1,0.2,true);
+  ghostLine3d=createWideLine(0x888888,2,0.5,true);
+  trailLine3d=createWideLine(0xff8800,2,1,true);
   rocketModel3d=new THREE.Object3D();launchSphere3d=new THREE.Object3D();
   pathLine=trailLine={setLatLngs(){}};
   launchMarker=rocketMarker={setLatLng(){},setOpacity(){}};
@@ -70,7 +69,15 @@ export function resetProbe(points) {
 }
 export function probeState() {
   return {altitude:probeAltitude,rocketAltitude:currentRocketWorld3d?.y/ALT_EXAGGERATION,
-    trailGeometry:trailLine3d.geometry,dropGeometry:pathLine3d.geometry,
+    rocketX:currentRocketWorld3d?.x,
+    trailGeometry:trailLine3d.geometry,ghostGeometry:ghostLine3d.geometry,
+    vertices:trailLine3d.geometry.attributes.instanceStart
+      ? Array.from({length:trailLine3d.geometry.attributes.instanceStart.count},(_,i)=>[
+        new THREE.Vector3().fromBufferAttribute(trailLine3d.geometry.attributes.instanceStart,i),
+        new THREE.Vector3().fromBufferAttribute(trailLine3d.geometry.attributes.instanceEnd,i)]) : [],
+    ghostVertices:ghostLine3d.geometry.attributes.instanceEnd
+      ? Array.from({length:ghostLine3d.geometry.attributes.instanceEnd.count},(_,i)=>
+        new THREE.Vector3().fromBufferAttribute(ghostLine3d.geometry.attributes.instanceEnd,i)) : [],
     quaternion:rocketModel3d.quaternion.toArray()};
 }
 `).toString("base64")}`);
@@ -92,7 +99,65 @@ test("the exact replay altitude survives repeated GPS coordinates and rewinding"
   }
 });
 
-test("attitude-only updates retain trail and ground-projection geometries", () => {
+test("3D rocket follows the interpolated path while telemetry keeps the measured fix", () => {
+  probeModule.resetProbe([
+    {idx:0,lat:54,lon:-5,alt:100,ts:0},
+    {idx:4,lat:54,lon:-4.999,alt:200,ts:1}
+  ]);
+  window.setTrailLength(2, {idx:1,lat:54,lon:-5,displayLat:54,
+    displayLon:-4.99975,alt:125,ts:0.25});
+  const state=probeModule.probeState();
+  assert.equal(state.altitude,125);
+  assert.equal(state.rocketAltitude,125);
+  assert.ok(state.rocketX>16 && state.rocketX<17);
+  window.setTrailLength(1, {idx:0,lat:54,lon:-5,alt:100,ts:0});
+  assert.equal(probeModule.probeState().rocketX,0);
+});
+
+test("the rendered trajectory rounds corners without overshooting altitude", () => {
+  probeModule.resetProbe([
+    {idx:0,lat:54,lon:-5,alt:100,ts:0},
+    {idx:1,lat:54,lon:-4.999,alt:200,ts:1},
+    {idx:2,lat:54,lon:-4.998,alt:210,ts:2}
+  ]);
+  window.setTrailLength(3,{idx:2,lat:54,lon:-4.998,alt:210,ts:2});
+  const {vertices}=probeModule.probeState();
+  assert.ok(vertices.length>2);
+  for(const pair of vertices) for(const p of pair) {
+    assert.ok(p.y>=300 && p.y<=630);
+    assert.ok(Number.isFinite(p.x+p.y+p.z));
+  }
+  // Curved mid-interval altitude differs from a straight chord's 150 m.
+  assert.ok(vertices.some(pair=>pair.some(p=>p.x>32 && p.x<33 && p.y>450)));
+  assert.equal(probeModule.probeState().rocketAltitude,210);
+});
+
+test("missing-data segments never acquire a connecting 3D line", () => {
+  probeModule.resetProbe([
+    {idx:0,lat:54,lon:-5,alt:100,ts:0,segment:0},
+    {idx:1,lat:54,lon:-4.999,alt:200,ts:1,segment:0},
+    {idx:5,lat:54,lon:-4.98,alt:150,ts:10,segment:1},
+    {idx:6,lat:54,lon:-4.979,alt:100,ts:11,segment:1}
+  ]);
+  window.setTrailLength(7,{idx:6,lat:54,lon:-4.979,alt:100,ts:11,segment:1});
+  for(const [a,b] of probeModule.probeState().vertices)
+    assert.ok(a.distanceTo(b)<400);
+});
+
+test("an exact seek omitted by decimation also lies on the full displayed curve", () => {
+  probeModule.resetProbe([
+    {idx:0,lat:54,lon:-5,alt:100,ts:0},
+    {idx:2,lat:54,lon:-4.999,alt:200,ts:1},
+    {idx:4,lat:54,lon:-4.998,alt:210,ts:2}
+  ]);
+  window.setTrailLength(2,{idx:1,lat:54,lon:-4.9995,alt:150,ts:0.5});
+  const state=probeModule.probeState();
+  assert.ok(state.ghostVertices.some(p=>Math.abs(p.y-450)<0.001
+    && Math.abs(p.x-state.rocketX)<0.001));
+  assert.ok(state.vertices.at(-1)[1].distanceTo(new THREE.Vector3(state.rocketX,450,0))<0.001);
+});
+
+test("attitude-only updates retain trail and full-path geometries", () => {
   probeModule.resetProbe([
     {idx:0,lat:54,lon:-5,alt:100}, {idx:1,lat:54,lon:-5,alt:200}
   ]);
@@ -102,11 +167,11 @@ test("attitude-only updates retain trail and ground-projection geometries", () =
   window.setTrailLength(2,{...point,attitude:[Math.SQRT1_2,0,0,Math.SQRT1_2]});
   const after=probeModule.probeState();
   assert.equal(after.trailGeometry,before.trailGeometry);
-  assert.equal(after.dropGeometry,before.dropGeometry);
+  assert.equal(after.ghostGeometry,before.ghostGeometry);
   assert.notDeepEqual(after.quaternion,before.quaternion);
   window.addPoints({total:3,path:[],path3d:[],attitude:[0,0,0,1]});
   assert.equal(probeModule.probeState().trailGeometry,before.trailGeometry);
-  assert.equal(probeModule.probeState().dropGeometry,before.dropGeometry);
+  assert.equal(probeModule.probeState().ghostGeometry,before.ghostGeometry);
   window.setTrailLength(2,{...point,alt:210});
   assert.equal(probeModule.probeState().rocketAltitude,210);
 });

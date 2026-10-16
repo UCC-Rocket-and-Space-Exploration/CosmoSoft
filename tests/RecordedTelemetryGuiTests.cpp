@@ -722,6 +722,60 @@ TEST_CASE("Replay map displays recorded attitude without a mounting correction",
   REQUIRE((direction(seek(1)) - QVector3D(0, 0, 1)).length() < 1e-5F);
 }
 
+TEST_CASE(
+    "Flight map aligns held GPS coordinates without changing measurements",
+    "[trajectory]") {
+  auto session = std::make_shared<FlightSession>();
+  for (int i = 0; i < 5; ++i) {
+    FlightSample sample;
+    sample.timestamp = i * 250;
+    sample.coordinates = {54, i == 4 ? -4.999 : -5};
+    sample.altitude = 100 + i * 25;
+    session->samples.push_back(sample);
+  }
+  Map3DWidget map;
+  map.setReplaySession(session,
+                       cosmo::preview::FlightPreviewCache::build(*session));
+  map.show();
+  auto *browser = map.findChild<QWebEngineView *>();
+  REQUIRE(browser);
+  auto block = std::make_unique<BlockNetwork>();
+  block->setParent(browser->page()->profile());
+  browser->page()->profile()->setUrlRequestInterceptor(block.release());
+  auto *bridge = map.findChild<Map3DBridge *>();
+  REQUIRE(bridge);
+  QVariantMap current;
+  QObject::connect(bridge, &Map3DBridge::trailLengthChanged, &map,
+                   [&](int, const QVariantMap &point) { current = point; });
+  map.setReplayTrailLength(2);
+  REQUIRE(pumpUntil([&] { return !current.isEmpty(); }));
+  REQUIRE(current.value("lon").toDouble() == -5);
+  REQUIRE(current.value("alt").toDouble() == 125);
+  REQUIRE(std::abs(current.value("displayLon").toDouble() + 4.99975) < 1e-9);
+  REQUIRE(session->samples[1].coordinates.longitude == -5);
+
+  map.onSessionReset();
+  QVariantMap live;
+  QObject::connect(bridge, &Map3DBridge::liveBatchAdded, &map,
+                   [&](const QVariantMap &batch) { live = batch; });
+  map.onLiveSamplesReceived({session->samples[0], session->samples[1]});
+  REQUIRE(pumpUntil([&] { return !live.isEmpty(); }));
+  REQUIRE(live.value("path3d")
+              .toList()
+              .back()
+              .toMap()
+              .value("displayLon")
+              .toDouble() == -5);
+  live.clear();
+  map.onLiveSamplesReceived(
+      {session->samples[2], session->samples[3], session->samples[4]});
+  REQUIRE(pumpUntil([&] { return !live.isEmpty(); }));
+  REQUIRE(live.value("replace").toBool());
+  const auto aligned = live.value("path3d").toList()[1].toMap();
+  REQUIRE(aligned.value("lon").toDouble() == -5);
+  REQUIRE(std::abs(aligned.value("displayLon").toDouble() + 4.99975) < 1e-9);
+}
+
 TEST_CASE("Replay empty state and instruments survive loading and clearing",
           "[replay-ui][widgets]") {
   FlightDataModel model;
@@ -980,9 +1034,21 @@ TEST_CASE(
       if (size.width() >= 920) {
         const QString captureDir =
             qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
-        if (!captureDir.isEmpty())
+        if (!captureDir.isEmpty()) {
           REQUIRE(live.grab().save(captureDir + "/layout-" + theme + "-" +
                                    QString::number(size.width()) + ".png"));
+          auto *attitude = live.findChild<QWidget *>("rocketAttitudeWidget");
+          auto *horizon = live.findChild<QWidget *>("visualHorizonWidget");
+          REQUIRE(attitude);
+          REQUIRE(horizon);
+          const auto bounds =
+              QRect(attitude->mapTo(&live, QPoint()), attitude->size())
+                  .united(
+                      QRect(horizon->mapTo(&live, QPoint()), horizon->size()));
+          REQUIRE(live.grab(bounds).save(captureDir + "/live-pair-" + theme +
+                                         "-" + QString::number(size.width()) +
+                                         ".png"));
+        }
         REQUIRE(scroll->verticalScrollBar()->maximum() == 0);
         REQUIRE(scroll->horizontalScrollBar()->maximum() == 0);
         const auto *recovery = live.findChild<QWidget *>("recoveryPanel");
@@ -1054,6 +1120,20 @@ TEST_CASE("Embedded attitude is compact, theme aware, and marks stopped live "
   REQUIRE(QMetaObject::invokeMethod(timer, "timeout", Qt::DirectConnection));
   REQUIRE(timer->isActive());
   REQUIRE(pumpUntil([&] { return status->text().startsWith("Stale"); }));
+  const auto stateCaptureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
+  if (!stateCaptureDir.isEmpty()) {
+    instrument->setCompact(true);
+    for (const QString &theme :
+         {QStringLiteral("dark"), QStringLiteral("light")}) {
+      const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+      REQUIRE(skin);
+      cosmo::ThemeManager::instance().setActiveSkin(*skin);
+      QApplication::processEvents();
+      REQUIRE(instrument->grab().save(stateCaptureDir + "/attitude-stale-" +
+                                      theme + ".png"));
+    }
+    instrument->setCompact(false);
+  }
   instrument->setSample(sample, true);
   REQUIRE(status->text().startsWith("Replay"));
   QString previousStyle;
@@ -1075,11 +1155,96 @@ TEST_CASE("Embedded attitude is compact, theme aware, and marks stopped live "
   }
 }
 
+TEST_CASE(
+    "Attitude stays readable through compact mode changes and repeated poses",
+    "[attitude][attitude-design]") {
+  RocketAttitudeWidget instrument;
+  FlightSample sample;
+  sample.angularRotation = {30, -179.9, 45};
+  instrument.setSample(sample, true);
+  instrument.resize(240, 204);
+  instrument.show();
+  QApplication::processEvents();
+  auto *status = instrument.findChild<QLabel *>("attitudeStatus");
+  auto *angles = instrument.findChild<QLabel *>("attitudeAngles");
+  REQUIRE(status);
+  REQUIRE(angles);
+  const int fullSize = angles->font().pixelSize();
+  instrument.setCompact(true);
+  instrument.resize(136, 204);
+  QApplication::processEvents();
+  REQUIRE(status->isVisible());
+  REQUIRE(status->text() == "Replay");
+  REQUIRE(angles->text().contains("-179.9"));
+  instrument.setCompact(false);
+  instrument.resize(240, 204);
+  QApplication::processEvents();
+  REQUIRE(angles->font().pixelSize() == fullSize);
+
+  QWidget *canvas = nullptr;
+  for (auto *child : instrument.findChildren<QWidget *>())
+    if (child->accessibleName().startsWith("Rocket orientation"))
+      canvas = child;
+  REQUIRE(canvas);
+  const auto initialPose = canvas->grab().toImage();
+  for (int i = 0; i < 3; ++i) {
+    instrument.setSample(sample, true);
+    QApplication::processEvents();
+  }
+  REQUIRE(canvas->grab().toImage() == initialPose);
+  auto tilted = sample;
+  tilted.angularRotation = {90, 0, 0};
+  instrument.setSample(tilted, true);
+  REQUIRE(canvas->grab().toImage() != initialPose);
+  instrument.setSample(sample, true);
+  REQUIRE(canvas->grab().toImage() == initialPose);
+
+  const auto captureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
+  for (const QString &theme :
+       {QStringLiteral("dark"), QStringLiteral("light")}) {
+    const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+    REQUIRE(skin);
+    cosmo::ThemeManager::instance().setActiveSkin(*skin);
+    for (const int width : {136, 240, 320}) {
+      instrument.setCompact(width < 240);
+      instrument.resize(width, 204);
+      for (int pose = 0; pose < 4; ++pose) {
+        sample.angularRotation =
+            pose == 0   ? AngularRotationCoordinates{0, 0, 0}
+            : pose == 1 ? AngularRotationCoordinates{30, -179.9, 45}
+            : pose == 2 ? AngularRotationCoordinates{90, 0, 0}
+                        : AngularRotationCoordinates{180, 0, 0};
+        instrument.setSample(sample, true);
+        QApplication::processEvents();
+        CAPTURE(theme, width, pose);
+        REQUIRE(instrument.width() == width);
+        REQUIRE(instrument.height() == 204);
+        for (auto *label : instrument.findChildren<QLabel *>())
+          REQUIRE(instrument.rect().contains(
+              QRect(label->mapTo(&instrument, QPoint()), label->size())));
+        if (!captureDir.isEmpty())
+          REQUIRE(instrument.grab().save(captureDir + "/attitude-" + theme +
+                                         "-" + QString::number(width) + "-" +
+                                         QString::number(pose) + ".png"));
+      }
+    }
+    const auto lastPose = canvas->grab().toImage();
+    instrument.resetDisplay();
+    REQUIRE(canvas->grab().toImage() != lastPose);
+    REQUIRE(angles->text().contains("—"));
+    REQUIRE(status->text().isEmpty());
+    if (!captureDir.isEmpty())
+      REQUIRE(instrument.grab().save(captureDir + "/attitude-empty-" + theme +
+                                     ".png"));
+  }
+}
+
 // Run explicitly with a graphics-capable Qt platform; CTest's offscreen target
 // disables GL.
-TEST_CASE("3D replay displays recording angles with the original path and an "
-          "orange rocket",
-          "[.][attitude-webgl]") {
+TEST_CASE(
+    "3D replay displays recording angles with an interpolated path and an "
+    "orange rocket",
+    "[.][attitude-webgl]") {
   auto session = std::make_shared<FlightSession>();
   REQUIRE_FALSE(SampleFileLoader::loadTheseusCsv(
                     std::string(COSMO_SOURCE_DIR) +
@@ -1114,6 +1279,7 @@ TEST_CASE("3D replay displays recording angles with the original path and an "
       QStringLiteral("document.getElementById('btn3D').click(); "
                      "document.getElementById('info3d').textContent;"));
   REQUIRE(info.contains("3x vert"));
+  REQUIRE(info.contains("Estimated path"));
   REQUIRE_FALSE(info.contains("Attitude unavailable"));
   REQUIRE(evaluate(QStringLiteral(
               "String(document.querySelectorAll('#view3d canvas').length)")) ==
@@ -1143,6 +1309,8 @@ TEST_CASE("3D replay displays recording angles with the original path and an "
           cosmo::SkinLoader::loadBuiltin(QStringLiteral(":/skins/") + theme);
       REQUIRE(skin.has_value());
       cosmo::ThemeManager::instance().setActiveSkin(*skin);
+      evaluate(
+          QStringLiteral("window.followRocket(false);window.fitCamera();"));
       bool rendered = false;
       QTimer::singleShot(200, &map, [&] { rendered = true; });
       REQUIRE(pumpUntil([&] { return rendered; }));
@@ -1558,11 +1726,20 @@ TEST_CASE("Replay instruments follow Graph and Map layouts without recreating "
         for (auto *instrument : {horizon, attitude})
           REQUIRE(dashboard.rect().contains(QRect(
               instrument->mapTo(&dashboard, QPoint()), instrument->size())));
-        if (!captureDir.isEmpty())
+        if (!captureDir.isEmpty()) {
           REQUIRE(dashboard.grab().save(captureDir + "/instruments-" + theme +
                                         (mapMode ? "-map-" : "-graph-") +
                                         QString::number(size.width()) +
                                         ".png"));
+          const auto bounds =
+              QRect(attitude->mapTo(&dashboard, QPoint()), attitude->size())
+                  .united(QRect(horizon->mapTo(&dashboard, QPoint()),
+                                horizon->size()));
+          REQUIRE(dashboard.grab(bounds).save(
+              captureDir + "/replay-pair-" + theme +
+              (mapMode ? "-map-" : "-graph-") + QString::number(size.width()) +
+              ".png"));
+        }
       }
       dashboard.hide();
     }

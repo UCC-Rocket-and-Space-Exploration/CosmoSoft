@@ -33,8 +33,9 @@ public:
 
     explicit TracesPanel(QWidget *parent = nullptr);
 
-    /** Returns the current enabled state; always has at least one true entry. */
-    [[nodiscard]] std::array<bool, kMetricCount> enabledMetrics() const;
+    /** @brief Returns the current enabled state, borrowed for this panel's
+     * lifetime. */
+    [[nodiscard]] const std::array<bool, kMetricCount> &enabledMetrics() const;
 
     /**
      * Shows or hides each trace row (e.g. CSV columns missing from the file).

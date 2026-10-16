@@ -1187,7 +1187,9 @@ void MainWindow::onStartLiveDemo() {
     stopSerial();
     stopFakeTransmission(false);
     m_realLiveInput = false;
-    m_liveTelemetryPage->setBatteryAvailable(false);
+    if (m_liveTelemetryPage) {
+      m_liveTelemetryPage->setBatteryAvailable(false);
+    }
     prepareLiveSession(u"Fake live transmission"_s);
     m_fakeTransmissionSamples.clear();
     m_fakeTransmissionByteCounts.clear();
@@ -1392,7 +1394,9 @@ void MainWindow::onClearFlightData() {
     stopSerial();
     m_logManager->clear();
     m_recordingLimitReported = false;
-    m_flightDataPage->setRecoveryReference({});
+    if (m_flightDataPage) {
+      m_flightDataPage->setRecoveryReference({});
+    }
     m_replay->stop();
     m_loadedSession.reset();
     m_loadedPreview.reset();
@@ -1702,7 +1706,9 @@ void MainWindow::startSerial(const QString &portName, int baud) {
 
     m_serialPortSummary = QStringLiteral("%1 @ %2").arg(portName).arg(baud);
     m_realLiveInput = true;
-    m_liveTelemetryPage->setBatteryAvailable(false);
+    if (m_liveTelemetryPage) {
+      m_liveTelemetryPage->setBatteryAvailable(false);
+    }
     prepareLiveSession(m_serialPortSummary);
 
     const std::uint64_t generation = ++m_liveGeneration;

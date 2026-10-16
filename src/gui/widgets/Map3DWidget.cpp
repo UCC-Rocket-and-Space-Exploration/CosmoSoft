@@ -154,17 +154,23 @@ double horizontalDistanceMetres(
     return kEarthRadiusMetres * centralAngle;
 }
 
-QVariantMap mapPointPayload(const FlightSample &sample, int sampleIndex, double displayTime) {
+QVariantMap mapPointPayload(const FlightSample &sample, int sampleIndex,
+                            double displayTime,
+                            const cosmo::preview::GpsTrajectory &trajectory) {
   if (!isUsableMapPoint(sample, displayTime)) {
     return {};
   }
 
+  const auto display = trajectory.coordinateAt(sampleIndex, sample);
   return {
       {QStringLiteral("idx"), sampleIndex},
       {QStringLiteral("lat"), sample.coordinates.latitude},
       {QStringLiteral("lon"), sample.coordinates.longitude},
       {QStringLiteral("alt"), sample.altitude},
       {QStringLiteral("ts"), displayTime},
+      {QStringLiteral("displayLat"), display.latitude},
+      {QStringLiteral("displayLon"), display.longitude},
+      {QStringLiteral("segment"), trajectory.segmentAt(sampleIndex)},
       {QStringLiteral("attitude"), attitudePayload(sample)},
   };
 }
@@ -243,13 +249,13 @@ class TileCacheInterceptor : public QWebEngineUrlRequestInterceptor {
     Q_OBJECT
 
 public:
-    explicit TileCacheInterceptor(QObject *parent = nullptr)
-        : QWebEngineUrlRequestInterceptor(parent)
-    {
-        m_cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
-                   + QStringLiteral("/map_tiles");
-        QDir().mkpath(m_cacheDir);
-    }
+  explicit TileCacheInterceptor(QObject *parent = nullptr)
+      : QWebEngineUrlRequestInterceptor(parent),
+        m_cacheDir(
+            QStandardPaths::writableLocation(QStandardPaths::CacheLocation) +
+            QStringLiteral("/map_tiles")) {
+    QDir().mkpath(m_cacheDir);
+  }
 
     void interceptRequest(QWebEngineUrlRequestInfo &info) override {
         const QUrl url = info.requestUrl();
@@ -270,9 +276,9 @@ public:
     }
 
     /** @brief Returns the path to the tile cache directory. */
-    [[nodiscard]] QString cacheDir() const { return m_cacheDir; }
+    [[nodiscard]] const QString &cacheDir() const { return m_cacheDir; }
 
-private:
+  private:
     static bool isApprovedTileRequest(
         const QUrl &url,
         QWebEngineUrlRequestInfo::ResourceType resourceType) {
@@ -575,6 +581,13 @@ void Map3DWidget::setReplaySession(
         && preview->wasBuiltFor(*m_session)
         && preview->displaySeconds().size() == m_session->samples.size();
     m_preview = previewMatchesSession ? std::move(preview) : nullptr;
+    m_liveTrajectory = {};
+    if (m_session && !m_preview) {
+      const auto count = std::min(m_session->samples.size(),
+                                  static_cast<std::size_t>(kMaxMapSampleCount));
+      for (std::size_t i = 0; i < count; ++i)
+        m_liveTrajectory.append(m_session->samples[i], static_cast<int>(i));
+    }
     m_liveSamples.clear();
     m_liveTotalSamples = 0;
     m_liveReceivedSamples = 0;
@@ -618,7 +631,9 @@ void Map3DWidget::sendPendingSession() {
         const double displayTime = m_preview
             ? m_preview->displaySecondAt(sampleIndex)
             : static_cast<double>(s.timestamp) / 1000.0;
-        const QVariantMap point = mapPointPayload(s, sampleIndex, displayTime);
+        const QVariantMap point = mapPointPayload(
+            s, sampleIndex, displayTime,
+            m_preview ? m_preview->gpsTrajectory() : m_liveTrajectory);
         if (!point.isEmpty()) {
             array.append(point);
         }
@@ -690,7 +705,9 @@ void Map3DWidget::sendPendingTrailLength() {
         const double displayTime = m_preview
             ? m_preview->displaySecondAt(idx)
             : static_cast<double>(s.timestamp) / 1000.0;
-        current = mapPointPayload(s, idx, displayTime);
+        current = mapPointPayload(s, idx, displayTime,
+                                  m_preview ? m_preview->gpsTrajectory()
+                                            : m_liveTrajectory);
     }
     if (m_pendingTrailLength > 0) {
       const auto &sample = m_session->samples[static_cast<std::size_t>(idx)];
@@ -714,6 +731,9 @@ void Map3DWidget::onLiveSamplesReceived(const QVector<FlightSample> &samples) {
             rebaseLiveHistoryIndices();
         }
         const int sampleIndex = m_liveTotalSamples;
+        // A newly received fix can align the preceding held interval. Replace
+        // its bounded preview; the newest open interval always stays measured.
+        m_liveSnapshotPending |= m_liveTrajectory.append(sample, sampleIndex);
         ++m_liveTotalSamples;
         ++m_liveReceivedSamples;
         totalChanged = true;
@@ -743,6 +763,11 @@ void Map3DWidget::onLiveSamplesReceived(const QVector<FlightSample> &samples) {
 
 void Map3DWidget::rebaseLiveHistoryIndices() {
     int rebasedIndex = 0;
+    std::vector<int> previousIndices;
+    previousIndices.reserve(m_liveSamples.size());
+    for (const auto &entry : m_liveSamples)
+      previousIndices.push_back(entry.sampleIndex);
+    m_liveTrajectory.rebaseIndices(previousIndices);
     for (auto &entry : m_liveSamples) {
         entry.sampleIndex = rebasedIndex++;
     }
@@ -760,12 +785,16 @@ void Map3DWidget::compactLiveHistory() {
     }
 
     std::vector<IndexedLiveSample> compacted;
+    std::vector<int> retainedIndices;
     const auto positions = cappedSourceIndices(m_liveSamples.size(), kLiveHistoryCompactTarget);
     compacted.reserve(positions.size());
+    retainedIndices.reserve(positions.size());
     for (const std::size_t position : positions) {
-        compacted.push_back(std::move(m_liveSamples[position]));
+      retainedIndices.push_back(m_liveSamples[position].sampleIndex);
+      compacted.push_back(std::move(m_liveSamples[position]));
     }
     m_liveSamples = std::move(compacted);
+    m_liveTrajectory.retainSamples(retainedIndices);
     m_liveSnapshotPending = true;
 }
 
@@ -791,7 +820,8 @@ void Map3DWidget::sendPendingLiveSamples() {
         for (const auto &entry : m_liveSamples) {
           const QVariantMap point = mapPointPayload(
               entry.sample, entry.sampleIndex,
-              static_cast<double>(entry.sample.timestamp) / 1000.0);
+              static_cast<double>(entry.sample.timestamp) / 1000.0,
+              m_liveTrajectory);
           if (!point.isEmpty()) {
             path2d.append(point);
           }
@@ -805,7 +835,8 @@ void Map3DWidget::sendPendingLiveSamples() {
             const auto &entry = m_liveSamples[position];
             const QVariantMap point = mapPointPayload(
                 entry.sample, entry.sampleIndex,
-                static_cast<double>(entry.sample.timestamp) / 1000.0);
+                static_cast<double>(entry.sample.timestamp) / 1000.0,
+                m_liveTrajectory);
             if (!point.isEmpty()) {
                 path3d.append(point);
             }
@@ -817,7 +848,8 @@ void Map3DWidget::sendPendingLiveSamples() {
             }
             const QVariantMap point = mapPointPayload(
                 entry.sample, entry.sampleIndex,
-                static_cast<double>(entry.sample.timestamp) / 1000.0);
+                static_cast<double>(entry.sample.timestamp) / 1000.0,
+                m_liveTrajectory);
             if (!point.isEmpty()) {
                 path2d.append(point);
                 path3d.append(point);
@@ -850,6 +882,7 @@ void Map3DWidget::sendPendingLiveSamples() {
 void Map3DWidget::onSessionReset() {
     m_session.reset();
     m_preview.reset();
+    m_liveTrajectory = {};
     m_liveSamples.clear();
     m_liveAttitude.clear();
     m_liveTotalSamples = 0;

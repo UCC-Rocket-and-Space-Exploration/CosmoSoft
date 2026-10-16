@@ -27,6 +27,7 @@ public:
 
 private:
   void refreshStyleSheet();
+  void refreshAngles();
   void refreshStatus();
   RocketAttitudeCanvas *m_canvas = nullptr;
   QLabel *m_status = nullptr;
@@ -36,5 +37,6 @@ private:
   bool m_compact = false;
   bool m_replay = false;
   bool m_available = false;
+  AngularRotationCoordinates m_recordedAngles;
 };
 #endif

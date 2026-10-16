@@ -27,7 +27,7 @@ let pathDataDirty = true, path3dDataDirty = true;
 // ── 3D state ───────────────────────────────────────────────────────
 let scene3d, camera3d, renderer3d, controls3d, animId3d = null;
 let renderFramesRemaining3d = 0;
-let pathLine3d, trailLine3d, ghostLine3d;
+let trailLine3d, ghostLine3d;
 let launchSphere3d, rocketModel3d;
 let groundGrid3d, groundMesh3d;
 let currentRocketWorld3d = null;
@@ -214,10 +214,12 @@ function firstValid3DReference() {
 
 function toLocal3DPoint(p, alt, refLat, refLon) {
   const cosRef = Math.cos(refLat * D2R);
-  const x = (p.lon - refLon) * D2R * EARTH_R * cosRef;
-  const z = -(p.lat - refLat) * D2R * EARTH_R;
+  const latitude = p.displayLat ?? p.lat, longitude = p.displayLon ?? p.lon;
+  const longitudeDelta = ((longitude - refLon + 540) % 360) - 180;
+  const x = longitudeDelta * D2R * EARTH_R * cosRef;
+  const z = -(latitude - refLat) * D2R * EARTH_R;
   const relAlt = alt - groundRefAlt;
-  const terrainY = getTerrainY(p.lat, p.lon, refLat, refLon);
+  const terrainY = getTerrainY(latitude, longitude, refLat, refLon);
   return new THREE.Vector3(x, terrainY + relAlt * ALT_EXAGGERATION, z);
 }
 
@@ -230,6 +232,63 @@ function toLocal3D(positions, altitudes, refLat, refLon) {
     pts.push(toLocal3DPoint(p, altitudes[i], refLat, refLon));
   }
   return pts;
+}
+
+// PCHIP tangents preserve each coordinate's extrema. Parameterize by time,
+// after GPS alignment, rather than rounding the original staircase vertices.
+function trajectoryLinePoints(positions, altitudes, refLat, refLon) {
+  const vertices = [], active = [];
+  const add = (a,b,endIndex) => {
+    vertices.push(a,b);
+    if (endIndex < trailLen) active.push(a,b);
+  };
+  const subdivisions = Math.max(1, Math.min(4, Math.floor(12000 / positions.length)));
+  for (let begin = 0; begin < positions.length;) {
+    let end = begin + 1;
+    while (end < positions.length && positions[end].segment === positions[begin].segment) ++end;
+    const points = toLocal3D(positions.slice(begin,end), altitudes.slice(begin,end), refLat, refLon);
+    const times = positions.slice(begin,end).map(p=>p.ts);
+    const h = times.slice(1).map((t,i)=>t-times[i]);
+    if (points.length > 1 && h.every(dt=>Number.isFinite(dt)&&dt>0)) {
+      const slopes = axis => {
+        const d = h.map((dt,i)=>(points[i+1][axis]-points[i][axis])/dt);
+        if (d.length === 1) return [d[0],d[0]];
+        const endpoint = (a,b,ha,hb) => {
+          const m=((2*ha+hb)*a-ha*b)/(ha+hb);
+          return Math.sign(m)!==Math.sign(a)?0:
+            (Math.sign(a)!==Math.sign(b)&&Math.abs(m)>3*Math.abs(a)?3*a:m);
+        };
+        const m = [endpoint(d[0],d[1],h[0],h[1])];
+        for (let i=1;i<d.length;++i) {
+          const w1=2*h[i]+h[i-1],w2=h[i]+2*h[i-1];
+          m.push(d[i-1]*d[i]<=0?0:(w1+w2)/(w1/d[i-1]+w2/d[i]));
+        }
+        m.push(endpoint(d.at(-1),d.at(-2),h.at(-1),h.at(-2)));
+        return m;
+      };
+      const tangents = {x:slopes("x"),y:slopes("y"),z:slopes("z")};
+      for (let i=0;i<h.length;++i) {
+        let previous = points[i];
+        for (let step=1;step<=subdivisions;++step) {
+          const u=step/subdivisions,u2=u*u,u3=u2*u;
+          const point = new THREE.Vector3();
+          for (const axis of ["x","y","z"]) {
+            const a=points[i][axis],b=points[i+1][axis],m=tangents[axis];
+            point[axis]=THREE.MathUtils.clamp((2*u3-3*u2+1)*a
+              +(u3-2*u2+u)*h[i]*m[i]+(-2*u3+3*u2)*b
+              +(u3-u2)*h[i]*m[i+1],Math.min(a,b),Math.max(a,b));
+          }
+          add(previous,point,positions[begin+i+1].idx);
+          previous=point;
+        }
+      }
+    } else {
+      // Legacy payloads may lack distinct timestamps; retain their straight segments.
+      for (let i=1;i<points.length;++i) add(points[i-1],points[i],positions[begin+i].idx);
+    }
+    begin=end;
+  }
+  return {full:vertices,active};
 }
 
 function getTerrainY(lat, lon, refLat, refLon) {
@@ -267,7 +326,7 @@ function createWideLine(color, width, opacity, isSegments=false) {
 function updateLineMaterialResolution() {
   if (!renderer3d) return;
   const size = renderer3d.getSize(new THREE.Vector2());
-  for (const line of [ghostLine3d, trailLine3d, pathLine3d]) {
+  for (const line of [ghostLine3d, trailLine3d]) {
     if (line?.material?.resolution) line.material.resolution.set(size.x, size.y);
   }
 }
@@ -311,7 +370,6 @@ function apply3DTheme() {
   const fog = currentThemePalette?.bg_dark || currentThemePalette?.bg_base || (isDark ? "#080a10" : "#f4f7fb");
   const trail = currentThemePalette?.accent_link || (isDark ? 0x64c8ff : 0x0057b8);
   const ghost = currentThemePalette?.border_light || (isDark ? 0x3a5a78 : 0x4a6478);
-  const drop = currentThemePalette?.info || currentThemePalette?.accent_link || (isDark ? 0x64c8ff : 0x0b63ce);
   const rocket = currentThemePalette?.warning || currentThemePalette?.danger || (isDark ? 0xff8a3d : 0xd44818);
   const rocketEmissive = rocket;
   const launch = currentThemePalette?.success || (isDark ? 0x44cc77 : 0x12864a);
@@ -330,7 +388,6 @@ function apply3DTheme() {
 
   setLineStyle(ghostLine3d, ghost, isDark ? 2.0 : 2.25, isDark ? 0.48 : 0.44);
   setLineStyle(trailLine3d, trail, isDark ? 4.5 : 5.0, 1.0);
-  setLineStyle(pathLine3d, drop, isDark ? 1.25 : 1.5, isDark ? 0.18 : 0.28);
 
   if (launchSphere3d?.material) {
     launchSphere3d.material.color.set(launch);
@@ -482,16 +539,12 @@ function init3D() {
   scene3d.add(dLight);
 
   // ghost line (full path, dimmed)
-  ghostLine3d = createWideLine(0x3a5a78, 2.0, 0.48);
+  ghostLine3d = createWideLine(0x3a5a78, 2.0, 0.48, true);
   scene3d.add(ghostLine3d);
 
   // trail line (active, bright)
-  trailLine3d = createWideLine(0x64c8ff, 4.5, 1.0);
+  trailLine3d = createWideLine(0x64c8ff, 4.5, 1.0, true);
   scene3d.add(trailLine3d);
-
-  // vertical drop lines from trail to ground
-  pathLine3d = createWideLine(0x64c8ff, 1.25, 0.18, true);
-  scene3d.add(pathLine3d);
 
   // launch sphere
   launchSphere3d = new THREE.Mesh(
@@ -553,7 +606,7 @@ function animate3D() {
 // Match samples by identity, so an exact seek never loses its current altitude.
 function appendExactPoint(positions, altitudes, lastIndex, point) {
   if (!point || !validC(point.lat, point.lon)) return lastIndex;
-  const position = {lat:point.lat, lon:point.lon};
+  const position = {...point};
   if (positions.length && lastIndex === point.idx) {
     positions[positions.length-1] = position;
     altitudes[altitudes.length-1] = point.alt;
@@ -571,6 +624,7 @@ function updateRocketInfo3D() {
     ? "AGL " + fmtAlt(altitude-groundRefAlt) + " (MSL " + fmtAlt(altitude) + ")"
     : "Alt " + fmtAlt(altitude);
   element.textContent = label + "  ·  " + ALT_EXAGGERATION + "x vert" +
+    "  ·  Estimated path" +
     (currentRocketAttitude ? "" : "  ·  Attitude unavailable") +
     "  ·  Locate/Fit/Follow  ·  Drag to orbit";
 }
@@ -588,7 +642,6 @@ function update3DEntities() {
   if (allValid.length === 0) {
     updateWideLine(ghostLine3d, []);
     updateWideLine(trailLine3d, []);
-    updateWideLine(pathLine3d, []);
     currentRocketWorld3d = null;
     currentRocketAltitude3d = null;
     last3DPathKey = null;
@@ -601,13 +654,6 @@ function update3DEntities() {
   }
 
   const refLat = allValid[0].lat, refLon = allValid[0].lon;
-
-  // ghost (full path)
-  if (path3dDataDirty) {
-    const ghostPts = toLocal3D(allValid, allValidAlt, refLat, refLon);
-    updateWideLine(ghostLine3d, ghostPts);
-    path3dDataDirty = false;
-  }
 
   // trail (active)
   const trailValid = [], trailAlt = [];
@@ -624,7 +670,8 @@ function update3DEntities() {
   lastIndex = appendExactPoint(trailValid, trailAlt, lastIndex, currentExactPoint);
   const lastPoint = trailValid.at(-1);
   const pathKey = JSON.stringify([trailValid.length,lastIndex,lastPoint?.lat,
-    lastPoint?.lon,trailAlt.at(-1),refLat,refLon]);
+    lastPoint?.lon,lastPoint?.displayLat,lastPoint?.displayLon,
+    lastPoint?.segment,trailAlt.at(-1),refLat,refLon]);
   if (!pathChanged && pathKey === last3DPathKey) {
     updateRocketInfo3D();
     request3DRender(following ? 12 : 2);
@@ -632,20 +679,25 @@ function update3DEntities() {
   }
   last3DPathKey = pathKey;
 
+  // Include an exact seek before constructing one shared full/active curve.
+  // Otherwise a decimated ghost can miss the rocket's measured altitude.
+  if (currentExactPoint && currentExactPoint.idx < trailLen) {
+    const slot = allValid.findIndex(p=>p.idx>=currentExactPoint.idx);
+    if (slot < 0) {
+      allValid.push(currentExactPoint);allValidAlt.push(currentExactPoint.alt);
+    } else if (allValid[slot].idx === currentExactPoint.idx) {
+      allValid[slot]=currentExactPoint;allValidAlt[slot]=currentExactPoint.alt;
+    } else {
+      allValid.splice(slot,0,currentExactPoint);allValidAlt.splice(slot,0,currentExactPoint.alt);
+    }
+  }
+  const curve = trajectoryLinePoints(allValid,allValidAlt,refLat,refLon);
+  updateWideLine(ghostLine3d,curve.full);
+  path3dDataDirty=false;
+
   if (trailValid.length > 0) {
     const trailPts = toLocal3D(trailValid, trailAlt, refLat, refLon);
-    updateWideLine(trailLine3d, trailPts);
-
-    // vertical drop lines (every 3rd point) — to terrain surface
-    const dropVerts = [];
-    for (let i = 0; i < trailPts.length; i += 3) {
-      dropVerts.push(trailPts[i].clone());
-      const tY = (groundElevGrid && ground3dMode !== "box")
-        ? getTerrainY(trailValid[Math.min(i, trailValid.length-1)].lat, trailValid[Math.min(i, trailValid.length-1)].lon, refLat, refLon)
-        : 0;
-      dropVerts.push(new THREE.Vector3(trailPts[i].x, tY, trailPts[i].z));
-    }
-    updateWideLine(pathLine3d, dropVerts);
+    updateWideLine(trailLine3d, curve.active);
 
     // launch
     launchSphere3d.position.copy(trailPts[0]);
@@ -662,7 +714,6 @@ function update3DEntities() {
     updateRocketInfo3D();
   } else {
     updateWideLine(trailLine3d, []);
-    updateWideLine(pathLine3d, []);
     currentRocketWorld3d = null;
     currentRocketAltitude3d = null;
     updateRocketInfo3D();
@@ -1280,7 +1331,12 @@ function normalizePoint(raw, fallbackIndex) {
   const rawIndex = Number(raw.idx);
   const idx = Number.isSafeInteger(rawIndex) && rawIndex >= 0
     && rawIndex <= MAX_MAP_SAMPLE_COUNT ? rawIndex : fallbackIndex;
-  return { lat, lon, alt, ts, idx };
+  const displayLat = Number(raw.displayLat), displayLon = Number(raw.displayLon);
+  const segment = Number(raw.segment);
+  return { lat, lon, alt, ts, idx,
+    displayLat:validC(displayLat,displayLon)?displayLat:lat,
+    displayLon:validC(displayLat,displayLon)?displayLon:lon,
+    segment:Number.isSafeInteger(segment)&&segment>=0?segment:0 };
 }
 
 function invalidateGroundData() {
@@ -1318,13 +1374,13 @@ window.addPoints = function(payload){
   let added2d=false, added3d=false;
   for(let i=0;i<path.length;i++){
     const r=normalizePoint(path[i],fallback2d+i);if(!r)continue;
-    allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
+    allPos.push(r);allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
     added2d=true;
   }
   const fallback3d=allPos3d.length;
   for(let i=0;i<path3d.length;i++){
     const r=normalizePoint(path3d[i],fallback3d+i);if(!r)continue;
-    allPos3d.push({lat:r.lat,lon:r.lon});allAlt3d.push(r.alt);allIdx3d.push(r.idx);
+    allPos3d.push(r);allAlt3d.push(r.alt);allIdx3d.push(r.idx);
     added3d=true;
   }
   cap2DSeries();
@@ -1362,11 +1418,11 @@ window.loadSession = function(payload){
   allPos3d=[];allAlt3d=[];allIdx3d=[];currentExactPoint=null;
   for(let i=0;i<path.length;i++){
     const r=normalizePoint(path[i],i);if(!r)continue;
-    allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
+    allPos.push(r);allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
   }
   for(let i=0;i<path3d.length;i++){
     const r=normalizePoint(path3d[i],i);if(!r)continue;
-    allPos3d.push({lat:r.lat,lon:r.lon});allAlt3d.push(r.alt);allIdx3d.push(r.idx);
+    allPos3d.push(r);allAlt3d.push(r.alt);allIdx3d.push(r.idx);
   }
   cap2DSeries();
   cap3DSeries();

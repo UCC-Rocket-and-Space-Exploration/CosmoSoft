@@ -71,8 +71,7 @@ public:
      * @param errorCallback Called when the batch callback throws std::exception.
      */
     explicit LineTelemetryDecodeWorker(
-        BatchCallback callback,
-        LineTelemetryWorkerConfig config = {},
+        BatchCallback callback, const LineTelemetryWorkerConfig &config = {},
         ErrorCallback errorCallback = {});
 
     /** @brief Stop and join the worker, if needed. */

@@ -274,7 +274,7 @@ private:
 
   // ── Event markers ─────────────────────────────────────────────────────────
   struct EventMarker {
-    double timeSec;
+    double timeSec = 0.0;
     QString name;
   };
     std::vector<EventMarker> m_eventMarkers;

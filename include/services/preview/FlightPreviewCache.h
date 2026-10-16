@@ -4,6 +4,7 @@
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
 #include "services/Cancellation.h"
+#include "services/preview/GpsTrajectory.h"
 
 #include <algorithm>
 #include <array>
@@ -118,6 +119,12 @@ public:
 
     /** @brief Returns valid GPS sample indices reduced for 3D/drop-line drawing. */
     [[nodiscard]] const std::vector<int> &map3DIndices() const { return m_map3DIndices; }
+
+    /** @brief GPS display alignment built before selecting reduced map points.
+     */
+    [[nodiscard]] const GpsTrajectory &gpsTrajectory() const {
+      return m_gpsTrajectory;
+    }
 
     /** @brief Returns true when @p sampleIndex has a coordinate that should be shown on the map. */
     [[nodiscard]] bool gpsSampleValid(int sampleIndex) const
@@ -421,6 +428,7 @@ private:
                 return false;
             }
             const FlightSample &sample = samples[static_cast<std::size_t>(i)];
+            m_gpsTrajectory.append(sample, i);
             const double lat = sample.coordinates.latitude;
             const double lon = sample.coordinates.longitude;
             const bool valid = finiteCoordinate(lat, lon)
@@ -626,6 +634,7 @@ private:
     std::vector<int> m_map2DIndices;
     std::vector<int> m_map3DIndices;
     long m_medianPositiveDeltaMs = 1;
+    GpsTrajectory m_gpsTrajectory;
     int m_timestampDiscontinuityCount = 0;
     int m_droppedGpsRows = 0;
     bool m_correctedTimelineUsed = false;

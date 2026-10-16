@@ -32,20 +32,39 @@ control remains clickable; the chevron is not a separate tiny target.
 Its border, rounded corners, background, and monospaced headings follow the
 existing panel styles in both themes.
 
-The orange rocket has a rounded nose, tapered tail, and swept fins. Fixed
-X/Y/Z axes and reference rings surround it. All surfaces are orange; shading
-shows the shape. Both built-in themes update immediately. Qt paints the
-instrument only when it needs repainting.
+The attitude panel retains the orange rocket's rounded nose, tapered tail and
+swept fins. A fixed oblique camera shows it inside a reference gimbal with
+degree ticks, short world X/Y/Z axis marks and a nose-direction marker. Faint
+dashed rear arcs and solid front arcs give the reference cage depth; shading
+shows the rocket's shape. The panel stays 204 logical pixels high, with minimum
+widths of 136 in compact mode and 240 in full mode. Its compact header retains
+the Live, Stale or Replay status beside the title. Existing parent layouts and
+both built-in themes remain in use, with immediate updates on a theme switch.
+
+Native Qt painting reuses the rocket mesh and caches the rendered scene at the
+display's device pixel ratio. Pose, stale state, size and theme changes
+invalidate the scene; repeated poses reuse it. The component adds no WebEngine
+view or external assets. The depth and grid reference takes inspiration from
+[STK's attitude sphere](https://help.agi.com/stk/Content/attitude/visAttSphere.htm).
+The restrained reference graphics and status colors follow the clarity and
+attention-management principles described in NASA's historical
+[cockpit display research](https://www.nasa.gov/human-systems-integration-division/cockpit-display-design-intelligent-spacecraft-interface-systems/).
+These are design references; the component uses its existing geometry and its
+own Qt renderer, with no software or visual assets copied from those systems.
 
 Replay feeds the panel from the selected raw sample, so seeking
 backwards and pausing preserve the correct pose. The numeric angle readouts
-retain the recorded FC values; their tooltip identifies them. No automatic
-recording-start or FC-mounting correction is applied. Live Telemetry feeds its
+show the recorded FC X/Y/Z degree angles, wrapped to ±180° and rounded to one
+decimal place; their tooltip identifies them. They are not relabelled aircraft
+pitch, roll and yaw. No automatic recording-start or FC-mounting correction is
+applied. Live Telemetry feeds its
 own panel from live batches; replay updates do not replace its live pose.
 Missing angles clear the pose and show dash readouts against the reference
-axes. The panel does not show an unavailable message. Live poses become stale
-after two seconds. The packet indicator shows elapsed seconds since the last
-received batch, keeps aging after disconnect, and clears when the session resets.
+axes and cage. The panel does not show an unavailable message or status label.
+Live poses become stale after two seconds: the header reads Stale and the held
+rocket body dims. Replay keeps its Replay status while paused. The packet
+indicator shows elapsed seconds since the last received batch, keeps aging after
+disconnect, and clears when the session resets.
 It refreshes only while the live page is visible and catches up when reopened.
 
 ## Visual horizon
@@ -157,11 +176,34 @@ Attitude updates also work when a sample lacks a new GPS fix; the rocket can
 rotate at its last mapped position. Unknown attitude is labelled unavailable.
 The new rocket model is entirely orange and has no surrounding glow sphere.
 
-The original trajectory rendering is restored, including its original
-3× vertical scale, ground projections and terrain placement. The added
-smoothing and Path settings have been removed. An exact replay sample keeps its
-altitude even when its GPS coordinates match an earlier point. Attitude-only
-updates reuse the existing trail and ground-projection geometry.
+The 3D trajectory aligns held GPS coordinates with the altitude timeline before
+map downsampling. Since current files have no separate GNSS fix timestamp,
+coordinate changes serve as estimated fix anchors. Horizontal movement is
+interpolated only across uninterrupted intervals of at most three seconds.
+Long stationary holds and the unfinished Live tail keep their measured position;
+invalid fixes, invalid altitude, packet gaps over three seconds and timestamp
+resets start separate drawn segments. Replay can use the next recorded fix;
+Live replaces the preceding bounded preview when the next fix arrives.
+
+The renderer draws a time-parameterized, shape-preserving cubic (PCHIP) through
+the aligned display points. It retains each displayed point's altitude and
+does not overshoot the coordinate extrema between neighbouring points.
+The rocket and Follow camera use the same display position. Numeric telemetry,
+CSV exports, Recovery and the 2D map keep the recorded coordinates. The 3D
+caption labels the path **Estimated path**; it is not sensor fusion or a
+reconstruction of unmeasured motion. The original 3× vertical scale and terrain
+placement remain. Repeated ground projections have been removed so they no
+longer obscure the curve. There are no Path settings.
+
+Curve subdivision is bounded to 12,000 line segments per trail. Live anchor
+history is compacted with the retained map points, and attitude-only updates
+reuse the existing trail and full-path geometry. An exact replay seek keeps
+its recorded altitude even when its GPS coordinates match an earlier point.
+
+The approach follows timestamped position interpolation as used by
+[Cesium](https://cesium.com/learn/cesiumjs/ref-doc/SampledPositionProperty.html).
+The shape-preserving tangent method is described in the
+[PCHIP reference](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.PchipInterpolator.html).
 
 Replay and Live Telemetry use the same controls inside the map. Live Telemetry
 has no second set of Fit, Center or Follow buttons above it. **Follow** changes
@@ -201,12 +243,22 @@ for before/after callback measurements and their limits.
 In a desktop graphics session, run these explicit UI checks:
 
 - `build/tests/cosmo-recorded-gui-tests '[attitude-webgl]' --rng-seed 1`
+- `build/tests/cosmo-recorded-gui-tests '[attitude-design]' --rng-seed 1`
 - `build/tests/cosmo-recorded-gui-tests '[toolbar-ui]' --rng-seed 1`
 
 Optional captures use an existing directory in `COSMO_TEST_SCREENSHOTS`.
 The attitude widget tests capture both pages at 1440 × 900 and 1024 × 768,
 plus the compact instrument in both themes. The WebGL check uses an existing
 recording with angle columns. No test opens a serial device.
+
+The native attitude design check exercises 136, 240 and 320 logical-pixel widths
+at the fixed 204-pixel height, upright, tilted, side-on and inverted poses,
+compact/full transitions, repeated-pose rendering and cleared data in both
+themes. The `[attitude][widgets]` checks cover the two-second stale transition
+and capture its compact state. Review these captures alongside Replay and Live
+page captures: title, status and angle readouts must fit; the orange body and
+front/back references must remain distinct; empty data keeps the reference
+cage with dash readouts, and a stale body remains visible at reduced opacity.
 
 ### Implementation verification — 15 October 2026
 

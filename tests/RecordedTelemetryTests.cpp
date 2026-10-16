@@ -2,6 +2,7 @@
 #include "gui/FlightDataModel.h"
 #include "services/import/SampleFileLoader.h"
 #include "services/persistence/FlightLogManager.h"
+#include "services/preview/FlightPreviewCache.h"
 #include "services/telemetry/FrameDecoderVault.h"
 #include "services/telemetry/LineTelemetryBatchMailbox.h"
 #include "services/telemetry/RecordedComms.h"
@@ -22,10 +23,183 @@
 #include <cmath>
 #include <condition_variable>
 #include <future>
+#include <limits>
 #include <mutex>
 
 using namespace std::chrono_literals;
 using namespace cosmo::telemetry;
+
+TEST_CASE("GPS trajectory aligns held positions using elapsed time and never "
+          "extrapolates",
+          "[trajectory]") {
+  cosmo::preview::GpsTrajectory trajectory;
+  FlightSession session;
+  for (long timestamp : {0L, 100L, 400L, 1000L}) {
+    FlightSample sample;
+    sample.timestamp = timestamp;
+    sample.coordinates = {54, -5};
+    sample.altitude = 100 + timestamp * 0.1;
+    session.samples.push_back(sample);
+  }
+  for (int i = 0; i < 3; ++i)
+    REQUIRE_FALSE(trajectory.append(session.samples[i], i));
+  REQUIRE(trajectory.coordinateAt(2, session.samples[2]).longitude == -5);
+  session.samples[3].coordinates = {54.001, -4.999};
+  REQUIRE(trajectory.append(session.samples[3], 3));
+  const auto middle = trajectory.coordinateAt(2, session.samples[2]);
+  REQUIRE(middle.latitude == Catch::Approx(54.0004));
+  REQUIRE(middle.longitude == Catch::Approx(-4.9996));
+  REQUIRE(session.samples[2].coordinates.longitude == -5);
+  REQUIRE(session.samples[2].altitude == 140);
+  const auto preview = cosmo::preview::FlightPreviewCache::build(session);
+  REQUIRE(
+      preview->gpsTrajectory().coordinateAt(2, session.samples[2]).longitude ==
+      Catch::Approx(-4.9996));
+  auto tail = session.samples.back();
+  tail.timestamp = 1250;
+  REQUIRE_FALSE(trajectory.append(tail, 4));
+  REQUIRE(trajectory.coordinateAt(4, tail).longitude == -4.999);
+}
+
+TEST_CASE(
+    "GPS trajectory keeps stationary vertical flight and long holds measured",
+    "[trajectory]") {
+  cosmo::preview::GpsTrajectory trajectory;
+  FlightSample sample;
+  sample.coordinates = {54, -5};
+  for (int i = 0; i < 30; ++i) {
+    sample.timestamp = i * 250;
+    sample.altitude = i * 20;
+    REQUIRE_FALSE(trajectory.append(sample, i));
+  }
+  const auto held = sample;
+  sample.timestamp = 7500;
+  sample.coordinates.longitude = -4.999;
+  REQUIRE_FALSE(trajectory.append(sample, 30));
+  REQUIRE(trajectory.coordinateAt(29, held).longitude == -5);
+}
+
+TEST_CASE(
+    "GPS trajectory does not interpolate through invalid fixes or clock resets",
+    "[trajectory]") {
+  for (int interruption = 0; interruption < 4; ++interruption) {
+    CAPTURE(interruption);
+    cosmo::preview::GpsTrajectory trajectory;
+    std::vector<FlightSample> samples(5);
+    for (int i = 0; i < 5; ++i) {
+      samples[i].timestamp = i * 250;
+      samples[i].coordinates = {54, i == 4 ? -4.999 : -5};
+    }
+    if (interruption == 0)
+      samples[2].coordinates = {};
+    else if (interruption == 1)
+      samples[2].timestamp = 0;
+    else if (interruption == 2)
+      for (int i = 2; i < 5; ++i)
+        samples[i].timestamp += 5000;
+    else
+      samples[2].altitude = std::numeric_limits<double>::quiet_NaN();
+    for (int i = 0; i < 5; ++i)
+      trajectory.append(samples[i], i);
+    REQUIRE(trajectory.coordinateAt(1, samples[1]).longitude == -5);
+    REQUIRE(trajectory.segmentAt(3) > trajectory.segmentAt(1));
+  }
+}
+
+TEST_CASE("GPS trajectory crosses the dateline by the short arc",
+          "[trajectory]") {
+  cosmo::preview::GpsTrajectory trajectory;
+  FlightSample sample;
+  sample.coordinates = {54, 179.999};
+  trajectory.append(sample, 0);
+  auto middle = sample;
+  middle.timestamp = 500;
+  trajectory.append(middle, 1);
+  sample.timestamp = 1000;
+  sample.coordinates.longitude = -179.999;
+  REQUIRE(trajectory.append(sample, 2));
+  REQUIRE(std::abs(trajectory.coordinateAt(1, middle).longitude) ==
+          Catch::Approx(180));
+}
+
+TEST_CASE("GPS trajectory compaction retains interpolation anchors and segment "
+          "identities",
+          "[trajectory]") {
+  cosmo::preview::GpsTrajectory trajectory;
+  std::vector<FlightSample> samples(1000);
+  for (int i = 0; i < 1000; ++i) {
+    samples[i].timestamp = i * 250;
+    samples[i].coordinates = {54, -5 + (i / 4) * 0.0001};
+    if (i == 500)
+      samples[i].coordinates = {};
+    trajectory.append(samples[i], i);
+  }
+  const std::vector<int> retained{0, 7, 491, 503, 987, 999};
+  std::vector<Coordinates> coordinates;
+  std::vector<int> segments;
+  for (const int i : retained) {
+    coordinates.push_back(trajectory.coordinateAt(i, samples[i]));
+    segments.push_back(trajectory.segmentAt(i));
+  }
+  trajectory.retainSamples(retained);
+  for (std::size_t j = 0; j < retained.size(); ++j) {
+    const int i = retained[j];
+    REQUIRE(trajectory.coordinateAt(i, samples[i]).longitude ==
+            coordinates[j].longitude);
+    REQUIRE(trajectory.segmentAt(i) == segments[j]);
+  }
+  auto next = samples.back();
+  next.timestamp = 250000;
+  next.coordinates.longitude = -4.975;
+  REQUIRE(trajectory.append(next, 1000));
+  REQUIRE(trajectory.coordinateAt(999, samples.back()).longitude ==
+          Catch::Approx(-4.975025));
+}
+
+TEST_CASE("GPS trajectory index rollover preserves omitted anchors and gaps",
+          "[trajectory]") {
+  cosmo::preview::GpsTrajectory trajectory;
+  std::vector<FlightSample> samples(13);
+  for (int i = 0; i < 13; ++i) {
+    samples[i].timestamp = i * 250;
+    samples[i].coordinates = {54, -5 + (i / 4) * 0.0001};
+    if (i == 6)
+      samples[i].coordinates = {};
+    trajectory.append(samples[i], i);
+  }
+  trajectory.retainSamples({0, 3, 7, 11, 12});
+  trajectory.rebaseIndices({0, 3, 7, 11, 12});
+  REQUIRE(trajectory.coordinateAt(1, samples[3]).longitude ==
+          Catch::Approx(-4.999925));
+  REQUIRE(trajectory.segmentAt(2) > trajectory.segmentAt(1));
+  REQUIRE(trajectory.coordinateAt(3, samples[11]).longitude ==
+          Catch::Approx(-4.999725));
+  auto next = samples.back();
+  next.timestamp = 3250;
+  REQUIRE_FALSE(trajectory.append(next, 5));
+  REQUIRE(trajectory.coordinateAt(5, next).longitude == Catch::Approx(-4.9997));
+}
+
+TEST_CASE(
+    "GPS trajectory rollover leaves the held live tail open for the next fix",
+    "[trajectory]") {
+  cosmo::preview::GpsTrajectory trajectory;
+  FlightSample sample;
+  sample.coordinates = {54, -5};
+  std::vector<std::pair<int, FlightSample>> kept;
+  for (int i = 0; i < 3; ++i) {
+    sample.timestamp = i * 250;
+    trajectory.append(sample, i);
+    kept.emplace_back(i, sample);
+  }
+  trajectory.rebaseIndices({0, 1, 2});
+  sample.timestamp = 750;
+  sample.coordinates.longitude = -4.999;
+  REQUIRE(trajectory.append(sample, 3));
+  REQUIRE(trajectory.coordinateAt(1, kept[1].second).longitude ==
+          Catch::Approx(-4.9996666667));
+}
+
 namespace {
 const std::string fixture =
     "TELEM "

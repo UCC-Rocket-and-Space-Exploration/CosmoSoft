@@ -8,16 +8,15 @@
 namespace cosmo::telemetry {
 
 LineTelemetryDecodeWorker::LineTelemetryDecodeWorker(
-    BatchCallback callback,
-    LineTelemetryWorkerConfig config,
+    BatchCallback callback, const LineTelemetryWorkerConfig &config,
     ErrorCallback errorCallback)
     : m_callback(std::move(callback)),
-      m_errorCallback(std::move(errorCallback)),
-      m_config(config) {
-    m_config.maxQueuedChunks = std::max<std::size_t>(1, m_config.maxQueuedChunks);
-    m_config.maxQueuedBytes = std::max<std::size_t>(1, m_config.maxQueuedBytes);
-    m_config.maxBatchSamples = std::max<std::size_t>(1, m_config.maxBatchSamples);
-    m_config.flushInterval = std::max(std::chrono::milliseconds{1}, m_config.flushInterval);
+      m_errorCallback(std::move(errorCallback)), m_config(config) {
+  m_config.maxQueuedChunks = std::max<std::size_t>(1, m_config.maxQueuedChunks);
+  m_config.maxQueuedBytes = std::max<std::size_t>(1, m_config.maxQueuedBytes);
+  m_config.maxBatchSamples = std::max<std::size_t>(1, m_config.maxBatchSamples);
+  m_config.flushInterval =
+      std::max(std::chrono::milliseconds{1}, m_config.flushInterval);
 }
 
 LineTelemetryDecodeWorker::~LineTelemetryDecodeWorker() {

@@ -30,6 +30,7 @@
 
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
+#include "services/preview/GpsTrajectory.h"
 
 namespace cosmo::preview {
 class FlightPreviewCache;
@@ -202,6 +203,7 @@ private:
 
     std::vector<IndexedLiveSample> m_liveSamples;
     QVariantList m_liveAttitude;
+    cosmo::preview::GpsTrajectory m_liveTrajectory;
 };
 
 /**

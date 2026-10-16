@@ -622,27 +622,30 @@ void SettingsPage::onSkinChanged(int index) {
     }
 
     const auto skin_id = m_skinCombo->itemData(index).toString();
-    for (const auto &skin : m_availableSkins) {
-        if (skin.id == skin_id) {
-            if (skin.builtin) {
-                cosmo::ThemeManager::instance().setActiveSkin(skin);
-                return;
-            }
+    const auto selected = std::find_if(
+        m_availableSkins.cbegin(), m_availableSkins.cend(),
+        [&skin_id](const auto &skin) { return skin.id == skin_id; });
+    if (selected == m_availableSkins.cend()) {
+      return;
+    }
+    // Keep a value across theme-change callbacks and possible catalog
+    // refreshes.
+    const auto skin = *selected;
+    if (skin.builtin) {
+      cosmo::ThemeManager::instance().setActiveSkin(skin);
+      return;
+    }
 
-            // Preserve the previous tamper protection without rediscovering and
-            // decoding every installed skin on each combo-box selection.
-            const QString storage_name = skin.id.mid(QStringLiteral("custom:").size());
-            const QString skin_dir =
-                QDir(cosmo::ThemeManager::skinsDirectory()).filePath(storage_name);
-            auto validated_theme = cosmo::SkinLoader::loadFromDirectory(skin_dir);
-            if (validated_theme) {
-                validated_theme->id = skin.id;
-                cosmo::ThemeManager::instance().setActiveSkin(*validated_theme);
-            } else {
-                refreshAvailableSkins(cosmo::ThemeManager::instance().current().id);
-            }
-            break;
-        }
+    // Revalidate only the selected custom skin before applying it.
+    const QString storage_name = skin.id.mid(QStringLiteral("custom:").size());
+    const QString skin_dir =
+        QDir(cosmo::ThemeManager::skinsDirectory()).filePath(storage_name);
+    auto validated_theme = cosmo::SkinLoader::loadFromDirectory(skin_dir);
+    if (validated_theme) {
+      validated_theme->id = skin.id;
+      cosmo::ThemeManager::instance().setActiveSkin(*validated_theme);
+    } else {
+      refreshAvailableSkins(cosmo::ThemeManager::instance().current().id);
     }
 }
 
