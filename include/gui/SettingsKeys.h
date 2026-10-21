@@ -40,6 +40,11 @@ constexpr auto kSettingsSerialPort = "serial/port";
 /** @brief Last-used serial baud rate (stored as a string). */
 constexpr auto kSettingsSerialBaud = "serial/baud";
 
+/** @brief Explicit FC workaround that interprets received longitudes as west.
+ */
+constexpr auto kSettingsWestLongitudeCorrection =
+    "serial/westLongitudeCorrection";
+
 // ── File paths ────────────────────────────────────────────────────────────────
 
 /** @brief Last directory used for the flight-log file picker. */

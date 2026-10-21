@@ -36,9 +36,10 @@ inline constexpr std::size_t kMaxLiveTelemetryLineBytes = 64U * 1024U;
 /** @brief Generous absolute bound for numeric live telemetry fields. */
 inline constexpr double kMaxLiveTelemetryMagnitude = 1.0e12;
 
-/** @brief CSV header emitted by the current text telemetry stream. */
+/** @brief CSV header for live telemetry with FC timestamps in milliseconds. */
 inline constexpr std::string_view kLiveTelemetryCsvHeader =
-    "time,temp,pressure,altitude,ax,ay,az,gx,gy,gz,anglex,angley,anglez,"
+    "timestamp_ms,temp,pressure,altitude,ax,ay,az,gx,gy,gz,anglex,angley,"
+    "anglez,"
     "latitude,longitude,distance_from_base";
 
 /** @brief Remove trailing CR/LF bytes from a serial text line. */
@@ -82,6 +83,16 @@ inline std::optional<double> parseFiniteDouble(std::string_view text) {
     return value;
 }
 
+/** @brief Check that a live FC timestamp is a nonnegative whole millisecond
+ * value. */
+inline bool isValidLiveTimestampMilliseconds(double value) {
+  // The magnitude bound keeps integer milliseconds exactly representable as
+  // doubles. Strict LONG_MAX also avoids an out-of-range integer conversion.
+  return std::isfinite(value) && value >= 0.0 &&
+         value <= kMaxLiveTelemetryMagnitude && std::trunc(value) == value &&
+         value < static_cast<double>(std::numeric_limits<long>::max());
+}
+
 /**
  * @brief Decode one live telemetry CSV row into a FlightSample.
  * @return Decoded sample, or std::nullopt when the row is a header or malformed.
@@ -118,21 +129,13 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
         return std::nullopt;
     }
 
-    const double timestampMilliseconds = values[0] * 1000.0;
-    if (!std::isfinite(timestampMilliseconds)
-        // Strict bounds avoid rounding a double representation of LONG_MAX
-        // into an out-of-range integer on platforms where long has 64 bits.
-        || timestampMilliseconds <= static_cast<double>(std::numeric_limits<long>::lowest())
-        || timestampMilliseconds >= static_cast<double>(std::numeric_limits<long>::max())
-        || values[13] < -90.0
-        || values[13] > 90.0
-        || values[14] < -180.0
-        || values[14] > 180.0) {
-        return std::nullopt;
+    if (!isValidLiveTimestampMilliseconds(values[0]) || values[13] < -90.0 ||
+        values[13] > 90.0 || values[14] < -180.0 || values[14] > 180.0) {
+      return std::nullopt;
     }
 
     FlightSample sample{};
-    sample.timestamp = static_cast<long>(std::llround(timestampMilliseconds));
+    sample.timestamp = static_cast<long>(values[0]);
     sample.temperature = values[1];
     sample.pressure = values[2];
     sample.altitude = values[3];
@@ -289,12 +292,7 @@ private:
                      !value || std::abs(*value) > kMaxLiveTelemetryMagnitude ||
                      (i == 13 && std::abs(*value) > 90) ||
                      (i == 14 && std::abs(*value) > 180) ||
-                     (i == 0 &&
-                      (*value * 1000 <=
-                           static_cast<double>(
-                               std::numeric_limits<long>::lowest()) ||
-                       *value * 1000 >= static_cast<double>(
-                                            std::numeric_limits<long>::max()))))
+                     (i == 0 && !isValidLiveTimestampMilliseconds(*value)))
               m_lastDiagnostic.invalid |= bit;
           }
         }

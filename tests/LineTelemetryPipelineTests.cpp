@@ -3,6 +3,8 @@
 #include "gui/FlightDataModel.h"
 #include "gui/TelemetryMath.h"
 #include "services/flight/FakeFlightLink.h"
+#include "services/persistence/RecoveryState.h"
+#include "services/telemetry/GpsCoordinateCorrection.h"
 #include "services/telemetry/LineTelemetryDecodeWorker.h"
 #include "services/telemetry/LineTelemetryDecoder.h"
 
@@ -25,6 +27,102 @@ namespace {
 }
 
 } // namespace
+
+TEST_CASE("West longitude correction is explicit and preserves GPS latitude",
+          "[telemetry][gps-correction]") {
+  const auto received = cosmo::telemetry::decodeTelemetryCsvRow(
+      "251618,21,100227,221,0,0,9.81,0,0,0,0,0,0,51.892754,8.491923,84");
+  REQUIRE(received);
+  auto corrected = *received;
+  cosmo::telemetry::applyWestLongitudeCorrection(corrected, true);
+  REQUIRE(corrected.coordinates.latitude == 51.892754);
+  REQUIRE(corrected.coordinates.longitude == -8.491923);
+  REQUIRE(corrected.timestamp == 251618);
+  REQUIRE(received->coordinates.longitude == 8.491923);
+
+  cosmo::mission::RecoveryState recovery;
+  recovery.beginSession("test", "serial");
+  REQUIRE(recovery.observe(corrected, 1000, true));
+  REQUIRE(recovery.json().value("lon").toDouble() == -8.491923);
+  REQUIRE(
+      recovery.json().value("reference").toObject().value("lon").toDouble() ==
+      -8.491923);
+
+  for (const double latitude : {51.89, -51.89, 0.0}) {
+    for (const double longitude : {8.49, -8.49, 0.0}) {
+      FlightSample sample;
+      sample.coordinates = {latitude, longitude};
+      cosmo::telemetry::applyWestLongitudeCorrection(sample, false);
+      REQUIRE(sample.coordinates.longitude == longitude);
+      cosmo::telemetry::applyWestLongitudeCorrection(sample, true);
+      REQUIRE(sample.coordinates.latitude == latitude);
+      REQUIRE(sample.coordinates.longitude == -std::abs(longitude));
+      cosmo::telemetry::applyWestLongitudeCorrection(sample, true);
+      REQUIRE(sample.coordinates.longitude == -std::abs(longitude));
+    }
+  }
+  for (const double latitude :
+       {91.0, std::numeric_limits<double>::quiet_NaN()}) {
+    FlightSample invalid;
+    invalid.coordinates = {latitude, 8.49};
+    cosmo::telemetry::applyWestLongitudeCorrection(invalid, true);
+    REQUIRE(invalid.coordinates.longitude == 8.49);
+  }
+}
+
+TEST_CASE("Live CSV preserves integer FC milliseconds",
+          "[telemetry][timestamp-ms]") {
+  const std::string sensors =
+      ",21.67,100227.20,221.46,-0.050,-1.089,10.379,-0.040,0.009,0.018,"
+      "-6.743,0.523,266.904,51.892754,8.491923,84.02";
+  for (const long timestamp : {0L, 1L, 251618L, 251619L}) {
+    const auto sample = cosmo::telemetry::decodeTelemetryCsvRow(
+        std::to_string(timestamp) + sensors);
+    REQUIRE(sample.has_value());
+    REQUIRE(sample->timestamp == timestamp);
+  }
+
+  cosmo::telemetry::LineTelemetryDecoder decoder;
+  const std::string header = "timestamp_ms,temp,pressure,altitude,ax,ay,az,gx,"
+                             "gy,gz,anglex,angley,anglez,"
+                             "latitude,longitude,distance_from_base\r\n";
+  const auto first = asBytes(header + "251618" + sensors + "\r");
+  REQUIRE(decoder.ingest(first.data(), first.size()).empty());
+  const auto rest = asBytes("\n251619" + sensors + "\r\n");
+  const auto samples = decoder.ingest(rest.data(), rest.size());
+  REQUIRE(samples.size() == 2);
+  REQUIRE(samples[0].timestamp == 251618);
+  REQUIRE(samples[1].timestamp == 251619);
+  REQUIRE(decoder.malformedLineCount() == 0);
+  REQUIRE(decoder.lastRowDiagnostic().sequence == 2);
+}
+
+TEST_CASE(
+    "Live timestamp diagnostics reject fractional and negative milliseconds",
+    "[telemetry][timestamp-ms]") {
+  for (const std::string timestamp : {"251.618", "-1"}) {
+    cosmo::telemetry::LineTelemetryDecoder decoder;
+    const auto bytes =
+        asBytes(timestamp + ",18,101325,100,0,0,9.81,0,0,0,0,0,0,54,-5,0\n");
+    REQUIRE(decoder.ingest(bytes.data(), bytes.size()).empty());
+    REQUIRE(decoder.malformedLineCount() == 1);
+    REQUIRE(decoder.lastRowDiagnostic().invalid == 1);
+    REQUIRE(decoder.lastRowDiagnostic().missing == 0);
+  }
+}
+
+TEST_CASE("Demo wire timestamps match its millisecond sample cadence",
+          "[telemetry][timestamp-ms]") {
+  for (std::size_t i = 0; i < 4; ++i) {
+    const auto packet = cosmo::flightlink::buildLaunchTelemetryPacket(i);
+    const auto sample = cosmo::telemetry::decodeTelemetryCsvRow(packet.line);
+    REQUIRE(sample.has_value());
+    REQUIRE(sample->timestamp == static_cast<long>(i * 250));
+    REQUIRE(sample->timestamp == packet.sample.timestamp);
+    REQUIRE(packet.line.substr(0, packet.line.find(',')) ==
+            std::to_string(i * 250));
+  }
+}
 
 TEST_CASE("Live CSV keeps supplied degree attitude", "[telemetry][attitude]") {
   const auto sample = cosmo::telemetry::decodeTelemetryCsvRow(

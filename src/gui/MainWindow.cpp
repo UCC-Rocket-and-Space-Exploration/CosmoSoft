@@ -22,6 +22,7 @@
 #include "services/flight/FakeFlightLink.h"
 #include "services/import/SampleFileLoader.h"
 #include "services/persistence/FlightLogManager.h"
+#include "services/telemetry/GpsCoordinateCorrection.h"
 #include "services/telemetry/LineTelemetryBatchMailbox.h"
 #include "services/telemetry/LineTelemetryDecodeWorker.h"
 
@@ -1795,7 +1796,10 @@ void MainWindow::startSerial(const QString &portName, int baud) {
     if (m_liveTelemetryPage) {
         m_liveTelemetryPage->setActiveConnection(m_serialPortSummary, true);
     }
-    const QString connectMsg = QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud);
+    QString connectMsg =
+        QStringLiteral("Connected to %1 @ %2").arg(portName).arg(baud);
+    if (m_liveTelemetryPage->westLongitudeCorrectionEnabled())
+      connectMsg += tr(" · West longitude correction enabled");
     showStatusMessage(connectMsg, 3000);
     appendToLog(false, connectMsg);
 }
@@ -1830,8 +1834,12 @@ void MainWindow::drainLiveTelemetryBatches(const std::uint64_t generation) {
         FlightSampleBatch samples;
         samples.reserve(static_cast<qsizetype>(batch.samples.size()));
         for (auto &sample : batch.samples) {
-            recordLiveSample(sample);
-            samples.append(std::move(sample));
+          cosmo::telemetry::applyWestLongitudeCorrection(
+              sample,
+              m_realLiveInput &&
+                  m_liveTelemetryPage->westLongitudeCorrectionEnabled());
+          recordLiveSample(sample);
+          samples.append(std::move(sample));
         }
         m_flightModel->appendLiveBatch(samples);
 

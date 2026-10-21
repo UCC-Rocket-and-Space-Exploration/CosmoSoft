@@ -115,6 +115,24 @@ periodic refresh. Demo and Replay cannot overwrite this real-live record;
 Replay Recovery follows only the selected sample. References edited in Replay
 stay in that recording's metadata.
 
+### Western-longitude FC workaround
+
+Ireland uses positive latitude (north) and negative longitude (west). If an FC
+reports a western position with a positive longitude, disconnect the input,
+open **Live Telemetry → Connection → Link details**, enable **West longitude
+correction**, then reconnect. The choice is saved. It is off by default because
+the numeric coordinates alone cannot distinguish Ireland with a sign error
+from a genuine position east of Greenwich.
+
+When enabled, positive longitude becomes negative before real serial samples
+reach maps, GPS readouts, preflight, recovery references and CSV recording.
+Latitude, already-negative longitude, timestamps and other sensors are unchanged.
+Changing the mode requires disconnecting so one recording cannot mix coordinate
+conventions. Demo, imported logs, recorded IMU input and existing saved recovery
+points are not rewritten. New valid fixes update the retained recovery point;
+new exports retain corrected coordinates for replay. Disable the workaround
+after correcting the FC firmware or when operating east of Greenwich.
+
 ## Events, saving and preflight
 
 **Tools → Manage flight events…** edits manual event names and times, adds

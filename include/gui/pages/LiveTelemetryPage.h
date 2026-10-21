@@ -22,6 +22,7 @@
 #include <optional>
 
 class QMenu;
+class QCheckBox;
 class QComboBox;
 class QFrame;
 class QGridLayout;
@@ -83,6 +84,9 @@ public:
   void reloadChecklists();
   /** @brief Mark whether this source actually supplies battery voltage. */
   void setBatteryAvailable(bool available);
+
+  /** @brief Whether incoming real serial GPS should use western longitude. */
+  [[nodiscard]] bool westLongitudeCorrectionEnabled() const;
 
   /**
    * @brief Selects metric or imperial presentation units for live telemetry.
@@ -179,6 +183,7 @@ private:
 
   QComboBox *m_portCombo = nullptr;
   QComboBox *m_baudCombo = nullptr;
+  QCheckBox *m_westLongitudeCorrectionCheck = nullptr;
   QPushButton *m_scanButton = nullptr;
   QPushButton *m_connectButton = nullptr;
   QPushButton *m_disconnectButton = nullptr;

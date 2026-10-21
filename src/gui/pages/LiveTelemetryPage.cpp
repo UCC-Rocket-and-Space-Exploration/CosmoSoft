@@ -15,6 +15,7 @@
 #include "gui/widgets/RocketAttitudeWidget.h"
 #include "gui/widgets/StatTileWidget.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QFrame>
 #include <QGridLayout>
@@ -153,6 +154,8 @@ void LiveTelemetryPage::setAvailablePorts(const QStringList &ports) {
 void LiveTelemetryPage::setActiveConnection(const QString &label, bool connected) {
     m_activeConnectionLabel = label;
     m_connected = connected;
+    if (m_westLongitudeCorrectionCheck)
+      m_westLongitudeCorrectionCheck->setEnabled(!connected);
     if (m_packetAgeTimer && isVisible()) {
       if (connected || m_lastPacketAt)
         m_packetAgeTimer->start();
@@ -626,13 +629,36 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     m_linkDetails->setProperty("kind", "caption");
     m_linkDetails->setWordWrap(true);
     m_linkDetails->hide();
+    auto westCorrection =
+        std::make_unique<QCheckBox>(tr("West &longitude correction"), panel);
+    m_westLongitudeCorrectionCheck = westCorrection.get();
+    westCorrection->setObjectName("westLongitudeCorrection");
+    westCorrection->setAccessibleName(tr("West longitude correction"));
+    const QString correctionHint =
+        tr("For an FC sending west longitude as positive: converts +8.49 to "
+           "-8.49 and keeps latitude unchanged. Applies to new serial data, "
+           "maps, recovery and exports. Disconnect before changing. Leave off "
+           "for eastern-hemisphere flights.");
+    westCorrection->setToolTip(correctionHint);
+    westCorrection->setAccessibleDescription(correctionHint);
+    westCorrection->setChecked(
+        QSettings(kSettingsOrg, kSettingsApp)
+            .value(kSettingsWestLongitudeCorrection, false)
+            .toBool());
+    connect(westCorrection.get(), &QCheckBox::toggled, this, [](bool enabled) {
+      QSettings(kSettingsOrg, kSettingsApp)
+          .setValue(kSettingsWestLongitudeCorrection, enabled);
+    });
+    westCorrection->hide();
     connect(details.get(), &QToolButton::toggled, this,
             [this, button = details.get()](bool visible) {
               button->setArrowType(visible ? Qt::DownArrow : Qt::RightArrow);
               m_linkDetails->setVisible(visible);
+              m_westLongitudeCorrectionCheck->setVisible(visible);
             });
     details.release();
     layout->addWidget(m_linkDetails);
+    layout->addWidget(westCorrection.release());
 
     m_lastPacketLabel = new QLabel(panel);
     m_lastPacketLabel->setProperty("kind", u"caption"_s);
@@ -664,6 +690,11 @@ QFrame *LiveTelemetryPage::buildIgnitorPanel() {
 void LiveTelemetryPage::reloadChecklists() { m_checklist->reloadProfiles(); }
 void LiveTelemetryPage::setBatteryAvailable(bool available) {
   m_batteryAvailable = available;
+}
+
+bool LiveTelemetryPage::westLongitudeCorrectionEnabled() const {
+  return m_westLongitudeCorrectionCheck &&
+         m_westLongitudeCorrectionCheck->isChecked();
 }
 
 QPushButton *LiveTelemetryPage::createPanelButton(const QString &text, QWidget *parent) {

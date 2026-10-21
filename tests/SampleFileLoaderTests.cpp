@@ -3,6 +3,9 @@
 
 #include "services/import/SampleFileLoader.h"
 #include "services/persistence/FlightLogManager.h"
+#include "services/preview/FlightPreviewCache.h"
+#include "services/telemetry/GpsCoordinateCorrection.h"
+#include "services/telemetry/LineTelemetryDecoder.h"
 
 #include <QTemporaryDir>
 
@@ -18,6 +21,83 @@ namespace {
 }
 
 } // namespace
+
+TEST_CASE("Corrected live GPS remains in the western hemisphere after export",
+          "[import][export][gps-correction]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  FlightSample sample;
+  sample.timestamp = 251618;
+  sample.coordinates = {51.892754, 8.491923};
+  cosmo::telemetry::applyWestLongitudeCorrection(sample, true);
+  FlightLogManager logs;
+  logs.setOutputPath(directory.filePath("west.csv").toStdString());
+  REQUIRE(logs.appendSample(sample));
+  REQUIRE(logs.exportSessionToCsv());
+  FlightSession reloaded;
+  REQUIRE_FALSE(SampleFileLoader::loadTheseusCsv(logs.outputPath(), reloaded)
+                    .has_value());
+  REQUIRE(reloaded.samples.size() == 1);
+  REQUIRE(reloaded.samples.front().coordinates.latitude ==
+          Catch::Approx(51.892754));
+  REQUIRE(reloaded.samples.front().coordinates.longitude ==
+          Catch::Approx(-8.491923));
+}
+
+TEST_CASE("Live timestamps retain milliseconds through saving and replay",
+          "[import][export][timestamp-ms]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  FlightSession session;
+  for (const long timestamp : {251618L, 251619L, 252618L}) {
+    const auto sample = cosmo::telemetry::decodeTelemetryCsvRow(
+        std::to_string(timestamp) +
+        ",21,100227,221,0,0,9.81,0,0,0,0,0,0,51.89,-8.49,84");
+    REQUIRE(sample.has_value());
+    session.samples.push_back(*sample);
+  }
+  FlightLogManager logs;
+  logs.setOutputPath(directory.filePath("milliseconds.csv").toStdString());
+  REQUIRE(logs.exportSessionToCsv(session));
+  std::ifstream file(logs.outputPath());
+  std::string header;
+  REQUIRE(std::getline(file, header));
+  REQUIRE(header.substr(0, header.find(',')) == "timestamp_ms");
+  std::string row;
+  REQUIRE(std::getline(file, row));
+  REQUIRE(row.substr(0, row.find(',')) == "251618");
+
+  FlightSession reloaded;
+  REQUIRE_FALSE(SampleFileLoader::loadTheseusCsv(logs.outputPath(), reloaded)
+                    .has_value());
+  REQUIRE(reloaded.samples.size() == 3);
+  REQUIRE(reloaded.samples[0].timestamp == 251618);
+  REQUIRE(reloaded.samples[1].timestamp == 251619);
+  REQUIRE(reloaded.samples[2].timestamp == 252618);
+  const auto preview = cosmo::preview::FlightPreviewCache::build(reloaded);
+  REQUIRE(preview->displaySeconds()[1] == Catch::Approx(0.001));
+  REQUIRE(preview->durationSeconds() == Catch::Approx(1.0));
+}
+
+TEST_CASE("Replay identifies old and new timestamp units from CSV headers",
+          "[import][timestamp-ms]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("units.csv").toStdString();
+  for (const std::string timeHeader : {"time", "time_ms", "timestamp_ms"}) {
+    {
+      std::ofstream file(path);
+      file << timeHeader << ",altitude\n";
+      file << (timeHeader == "time" ? "251.618,100\n251.619,101\n"
+                                    : "251618,100\n251619,101\n");
+    }
+    FlightSession session;
+    REQUIRE_FALSE(SampleFileLoader::loadTheseusCsv(path, session).has_value());
+    REQUIRE(session.samples.size() == 2);
+    REQUIRE(session.samples[0].timestamp == 251618);
+    REQUIRE(session.samples[1].timestamp == 251619);
+  }
+}
 
 TEST_CASE("Explicit degree attitude survives CSV import and export",
           "[import][attitude]") {

@@ -95,6 +95,56 @@ bool pumpUntil(const std::function<bool()> &predicate) {
 }
 } // namespace
 
+TEST_CASE("Live west longitude correction is saved and fixed for a connection",
+          "[gps-correction][mission-ui]") {
+  QSettings settings(kSettingsOrg, kSettingsApp);
+  settings.remove(kSettingsWestLongitudeCorrection);
+  FlightDataModel model;
+  {
+    LiveTelemetryPage page(&model);
+    auto *toggle = page.findChild<QCheckBox *>("westLongitudeCorrection");
+    auto *details = page.findChild<QToolButton *>("linkDetailsToggle");
+    REQUIRE(toggle);
+    REQUIRE(details);
+    REQUIRE_FALSE(toggle->isChecked());
+    details->setChecked(true);
+    toggle->click();
+    REQUIRE(toggle->isChecked());
+    REQUIRE(settings.value(kSettingsWestLongitudeCorrection).toBool());
+    page.setActiveConnection("Receiver", true);
+    REQUIRE_FALSE(toggle->isEnabled());
+    toggle->click();
+    REQUIRE(toggle->isChecked());
+    page.setActiveConnection(QString(), false);
+    REQUIRE(toggle->isEnabled());
+  }
+  {
+    LiveTelemetryPage restored(&model);
+    auto *toggle = restored.findChild<QCheckBox *>("westLongitudeCorrection");
+    REQUIRE(toggle);
+    REQUIRE(toggle->isChecked());
+    const auto captureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
+    restored.resize(1280, 900);
+    restored.show();
+    for (const QString &theme :
+         {QStringLiteral("dark"), QStringLiteral("light")}) {
+      const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+      REQUIRE(skin);
+      cosmo::ThemeManager::instance().setActiveSkin(*skin);
+      restored.findChild<QToolButton *>("linkDetailsToggle")->setChecked(true);
+      QApplication::processEvents();
+      REQUIRE(toggle->isVisible());
+      REQUIRE(toggle->width() >= toggle->sizeHint().width());
+      if (!captureDir.isEmpty()) {
+        REQUIRE(QDir().mkpath(captureDir));
+        REQUIRE(restored.grab().save(captureDir + "/gps-correction-" + theme +
+                                     ".png"));
+      }
+    }
+  }
+  settings.remove(kSettingsWestLongitudeCorrection);
+}
+
 TEST_CASE(
     "Checklist profiles save edits and clear manual confirmations per session",
     "[mission-ui][checklist]") {

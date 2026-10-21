@@ -23,12 +23,17 @@ first worksheet.
 **`.telem` files:** Lines are hex-decoded and fed through the telemetry **Framer** / **Parser**. Those layers are still **stubs**, so `.telem` replay will not produce samples until binary framing and decoding are implemented.
 
 **Live serial:** Connect from the Live Telemetry page; the current newline-delimited
-CSV stream is decoded off the UI thread by `LineTelemetryDecodeWorker` and
+CSV stream uses integer FC milliseconds in its first (`timestamp_ms`) column.
+The Pico receiver and CosmoSoft must both use this format; legacy seconds-based
+live streams are not detected automatically. See [the live CSV contract](docs/protocol.md).
+The stream is decoded off the UI thread by `LineTelemetryDecodeWorker` and
 delivered to the model in bounded batches. Complete valid rows appear in the
 dashboard and Live Telemetry page. The binary `Framer` / `Parser` path remains
 reserved for the future hardware protocol. The live export snapshot retains at
 most 1,000,000 samples; if that limit is reached, new samples remain visible
 and the Event Log reports that they are no longer retained for export.
+Exports label the original millisecond timestamps `timestamp_ms`; UI timelines
+use seconds. Replay still accepts older `time_ms` and seconds-based `time` logs.
 
 Serial discovery has platform-matched implementations: Linux device nodes
 (`ttyUSB`, `ttyACM`, `ttyS`), macOS callout/TTY nodes (`cu.*`, `tty.*`), and

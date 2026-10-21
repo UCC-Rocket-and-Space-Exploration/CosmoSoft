@@ -72,7 +72,8 @@ bool FlightLogManager::exportSessionToCsv(const FlightSession &session) const {
         output.setLocale(QLocale::c());
         output.setRealNumberPrecision(17);
         output << QStringLiteral(
-            "time_ms,altitude,temperature,pressure,acceleration_x,acceleration_"
+            "timestamp_ms,altitude,temperature,pressure,acceleration_x,"
+            "acceleration_"
             "y,"
             "acceleration_z,latitude,longitude,battery_voltage,rssi,"
             "angular_velocity_x,angular_velocity_y,angular_velocity_z,"
