@@ -28,6 +28,63 @@ namespace {
 
 } // namespace
 
+TEST_CASE("Live CSV accepts packet RSSI and marks legacy RSSI unavailable",
+          "[telemetry][rssi]") {
+  const std::string legacy =
+      "251618,21,100227,221,0,0,9.81,0,0,0,0,0,0,51.89,-8.49,84";
+  const auto absent = cosmo::telemetry::decodeTelemetryCsvRow(legacy);
+  REQUIRE(absent);
+  REQUIRE(std::isnan(absent->rssi));
+  for (const int rssi : {-57, -93, -115, 0}) {
+    const auto sample = cosmo::telemetry::decodeTelemetryCsvRow(
+        legacy + ',' + std::to_string(rssi));
+    REQUIRE(sample);
+    REQUIRE(sample->rssi == rssi);
+    REQUIRE(sample->timestamp == 251618);
+    REQUIRE(sample->coordinates.longitude == -8.49);
+  }
+  for (const std::string suffix :
+       {",", ",nan", ",inf", ",1e300", ",-57 dBm", ",-57,10"}) {
+    REQUIRE_FALSE(cosmo::telemetry::decodeTelemetryCsvRow(legacy + suffix));
+  }
+}
+
+TEST_CASE("Fragmented live rows accept both RSSI header formats",
+          "[telemetry][rssi]") {
+  const std::string header =
+      "timestamp_ms,temp,pressure,altitude,ax,ay,az,gx,gy,gz,anglex,angley,"
+      "anglez,latitude,longitude,distance_from_base";
+  const std::string row = "1,21,100227,221,0,0,9.81,0,0,0,0,0,0,51.89,-8.49,84";
+  const auto bytes = asBytes(header + ",rssi\r\n" + row + ",-57\r\n" + header +
+                             '\n' + row + '\n');
+  cosmo::telemetry::LineTelemetryDecoder decoder;
+  std::vector<FlightSample> samples;
+  for (std::size_t i = 0; i < bytes.size(); i += 7) {
+    auto decoded = decoder.ingest(bytes.data() + i,
+                                  std::min<std::size_t>(7, bytes.size() - i));
+    samples.insert(samples.end(), decoded.begin(), decoded.end());
+  }
+  REQUIRE(samples.size() == 2);
+  REQUIRE(samples.at(0).rssi == -57);
+  REQUIRE(std::isnan(samples.at(1).rssi));
+  REQUIRE(decoder.malformedLineCount() == 0);
+  REQUIRE(decoder.lastRowDiagnostic().sequence == 2);
+  const auto invalid = asBytes(row + ",invalid\n");
+  REQUIRE(decoder.ingest(invalid.data(), invalid.size()).empty());
+  REQUIRE(decoder.lastRowDiagnostic().malformed);
+  REQUIRE(decoder.malformedLineCount() == 1);
+}
+
+TEST_CASE("Demo CSV carries its simulated RSSI", "[telemetry][rssi]") {
+  for (const std::size_t index : {0U, 1U, 40U}) {
+    const auto packet = cosmo::flightlink::buildLaunchTelemetryPacket(index);
+    const auto sample = cosmo::telemetry::decodeTelemetryCsvRow(packet.line);
+    REQUIRE(sample);
+    REQUIRE(std::isfinite(sample->rssi));
+    REQUIRE(std::abs(sample->rssi - packet.sample.rssi) <= 0.005);
+  }
+}
+
 TEST_CASE("West longitude correction is explicit and preserves GPS latitude",
           "[telemetry][gps-correction]") {
   const auto received = cosmo::telemetry::decodeTelemetryCsvRow(

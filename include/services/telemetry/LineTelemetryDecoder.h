@@ -27,7 +27,7 @@
 
 namespace cosmo::telemetry {
 
-/** @brief Number of numeric columns in the live CSV telemetry row. */
+/** @brief Number of mandatory numeric columns, before optional packet RSSI. */
 inline constexpr std::size_t kLiveTelemetryCsvFieldCount = 16;
 
 /** @brief Maximum buffered bytes accepted for one live telemetry line. */
@@ -40,7 +40,11 @@ inline constexpr double kMaxLiveTelemetryMagnitude = 1.0e12;
 inline constexpr std::string_view kLiveTelemetryCsvHeader =
     "timestamp_ms,temp,pressure,altitude,ax,ay,az,gx,gy,gz,anglex,angley,"
     "anglez,"
-    "latitude,longitude,distance_from_base";
+    "latitude,longitude,distance_from_base,rssi";
+
+/** @brief Older millisecond header without receiver-provided RSSI. */
+inline constexpr std::string_view kLegacyLiveTelemetryCsvHeader =
+    kLiveTelemetryCsvHeader.substr(0, kLiveTelemetryCsvHeader.rfind(','));
 
 /** @brief Remove trailing CR/LF bytes from a serial text line. */
 inline std::string stripLineEnding(std::string_view line) {
@@ -99,8 +103,9 @@ inline bool isValidLiveTimestampMilliseconds(double value) {
  */
 inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
     const std::string clean = stripLineEnding(row);
-    if (clean.empty() || clean == kLiveTelemetryCsvHeader) {
-        return std::nullopt;
+    if (clean.empty() || clean == kLiveTelemetryCsvHeader ||
+        clean == kLegacyLiveTelemetryCsvHeader) {
+      return std::nullopt;
     }
 
     std::array<double, kLiveTelemetryCsvFieldCount> values{};
@@ -108,12 +113,12 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
     for (std::size_t index = 0; index < values.size(); ++index) {
         const std::size_t separator = clean.find(',', cellStart);
         const bool isLastCell = index + 1 == values.size();
-        if ((!isLastCell && separator == std::string::npos)
-            || (isLastCell && separator != std::string::npos)) {
-            return std::nullopt;
+        if (!isLastCell && separator == std::string::npos) {
+          return std::nullopt;
         }
 
-        const std::size_t cellEnd = isLastCell ? clean.size() : separator;
+        const std::size_t cellEnd =
+            separator == std::string::npos ? clean.size() : separator;
         auto parsed = parseFiniteDouble(
             std::string_view(clean).substr(cellStart, cellEnd - cellStart));
         if (!parsed) {
@@ -121,6 +126,17 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
         }
         values[index] = *parsed;
         cellStart = cellEnd + 1;
+    }
+
+    // A legacy row has no link-strength measurement. Do not invent 0 dBm.
+    double rssi = std::numeric_limits<double>::quiet_NaN();
+    if (cellStart <= clean.size()) {
+      const auto parsed =
+          parseFiniteDouble(std::string_view(clean).substr(cellStart));
+      if (!parsed || std::abs(*parsed) > kMaxLiveTelemetryMagnitude) {
+        return std::nullopt;
+      }
+      rssi = *parsed;
     }
 
     if (std::any_of(values.begin(), values.end(), [](const double value) {
@@ -136,6 +152,7 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
 
     FlightSample sample{};
     sample.timestamp = static_cast<long>(values[0]);
+    sample.rssi = rssi;
     sample.temperature = values[1];
     sample.pressure = values[2];
     sample.altitude = values[3];
@@ -274,8 +291,9 @@ public:
 private:
     void processLine(std::string_view line, std::vector<FlightSample> &samples) {
         const std::string clean = stripLineEnding(line);
-        if (clean.empty() || clean == kLiveTelemetryCsvHeader) {
-            return;
+        if (clean.empty() || clean == kLiveTelemetryCsvHeader ||
+            clean == kLegacyLiveTelemetryCsvHeader) {
+          return;
         }
 
         auto sample = decodeTelemetryCsvRow(clean);

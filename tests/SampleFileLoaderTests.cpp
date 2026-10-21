@@ -22,6 +22,29 @@ namespace {
 
 } // namespace
 
+TEST_CASE("Received RSSI survives export and missing RSSI stays unavailable",
+          "[import][export][rssi]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const std::string row =
+      "251618,21,100227,221,0,0,9.81,0,0,0,0,0,0,51.89,-8.49,84";
+  const auto measured = cosmo::telemetry::decodeTelemetryCsvRow(row + ",-57");
+  const auto missing = cosmo::telemetry::decodeTelemetryCsvRow(row);
+  REQUIRE(measured);
+  REQUIRE(missing);
+  FlightLogManager logs;
+  logs.setOutputPath(directory.filePath("rssi.csv").toStdString());
+  REQUIRE(logs.appendSample(*measured));
+  REQUIRE(logs.appendSample(*missing));
+  REQUIRE(logs.exportSessionToCsv());
+  FlightSession reloaded;
+  REQUIRE_FALSE(SampleFileLoader::loadTheseusCsv(logs.outputPath(), reloaded)
+                    .has_value());
+  REQUIRE(reloaded.samples.size() == 2);
+  REQUIRE(reloaded.samples[0].rssi == -57);
+  REQUIRE(std::isnan(reloaded.samples[1].rssi));
+}
+
 TEST_CASE("Corrected live GPS remains in the western hemisphere after export",
           "[import][export][gps-correction]") {
   QTemporaryDir directory;

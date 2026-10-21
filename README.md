@@ -28,7 +28,9 @@ The Pico receiver and CosmoSoft must both use this format; legacy seconds-based
 live streams are not detected automatically. See [the live CSV contract](docs/protocol.md).
 The stream is decoded off the UI thread by `LineTelemetryDecodeWorker` and
 delivered to the model in bounded batches. Complete valid rows appear in the
-dashboard and Live Telemetry page. The binary `Framer` / `Parser` path remains
+dashboard and Live Telemetry page. The optional 17th field carries the ground
+station's packet RSSI in dBm; older 16-field rows show **—** for RSSI.
+The binary `Framer` / `Parser` path remains
 reserved for the future hardware protocol. The live export snapshot retains at
 most 1,000,000 samples; if that limit is reached, new samples remain visible
 and the Event Log reports that they are no longer retained for export.

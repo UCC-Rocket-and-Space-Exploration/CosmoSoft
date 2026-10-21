@@ -850,7 +850,7 @@ void LiveTelemetryPage::updateLinkDiagnostics(
     if (!invalid.isEmpty())
       issues << tr("Invalid: %1").arg(invalid.join(", "));
     if (row.malformed && issues.isEmpty())
-      issues << tr("Last packet invalid: layout or size");
+      issues << tr("Last packet invalid: layout or values");
     const auto message = issues.join(" · ");
     if (message != m_lastDiagnosticMessage) {
       m_lastDiagnosticMessage = message;

@@ -15,6 +15,7 @@
 #include "services/import/SampleFileLoader.h"
 #include "services/preview/FlightPreviewCache.h"
 #include "services/telemetry/LineTelemetryBatchMailbox.h"
+#include "services/telemetry/LineTelemetryDecoder.h"
 #include "services/telemetry/RecordedComms.h"
 #include "services/telemetry/TelemetrySession.h"
 
@@ -94,6 +95,39 @@ bool pumpUntil(const std::function<bool()> &predicate) {
   return predicate();
 }
 } // namespace
+
+TEST_CASE("Live RSSI displays measurements and clears unavailable values",
+          "[rssi][widgets]") {
+  FlightDataModel model;
+  LiveTelemetryPage live(&model);
+  live.resize(1280, 900);
+  live.show();
+  StatTileWidget *rssiTile = nullptr;
+  for (auto *tile : live.findChildren<StatTileWidget *>()) {
+    if (tile->accessibleName().startsWith("RSSI:"))
+      rssiTile = tile;
+  }
+  REQUIRE(rssiTile);
+  const std::string row =
+      "251618,21,100227,221,0,0,9.81,0,0,0,0,0,0,51.89,-8.49,84";
+  for (const QString &theme :
+       {QStringLiteral("dark"), QStringLiteral("light")}) {
+    const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+    REQUIRE(skin);
+    cosmo::ThemeManager::instance().setActiveSkin(*skin);
+    for (const auto &entry :
+         {std::pair{std::string(",-57"), QStringLiteral("RSSI: -57.0 dBm")},
+          std::pair{std::string(), QStringLiteral("RSSI: —")},
+          std::pair{std::string(",0"), QStringLiteral("RSSI: 0.0 dBm")}}) {
+      const auto sample =
+          cosmo::telemetry::decodeTelemetryCsvRow(row + entry.first);
+      REQUIRE(sample);
+      model.appendLiveBatch({*sample});
+      QApplication::processEvents();
+      REQUIRE(rssiTile->accessibleName() == entry.second);
+    }
+  }
+}
 
 TEST_CASE("Live west longitude correction is saved and fixed for a connection",
           "[gps-correction][mission-ui]") {
