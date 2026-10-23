@@ -119,7 +119,8 @@ generators, or build with `--config Debug` for Visual Studio and Xcode.
 Run tests with `ctest --test-dir build -C Debug --output-on-failure`.
 
 GitHub Actions builds and tests Debug configurations on Linux, macOS, and
-Windows using Qt 6.7.3. Runs start for pushes and pull requests to `main`,
+Windows. Linux and Windows use Qt 6.7.3; macOS uses Qt 6.9.3 on the macOS 26
+runner for current Xcode and SDK compatibility. Runs start for pushes and pull requests to `main`,
 or manually through Actions → Build → Run workflow. Open the failing job's
 Configure, Build, or Test step to inspect errors; failed runs also upload
 CTest diagnostics when available. Windows uses MSVC and vcpkg for Zlib.

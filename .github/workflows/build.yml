@@ -42,7 +42,7 @@ jobs:
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.7.3'
+          version: ${{ runner.os == 'macOS' && '6.9.3' || '6.7.3' }}
           arch: ${{ matrix.qt_arch }}
           modules: 'qtcharts qtwebengine qtwebchannel qtpositioning'
           cache: true

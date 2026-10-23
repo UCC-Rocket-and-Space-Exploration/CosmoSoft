@@ -70,6 +70,7 @@
 #include <catch2/catch_session.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
+#include <iostream>
 #include <limits>
 
 namespace {
@@ -1719,6 +1720,8 @@ TEST_CASE("Replay overview never connects across omitted missing rows",
 }
 
 int main(int argc, char **argv) {
+  std::cout << std::unitbuf;
+  std::cerr << "GUI test startup: QApplication\n";
   QApplication application(argc, argv);
   application.setQuitOnLastWindowClosed(false);
   QTemporaryDir settings;
@@ -1732,7 +1735,9 @@ int main(int argc, char **argv) {
     application.setFont(
         QFont(QFontDatabase::applicationFontFamilies(id).first(), 12));
   BlockNetwork block;
+  std::cerr << "GUI test startup: WebEngine profile\n";
   QWebEngineProfile::defaultProfile()->setUrlRequestInterceptor(&block);
+  std::cerr << "GUI test startup: Catch2\n";
   const int result = Catch::Session().run(argc, argv);
   QWebEngineProfile::defaultProfile()->setUrlRequestInterceptor(nullptr);
   return result;
