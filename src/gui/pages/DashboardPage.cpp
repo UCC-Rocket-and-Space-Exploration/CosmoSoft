@@ -731,8 +731,11 @@ void DashboardPage::applyChartTheme() {
         for (auto *abstractSeries : chart->series()) {
             auto *series = qobject_cast<QLineSeries *>(abstractSeries);
             if (!series || !series->property("metricIndex").isValid()) continue;
-            series->setPen(QPen(metricColor(series->property("metricIndex").toInt()), 1.25, Qt::SolidLine, Qt::FlatCap,
-                                Qt::MiterJoin));
+            series->setPen(QPen(
+                metricColor(series->property("metricIndex").toInt()), 1.25,
+                series->property("isolatedPoints").toBool() ? Qt::NoPen
+                                                            : Qt::SolidLine,
+                Qt::FlatCap, Qt::MiterJoin));
             series->setPointLabelsColor(QColor(Theme::kTextPrimary()));
         }
     }
@@ -774,53 +777,65 @@ void DashboardPage::applyChartTheme() {
         for (auto *abstractSeries : m_comparisonChart->series()) {
             auto *series = qobject_cast<QLineSeries *>(abstractSeries);
             if (!series || !series->property("metricIndex").isValid()) continue;
-            series->setPen(QPen(metricColor(series->property("metricIndex").toInt()), 1.25,
-                                Qt::SolidLine, Qt::FlatCap, Qt::MiterJoin));
+            series->setPen(QPen(
+                metricColor(series->property("metricIndex").toInt()), 1.25,
+                series->property("isolatedPoints").toBool() ? Qt::NoPen
+                                                            : Qt::SolidLine,
+                Qt::FlatCap, Qt::MiterJoin));
             series->setPointLabelsColor(QColor(Theme::kTextPrimary()));
         }
     }
     refreshEventMarkerTheme();
 }
 
+void DashboardPage::clearChartGapSeries() {
+  for (auto *chart : m_traceCharts) {
+    for (auto *series : chart->series()) {
+      if (!series->property("gapSegment").toBool())
+        continue;
+      chart->removeSeries(series);
+      const std::unique_ptr<QAbstractSeries> removed(series);
+    }
+  }
+}
+
 void DashboardPage::configureTracePlots() {
-    for (auto *chart : m_traceCharts) {
-        for (auto *series : chart->series()) {
-            if (!series->property("gapSegment").toBool()) continue;
-            chart->removeSeries(series);
-            const std::unique_ptr<QAbstractSeries> removed(series);
-        }
-    }
-    const int enabledCount = countEnabledMetrics();
-    const bool focused = m_comparisonActive && enabledCount == 1;
-    const bool stackedComparison = m_comparisonActive && enabledCount > 2;
-    int primary = -1;
-    for (int metric = 0; metric < kMetricCount; ++metric) {
-        if (m_metricEnabled[metric] && primary < 0) primary = metric;
-        auto *view = m_traceViews[metric];
-        view->setVisible(m_metricEnabled[metric]);
-        view->setMinimumHeight(focused ? 520 : (stackedComparison ? 260 : (enabledCount > 1 ? 160 : 280)));
-        view->setAccessibleName(metricDisplayTitle(metric, m_imperialUnits));
-        view->setAccessibleDescription(
-            tr("Original samples. Drag to pan, wheel to zoom, left and right arrows to inspect, double-click to fit."));
-    }
-    if (primary < 0) {
-        primary = 0;
-        m_traceViews[0]->show();
-    }
-    const bool primaryChanged = m_chart != m_traceCharts[primary];
-    const QSignalBlocker migration(
-        this); // Moving chart representations does not edit annotations.
-    const auto markers = m_eventMarkers;
-    if (primaryChanged) clearEventMarkers();
-    m_chart = m_traceCharts[primary];
-    m_chartView = m_traceViews[primary];
-    m_axisX = m_traceAxesX[primary];
-    m_axisY = m_traceAxesY[primary];
-    if (primaryChanged) {
-        for (const auto &marker : markers)
-            addEventMarker(marker.timeSec, marker.name);
-    }
-    updateComparisonControls();
+  const int enabledCount = countEnabledMetrics();
+  const bool focused = m_comparisonActive && enabledCount == 1;
+  const bool stackedComparison = m_comparisonActive && enabledCount > 2;
+  int primary = -1;
+  for (int metric = 0; metric < kMetricCount; ++metric) {
+    if (m_metricEnabled[metric] && primary < 0)
+      primary = metric;
+    auto *view = m_traceViews[metric];
+    view->setVisible(m_metricEnabled[metric]);
+    view->setMinimumHeight(
+        focused ? 520
+                : (stackedComparison ? 260 : (enabledCount > 1 ? 160 : 280)));
+    view->setAccessibleName(metricDisplayTitle(metric, m_imperialUnits));
+    view->setAccessibleDescription(
+        tr("Original samples. Drag to pan, wheel to zoom, left and right "
+           "arrows to inspect, double-click to fit."));
+  }
+  if (primary < 0) {
+    primary = 0;
+    m_traceViews[0]->show();
+  }
+  const bool primaryChanged = m_chart != m_traceCharts[primary];
+  const QSignalBlocker migration(
+      this); // Moving chart representations does not edit annotations.
+  const auto markers = m_eventMarkers;
+  if (primaryChanged)
+    clearEventMarkers();
+  m_chart = m_traceCharts[primary];
+  m_chartView = m_traceViews[primary];
+  m_axisX = m_traceAxesX[primary];
+  m_axisY = m_traceAxesY[primary];
+  if (primaryChanged) {
+    for (const auto &marker : markers)
+      addEventMarker(marker.timeSec, marker.name);
+  }
+  updateComparisonControls();
 }
 
 void DashboardPage::updateComparisonControls()
@@ -908,6 +923,8 @@ void DashboardPage::rebuildComparisonChart()
             auto *line = new QLineSeries();
             line->setProperty("metricIndex", metric);
             line->setProperty("gapSegment", sourceLine->property("gapSegment"));
+            line->setProperty("isolatedPoints",
+                              sourceLine->property("isolatedPoints"));
             line->setName(sourceLine->name());
             line->setPen(sourceLine->pen());
             line->replace(sourceLine->points());
@@ -1533,7 +1550,8 @@ void DashboardPage::applySeriesPointDisplay(QLineSeries *series, int pointCount)
 
     const bool markersOn = !m_showMarkersToggle || m_showMarkersToggle->isChecked();
     const bool showVertices = markersOn && pointCount > 0 && pointCount <= 400;
-    series->setPointsVisible(showVertices);
+    series->setPointsVisible(showVertices ||
+                             series->property("isolatedPoints").toBool());
 
     const bool wantLabels = m_showPointValuesToggle && m_showPointValuesToggle->isChecked();
     const bool showLabels = wantLabels && pointCount > 0 && pointCount <= 20;
@@ -1887,6 +1905,7 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
         return;
     }
 
+    clearChartGapSeries();
     configureTracePlots();
     if (m_chartView) m_chartView->invalidateHoverSeriesCache();
 
@@ -1945,7 +1964,8 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
             rangeEnd = range.end;
         }
         const int budget = chartPointBudget();
-        const auto indices = ChartSamples::select(samples, begin, rangeEnd, budget, m_metricEnabled);
+        const auto indices = m_preview->chartIndices(
+            *m_session, begin, rangeEnd, budget, m_metricEnabled);
         m_replayChartBuiltBucket = m_preview->replayBucket(end, budget);
         buildChartFromSampleIndices(samples, indices, n, begin, rangeEnd);
     } else {
@@ -1955,6 +1975,7 @@ void DashboardPage::rebuildReplayCharts(int trailLength) {
 }
 
 void DashboardPage::onSessionReset() {
+  clearChartGapSeries();
   m_preserveChartAxes = false;
   if (m_renderSchedulerTimer)
     m_renderSchedulerTimer->stop();
@@ -2006,6 +2027,7 @@ void DashboardPage::rebuildLiveSeriesFromHistory() {
         return;
     }
 
+    clearChartGapSeries();
     configureTracePlots();
     if (m_chartView) m_chartView->invalidateHoverSeriesCache();
 
@@ -2212,9 +2234,19 @@ void DashboardPage::buildChartFromSampleIndices(const std::vector<FlightSample> 
         const bool hasFiniteRange = std::isfinite(lo) && std::isfinite(hi);
         QList<QPointF> pts;
         pts.reserve(plotN);
+        QList<QPointF> isolatedPoints;
+        int lineSegments = 0;
         bool firstSegment = true;
         const auto flushSegment = [&]() {
             if (pts.isEmpty()) return;
+            // Dense gaps remain visible as points without unbounded Qt objects
+            // or a line that implies measurements inside a missing interval.
+            constexpr int kMaxLineSegments = 32;
+            if (pts.size() == 1 || lineSegments >= kMaxLineSegments) {
+              isolatedPoints.append(pts);
+              pts.clear();
+              return;
+            }
             auto *segment = series;
             if (!firstSegment) {
                 segment = std::make_unique<QLineSeries>().release();
@@ -2229,20 +2261,52 @@ void DashboardPage::buildChartFromSampleIndices(const std::vector<FlightSample> 
             segment->setVisible(true);
             applySeriesPointDisplay(segment, static_cast<int>(plotSamples.size()));
             firstSegment = false;
+            ++lineSegments;
             pts.clear();
         };
         series->clear();
         series->setVisible(false);
+        int previousIndex = -1;
         for (const PlotSample &plotSample : plotSamples) {
             const auto &sample = samples[plotSample.sampleIndex];
             const double y = metricDisplayValue(mi, sampleValueForMetric(sample, mi), m_imperialUnits);
             if (!std::isfinite(y) || !hasFiniteRange) {
                 flushSegment();
+                previousIndex = -1;
                 continue;
             }
+            if (previousIndex >= 0) {
+              const int gapBegin =
+                  std::min(previousIndex, plotSample.sampleIndex) + 1;
+              const int gapEnd =
+                  std::max(previousIndex, plotSample.sampleIndex);
+              const bool missing =
+                  usePreviewTime ? m_preview->chartHasMissing(*m_session, mi,
+                                                              gapBegin, gapEnd)
+                                 : cosmo::preview::ChartOverview{}.hasMissing(
+                                       samples, mi, gapBegin, gapEnd);
+              if (missing)
+                flushSegment();
+            }
             pts.append(QPointF(plotSample.x, y));
+            previousIndex = plotSample.sampleIndex;
         }
         flushSegment();
+        if (!isolatedPoints.isEmpty()) {
+          auto *points = std::make_unique<QLineSeries>().release();
+          points->setProperty("metricIndex", mi);
+          points->setProperty("gapSegment", true);
+          points->setProperty("isolatedPoints", true);
+          points->setName(metricDisplayTitle(mi, m_imperialUnits));
+          auto pen = series->pen();
+          pen.setStyle(Qt::NoPen);
+          points->setPen(pen);
+          series->chart()->addSeries(points);
+          for (auto *axis : series->attachedAxes())
+            points->attachAxis(axis);
+          points->replace(isolatedPoints);
+          applySeriesPointDisplay(points, static_cast<int>(plotSamples.size()));
+        }
         series->setName(metricDisplayTitle(mi, m_imperialUnits));
     }
 
@@ -2304,9 +2368,9 @@ void DashboardPage::buildChartFromSampleIndices(const std::vector<FlightSample> 
         std::array<bool, kMetricCount> hasData{};
         for (int i = 0; i < kMetricCount; ++i) {
             const bool enabled = m_metricEnabled[static_cast<std::size_t>(i)];
-            hasData[static_cast<std::size_t>(i)] = !enabled
-                || (m_lineSeries[static_cast<std::size_t>(i)]
-                    && m_lineSeries[static_cast<std::size_t>(i)]->count() > 0);
+            hasData[static_cast<std::size_t>(i)] =
+                !enabled || (std::isfinite(yMin[static_cast<std::size_t>(i)]) &&
+                             std::isfinite(yMax[static_cast<std::size_t>(i)]));
         }
         m_tracesPanel->setMetricDataStates(hasData);
     }

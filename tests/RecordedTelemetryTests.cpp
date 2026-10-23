@@ -17,6 +17,7 @@
 #include <QTemporaryDir>
 #include <QThread>
 #include <QTimer>
+#include <array>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
@@ -26,8 +27,43 @@
 #include <limits>
 #include <mutex>
 
+#if !defined(_WIN32)
+#include "gateway/comms/Posix/SerialCommsPosix.h"
+#include <cstdlib>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 using namespace std::chrono_literals;
 using namespace cosmo::telemetry;
+
+TEST_CASE("Serial backend reports peer hangup after readable data",
+          "[serial][hangup]") {
+#if defined(_WIN32)
+  SKIP("POSIX pseudo-terminal regression; Windows uses its own serial backend");
+#else
+  const int descriptor = ::posix_openpt(O_RDWR | O_NOCTTY);
+  REQUIRE(descriptor >= 0);
+  QFile peer;
+  REQUIRE(peer.open(descriptor, QIODevice::ReadWrite,
+                    QFileDevice::AutoCloseHandle));
+  REQUIRE(::grantpt(descriptor) == 0);
+  REQUIRE(::unlockpt(descriptor) == 0);
+  const char *device = ::ptsname(descriptor);
+  REQUIRE(device != nullptr);
+  SerialCommsPosix connection(device);
+  REQUIRE(connection.open());
+  REQUIRE(peer.write("abc", 3) == 3);
+  REQUIRE(peer.flush());
+  std::array<uint8_t, 8> buffer{};
+  REQUIRE(connection.read(buffer.data(), buffer.size()) == 3);
+  REQUIRE(buffer[0] == 'a');
+  REQUIRE(buffer[2] == 'c');
+  peer.close();
+  REQUIRE(connection.read(buffer.data(), buffer.size()) == -1);
+  REQUIRE_FALSE(connection.isOpen());
+#endif
+}
 
 TEST_CASE("GPS trajectory aligns held positions using elapsed time and never "
           "extrapolates",

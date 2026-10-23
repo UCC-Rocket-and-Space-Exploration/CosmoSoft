@@ -1,6 +1,7 @@
 #include "gui/AttitudeMath.h"
 #include "gui/widgets/ChartSamples.h"
 #include "gui/widgets/MetricDefs.h"
+#include "services/preview/FlightPreviewCache.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -63,6 +64,81 @@ TEST_CASE("Chart overview preserves spikes in every trace and missing-value boun
     REQUIRE(samples[4501].altitude == 12345.678901);
     REQUIRE(samples[4503].temperature == 890.125);
     REQUIRE(ChartSamples::select(samples, 20, 10, 0, enabled).empty());
+}
+
+TEST_CASE("Chart overview bounds alternating missing measurements",
+          "[gui][chart][chart-budget]") {
+  std::vector<FlightSample> samples(100000);
+  for (std::size_t i = 0; i < samples.size(); ++i) {
+    samples[i].altitude = i % 2 == 0 ? static_cast<double>(i)
+                                     : std::numeric_limits<double>::quiet_NaN();
+  }
+  std::array<bool, MetricDefs::kMetricCount> enabled{};
+  enabled[0] = true;
+  const auto indices = ChartSamples::select(samples, 0, 100000, 1000, enabled);
+  REQUIRE(indices.size() <= 1000);
+  REQUIRE(indices.front() == 0);
+  REQUIRE(indices.back() == 99999);
+  for (const int budget : {0, 1, 2, 3, 7}) {
+    REQUIRE(ChartSamples::select(samples, 0, 100000, budget, enabled).size() <=
+            static_cast<std::size_t>(budget));
+  }
+}
+
+TEST_CASE("Replay overview retains every metric's extrema and gap boundaries",
+          "[preview][chart][chart-budget]") {
+  FlightSession session;
+  session.samples.resize(12000);
+  for (int i = 0; i < 12000; ++i) {
+    session.samples[i].timestamp = i * 10;
+    session.samples[i].altitude = 100;
+    session.samples[i].temperature = 20;
+  }
+  session.samples[4501].altitude = 12345;
+  session.samples[4502].altitude = -9876;
+  session.samples[4503].temperature = 890;
+  session.samples[4504].temperature = -765;
+  session.samples[8000].altitude = std::numeric_limits<double>::quiet_NaN();
+  std::array<bool, MetricDefs::kMetricCount> enabled{};
+  enabled[0] = enabled[1] = true;
+  const auto preview = cosmo::preview::FlightPreviewCache::build(session);
+  REQUIRE(preview);
+  const auto indices = preview->chartIndices(session, 0, 12000, 1000, enabled);
+  REQUIRE(indices.size() <= 1000);
+  for (const int index : {4501, 4502, 4503, 4504, 7999, 8000, 8001}) {
+    REQUIRE(std::binary_search(indices.begin(), indices.end(), index));
+  }
+}
+
+TEST_CASE("Replay gap queries respect metric and half-open range boundaries",
+          "[preview][chart][chart-budget]") {
+  FlightSession session;
+  session.samples.resize(300);
+  const double missing = std::numeric_limits<double>::quiet_NaN();
+  for (int i = 0; i < 300; ++i)
+    session.samples[i].timestamp = i;
+  for (const int index : {0, 63, 64, 127, 128, 299})
+    session.samples[index].altitude = missing;
+  const auto preview = cosmo::preview::FlightPreviewCache::build(session);
+  REQUIRE(preview);
+  for (const int index : {0, 63, 64, 127, 128, 299}) {
+    REQUIRE(preview->chartHasMissing(session, 0, index, index + 1));
+    REQUIRE_FALSE(preview->chartHasMissing(session, 1, index, index + 1));
+    REQUIRE_FALSE(preview->chartHasMissing(session, 0, index, index));
+  }
+  REQUIRE_FALSE(preview->chartHasMissing(session, 0, 1, 63));
+  REQUIRE_FALSE(preview->chartHasMissing(session, 0, 129, 299));
+  REQUIRE(preview->chartHasMissing(session, 0, 1, 299));
+  FlightSession other = session;
+  REQUIRE(preview->chartHasMissing(other, 0, 1, 63));
+}
+
+TEST_CASE("Replay chart summaries observe cancellation",
+          "[preview][chart][chart-budget]") {
+  std::vector<FlightSample> samples(100000);
+  cosmo::detail::CancellationState cancellation([] { return true; });
+  cosmo::preview::ChartOverview overview;
+  REQUIRE_FALSE(overview.build(samples, cancellation));
 }
 
 TEST_CASE("Metric display conversion preserves SI values in metric mode", "[gui][units]") {

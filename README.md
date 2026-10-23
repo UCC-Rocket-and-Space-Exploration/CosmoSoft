@@ -188,6 +188,9 @@ and Live Telemetry shows orientation against fixed axes. A synthetic replay is a
   (the internal CMake target remains `cosmo-soft-bin`). Multi-config builds use
   the configuration directory shown above.
 - Optional Qt **Vulkan** lookup is disabled in CMake when the Vulkan SDK is absent, to keep configure output quiet.
+- The serial hangup regression uses an operating-system pseudo-terminal on macOS
+  and Linux, without serial hardware. Windows skips that POSIX-specific test;
+  its serial backend is implemented separately.
 
 ## License
 

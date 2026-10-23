@@ -180,6 +180,7 @@ private:
   void refreshAllSeriesFromData();
   void applyChartTheme();
   void configureTracePlots();
+  void clearChartGapSeries();
   void enterComparisonView();
   void exitComparisonView();
   void rebuildComparisonChart();

@@ -1578,6 +1578,146 @@ TEST_CASE("TELEM imports render and replay while the GUI processes events",
   }
 }
 
+TEST_CASE("Fragmented telemetry stays visible with bounded chart series",
+          "[chart-fragments][widgets]") {
+  bool alternating = false;
+  SECTION("Isolated measurements") { alternating = true; }
+  SECTION("Short contiguous runs") {}
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  dashboard.resize(1200, 900);
+  dashboard.show();
+  auto session = std::make_shared<FlightSession>();
+  for (int i = 0; i < 240; ++i) {
+    FlightSample sample;
+    sample.timestamp = i * 1000;
+    sample.altitude = (alternating ? i % 2 == 0 : i % 4 < 2)
+                          ? 100 + i
+                          : std::numeric_limits<double>::quiet_NaN();
+    sample.temperature = 20 + i;
+    session->samples.push_back(sample);
+  }
+  const auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+  model.setReplayMode(true);
+  replay.setSession(session, preview);
+  dashboard.setReplaySession(session, preview);
+  for (auto *check : dashboard.findChildren<QCheckBox *>("traceCheck"))
+    check->setChecked(check->text() == "Alt" || check->text() == "Temp");
+  replay.setPosition(240);
+  REQUIRE(pumpUntil([&] {
+    for (auto *view : dashboard.findChildren<QChartView *>()) {
+      qsizetype points = 0;
+      for (auto *series : view->chart()->series())
+        if (auto *line = qobject_cast<QLineSeries *>(series))
+          if (line->property("metricIndex").toInt() == 0)
+            points += line->count();
+      if (points == 120)
+        return true;
+    }
+    return false;
+  }));
+
+  for (auto *button : dashboard.findChildren<QPushButton *>())
+    if (button->text() == "Compare selected")
+      button->click();
+  for (const QString &theme :
+       {QStringLiteral("dark"), QStringLiteral("light")}) {
+    const auto skin = cosmo::SkinLoader::loadBuiltin(":/skins/" + theme);
+    REQUIRE(skin);
+    cosmo::ThemeManager::instance().setActiveSkin(*skin);
+    int chartsWithAltitude = 0;
+    for (auto *view : dashboard.findChildren<QChartView *>()) {
+      int seriesCount = 0;
+      qsizetype points = 0;
+      for (auto *series : view->chart()->series()) {
+        auto *line = qobject_cast<QLineSeries *>(series);
+        if (!line || !line->property("metricIndex").isValid() ||
+            line->property("metricIndex").toInt() != 0)
+          continue;
+        ++seriesCount;
+        points += line->count();
+        if (line->pen().style() == Qt::NoPen) {
+          REQUIRE(line->pointsVisible());
+          continue;
+        }
+        const auto vertices = line->points();
+        for (qsizetype i = 1; i < vertices.size(); ++i)
+          REQUIRE(vertices[i].x() - vertices[i - 1].x() == 1.0);
+      }
+      if (points > 0) {
+        ++chartsWithAltitude;
+        REQUIRE(seriesCount <= 40);
+        REQUIRE(points == 120);
+      }
+    }
+    REQUIRE(chartsWithAltitude == 2);
+    const auto captureDir = qEnvironmentVariable("COSMO_TEST_SCREENSHOTS");
+    if (!captureDir.isEmpty())
+      REQUIRE(
+          dashboard.grab().save(captureDir + "/chart-fragments-" + theme +
+                                (alternating ? "-isolated.png" : "-runs.png")));
+  }
+  dashboard.setReplayTrailLength(0);
+  REQUIRE(pumpUntil([&] {
+    for (auto *view : dashboard.findChildren<QChartView *>())
+      for (auto *series : view->chart()->series())
+        if (auto *line = qobject_cast<QLineSeries *>(series))
+          if (line->count() > 0)
+            return false;
+    return true;
+  }));
+}
+
+TEST_CASE("Replay overview never connects across omitted missing rows",
+          "[chart-fragments][widgets]") {
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  dashboard.resize(1200, 900);
+  dashboard.show();
+  auto session = std::make_shared<FlightSession>();
+  for (int i = 0; i < 12000; ++i) {
+    FlightSample sample;
+    sample.timestamp = i * 1000;
+    sample.altitude = i % 2 == 0 ? std::sin(i * 0.03) * 1000
+                                 : std::numeric_limits<double>::quiet_NaN();
+    session->samples.push_back(sample);
+  }
+  const auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+  model.setReplayMode(true);
+  replay.setSession(session, preview);
+  dashboard.setReplaySession(session, preview);
+  for (auto *check : dashboard.findChildren<QCheckBox *>("traceCheck"))
+    check->setChecked(check->text() == "Alt");
+  replay.setPosition(12000);
+  REQUIRE(pumpUntil([&] {
+    for (auto *view : dashboard.findChildren<QChartView *>())
+      for (auto *series : view->chart()->series())
+        if (auto *line = qobject_cast<QLineSeries *>(series))
+          if (line->property("metricIndex").toInt() == 0 && line->count() > 0)
+            return true;
+    return false;
+  }));
+  qsizetype points = 0;
+  for (auto *view : dashboard.findChildren<QChartView *>())
+    for (auto *series : view->chart()->series()) {
+      auto *line = qobject_cast<QLineSeries *>(series);
+      if (!line || !line->property("metricIndex").isValid() ||
+          line->property("metricIndex").toInt() != 0)
+        continue;
+      points += line->count();
+      if (line->pen().style() != Qt::NoPen)
+        REQUIRE(line->count() <= 1);
+      for (const auto &point : line->points()) {
+        const auto index = static_cast<std::size_t>(std::llround(point.x()));
+        REQUIRE(point.y() == session->samples[index].altitude);
+      }
+    }
+  REQUIRE(points > 0);
+  REQUIRE(points <= 6000);
+}
+
 int main(int argc, char **argv) {
   QApplication application(argc, argv);
   application.setQuitOnLastWindowClosed(false);

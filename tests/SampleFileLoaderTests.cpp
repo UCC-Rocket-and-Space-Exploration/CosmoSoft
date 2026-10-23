@@ -11,8 +11,11 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <fstream>
 #include <string>
+#include <vector>
+#include <zlib.h>
 
 namespace {
 
@@ -20,7 +23,144 @@ namespace {
     return std::string(COSMO_SOURCE_DIR) + "/sample_data/" + fileName;
 }
 
+void writeWorksheetZip(const std::string &path, const std::string &xml) {
+  const std::string name = "xl/worksheets/sheet1.xml";
+  std::vector<unsigned char> bytes;
+  const auto checksum = static_cast<std::uint32_t>(
+      crc32(0, reinterpret_cast<const Bytef *>(xml.data()),
+            static_cast<uInt>(xml.size())));
+  const auto integer = [&](std::uint32_t value, int count) {
+    for (int i = 0; i < count; ++i) {
+      bytes.push_back(static_cast<unsigned char>(value >> (8 * i)));
+    }
+  };
+  integer(0x04034b50, 4);
+  integer(20, 2);
+  integer(0, 2); // flags
+  integer(0, 2); // stored
+  integer(0, 4); // timestamp
+  integer(checksum, 4);
+  integer(static_cast<std::uint32_t>(xml.size()), 4);
+  integer(static_cast<std::uint32_t>(xml.size()), 4);
+  integer(static_cast<std::uint32_t>(name.size()), 2);
+  integer(0, 2);
+  bytes.insert(bytes.end(), name.begin(), name.end());
+  bytes.insert(bytes.end(), xml.begin(), xml.end());
+  const auto directoryOffset = static_cast<std::uint32_t>(bytes.size());
+  integer(0x02014b50, 4);
+  integer(20, 2);
+  integer(20, 2);
+  integer(0, 2);
+  integer(0, 2);
+  integer(0, 4);
+  integer(checksum, 4);
+  integer(static_cast<std::uint32_t>(xml.size()), 4);
+  integer(static_cast<std::uint32_t>(xml.size()), 4);
+  integer(static_cast<std::uint32_t>(name.size()), 2);
+  integer(0, 2);
+  integer(0, 2);
+  integer(0, 2);
+  integer(0, 2);
+  integer(0, 4);
+  integer(0, 4);
+  bytes.insert(bytes.end(), name.begin(), name.end());
+  const auto directorySize =
+      static_cast<std::uint32_t>(bytes.size()) - directoryOffset;
+  integer(0x06054b50, 4);
+  integer(0, 2);
+  integer(0, 2);
+  integer(1, 2);
+  integer(1, 2);
+  integer(directorySize, 4);
+  integer(directoryOffset, 4);
+  integer(0, 2);
+  std::ofstream file(path, std::ios::binary);
+  file.write(reinterpret_cast<const char *>(bytes.data()),
+             static_cast<std::streamsize>(bytes.size()));
+  REQUIRE(file.good());
+}
+
 } // namespace
+
+TEST_CASE(
+    "Blank scalar acceleration remains missing while measured zero is retained",
+    "[import][regression]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("scalar.csv").toStdString();
+  {
+    std::ofstream file(path);
+    file << "timestamp_ms,altitude,acceleration\n0,10,\n1,11,0\n2,12,9.81\n";
+  }
+  FlightSession session;
+  REQUIRE_FALSE(SampleFileLoader::loadTheseusCsv(path, session));
+  REQUIRE(session.samples.size() == 3);
+  CHECK(std::isnan(session.samples[0].acceleration.x));
+  CHECK(std::isnan(session.samples[0].acceleration.y));
+  CHECK(std::isnan(session.samples[0].acceleration.z));
+  CHECK(session.samples[1].acceleration.z == 0);
+  CHECK(session.samples[2].acceleration.z == Catch::Approx(9.81));
+}
+
+TEST_CASE(
+    "XLSX rejects rows beyond the column bound without replacing a session",
+    "[import][regression]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("columns.xlsx").toStdString();
+  std::string xml =
+      "<worksheet><sheetData><row><c "
+      "t=\"inlineStr\"><is><t>time_ms</t></is></c>"
+      "<c t=\"inlineStr\"><is><t>altitude</t></is></c></row><row>";
+  for (int i = 0; i < 16385; ++i) {
+    xml += "<c><v>1</v></c>";
+  }
+  xml += "</row></sheetData></worksheet>";
+  writeWorksheetZip(path, xml);
+  FlightSession session;
+  FlightSample sample;
+  sample.altitude = 42;
+  session.samples.push_back(sample);
+  REQUIRE(SampleFileLoader::loadXlsx(path, session));
+  REQUIRE(session.samples.size() == 1);
+  CHECK(session.samples[0].altitude == 42);
+}
+
+TEST_CASE("XLSX bounds cumulative worksheet rows", "[import][regression]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("rows.xlsx").toStdString();
+  std::string xml = "<worksheet><sheetData><row><c "
+                    "t=\"inlineStr\"><is><t>time_ms</t></is></c>"
+                    "<c t=\"inlineStr\"><is><t>altitude</t></is></c></row>"
+                    "<row><c><v>0</v></c><c><v>10</v></c></row>";
+  for (int i = 0; i < 1048575; ++i) {
+    xml += "<row/>";
+  }
+  xml += "</sheetData></worksheet>";
+  writeWorksheetZip(path, xml);
+  FlightSession session;
+  REQUIRE(SampleFileLoader::loadXlsx(path, session));
+  CHECK(session.samples.empty());
+}
+
+TEST_CASE("XLSX retains sparse telemetry columns and ignores unrelated cells",
+          "[import][regression]") {
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const auto path = directory.filePath("sparse.xlsx").toStdString();
+  writeWorksheetZip(
+      path, "<worksheet><sheetData><row>"
+            "<c r=\"A1\" t=\"inlineStr\"><is><t>time_ms</t></is></c>"
+            "<c r=\"XFD1\" t=\"inlineStr\"><is><t>altitude</t></is></c></row>"
+            "<row><c r=\"A2\"><v>25</v></c><c r=\"C2\"><v>unrelated</v></c>"
+            "<c r=\"XFD2\"><v>123.5</v></c></row></sheetData></worksheet>");
+  FlightSession session;
+  REQUIRE_FALSE(SampleFileLoader::loadXlsx(path, session));
+  REQUIRE(session.samples.size() == 1);
+  CHECK(session.samples[0].timestamp == 25);
+  CHECK(session.samples[0].altitude == Catch::Approx(123.5));
+}
 
 TEST_CASE("Received RSSI survives export and missing RSSI stays unavailable",
           "[import][export][rssi]") {
