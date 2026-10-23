@@ -71,8 +71,12 @@ public:
      *
      * The values correspond one-for-one with the owning dashboard's logical
      * hover sample map and are cached until the next chart rebuild.
+     * @param begin First active index in the shared immutable lookup.
+     * @param end Exclusive active end; -1 uses the whole lookup. Hover
+     * callbacks receive one-based indices into the whole lookup, including this
+     * offset.
      */
-    void setHoverXValues(QVector<double> values);
+    void setHoverXValues(QVector<double> values, int begin = 0, int end = -1);
 
     /** @brief Invalidates cached visible-series points after a chart mutation. */
     void invalidateHoverSeriesCache();
@@ -113,6 +117,7 @@ private:
     QLabel  *m_hoverOverlay     = nullptr;  ///< Floating text bubble that follows the cursor.
 
     QVector<double> m_hoverXValues;
+    int m_hoverBegin = 0, m_hoverEnd = 0;
     std::vector<HoverSeriesCacheEntry> m_hoverSeriesCache;
     bool m_hoverSeriesCacheDirty = true;
     int m_hoverIndex = -1;

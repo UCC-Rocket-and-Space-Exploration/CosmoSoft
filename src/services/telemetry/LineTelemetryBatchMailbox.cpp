@@ -17,10 +17,14 @@ void saturatingAdd(T &target, T increment) noexcept {
 
 void preserveCounters(LineTelemetryBatch &target,
                       const LineTelemetryBatch &source) noexcept {
-    saturatingAdd(target.receivedBytes, source.receivedBytes);
-    saturatingAdd(target.malformedLines, source.malformedLines);
-    saturatingAdd(target.droppedChunks, source.droppedChunks);
-    saturatingAdd(target.droppedBytes, source.droppedBytes);
+  if (source.rowDiagnostic &&
+      (!target.rowDiagnostic ||
+       source.rowDiagnostic->sequence > target.rowDiagnostic->sequence))
+    target.rowDiagnostic = source.rowDiagnostic;
+  saturatingAdd(target.receivedBytes, source.receivedBytes);
+  saturatingAdd(target.malformedLines, source.malformedLines);
+  saturatingAdd(target.droppedChunks, source.droppedChunks);
+  saturatingAdd(target.droppedBytes, source.droppedBytes);
 }
 
 } // namespace

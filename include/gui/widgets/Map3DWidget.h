@@ -18,9 +18,11 @@
 #ifndef COSMO_SOFT_MAP3DWIDGET_H
 #define COSMO_SOFT_MAP3DWIDGET_H
 
-#include <QWidget>
-#include <QVector>
+#include <QJsonObject>
+#include <QVariantList>
 #include <QVariantMap>
+#include <QVector>
+#include <QWidget>
 
 #include <cstdint>
 #include <memory>
@@ -28,11 +30,13 @@
 
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
+#include "services/preview/GpsTrajectory.h"
 
 namespace cosmo::preview {
 class FlightPreviewCache;
 }
 
+class QAction;
 class QWebEngineView;
 class QWebChannel;
 class QLabel;
@@ -41,6 +45,7 @@ class QTimer;
 class QHideEvent;
 class QShowEvent;
 class Map3DBridge;
+class RecoveryPanel;
 class TileCacheInterceptor;
 
 /**
@@ -79,8 +84,18 @@ public:
      * Map coordinates and altitude geometry remain in their raw SI form.
      */
     void setImperialUnits(bool imperial);
+    /** @brief Restore the last real-live recovery point without loading replay
+     * data. */
+    void setRecoveryRecord(const QJsonObject &record);
+    /** @brief Shared mode action used by the main Recovery control. */
+    [[nodiscard]] QAction *recoveryAction() const;
+    /** @brief Read or restore the named recovery reference for sidecar
+     * persistence. */
+    [[nodiscard]] QJsonObject recoveryReference() const;
+    /** @brief Restore a recovery reference without marking an edit. */
+    void setRecoveryReference(const QJsonObject &reference);
 
-signals:
+  signals:
     /**
      * @brief Emitted when automatic camera tracking actually changes state.
      *
@@ -88,6 +103,8 @@ signals:
      * map interaction such as dragging while follow mode is active.
      */
     void cameraFollowChanged(bool enabled);
+    /** @brief The user edited the recovery ground reference. */
+    void recoveryReferenceChanged();
 
     /**
      * @brief Emitted whenever the rocket position changes.
@@ -110,7 +127,11 @@ public slots:
     /** @brief Clears all data and resets to idle state. */
     void onSessionReset();
 
-private slots:
+  private:
+    RecoveryPanel *m_recoveryPanel = nullptr;
+    QVariantMap m_recoveryPayload;
+    bool m_recoveryPending = false;
+  private slots:
     void onBridgeStatsUpdated(double lat, double lon, double alt,
                               double distFromLaunch, double bearing,
                               double pathLength,
@@ -181,6 +202,8 @@ private:
     bool m_haveLastLiveCoordinate = false;
 
     std::vector<IndexedLiveSample> m_liveSamples;
+    QVariantList m_liveAttitude;
+    cosmo::preview::GpsTrajectory m_liveTrajectory;
 };
 
 /**
@@ -236,8 +259,10 @@ signals:
 
     /** @brief Requests a camera-follow state change. */
     void followRequested(bool enabled);
+    /** @brief Publishes recovery mode and its validated last-known position. */
+    void recoveryRequested(const QVariantMap &record);
 
-public:
+  public:
     /** @brief Publishes a theme without evaluating JavaScript source code. */
     void publishTheme(const QVariantMap &theme) { emit themeChanged(theme); }
 

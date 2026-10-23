@@ -6,15 +6,69 @@
 #include <QApplication>
 #include <QColor>
 #include <QDir>
+#include <QPainter>
+#include <QPainterPath>
 #include <QPalette>
+#include <QProxyStyle>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QStyleOption>
 
+#include <algorithm>
 #include <array>
+#include <memory>
 
 using namespace cosmo;
 
 namespace {
+
+/** @brief Keep native widget behavior while drawing small, consistent chevrons.
+ */
+class ChevronStyle final : public QProxyStyle {
+public:
+  /** @brief Paint arrow primitives from the active widget palette. */
+  void drawPrimitive(PrimitiveElement element, const QStyleOption *option,
+                     QPainter *painter,
+                     const QWidget *widget = nullptr) const override {
+    double rotation = 0;
+    switch (element) {
+    case PE_IndicatorArrowDown:
+      break;
+    case PE_IndicatorArrowUp:
+      rotation = 180;
+      break;
+    case PE_IndicatorArrowRight:
+      rotation = -90;
+      break;
+    case PE_IndicatorArrowLeft:
+      rotation = 90;
+      break;
+    default:
+      QProxyStyle::drawPrimitive(element, option, painter, widget);
+      return;
+    }
+    const double span = std::min(
+        10.0, std::min(option->rect.width(), option->rect.height()) - 2.0);
+    if (span <= 0)
+      return;
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    painter->translate(QRectF(option->rect).center());
+    painter->rotate(rotation);
+    const auto group = option->state.testFlag(State_Enabled)
+                           ? QPalette::Active
+                           : QPalette::Disabled;
+    painter->setPen(QPen(option->palette.color(group, QPalette::ButtonText),
+                         1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter->setBrush(Qt::NoBrush);
+    QPainterPath path;
+    path.moveTo(-span / 2, -span / 4);
+    path.lineTo(0, span / 4);
+    path.lineTo(span / 2, -span / 4);
+    painter->drawPath(path);
+    painter->restore();
+  }
+};
 
 QPalette applicationPalette(const ColorPalette &palette)
 {
@@ -81,6 +135,8 @@ ThemeManager &ThemeManager::instance()
 ThemeManager::ThemeManager()
     : QObject(nullptr)
 {
+  if (qApp)
+    qApp->setStyle(std::make_unique<ChevronStyle>().release());
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -214,7 +270,6 @@ QComboBox {
     font-size: 12px;
 }
 QComboBox::drop-down {
-    border: none;
     width: 24px;
 }
 QComboBox QAbstractItemView {

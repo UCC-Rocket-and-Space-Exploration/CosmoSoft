@@ -140,74 +140,82 @@ ssize_t SerialCommsPosix::write(const uint8_t *data, const size_t size) {
 }
 
 ssize_t SerialCommsPosix::read(uint8_t *buffer, const size_t maxSize) {
-    if (buffer == nullptr && maxSize > 0) {
-        errno = EINVAL;
-        return -1;
-    }
-    if (maxSize == 0) {
-        return 0;
-    }
-
-    int fd = -1;
-    std::uint64_t generation = 0;
-    {
-        std::scoped_lock lock(m_handleMutex);
-        fd = m_fd;
-        generation = m_generation;
-    }
-    if (fd < 0) {
-        errno = EBADF;
-        return -1;
-    }
-
-    pollfd descriptor{};
-    descriptor.fd = fd;
-    descriptor.events = POLLIN | POLLERR | POLLHUP;
-#ifdef POLLRDHUP
-    descriptor.events |= POLLRDHUP;
-#endif
-
-    const int ready = ::poll(&descriptor, 1, kReadPollTimeoutMs);
-    if (ready == 0 || (ready < 0 && errno == EINTR)) {
-        return 0;
-    }
-    if (ready < 0) {
-        return -1;
-    }
-
-    if ((descriptor.revents & POLLIN) != 0) {
-        // Check the generation while holding the lock so a descriptor closed
-        // during poll() can never be mistaken for a subsequently reused fd.
-        std::scoped_lock lock(m_handleMutex);
-        if (m_fd != fd || m_generation != generation) {
-            errno = ECANCELED;
-            return -1;
-        }
-
-        const ssize_t count = ::read(fd, buffer, maxSize);
-        if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
-            return 0;
-        }
-        return count;
-    }
-
-    constexpr short kTerminalEvents = POLLERR | POLLHUP | POLLNVAL
-#ifdef POLLRDHUP
-                                      | POLLRDHUP
-#endif
-        ;
-    if ((descriptor.revents & kTerminalEvents) != 0) {
-        std::scoped_lock lock(m_handleMutex);
-        if (m_fd == fd && m_generation == generation) {
-            m_fd = -1;
-            ++m_generation;
-            ::close(fd);
-        }
-        errno = EIO;
-        return -1;
-    }
-
+  if (buffer == nullptr && maxSize > 0) {
+    errno = EINVAL;
+    return -1;
+  }
+  if (maxSize == 0) {
     return 0;
+  }
+
+  int fd = -1;
+  std::uint64_t generation = 0;
+  {
+    std::scoped_lock lock(m_handleMutex);
+    fd = m_fd;
+    generation = m_generation;
+  }
+  if (fd < 0) {
+    errno = EBADF;
+    return -1;
+  }
+
+  pollfd descriptor{};
+  descriptor.fd = fd;
+  descriptor.events = POLLIN | POLLERR | POLLHUP;
+#ifdef POLLRDHUP
+  descriptor.events |= POLLRDHUP;
+#endif
+
+  const int ready = ::poll(&descriptor, 1, kReadPollTimeoutMs);
+  if (ready == 0 || (ready < 0 && errno == EINTR)) {
+    return 0;
+  }
+  if (ready < 0) {
+    return -1;
+  }
+
+  constexpr short kTerminalEvents = POLLERR | POLLHUP | POLLNVAL
+#ifdef POLLRDHUP
+                                    | POLLRDHUP
+#endif
+      ;
+  if ((descriptor.revents & POLLIN) != 0) {
+    // Check the generation while holding the lock so a descriptor closed
+    // during poll() can never be mistaken for a subsequently reused fd.
+    std::scoped_lock lock(m_handleMutex);
+    if (m_fd != fd || m_generation != generation) {
+      errno = ECANCELED;
+      return -1;
+    }
+
+    const ssize_t count = ::read(fd, buffer, maxSize);
+    if (count > 0) {
+      return count;
+    }
+    // Readability and hangup can arrive together. Drain buffered data, but
+    // never report an exhausted, disconnected peer as another timeout.
+    if ((descriptor.revents & kTerminalEvents) == 0) {
+      if (count < 0 &&
+          (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+        return 0;
+      }
+      return count;
+    }
+  }
+
+  if ((descriptor.revents & kTerminalEvents) != 0) {
+    std::scoped_lock lock(m_handleMutex);
+    if (m_fd == fd && m_generation == generation) {
+      m_fd = -1;
+      ++m_generation;
+      ::close(fd);
+    }
+    errno = EIO;
+    return -1;
+  }
+
+  return 0;
 }
 
 std::string SerialCommsPosix::getDeviceName() const {

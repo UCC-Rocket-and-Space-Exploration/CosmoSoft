@@ -35,6 +35,7 @@ constexpr std::uint16_t kZipCompressionDeflated = 8;
 constexpr std::size_t kMaxXlsxFileBytes = 512U * 1024U * 1024U;
 constexpr std::size_t kMaxXlsxEntryBytes = 64U * 1024U * 1024U;
 constexpr std::size_t kMaxXlsxColumns = 16U * 1024U;
+constexpr std::size_t kMaxXlsxRows = 1U << 20U;
 constexpr std::size_t FILE_IO_CHUNK_BYTES = 64U * 1024U;
 constexpr double MAXIMUM_TELEMETRY_MAGNITUDE = 1.0e12;
 
@@ -74,6 +75,9 @@ struct TelemetryColumns {
     int iGyroX = -1;
     int iGyroY = -1;
     int iGyroZ = -1;
+    int iAttitudeX = -1;
+    int iAttitudeY = -1;
+    int iAttitudeZ = -1;
     int iPress = -1;
     int iAlt = -1;
     int iTemp = -1;
@@ -469,6 +473,13 @@ std::optional<TelemetryColumns> resolveTelemetryColumns(
     columns.iGyroX = findColumnAny(header, {"angular_velocity_x", "gyro_x", "gx", "gx_rads"});
     columns.iGyroY = findColumnAny(header, {"angular_velocity_y", "gyro_y", "gy", "gy_rads"});
     columns.iGyroZ = findColumnAny(header, {"angular_velocity_z", "gyro_z", "gz", "gz_rads"});
+    // Only explicit degree columns opt into the documented display convention.
+    columns.iAttitudeX =
+        findColumnAny(header, {"attitude_x_deg", "anglex_deg", "angle_x_deg"});
+    columns.iAttitudeY =
+        findColumnAny(header, {"attitude_y_deg", "angley_deg", "angle_y_deg"});
+    columns.iAttitudeZ =
+        findColumnAny(header, {"attitude_z_deg", "anglez_deg", "angle_z_deg"});
     columns.iPress = findColumnAny(header, {"pressure", "pressure_pa"});
     columns.iAlt = findColumnAny(header, {"altitude", "altitude_m", "alt_m"});
     columns.iTemp = findColumnAny(header, {"temperature", "temperature_c", "temp", "temp_c"});
@@ -543,20 +554,32 @@ std::optional<FlightSample> sampleFromCells(
         return std::nullopt;
     }
 
-    double acceleration = 0;
+    double acceleration = missing;
     if (!parseOptionalTelemetryCell(cells, columns.iAccel, acceleration)) {
         return std::nullopt;
     }
-    if (columns.iAccel >= 0) {
+    if (std::isfinite(acceleration)) {
       sample.acceleration = {0, 0, acceleration};
     }
-    if (!parseOptionalTelemetryCell(cells, columns.iAccelX, sample.acceleration.x)
-        || !parseOptionalTelemetryCell(cells, columns.iAccelY, sample.acceleration.y)
-        || !parseOptionalTelemetryCell(cells, columns.iAccelZ, sample.acceleration.z)
-        || !parseOptionalTelemetryCell(cells, columns.iGyroX, sample.angularVelocity.x)
-        || !parseOptionalTelemetryCell(cells, columns.iGyroY, sample.angularVelocity.y)
-        || !parseOptionalTelemetryCell(cells, columns.iGyroZ, sample.angularVelocity.z)) {
-        return std::nullopt;
+    if (!parseOptionalTelemetryCell(cells, columns.iAccelX,
+                                    sample.acceleration.x) ||
+        !parseOptionalTelemetryCell(cells, columns.iAccelY,
+                                    sample.acceleration.y) ||
+        !parseOptionalTelemetryCell(cells, columns.iAccelZ,
+                                    sample.acceleration.z) ||
+        !parseOptionalTelemetryCell(cells, columns.iGyroX,
+                                    sample.angularVelocity.x) ||
+        !parseOptionalTelemetryCell(cells, columns.iGyroY,
+                                    sample.angularVelocity.y) ||
+        !parseOptionalTelemetryCell(cells, columns.iGyroZ,
+                                    sample.angularVelocity.z) ||
+        !parseOptionalTelemetryCell(cells, columns.iAttitudeX,
+                                    sample.angularRotation.x) ||
+        !parseOptionalTelemetryCell(cells, columns.iAttitudeY,
+                                    sample.angularRotation.y) ||
+        !parseOptionalTelemetryCell(cells, columns.iAttitudeZ,
+                                    sample.angularRotation.z)) {
+      return std::nullopt;
     }
     return sample;
 }
@@ -695,58 +718,48 @@ std::string readWorksheetCell(
 }
 
 std::vector<std::string> readWorksheetRow(
-    QXmlStreamReader &xml,
-    const std::vector<std::string> &sharedStrings,
-    CancellationState &cancellation) {
-    std::vector<std::string> row;
-    std::size_t nextColumn = 0;
-    while (!xml.atEnd() && !cancellation.is_canceled()) {
-        if (cancellation.poll_periodically()) {
-            break;
-        }
-        xml.readNext();
-        if (xml.isStartElement() && xml.name() == QStringLiteral("c")) {
-            const QString cellRef = xml.attributes().value(QStringLiteral("r")).toString();
-            const std::size_t column = columnIndexFromCellRef(cellRef).value_or(nextColumn);
-            if (row.size() <= column) {
-                row.resize(column + 1U);
-            }
-            row[column] = readWorksheetCell(xml, sharedStrings, cancellation);
-            nextColumn = column + 1U;
-        } else if (xml.isEndElement() && xml.name() == QStringLiteral("row")) {
-            break;
-        }
+    QXmlStreamReader &xml, const std::vector<std::string> &sharedStrings,
+    CancellationState &cancellation, const std::vector<int> &columnSlots,
+    std::size_t retainedColumns) {
+  std::vector<std::string> row(retainedColumns);
+  std::size_t nextColumn = 0;
+  while (!xml.atEnd() && !cancellation.is_canceled()) {
+    if (cancellation.poll_periodically()) {
+      break;
     }
-    return row;
-}
-
-std::optional<std::vector<std::vector<std::string>>> readWorksheetRows(
-    const std::vector<std::uint8_t> &bytes,
-    const std::vector<std::string> &sharedStrings,
-    std::string &error,
-    CancellationState &cancellation) {
-    if (cancellation.poll()) {
-        return std::nullopt;
+    xml.readNext();
+    if (xml.isStartElement() && xml.name() == QStringLiteral("c")) {
+      const QString cellRef =
+          xml.attributes().value(QStringLiteral("r")).toString();
+      const auto explicitColumn = columnIndexFromCellRef(cellRef);
+      if ((!cellRef.isEmpty() && !explicitColumn) ||
+          nextColumn > kMaxXlsxColumns) {
+        xml.raiseError(
+            QStringLiteral("XLSX cell reference exceeds the column limit"));
+        break;
+      }
+      const std::size_t column = explicitColumn.value_or(nextColumn);
+      if (column >= kMaxXlsxColumns) {
+        xml.raiseError(QStringLiteral("XLSX row exceeds the column limit"));
+        break;
+      }
+      nextColumn = column + 1U;
+      if (!columnSlots.empty() && columnSlots[column] < 0) {
+        xml.skipCurrentElement();
+        continue;
+      }
+      const auto slot = columnSlots.empty()
+                            ? column
+                            : static_cast<std::size_t>(columnSlots[column]);
+      if (row.size() <= slot) {
+        row.resize(slot + 1U);
+      }
+      row[slot] = readWorksheetCell(xml, sharedStrings, cancellation);
+    } else if (xml.isEndElement() && xml.name() == QStringLiteral("row")) {
+      break;
     }
-    std::vector<std::vector<std::string>> rows;
-    QXmlStreamReader xml(byteArrayFromBytes(bytes));
-    while (!xml.atEnd() && !cancellation.is_canceled()) {
-        if (cancellation.poll_periodically()) {
-            break;
-        }
-        xml.readNext();
-        if (xml.isStartElement() && xml.name() == QStringLiteral("row")) {
-            rows.push_back(readWorksheetRow(xml, sharedStrings, cancellation));
-        }
-    }
-    if (cancellation.is_canceled()) {
-        return std::nullopt;
-    }
-    if (xml.hasError()) {
-        error = "XLSX worksheet XML parse error: " + xml.errorString().toStdString();
-        return std::nullopt;
-    }
-    return rows;
+  }
+  return row;
 }
 
 bool rowIsEmpty(const std::vector<std::string> &row) {
@@ -776,39 +789,78 @@ std::optional<std::string> finishTelemetrySession(
     return std::nullopt;
 }
 
-std::optional<std::string> loadTelemetryRows(
-    const std::string &sourceName,
-    const std::vector<std::string> &header,
-    const std::vector<std::vector<std::string>> &dataRows,
-    FlightSession &out,
-    CancellationState &cancellation) {
-    if (cancellation.poll()) {
-        return std::nullopt;
+std::optional<std::string>
+loadWorksheet(const std::string &sourceName,
+              const std::vector<std::uint8_t> &bytes,
+              const std::vector<std::string> &sharedStrings, FlightSession &out,
+              CancellationState &cancellation) {
+  QXmlStreamReader xml(byteArrayFromBytes(bytes));
+  std::optional<TelemetryColumns> columns;
+  std::vector<int> columnSlots;
+  std::size_t retainedColumns = 0;
+  std::size_t rowCount = 0;
+  std::vector<FlightSample> samples;
+  while (!xml.atEnd() && !cancellation.is_canceled()) {
+    if (cancellation.poll_periodically()) {
+      return std::nullopt;
     }
-    std::string error;
-    const auto columns = resolveTelemetryColumns(header, sourceName, error);
+    xml.readNext();
+    if (!xml.isStartElement() || xml.name() != QStringLiteral("row")) {
+      continue;
+    }
+    if (++rowCount > kMaxXlsxRows) {
+      return "XLSX worksheet exceeds the row limit: " + sourceName;
+    }
+    auto cells = readWorksheetRow(xml, sharedStrings, cancellation, columnSlots,
+                                  retainedColumns);
+    if (xml.hasError()) {
+      break;
+    }
     if (!columns) {
+      if (rowIsEmpty(cells)) {
+        continue;
+      }
+      std::string error;
+      columns = resolveTelemetryColumns(cells, sourceName, error);
+      if (!columns) {
         return error;
-    }
-
-    std::vector<FlightSample> samples;
-    samples.reserve(dataRows.size());
-    for (const auto &cells : dataRows) {
-        if (cancellation.poll_periodically()) {
-            return std::nullopt;
+      }
+      // Retain only telemetry columns, even when they occur near XFD.
+      columnSlots.assign(kMaxXlsxColumns, -1);
+      for (int *index :
+           {&columns->iTime, &columns->iRssi, &columns->iAccel,
+            &columns->iAccelX, &columns->iAccelY, &columns->iAccelZ,
+            &columns->iGyroX, &columns->iGyroY, &columns->iGyroZ,
+            &columns->iAttitudeX, &columns->iAttitudeY, &columns->iAttitudeZ,
+            &columns->iPress, &columns->iAlt, &columns->iTemp, &columns->iBatt,
+            &columns->iLat, &columns->iLon}) {
+        if (*index < 0) {
+          continue;
         }
-        if (rowIsEmpty(cells) || !hasRequiredCells(cells, *columns)) {
-            continue;
+        auto &slot = columnSlots[static_cast<std::size_t>(*index)];
+        if (slot < 0) {
+          slot = static_cast<int>(retainedColumns++);
         }
-        if (auto sample = sampleFromCells(cells, *columns)) {
-            samples.push_back(std::move(*sample));
-        }
+        *index = slot;
+      }
+      continue;
     }
-
-    if (cancellation.poll()) {
-        return std::nullopt;
+    if (hasRequiredCells(cells, *columns)) {
+      if (auto sample = sampleFromCells(cells, *columns)) {
+        samples.push_back(std::move(*sample));
+      }
     }
-    return finishTelemetrySession(sourceName, *columns, std::move(samples), out);
+  }
+  if (cancellation.poll()) {
+    return std::nullopt;
+  }
+  if (xml.hasError()) {
+    return "XLSX worksheet XML parse error: " + xml.errorString().toStdString();
+  }
+  if (!columns) {
+    return "XLSX worksheet has no header row: " + sourceName;
+  }
+  return finishTelemetrySession(sourceName, *columns, std::move(samples), out);
 }
 
 std::optional<QString> firstWorksheetRelationshipId(
@@ -1126,7 +1178,8 @@ SampleFileLoader::LoadResult SampleFileLoader::loadXlsx(
             return failed_load_result(
                 std::string("Could not read XLSX shared strings: ") + error + ": " + path);
         }
-        const auto parsedSharedStrings = readSharedStrings(*sharedBytes, error, cancellation);
+        auto parsedSharedStrings =
+            readSharedStrings(*sharedBytes, error, cancellation);
         if (cancellation.is_canceled()) {
             return canceled_load_result();
         }
@@ -1134,7 +1187,7 @@ SampleFileLoader::LoadResult SampleFileLoader::loadXlsx(
             return failed_load_result(
                 std::string("Could not parse XLSX shared strings: ") + error + ": " + path);
         }
-        sharedStrings = *parsedSharedStrings;
+        sharedStrings = std::move(*parsedSharedStrings);
     }
 
     std::string workbookError;
@@ -1163,39 +1216,8 @@ SampleFileLoader::LoadResult SampleFileLoader::loadXlsx(
             std::string("Could not read XLSX worksheet: ") + error + ": " + path);
     }
 
-    const auto rows = readWorksheetRows(*worksheetBytes, sharedStrings, error, cancellation);
-    if (cancellation.is_canceled()) {
-        return canceled_load_result();
-    }
-    if (!rows) {
-        return failed_load_result(
-            std::string("Could not parse XLSX worksheet: ") + error + ": " + path);
-    }
-
-    auto headerIt = rows->end();
-    for (auto it = rows->begin(); it != rows->end(); ++it) {
-        if (cancellation.poll_periodically()) {
-            return canceled_load_result();
-        }
-        if (!rowIsEmpty(*it)) {
-            headerIt = it;
-            break;
-        }
-    }
-    if (headerIt == rows->end()) {
-        return failed_load_result(std::string("XLSX worksheet has no header row: ") + path);
-    }
-
-    std::vector<std::vector<std::string>> dataRows;
-    dataRows.reserve(static_cast<std::size_t>(std::distance(headerIt, rows->end())));
-    for (auto it = std::next(headerIt); it != rows->end(); ++it) {
-        if (cancellation.poll_periodically()) {
-            return canceled_load_result();
-        }
-        dataRows.push_back(*it);
-    }
-
-    const auto load_error = loadTelemetryRows(path, *headerIt, dataRows, out, cancellation);
+    const auto load_error =
+        loadWorksheet(path, *worksheetBytes, sharedStrings, out, cancellation);
     if (cancellation.is_canceled()) {
         return canceled_load_result();
     }

@@ -27,7 +27,7 @@
 
 namespace cosmo::telemetry {
 
-/** @brief Number of numeric columns in the live CSV telemetry row. */
+/** @brief Number of mandatory numeric columns, before optional packet RSSI. */
 inline constexpr std::size_t kLiveTelemetryCsvFieldCount = 16;
 
 /** @brief Maximum buffered bytes accepted for one live telemetry line. */
@@ -36,10 +36,15 @@ inline constexpr std::size_t kMaxLiveTelemetryLineBytes = 64U * 1024U;
 /** @brief Generous absolute bound for numeric live telemetry fields. */
 inline constexpr double kMaxLiveTelemetryMagnitude = 1.0e12;
 
-/** @brief CSV header emitted by the current text telemetry stream. */
+/** @brief CSV header for live telemetry with FC timestamps in milliseconds. */
 inline constexpr std::string_view kLiveTelemetryCsvHeader =
-    "time,temp,pressure,altitude,ax,ay,az,gx,gy,gz,anglex,angley,anglez,"
-    "latitude,longitude,distance_from_base";
+    "timestamp_ms,temp,pressure,altitude,ax,ay,az,gx,gy,gz,anglex,angley,"
+    "anglez,"
+    "latitude,longitude,distance_from_base,rssi";
+
+/** @brief Older millisecond header without receiver-provided RSSI. */
+inline constexpr std::string_view kLegacyLiveTelemetryCsvHeader =
+    kLiveTelemetryCsvHeader.substr(0, kLiveTelemetryCsvHeader.rfind(','));
 
 /** @brief Remove trailing CR/LF bytes from a serial text line. */
 inline std::string stripLineEnding(std::string_view line) {
@@ -82,14 +87,25 @@ inline std::optional<double> parseFiniteDouble(std::string_view text) {
     return value;
 }
 
+/** @brief Check that a live FC timestamp is a nonnegative whole millisecond
+ * value. */
+inline bool isValidLiveTimestampMilliseconds(double value) {
+  // The magnitude bound keeps integer milliseconds exactly representable as
+  // doubles. Strict LONG_MAX also avoids an out-of-range integer conversion.
+  return std::isfinite(value) && value >= 0.0 &&
+         value <= kMaxLiveTelemetryMagnitude && std::trunc(value) == value &&
+         value < static_cast<double>(std::numeric_limits<long>::max());
+}
+
 /**
  * @brief Decode one live telemetry CSV row into a FlightSample.
  * @return Decoded sample, or std::nullopt when the row is a header or malformed.
  */
 inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
     const std::string clean = stripLineEnding(row);
-    if (clean.empty() || clean == kLiveTelemetryCsvHeader) {
-        return std::nullopt;
+    if (clean.empty() || clean == kLiveTelemetryCsvHeader ||
+        clean == kLegacyLiveTelemetryCsvHeader) {
+      return std::nullopt;
     }
 
     std::array<double, kLiveTelemetryCsvFieldCount> values{};
@@ -97,12 +113,12 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
     for (std::size_t index = 0; index < values.size(); ++index) {
         const std::size_t separator = clean.find(',', cellStart);
         const bool isLastCell = index + 1 == values.size();
-        if ((!isLastCell && separator == std::string::npos)
-            || (isLastCell && separator != std::string::npos)) {
-            return std::nullopt;
+        if (!isLastCell && separator == std::string::npos) {
+          return std::nullopt;
         }
 
-        const std::size_t cellEnd = isLastCell ? clean.size() : separator;
+        const std::size_t cellEnd =
+            separator == std::string::npos ? clean.size() : separator;
         auto parsed = parseFiniteDouble(
             std::string_view(clean).substr(cellStart, cellEnd - cellStart));
         if (!parsed) {
@@ -112,27 +128,31 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
         cellStart = cellEnd + 1;
     }
 
+    // A legacy row has no link-strength measurement. Do not invent 0 dBm.
+    double rssi = std::numeric_limits<double>::quiet_NaN();
+    if (cellStart <= clean.size()) {
+      const auto parsed =
+          parseFiniteDouble(std::string_view(clean).substr(cellStart));
+      if (!parsed || std::abs(*parsed) > kMaxLiveTelemetryMagnitude) {
+        return std::nullopt;
+      }
+      rssi = *parsed;
+    }
+
     if (std::any_of(values.begin(), values.end(), [](const double value) {
             return std::abs(value) > kMaxLiveTelemetryMagnitude;
         })) {
         return std::nullopt;
     }
 
-    const double timestampMilliseconds = values[0] * 1000.0;
-    if (!std::isfinite(timestampMilliseconds)
-        // Strict bounds avoid rounding a double representation of LONG_MAX
-        // into an out-of-range integer on platforms where long has 64 bits.
-        || timestampMilliseconds <= static_cast<double>(std::numeric_limits<long>::lowest())
-        || timestampMilliseconds >= static_cast<double>(std::numeric_limits<long>::max())
-        || values[13] < -90.0
-        || values[13] > 90.0
-        || values[14] < -180.0
-        || values[14] > 180.0) {
-        return std::nullopt;
+    if (!isValidLiveTimestampMilliseconds(values[0]) || values[13] < -90.0 ||
+        values[13] > 90.0 || values[14] < -180.0 || values[14] > 180.0) {
+      return std::nullopt;
     }
 
     FlightSample sample{};
-    sample.timestamp = static_cast<long>(std::llround(timestampMilliseconds));
+    sample.timestamp = static_cast<long>(values[0]);
+    sample.rssi = rssi;
     sample.temperature = values[1];
     sample.pressure = values[2];
     sample.altitude = values[3];
@@ -142,10 +162,21 @@ inline std::optional<FlightSample> decodeTelemetryCsvRow(std::string_view row) {
     sample.angularVelocity.x = values[7];
     sample.angularVelocity.y = values[8];
     sample.angularVelocity.z = values[9];
+    // Text protocol angles use the explicit degree convention in
+    // rocket-attitude.md.
+    sample.angularRotation = {values[10], values[11], values[12]};
     sample.coordinates.latitude = values[13];
     sample.coordinates.longitude = values[14];
     return sample;
 }
+
+/** @brief Diagnostic for the latest complete data row, separate from accepted
+ * samples. */
+struct TelemetryRowDiagnostic {
+  std::uint64_t sequence = 0;
+  std::uint16_t missing = 0, invalid = 0;
+  bool malformed = false;
+};
 
 /**
  * @class LineTelemetryDecoder
@@ -166,7 +197,15 @@ public:
     void reset() {
         m_pending.clear();
         m_malformedLines = 0;
+        m_lastDiagnostic = {};
         m_discardingDamagedLine = false;
+        m_oversizedLine = false;
+    }
+
+    /** @brief Latest completed-row diagnostic; partial chunks do not change it.
+     */
+    [[nodiscard]] TelemetryRowDiagnostic lastRowDiagnostic() const {
+      return m_lastDiagnostic;
     }
 
     /** @brief Return the cumulative number of malformed non-empty rows seen. */
@@ -201,6 +240,11 @@ public:
 
             if (m_discardingDamagedLine) {
                 if (byte == '\n') {
+                  if (m_oversizedLine) {
+                    m_lastDiagnostic = {m_lastDiagnostic.sequence + 1, 0, 0,
+                                        true};
+                    m_oversizedLine = false;
+                  }
                     m_discardingDamagedLine = false;
                 }
                 continue;
@@ -216,6 +260,7 @@ public:
                 m_pending.clear();
                 m_discardingDamagedLine = true;
                 ++m_malformedLines;
+                m_oversizedLine = true;
                 continue;
             }
 
@@ -231,6 +276,10 @@ public:
      */
     std::vector<FlightSample> finish() {
         std::vector<FlightSample> samples;
+        if (m_oversizedLine) {
+          m_lastDiagnostic = {m_lastDiagnostic.sequence + 1, 0, 0, true};
+          m_oversizedLine = false;
+        }
         if (!m_discardingDamagedLine && !m_pending.empty()) {
             processLine(m_pending, samples);
         }
@@ -242,11 +291,29 @@ public:
 private:
     void processLine(std::string_view line, std::vector<FlightSample> &samples) {
         const std::string clean = stripLineEnding(line);
-        if (clean.empty() || clean == kLiveTelemetryCsvHeader) {
-            return;
+        if (clean.empty() || clean == kLiveTelemetryCsvHeader ||
+            clean == kLegacyLiveTelemetryCsvHeader) {
+          return;
         }
 
         auto sample = decodeTelemetryCsvRow(clean);
+        const auto sequence = m_lastDiagnostic.sequence + 1;
+        m_lastDiagnostic = {sequence, 0, 0, !sample.has_value()};
+        if (!sample) {
+          const auto cells = splitTelemetryCsvCells(clean);
+          for (std::size_t i = 0; i < kLiveTelemetryCsvFieldCount; ++i) {
+            const auto bit = static_cast<std::uint16_t>(1U << i);
+            if (i >= cells.size() ||
+                cells[i].find_first_not_of(" \t\r") == std::string::npos)
+              m_lastDiagnostic.missing |= bit;
+            else if (const auto value = parseFiniteDouble(cells[i]);
+                     !value || std::abs(*value) > kMaxLiveTelemetryMagnitude ||
+                     (i == 13 && std::abs(*value) > 90) ||
+                     (i == 14 && std::abs(*value) > 180) ||
+                     (i == 0 && !isValidLiveTimestampMilliseconds(*value)))
+              m_lastDiagnostic.invalid |= bit;
+          }
+        }
         if (sample) {
             samples.push_back(*sample);
             return;
@@ -254,10 +321,12 @@ private:
         ++m_malformedLines;
     }
 
+    TelemetryRowDiagnostic m_lastDiagnostic;
     std::string m_pending;
     std::size_t m_malformedLines = 0;
     std::size_t m_maxLineBytes;
     bool m_discardingDamagedLine = false;
+    bool m_oversizedLine = false;
 };
 
 } // namespace cosmo::telemetry

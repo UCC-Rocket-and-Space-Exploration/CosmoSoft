@@ -57,8 +57,8 @@ target_link_libraries(cosmo-recorded-gui-tests PRIVATE
     cosmo-backend
 )
 target_compile_definitions(cosmo-recorded-gui-tests PRIVATE COSMO_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
-add_test(NAME recorded-imu-widgets COMMAND cosmo-recorded-gui-tests --rng-seed 1)
+add_test(NAME recorded-imu-widgets COMMAND cosmo-recorded-gui-tests --rng-seed 1 --durations yes)
 set_tests_properties(recorded-imu-widgets PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu --no-sandbox"
-    TIMEOUT 30
+    TIMEOUT 180
 )

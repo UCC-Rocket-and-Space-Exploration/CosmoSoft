@@ -227,9 +227,9 @@ TracesPanel::TracesPanel(QWidget *parent)
     syncCheckboxStatesFromFlags();
 }
 
-std::array<bool, TracesPanel::kMetricCount> TracesPanel::enabledMetrics() const
-{
-    return m_metricEnabled;
+const std::array<bool, TracesPanel::kMetricCount> &
+TracesPanel::enabledMetrics() const {
+  return m_metricEnabled;
 }
 
 void TracesPanel::applyThemeStyleSheet()

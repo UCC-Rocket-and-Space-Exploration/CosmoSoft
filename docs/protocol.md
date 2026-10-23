@@ -1,4 +1,67 @@
-# Recorded IMU milestone
+# Telemetry protocols
+
+## Live CSV telemetry
+
+The Pico ground station receives the FC's 16-field CSV payload and optional
+space-separated packet counter. It validates a complete LoRa packet, removes
+the counter, appends the receiver's packet RSSI, and emits one plain CSV row
+followed by a newline over USB at 9600 baud. No debug labels, startup messages,
+SNR or packet counters may share that stream.
+CRLF is accepted, as are rows fragmented across USB reads.
+
+The optional exact header is:
+
+```csv
+timestamp_ms,temp,pressure,altitude,ax,ay,az,gx,gy,gz,anglex,angley,anglez,latitude,longitude,distance_from_base,rssi
+```
+
+`timestamp_ms` is the original nonnegative integer FC time since boot, in
+milliseconds. It is not a UTC receipt time. Temperature uses degrees Celsius,
+pressure pascals, altitude and distance metres, acceleration metres per second
+squared, angular velocity radians per second, attitude degrees, and GPS signed
+decimal degrees. All 16 fields must be finite numeric values. Timestamps must
+be whole milliseconds within the model's integer range; latitude and longitude
+must be within +/-90 and +/-180 degrees. Malformed rows are rejected. The
+distance field is currently validated but not copied into the live model.
+The optional 17th value, `rssi`, is finite numeric link strength in dBm measured
+by the ground station for that packet. It is not an FC sensor reading.
+
+Older 16-field millisecond rows and their exact header remain supported. Their
+RSSI is unavailable (`NaN`), displayed as **—** and exported as an empty RSSI
+cell. A supplied zero is retained as a real value; missing RSSI is never
+fabricated as `0 dBm`. A present but empty, nonnumeric or nonfinite RSSI, or an
+18th column, makes the row malformed. These optional-field errors use the
+generic packet-format/value diagnostic rather than the 16-field sensor mask.
+
+Example USB row (the radio counter is omitted):
+
+```csv
+251618,21.67,100227.20,221.46,-0.050,-1.089,10.379,-0.040,0.009,0.018,-6.743,0.523,266.904,51.892754,8.491923,84.02,-57
+```
+
+The receiver, live decoder and deterministic demo all use milliseconds. Update
+the receiver and application together: headerless live rows have no reliable
+unit detection, and the old seconds-based live contract is no longer supported.
+Fractional millisecond values are rejected rather than rounded.
+Use an updated CosmoSoft build before uploading the RSSI-capable receiver:
+older app builds reject the 17th column. The FC firmware and its radio payload
+remain unchanged. The deterministic demo includes simulated RSSI in its CSV.
+
+For an FC that reverses west-longitude signs, the explicit **West longitude
+correction** setting in Live Telemetry's **Link details** normalizes longitude
+before real serial samples are recorded and displayed. It is disabled by default
+and never changes latitude or guesses the operating country. See
+[the GPS workaround guide](rocket-attitude.md#western-longitude-fc-workaround).
+
+`FlightSample` retains these raw millisecond timestamps. Charts and replay
+controls convert to seconds for display. CSV exports use an explicit
+`timestamp_ms` header, retaining millisecond event spacing and the original FC
+time origin. Their other columns use the existing export schema, including
+explicit degree attitude labels. Replay import accepts `timestamp_ms` and the
+older `time_ms` as milliseconds; `time`, `time_s` and `timestamp` remain seconds
+for existing CSV/XLSX logs. No timestamp-unit guessing is used.
+
+## Recorded IMU milestone
 
 The supported input is AltOS type `0x08`, using the [manufacturer protocol specification](https://altusmetrum.org/AltOS/doc/telemetry.html), version 1.9.22.2, sections 2.1, 2.3 and 4. The previous `sample_data/TELEM_FORMAT_EXPLAINED.md` interpretation is unverified and must not be used for decoding.
 

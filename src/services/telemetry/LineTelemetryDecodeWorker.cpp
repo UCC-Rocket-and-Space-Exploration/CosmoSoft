@@ -8,16 +8,15 @@
 namespace cosmo::telemetry {
 
 LineTelemetryDecodeWorker::LineTelemetryDecodeWorker(
-    BatchCallback callback,
-    LineTelemetryWorkerConfig config,
+    BatchCallback callback, const LineTelemetryWorkerConfig &config,
     ErrorCallback errorCallback)
     : m_callback(std::move(callback)),
-      m_errorCallback(std::move(errorCallback)),
-      m_config(config) {
-    m_config.maxQueuedChunks = std::max<std::size_t>(1, m_config.maxQueuedChunks);
-    m_config.maxQueuedBytes = std::max<std::size_t>(1, m_config.maxQueuedBytes);
-    m_config.maxBatchSamples = std::max<std::size_t>(1, m_config.maxBatchSamples);
-    m_config.flushInterval = std::max(std::chrono::milliseconds{1}, m_config.flushInterval);
+      m_errorCallback(std::move(errorCallback)), m_config(config) {
+  m_config.maxQueuedChunks = std::max<std::size_t>(1, m_config.maxQueuedChunks);
+  m_config.maxQueuedBytes = std::max<std::size_t>(1, m_config.maxQueuedBytes);
+  m_config.maxBatchSamples = std::max<std::size_t>(1, m_config.maxBatchSamples);
+  m_config.flushInterval =
+      std::max(std::chrono::milliseconds{1}, m_config.flushInterval);
 }
 
 LineTelemetryDecodeWorker::~LineTelemetryDecodeWorker() {
@@ -35,6 +34,7 @@ bool LineTelemetryDecodeWorker::start() {
 
     m_decoder.reset();
     m_lastDeliveredMalformedLines = 0;
+    m_lastDeliveredRow = 0;
     {
         std::scoped_lock queueLock(m_queueMutex);
         m_chunks.clear();
@@ -148,16 +148,19 @@ bool LineTelemetryDecodeWorker::deliver(std::vector<FlightSample> &samples) {
     batch.droppedBytes = counters.droppedBytes - m_lastDeliveredCounters.droppedBytes;
     batch.malformedLines = malformedLines - m_lastDeliveredMalformedLines;
     batch.samples.swap(samples);
+    const auto row = m_decoder.lastRowDiagnostic();
+    if (row.sequence != m_lastDeliveredRow) {
+      batch.rowDiagnostic = row;
+      m_lastDeliveredRow = row.sequence;
+    }
 
     m_lastDeliveredCounters = counters;
     m_lastDeliveredMalformedLines = malformedLines;
 
-    if (batch.samples.empty()
-        && batch.receivedBytes == 0
-        && batch.malformedLines == 0
-        && batch.droppedChunks == 0
-        && batch.droppedBytes == 0) {
-        return true;
+    if (!batch.rowDiagnostic && batch.samples.empty() &&
+        batch.receivedBytes == 0 && batch.malformedLines == 0 &&
+        batch.droppedChunks == 0 && batch.droppedBytes == 0) {
+      return true;
     }
 
     if (m_callback) {

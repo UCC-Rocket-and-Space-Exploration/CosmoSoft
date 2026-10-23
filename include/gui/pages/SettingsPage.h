@@ -48,23 +48,28 @@ public:
     [[nodiscard]] bool debugModeEnabled() const;
 
 signals:
-    /**
-     * @brief Emitted after the user selects a different display unit system.
-     * @param imperial true for imperial units; false for metric (SI) units.
-     */
-    void unitSystemChanged(bool imperial);
+  /** @brief Open a recorded telemetry input from developer tools. */
+  void recordedInputRequested();
+  /** @brief Saved checklist definitions changed. */
+  void preflightProfilesChanged();
+  /**
+   * @brief Emitted after the user selects a different display unit system.
+   * @param imperial true for imperial units; false for metric (SI) units.
+   */
+  void unitSystemChanged(bool imperial);
 
-    /**
-     * @brief Emitted after the user enables or disables interface feedback sounds.
-     * @param enabled New feedback-sound preference.
-     */
-    void uiSoundsEnabledChanged(bool enabled);
+  /**
+   * @brief Emitted after the user enables or disables interface feedback
+   * sounds.
+   * @param enabled New feedback-sound preference.
+   */
+  void uiSoundsEnabledChanged(bool enabled);
 
-    /**
-     * @brief Emitted when the debug mode toggle changes.
-     * @param enabled New debug mode state.
-     */
-    void debugModeChanged(bool enabled);
+  /**
+   * @brief Emitted when the debug mode toggle changes.
+   * @param enabled New debug mode state.
+   */
+  void debugModeChanged(bool enabled);
 
 protected:
     /** @brief Loads persisted settings and restores window geometry on show. */

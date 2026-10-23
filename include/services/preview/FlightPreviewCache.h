@@ -4,6 +4,8 @@
 #include "domain/FlightSample.h"
 #include "domain/FlightSession.h"
 #include "services/Cancellation.h"
+#include "services/preview/ChartOverview.h"
+#include "services/preview/GpsTrajectory.h"
 
 #include <algorithm>
 #include <array>
@@ -59,11 +61,12 @@ public:
         cache->m_sourceSessionIdentity = reinterpret_cast<std::uintptr_t>(
             std::addressof(session));
         cache->m_sourceSampleCount = session.samples.size();
-        if (!cache->buildTimeline(session.samples, cancellation)
-            || !cache->buildMetricRanges(session.samples, cancellation)
-            || !cache->buildGpsIndices(session.samples, cancellation)
-            || cancellation.poll()) {
-            return {};
+        if (!cache->buildTimeline(session.samples, cancellation) ||
+            !cache->buildMetricRanges(session.samples, cancellation) ||
+            !cache->m_chartOverview.build(session.samples, cancellation) ||
+            !cache->buildGpsIndices(session.samples, cancellation) ||
+            cancellation.poll()) {
+          return {};
         }
         return cache;
     }
@@ -118,6 +121,12 @@ public:
 
     /** @brief Returns valid GPS sample indices reduced for 3D/drop-line drawing. */
     [[nodiscard]] const std::vector<int> &map3DIndices() const { return m_map3DIndices; }
+
+    /** @brief GPS display alignment built before selecting reduced map points.
+     */
+    [[nodiscard]] const GpsTrajectory &gpsTrajectory() const {
+      return m_gpsTrajectory;
+    }
 
     /** @brief Returns true when @p sampleIndex has a coordinate that should be shown on the map. */
     [[nodiscard]] bool gpsSampleValid(int sampleIndex) const
@@ -186,7 +195,8 @@ public:
      * @brief Returns raw sample indices for chart rendering in [begin, end).
      *
      * The returned list is exact if the range fits the point budget; otherwise
-     * LTTB downsampling preserves visual spikes across all enabled metrics.
+     * block summaries preserve extrema and representative missing-value
+     * boundaries.
      */
     [[nodiscard]] std::vector<int> chartIndices(
         const FlightSession &session,
@@ -201,7 +211,9 @@ public:
         const int n = static_cast<int>(session.samples.size());
         begin = std::clamp(begin, 0, n);
         end = std::clamp(end, begin, n);
-        maxPoints = std::max(1, maxPoints);
+        if (maxPoints <= 0) {
+          return {};
+        }
 
         const ChartKey key{begin, end, maxPoints, metricMask(enabled)};
         {
@@ -211,7 +223,8 @@ public:
             }
         }
 
-        std::vector<int> indices = buildChartIndices(session.samples, begin, end, maxPoints, enabled);
+        std::vector<int> indices = m_chartOverview.select(
+            session.samples, begin, end, maxPoints, enabled);
         {
             std::lock_guard<std::mutex> lock(m_chartCacheMutex);
             if (m_chartIndexCache.size() >= kMaxCachedChartSelections) {
@@ -220,6 +233,14 @@ public:
             m_chartIndexCache.emplace(key, indices);
         }
         return indices;
+    }
+
+    /** @brief Check a half-open raw range for missing chart values without
+     * rescanning history. */
+    [[nodiscard]] bool chartHasMissing(const FlightSession &session, int metric,
+                                       int begin, int end) const {
+      return !wasBuiltFor(session) ||
+             m_chartOverview.hasMissing(session.samples, metric, begin, end);
     }
 
     /** @brief Returns the replay preview bucket for @p trailLength and @p maxPoints. */
@@ -290,26 +311,8 @@ private:
         return mask;
     }
 
-    static double sampleValueForMetric(const FlightSample &s, int idx)
-    {
-        switch (idx) {
-        case 0: return s.altitude;
-        case 1: return s.temperature;
-        case 2: return s.pressure;
-        case 3: {
-            const double x = s.acceleration.x, y = s.acceleration.y, z = s.acceleration.z;
-            return std::hypot(x, y, z);
-        }
-        case 4: return s.batteryVoltage;
-        case 5: return s.rssi;
-        case 6: {
-            const double x = s.angularVelocity.x, y = s.angularVelocity.y, z = s.angularVelocity.z;
-            return std::hypot(x, y, z);
-        }
-        case 7: return s.coordinates.latitude;
-        case 8: return s.coordinates.longitude;
-        default: return 0.0;
-        }
+    static double sampleValueForMetric(const FlightSample &sample, int metric) {
+      return ChartOverview::sampleValue(sample, metric);
     }
 
     [[nodiscard]] bool buildTimeline(
@@ -421,6 +424,7 @@ private:
                 return false;
             }
             const FlightSample &sample = samples[static_cast<std::size_t>(i)];
+            m_gpsTrajectory.append(sample, i);
             const double lat = sample.coordinates.latitude;
             const double lon = sample.coordinates.longitude;
             const bool valid = finiteCoordinate(lat, lon)
@@ -454,178 +458,14 @@ private:
         return out;
     }
 
-    std::vector<int> buildChartIndices(
-        const std::vector<FlightSample> &samples,
-        int begin,
-        int end,
-        int maxPoints,
-        const std::array<bool, kMetricCount> &enabled) const
-    {
-        const int count = end - begin;
-        std::vector<int> idx;
-        if (count <= 0 || maxPoints <= 0) {
-            return idx;
-        }
-        if (count <= maxPoints) {
-            idx.resize(static_cast<std::size_t>(count));
-            std::iota(idx.begin(), idx.end(), begin);
-            return idx;
-        }
-        if (maxPoints <= 2) {
-            idx.push_back(begin);
-            if (count > 1) {
-                idx.push_back(end - 1);
-            }
-            return idx;
-        }
-
-        std::vector<int> enabledMetrics;
-        for (int mi = 0; mi < kMetricCount; ++mi) {
-            if (enabled[static_cast<std::size_t>(mi)]) {
-                enabledMetrics.push_back(mi);
-            }
-        }
-        if (enabledMetrics.empty()) {
-            return cappedContiguousIndices(begin, end, maxPoints);
-        }
-
-        const auto metricCount = enabledMetrics.size();
-        std::vector<double> metricMin(metricCount, std::numeric_limits<double>::infinity());
-        std::vector<double> metricMax(metricCount, -std::numeric_limits<double>::infinity());
-        for (int i = begin; i < end; ++i) {
-            const FlightSample &sample = samples[static_cast<std::size_t>(i)];
-            for (std::size_t m = 0; m < metricCount; ++m) {
-                const double value = sampleValueForMetric(sample, enabledMetrics[m]);
-                if (!std::isfinite(value)) {
-                    continue;
-                }
-                metricMin[m] = std::min(metricMin[m], value);
-                metricMax[m] = std::max(metricMax[m], value);
-            }
-        }
-
-        std::vector<double> metricScale(metricCount, 1.0);
-        std::vector<bool> metricUsable(metricCount, false);
-        for (std::size_t m = 0; m < metricCount; ++m) {
-            const double span = metricMax[m] - metricMin[m];
-            metricUsable[m] = std::isfinite(metricMin[m]) && std::isfinite(metricMax[m]);
-            if (!metricUsable[m]) {
-                metricMin[m] = 0.0;
-                metricMax[m] = 0.0;
-                metricScale[m] = 1.0;
-                continue;
-            }
-            metricScale[m] = std::isfinite(span) && span > 1e-15 ? 1.0 / span : 1.0;
-        }
-
-        idx.reserve(static_cast<std::size_t>(maxPoints));
-        idx.push_back(begin);
-        const int nBuckets = maxPoints - 2;
-        const double bucketSize = static_cast<double>(count - 2) / static_cast<double>(nBuckets);
-        int previousSelected = begin;
-
-        for (int bucket = 0; bucket < nBuckets; ++bucket) {
-            const int bucketStart = begin + static_cast<int>(std::floor(1.0 + bucket * bucketSize));
-            const int bucketEnd = std::min(
-                begin + static_cast<int>(std::floor(1.0 + (bucket + 1) * bucketSize)),
-                end - 1);
-            if (bucketStart >= bucketEnd) {
-                const int selected = std::clamp(bucketStart, begin, end - 1);
-                idx.push_back(selected);
-                previousSelected = selected;
-                continue;
-            }
-
-            const int nextBucketStart = bucketEnd;
-            const int nextBucketEnd = (bucket + 1 < nBuckets)
-                ? std::min(begin + static_cast<int>(std::floor(1.0 + (bucket + 2) * bucketSize)), end - 1)
-                : end;
-            const int nextBucketCount = std::max(nextBucketEnd - nextBucketStart, 1);
-
-            double avgX = 0.0;
-            std::vector<double> avgY(metricCount, 0.0);
-            std::vector<int> avgCounts(metricCount, 0);
-            for (int i = nextBucketStart; i < nextBucketEnd; ++i) {
-                const FlightSample &sample = samples[static_cast<std::size_t>(i)];
-                avgX += m_displaySeconds[static_cast<std::size_t>(i)];
-                for (std::size_t m = 0; m < metricCount; ++m) {
-                    const double value = sampleValueForMetric(sample, enabledMetrics[m]);
-                    if (!metricUsable[m] || !std::isfinite(value)) {
-                        continue;
-                    }
-                    avgY[m] += (value - metricMin[m]) * metricScale[m];
-                    ++avgCounts[m];
-                }
-            }
-            avgX /= static_cast<double>(nextBucketCount);
-            for (std::size_t m = 0; m < metricCount; ++m) {
-                if (avgCounts[m] > 0) {
-                    avgY[m] /= static_cast<double>(avgCounts[m]);
-                }
-            }
-
-            const FlightSample &previousSample = samples[static_cast<std::size_t>(previousSelected)];
-            const double previousX = m_displaySeconds[static_cast<std::size_t>(previousSelected)];
-            int bestIndex = -1;
-            double bestArea = -1.0;
-
-            for (int i = bucketStart; i < bucketEnd; ++i) {
-                const FlightSample &sample = samples[static_cast<std::size_t>(i)];
-                const double currentX = m_displaySeconds[static_cast<std::size_t>(i)];
-                double maxArea = 0.0;
-                bool hasFiniteMetric = false;
-                for (std::size_t m = 0; m < metricCount; ++m) {
-                    const int metric = enabledMetrics[m];
-                    const double previousValue = sampleValueForMetric(previousSample, metric);
-                    const double currentValue = sampleValueForMetric(sample, metric);
-                    if (!metricUsable[m] || avgCounts[m] == 0
-                        || !std::isfinite(previousValue) || !std::isfinite(currentValue)) {
-                        continue;
-                    }
-                    hasFiniteMetric = true;
-                    const double previousY = (previousValue - metricMin[m]) * metricScale[m];
-                    const double currentY = (currentValue - metricMin[m]) * metricScale[m];
-                    const double area = std::abs(
-                        (previousX - avgX) * (currentY - previousY)
-                        - (previousX - currentX) * (avgY[m] - previousY));
-                    maxArea = std::max(maxArea, area);
-                }
-                if (hasFiniteMetric && maxArea > bestArea) {
-                    bestArea = maxArea;
-                    bestIndex = i;
-                }
-            }
-            if (bestIndex < 0) {
-                bestIndex = bucketStart + (bucketEnd - bucketStart) / 2;
-            }
-            idx.push_back(bestIndex);
-            previousSelected = bestIndex;
-        }
-
-        idx.push_back(end - 1);
-        idx.erase(std::unique(idx.begin(), idx.end()), idx.end());
-        return idx;
-    }
-
-    static std::vector<int> cappedContiguousIndices(int begin, int end, int maxPoints)
-    {
-        std::vector<int> out;
-        out.reserve(static_cast<std::size_t>(maxPoints));
-        const long long denom = maxPoints - 1;
-        for (int i = 0; i < maxPoints; ++i) {
-            out.push_back(begin + static_cast<int>(
-                (static_cast<long long>(i) * static_cast<long long>(end - begin - 1)) / denom));
-        }
-        out.erase(std::unique(out.begin(), out.end()), out.end());
-        return out;
-    }
-
+    ChartOverview m_chartOverview;
     std::vector<double> m_displaySeconds;
     std::array<std::pair<double, double>, kMetricCount> m_metricRanges{};
     std::vector<int> m_validGpsIndices;
     std::vector<int> m_map2DIndices;
     std::vector<int> m_map3DIndices;
     long m_medianPositiveDeltaMs = 1;
+    GpsTrajectory m_gpsTrajectory;
     int m_timestampDiscontinuityCount = 0;
     int m_droppedGpsRows = 0;
     bool m_correctedTimelineUsed = false;

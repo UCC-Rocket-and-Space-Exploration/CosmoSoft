@@ -22,10 +22,12 @@
 
 namespace cosmo::flightlink {
 
-/** @brief CSV header used by the fake flight-link text telemetry stream. */
+/** @brief CSV header used by the fake flight link, with integer millisecond
+ * time. */
 inline constexpr std::string_view kTelemetryCsvHeader =
-    "time,temp,pressure,altitude,ax,ay,az,gx,gy,gz,anglex,angley,anglez,"
-    "latitude,longitude,distance_from_base";
+    "timestamp_ms,temp,pressure,altitude,ax,ay,az,gx,gy,gz,anglex,angley,"
+    "anglez,"
+    "latitude,longitude,distance_from_base,rssi";
 
 /** @brief Launch-pad latitude for the deterministic fake launch profile. */
 inline constexpr std::string_view kLaunchLatitudeText = "51.89350958382806";
@@ -41,8 +43,8 @@ inline constexpr double kLaunchLongitude = -8.492074863487407;
 
 /** @brief First telemetry row emitted by the default fake launch profile. */
 inline constexpr std::string_view kExampleTelemetryRow =
-    "0.00,18.50,101325.00,0.00,0.000,0.040,9.810,0.000,0.015,0.000,"
-    "0.000,0.300,0.000,51.89350958382806,-8.492074863487407,0.00";
+    "0,18.50,101325.00,0.00,0.000,0.040,9.810,0.000,0.015,0.000,"
+    "0.000,0.300,0.000,51.89350958382806,-8.492074863487407,0.00,-38.00";
 
 /** @brief One fake telemetry packet in both wire-row and decoded-sample form. */
 struct LaunchTelemetryPacket {
@@ -96,12 +98,12 @@ inline bool isFiniteNumber(std::string_view cell) {
         && std::isfinite(value);
 }
 
-/** @brief Validate one fake telemetry row against the expected 16 numeric fields. */
+/** @brief Validate 16 telemetry fields and an optional numeric RSSI field. */
 inline bool isValidTelemetryCsvRow(std::string_view row) {
     constexpr std::size_t kFieldCount = 16;
     const auto cells = splitCsvCells(row);
-    if (cells.size() != kFieldCount) {
-        return false;
+    if (cells.size() != kFieldCount && cells.size() != kFieldCount + 1) {
+      return false;
     }
     return std::all_of(cells.begin(), cells.end(), [](const std::string &cell) {
         return isFiniteNumber(cell);
@@ -142,19 +144,15 @@ inline LaunchTelemetryPacket buildLaunchTelemetryPacket(std::size_t index) {
     const double longitude = kLaunchLongitude
         + eastMeters / (111111.0 * std::cos(kLaunchLatitude * kDegreesToRadians));
 
+    const long timestampMilliseconds =
+        static_cast<long>(std::lround(t * 1000.0));
     std::ostringstream row;
-    row << formatFixed(t, 2) << ','
-        << formatFixed(temperature, 2) << ','
-        << formatFixed(pressure, 2) << ','
-        << formatFixed(altitude, 2) << ','
-        << formatFixed(ax, 3) << ','
-        << formatFixed(ay, 3) << ','
-        << formatFixed(az, 3) << ','
-        << formatFixed(gx, 3) << ','
-        << formatFixed(gy, 3) << ','
-        << formatFixed(gz, 3) << ','
-        << formatFixed(angleX, 3) << ','
-        << formatFixed(angleY, 3) << ','
+    row << timestampMilliseconds << ',' << formatFixed(temperature, 2) << ','
+        << formatFixed(pressure, 2) << ',' << formatFixed(altitude, 2) << ','
+        << formatFixed(ax, 3) << ',' << formatFixed(ay, 3) << ','
+        << formatFixed(az, 3) << ',' << formatFixed(gx, 3) << ','
+        << formatFixed(gy, 3) << ',' << formatFixed(gz, 3) << ','
+        << formatFixed(angleX, 3) << ',' << formatFixed(angleY, 3) << ','
         << formatFixed(angleZ, 3) << ',';
 
     if (index == 0) {
@@ -162,10 +160,11 @@ inline LaunchTelemetryPacket buildLaunchTelemetryPacket(std::size_t index) {
     } else {
         row << formatFixed(latitude, 14) << ',' << formatFixed(longitude, 15) << ',';
     }
-    row << formatFixed(distance, 2);
+    const double rssi = -38.0 - 0.045 * distance;
+    row << formatFixed(distance, 2) << ',' << formatFixed(rssi, 2);
 
     FlightSample sample{};
-    sample.timestamp = static_cast<long>(std::lround(t * 1000.0));
+    sample.timestamp = timestampMilliseconds;
     sample.temperature = temperature;
     sample.pressure = pressure;
     sample.altitude = altitude;
@@ -175,10 +174,11 @@ inline LaunchTelemetryPacket buildLaunchTelemetryPacket(std::size_t index) {
     sample.angularVelocity.x = gx;
     sample.angularVelocity.y = gy;
     sample.angularVelocity.z = gz;
+    sample.angularRotation = {angleX, angleY, angleZ};
     sample.coordinates.latitude = index == 0 ? kLaunchLatitude : latitude;
     sample.coordinates.longitude = index == 0 ? kLaunchLongitude : longitude;
     sample.batteryVoltage = std::max(10.8, 12.6 - 0.012 * t);
-    sample.rssi = -38.0 - 0.045 * distance;
+    sample.rssi = rssi;
 
     return {row.str(), sample};
 }

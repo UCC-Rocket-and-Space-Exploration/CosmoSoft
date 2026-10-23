@@ -17,7 +17,7 @@ jobs:
         include:
           - os: ubuntu-22.04
             qt_arch: linux_gcc_64
-          - os: macos-14
+          - os: macos-26
             qt_arch: clang_64
           - os: windows-2022
             qt_arch: win64_msvc2019_64
@@ -28,7 +28,7 @@ jobs:
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y zlib1g-dev libnss3 libasound2
+        run: sudo apt-get update && sudo apt-get install -y zlib1g-dev libnss3 libasound2 libcups2-dev
 
       - name: Install Windows Zlib
         if: runner.os == 'Windows'
@@ -42,7 +42,7 @@ jobs:
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.7.3'
+          version: ${{ runner.os == 'macOS' && '6.9.3' || '6.7.3' }}
           arch: ${{ matrix.qt_arch }}
           modules: 'qtcharts qtwebengine qtwebchannel qtpositioning'
           cache: true

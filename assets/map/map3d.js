@@ -27,8 +27,8 @@ let pathDataDirty = true, path3dDataDirty = true;
 // ── 3D state ───────────────────────────────────────────────────────
 let scene3d, camera3d, renderer3d, controls3d, animId3d = null;
 let renderFramesRemaining3d = 0;
-let pathLine3d, trailLine3d, ghostLine3d;
-let launchSphere3d, rocketSphere3d, rocketGlow3d;
+let trailLine3d, ghostLine3d;
+let launchSphere3d, rocketModel3d;
 let groundGrid3d, groundMesh3d;
 let currentRocketWorld3d = null;
 let currentThemePalette = null;
@@ -40,6 +40,48 @@ let groundTexBounds = null;
 let groundElevGrid = null;
 let groundRefAlt = 0;
 let groundLoadGeneration = 0;
+let currentRocketAttitude = null;
+let currentRocketAltitude3d = null, last3DPathKey = null;
+
+/** Decode the shared Qt quaternion payload without accepting missing angle data. */
+export function attitudeFromPayload(raw) {
+  return Array.isArray(raw) && raw.length === 4
+    && raw.every(value => typeof value === "number" && Number.isFinite(value))
+    && Math.abs(Math.hypot(...raw) - 1) < 0.01
+    ? new THREE.Quaternion(...raw).normalize() : null;
+}
+
+function setRocketAttitude(raw) {
+  currentRocketAttitude = attitudeFromPayload(raw);
+  if (rocketModel3d)
+    rocketModel3d.quaternion.copy(currentRocketAttitude || new THREE.Quaternion());
+}
+
+/** Rounded nose, tapered tail and swept fins; every surface shares one orange material. */
+export function createRocketModel(color) {
+  const rocket = new THREE.Group();
+  const material = new THREE.MeshPhongMaterial({color, emissive: color,
+    emissiveIntensity: 0.12, shininess: 35});
+  const profile = [[0, -7.6], [0.9, -7.6], [1.2, -6.5], [1.6, -6],
+    [1.6, 4], [1.55, 5.5], [1.3, 6.8], [1, 8], [0.55, 9.2], [0, 10]];
+  rocket.add(new THREE.Mesh(new THREE.LatheGeometry(
+    profile.map(([radius, height]) => new THREE.Vector2(radius, height)), 48), material));
+  const shape = new THREE.Shape();
+  shape.moveTo(1.4, -1);
+  shape.lineTo(4.2, -5.5);
+  shape.lineTo(4.2, -7);
+  shape.lineTo(1.4, -6);
+  shape.closePath();
+  const finGeometry = new THREE.ExtrudeGeometry(shape, {depth: 0.24,
+    bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.08, bevelThickness: 0.08});
+  finGeometry.translate(0, 0, -0.12);
+  for (let i = 0; i < 4; ++i) {
+    const fin = new THREE.Mesh(finGeometry, material);
+    fin.rotation.y = i * Math.PI / 2;
+    rocket.add(fin);
+  }
+  return rocket;
+}
 
 const MAX_ABS_ALTITUDE = 10000000;
 const MAX_ABS_TIMESTAMP = 1e15;
@@ -147,10 +189,14 @@ function setFollowing(enabled, notifyBridge) {
   const nextFollowing = !!enabled;
   const changed = following !== nextFollowing;
   following = nextFollowing;
+  if (controls3d) controls3d.enablePan = !following;
   const btn = document.getElementById("btnFollow");
   if (btn) {
     btn.classList.toggle("active", following);
     btn.setAttribute("aria-pressed", String(following));
+    btn.textContent = "F";
+    btn.setAttribute("aria-label", following ? "Stop following rocket" : "Follow rocket");
+    btn.title = following ? "Stop following rocket (3D orbit and zoom stay enabled)" : "Follow rocket";
   }
   if (following) window.centerOnCurrent();
   if (changed && bridge && notifyBridge && typeof bridge.onFollowChanged === "function") {
@@ -168,10 +214,12 @@ function firstValid3DReference() {
 
 function toLocal3DPoint(p, alt, refLat, refLon) {
   const cosRef = Math.cos(refLat * D2R);
-  const x = (p.lon - refLon) * D2R * EARTH_R * cosRef;
-  const z = -(p.lat - refLat) * D2R * EARTH_R;
+  const latitude = p.displayLat ?? p.lat, longitude = p.displayLon ?? p.lon;
+  const longitudeDelta = ((longitude - refLon + 540) % 360) - 180;
+  const x = longitudeDelta * D2R * EARTH_R * cosRef;
+  const z = -(latitude - refLat) * D2R * EARTH_R;
   const relAlt = alt - groundRefAlt;
-  const terrainY = getTerrainY(p.lat, p.lon, refLat, refLon);
+  const terrainY = getTerrainY(latitude, longitude, refLat, refLon);
   return new THREE.Vector3(x, terrainY + relAlt * ALT_EXAGGERATION, z);
 }
 
@@ -184,6 +232,63 @@ function toLocal3D(positions, altitudes, refLat, refLon) {
     pts.push(toLocal3DPoint(p, altitudes[i], refLat, refLon));
   }
   return pts;
+}
+
+// PCHIP tangents preserve each coordinate's extrema. Parameterize by time,
+// after GPS alignment, rather than rounding the original staircase vertices.
+function trajectoryLinePoints(positions, altitudes, refLat, refLon) {
+  const vertices = [], active = [];
+  const add = (a,b,endIndex) => {
+    vertices.push(a,b);
+    if (endIndex < trailLen) active.push(a,b);
+  };
+  const subdivisions = Math.max(1, Math.min(4, Math.floor(12000 / positions.length)));
+  for (let begin = 0; begin < positions.length;) {
+    let end = begin + 1;
+    while (end < positions.length && positions[end].segment === positions[begin].segment) ++end;
+    const points = toLocal3D(positions.slice(begin,end), altitudes.slice(begin,end), refLat, refLon);
+    const times = positions.slice(begin,end).map(p=>p.ts);
+    const h = times.slice(1).map((t,i)=>t-times[i]);
+    if (points.length > 1 && h.every(dt=>Number.isFinite(dt)&&dt>0)) {
+      const slopes = axis => {
+        const d = h.map((dt,i)=>(points[i+1][axis]-points[i][axis])/dt);
+        if (d.length === 1) return [d[0],d[0]];
+        const endpoint = (a,b,ha,hb) => {
+          const m=((2*ha+hb)*a-ha*b)/(ha+hb);
+          return Math.sign(m)!==Math.sign(a)?0:
+            (Math.sign(a)!==Math.sign(b)&&Math.abs(m)>3*Math.abs(a)?3*a:m);
+        };
+        const m = [endpoint(d[0],d[1],h[0],h[1])];
+        for (let i=1;i<d.length;++i) {
+          const w1=2*h[i]+h[i-1],w2=h[i]+2*h[i-1];
+          m.push(d[i-1]*d[i]<=0?0:(w1+w2)/(w1/d[i-1]+w2/d[i]));
+        }
+        m.push(endpoint(d.at(-1),d.at(-2),h.at(-1),h.at(-2)));
+        return m;
+      };
+      const tangents = {x:slopes("x"),y:slopes("y"),z:slopes("z")};
+      for (let i=0;i<h.length;++i) {
+        let previous = points[i];
+        for (let step=1;step<=subdivisions;++step) {
+          const u=step/subdivisions,u2=u*u,u3=u2*u;
+          const point = new THREE.Vector3();
+          for (const axis of ["x","y","z"]) {
+            const a=points[i][axis],b=points[i+1][axis],m=tangents[axis];
+            point[axis]=THREE.MathUtils.clamp((2*u3-3*u2+1)*a
+              +(u3-2*u2+u)*h[i]*m[i]+(-2*u3+3*u2)*b
+              +(u3-u2)*h[i]*m[i+1],Math.min(a,b),Math.max(a,b));
+          }
+          add(previous,point,positions[begin+i+1].idx);
+          previous=point;
+        }
+      }
+    } else {
+      // Legacy payloads may lack distinct timestamps; retain their straight segments.
+      for (let i=1;i<points.length;++i) add(points[i-1],points[i],positions[begin+i].idx);
+    }
+    begin=end;
+  }
+  return {full:vertices,active};
 }
 
 function getTerrainY(lat, lon, refLat, refLon) {
@@ -221,7 +326,7 @@ function createWideLine(color, width, opacity, isSegments=false) {
 function updateLineMaterialResolution() {
   if (!renderer3d) return;
   const size = renderer3d.getSize(new THREE.Vector2());
-  for (const line of [ghostLine3d, trailLine3d, pathLine3d]) {
+  for (const line of [ghostLine3d, trailLine3d]) {
     if (line?.material?.resolution) line.material.resolution.set(size.x, size.y);
   }
 }
@@ -265,7 +370,6 @@ function apply3DTheme() {
   const fog = currentThemePalette?.bg_dark || currentThemePalette?.bg_base || (isDark ? "#080a10" : "#f4f7fb");
   const trail = currentThemePalette?.accent_link || (isDark ? 0x64c8ff : 0x0057b8);
   const ghost = currentThemePalette?.border_light || (isDark ? 0x3a5a78 : 0x4a6478);
-  const drop = currentThemePalette?.info || currentThemePalette?.accent_link || (isDark ? 0x64c8ff : 0x0b63ce);
   const rocket = currentThemePalette?.warning || currentThemePalette?.danger || (isDark ? 0xff8a3d : 0xd44818);
   const rocketEmissive = rocket;
   const launch = currentThemePalette?.success || (isDark ? 0x44cc77 : 0x12864a);
@@ -284,19 +388,17 @@ function apply3DTheme() {
 
   setLineStyle(ghostLine3d, ghost, isDark ? 2.0 : 2.25, isDark ? 0.48 : 0.44);
   setLineStyle(trailLine3d, trail, isDark ? 4.5 : 5.0, 1.0);
-  setLineStyle(pathLine3d, drop, isDark ? 1.25 : 1.5, isDark ? 0.18 : 0.28);
 
   if (launchSphere3d?.material) {
     launchSphere3d.material.color.set(launch);
     launchSphere3d.material.emissive.set(launchEmissive);
   }
-  if (rocketSphere3d?.material) {
-    rocketSphere3d.material.color.set(rocket);
-    rocketSphere3d.material.emissive.set(rocketEmissive);
-  }
-  if (rocketGlow3d?.material) {
-    rocketGlow3d.material.color.set(rocket);
-  }
+  rocketModel3d?.traverse(part => {
+    if (!part.material) return;
+    part.material.color.set(rocket);
+    if (!isDark) part.material.color.offsetHSL(0, 0, 0.16);
+    part.material.emissive.set(rocketEmissive);
+  });
   const info = document.getElementById("info3d");
   if (info) info.style.color = currentThemePalette?.text_dim || (isDark ? "#9fb4c8" : "#1f3142");
   updateLineMaterialResolution();
@@ -412,8 +514,8 @@ function init3D() {
   controls3d.minDistance = 20;
   controls3d.maxDistance = 8000;
   controls3d.maxPolarAngle = Math.PI * 0.48;
+  controls3d.enablePan = !following;
   controls3d.addEventListener("start", () => {
-    if (following) setFollowing(false, true);
     request3DRender(12);
   });
   controls3d.addEventListener("change", () => request3DRender(2));
@@ -437,16 +539,12 @@ function init3D() {
   scene3d.add(dLight);
 
   // ghost line (full path, dimmed)
-  ghostLine3d = createWideLine(0x3a5a78, 2.0, 0.48);
+  ghostLine3d = createWideLine(0x3a5a78, 2.0, 0.48, true);
   scene3d.add(ghostLine3d);
 
   // trail line (active, bright)
-  trailLine3d = createWideLine(0x64c8ff, 4.5, 1.0);
+  trailLine3d = createWideLine(0x64c8ff, 4.5, 1.0, true);
   scene3d.add(trailLine3d);
-
-  // vertical drop lines from trail to ground
-  pathLine3d = createWideLine(0x64c8ff, 1.25, 0.18, true);
-  scene3d.add(pathLine3d);
 
   // launch sphere
   launchSphere3d = new THREE.Mesh(
@@ -456,20 +554,11 @@ function init3D() {
   launchSphere3d.visible = false;
   scene3d.add(launchSphere3d);
 
-  // rocket sphere + glow
-  rocketSphere3d = new THREE.Mesh(
-    new THREE.SphereGeometry(6, 16, 16),
-    new THREE.MeshPhongMaterial({ color: 0xff7a30, emissive: 0x993300 })
-  );
-  rocketSphere3d.visible = false;
-  scene3d.add(rocketSphere3d);
-
-  rocketGlow3d = new THREE.Mesh(
-    new THREE.SphereGeometry(14, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xff7a30, transparent: true, opacity: 0.12 })
-  );
-  rocketGlow3d.visible = false;
-  scene3d.add(rocketGlow3d);
+  // Orange rocket model
+  rocketModel3d = createRocketModel(currentThemePalette?.warning || 0xff9800);
+  setRocketAttitude(currentRocketAttitude?.toArray());
+  rocketModel3d.visible = false;
+  scene3d.add(rocketModel3d);
 
   resize3D();
   apply3DTheme();
@@ -503,14 +592,6 @@ function animate3D() {
   const followChanged = update3DFollowCamera();
   const controlsChanged = controls3d.update();
 
-  // Pulse briefly after data/camera changes, then leave the renderer idle.
-  if (rocketGlow3d && rocketGlow3d.visible) {
-    const t = performance.now() * 0.002;
-    const s = 1.0 + 0.3 * Math.sin(t);
-    rocketGlow3d.scale.setScalar(s);
-    rocketGlow3d.material.opacity = 0.08 + 0.06 * Math.sin(t);
-  }
-
   if (needsUpdate3d || followChanged || controlsChanged || renderFramesRemaining3d > 0) {
     renderer3d.render(scene3d, camera3d);
   }
@@ -521,8 +602,36 @@ function animate3D() {
   }
 }
 
+// Retained path points can share horizontal coordinates during vertical flight.
+// Match samples by identity, so an exact seek never loses its current altitude.
+function appendExactPoint(positions, altitudes, lastIndex, point) {
+  if (!point || !validC(point.lat, point.lon)) return lastIndex;
+  const position = {...point};
+  if (positions.length && lastIndex === point.idx) {
+    positions[positions.length-1] = position;
+    altitudes[altitudes.length-1] = point.alt;
+  } else {
+    positions.push(position); altitudes.push(point.alt);
+  }
+  return point.idx;
+}
+
+function updateRocketInfo3D() {
+  const element = document.getElementById("info3d");
+  if (currentRocketAltitude3d === null) { element.textContent = ""; return; }
+  const altitude = currentRocketAltitude3d;
+  const label = ground3dMode !== "box"
+    ? "AGL " + fmtAlt(altitude-groundRefAlt) + " (MSL " + fmtAlt(altitude) + ")"
+    : "Alt " + fmtAlt(altitude);
+  element.textContent = label + "  ·  " + ALT_EXAGGERATION + "x vert" +
+    "  ·  Estimated path" +
+    (currentRocketAttitude ? "" : "  ·  Attitude unavailable") +
+    "  ·  Locate/Fit/Follow  ·  Drag to orbit";
+}
+
 function update3DEntities() {
   if (!scene3d) return;
+  const pathChanged = path3dDataDirty;
 
   const allValid = [], allValidAlt = [];
   const ghostPos = allPos3d.length ? allPos3d : allPos;
@@ -533,11 +642,11 @@ function update3DEntities() {
   if (allValid.length === 0) {
     updateWideLine(ghostLine3d, []);
     updateWideLine(trailLine3d, []);
-    updateWideLine(pathLine3d, []);
     currentRocketWorld3d = null;
+    currentRocketAltitude3d = null;
+    last3DPathKey = null;
     launchSphere3d.visible = false;
-    rocketSphere3d.visible = false;
-    rocketGlow3d.visible = false;
+    rocketModel3d.visible = false;
     document.getElementById("info3d").textContent = "";
     path3dDataDirty = false;
     request3DRender(2);
@@ -546,45 +655,49 @@ function update3DEntities() {
 
   const refLat = allValid[0].lat, refLon = allValid[0].lon;
 
-  // ghost (full path)
-  if (path3dDataDirty) {
-    const ghostPts = toLocal3D(allValid, allValidAlt, refLat, refLon);
-    updateWideLine(ghostLine3d, ghostPts);
-    path3dDataDirty = false;
-  }
-
   // trail (active)
   const trailValid = [], trailAlt = [];
   const trailPos = allPos3d.length ? allPos3d : allPos;
   const trailAltSrc = allPos3d.length ? allAlt3d : allAlt;
   const trailIdxSrc = allPos3d.length ? allIdx3d : allIdx;
+  let lastIndex = -1;
   for (let i = 0; i < trailPos.length; i++) {
     if (sampleIdx(trailIdxSrc, i) < trailLen && validC(trailPos[i].lat, trailPos[i].lon)) {
       trailValid.push(trailPos[i]); trailAlt.push(trailAltSrc[i]);
+      lastIndex = sampleIdx(trailIdxSrc, i);
     }
   }
-  if (currentExactPoint && validC(currentExactPoint.lat, currentExactPoint.lon)) {
-    const last = trailValid.length ? trailValid[trailValid.length - 1] : null;
-    if (!last || Math.abs(last.lat - currentExactPoint.lat) > 1e-10 || Math.abs(last.lon - currentExactPoint.lon) > 1e-10) {
-      trailValid.push({lat:currentExactPoint.lat, lon:currentExactPoint.lon});
-      trailAlt.push(currentExactPoint.alt);
+  lastIndex = appendExactPoint(trailValid, trailAlt, lastIndex, currentExactPoint);
+  const lastPoint = trailValid.at(-1);
+  const pathKey = JSON.stringify([trailValid.length,lastIndex,lastPoint?.lat,
+    lastPoint?.lon,lastPoint?.displayLat,lastPoint?.displayLon,
+    lastPoint?.segment,trailAlt.at(-1),refLat,refLon]);
+  if (!pathChanged && pathKey === last3DPathKey) {
+    updateRocketInfo3D();
+    request3DRender(following ? 12 : 2);
+    return;
+  }
+  last3DPathKey = pathKey;
+
+  // Include an exact seek before constructing one shared full/active curve.
+  // Otherwise a decimated ghost can miss the rocket's measured altitude.
+  if (currentExactPoint && currentExactPoint.idx < trailLen) {
+    const slot = allValid.findIndex(p=>p.idx>=currentExactPoint.idx);
+    if (slot < 0) {
+      allValid.push(currentExactPoint);allValidAlt.push(currentExactPoint.alt);
+    } else if (allValid[slot].idx === currentExactPoint.idx) {
+      allValid[slot]=currentExactPoint;allValidAlt[slot]=currentExactPoint.alt;
+    } else {
+      allValid.splice(slot,0,currentExactPoint);allValidAlt.splice(slot,0,currentExactPoint.alt);
     }
   }
+  const curve = trajectoryLinePoints(allValid,allValidAlt,refLat,refLon);
+  updateWideLine(ghostLine3d,curve.full);
+  path3dDataDirty=false;
 
   if (trailValid.length > 0) {
     const trailPts = toLocal3D(trailValid, trailAlt, refLat, refLon);
-    updateWideLine(trailLine3d, trailPts);
-
-    // vertical drop lines (every 3rd point) — to terrain surface
-    const dropVerts = [];
-    for (let i = 0; i < trailPts.length; i += 3) {
-      dropVerts.push(trailPts[i].clone());
-      const tY = (groundElevGrid && ground3dMode !== "box")
-        ? getTerrainY(trailValid[Math.min(i, trailValid.length-1)].lat, trailValid[Math.min(i, trailValid.length-1)].lon, refLat, refLon)
-        : 0;
-      dropVerts.push(new THREE.Vector3(trailPts[i].x, tY, trailPts[i].z));
-    }
-    updateWideLine(pathLine3d, dropVerts);
+    updateWideLine(trailLine3d, curve.active);
 
     // launch
     launchSphere3d.position.copy(trailPts[0]);
@@ -593,27 +706,19 @@ function update3DEntities() {
     // rocket
     const rp = trailPts[trailPts.length - 1];
     currentRocketWorld3d = rp.clone();
-    rocketSphere3d.position.copy(rp);
-    rocketSphere3d.visible = true;
-    rocketGlow3d.position.copy(rp);
-    rocketGlow3d.visible = true;
+    rocketModel3d.position.copy(rp);
+    rocketModel3d.visible = true;
 
     // info label
-    const lastA = trailAlt[trailAlt.length - 1];
-    const agl = lastA - groundRefAlt;
-    const altLabel = ground3dMode !== "box"
-      ? "AGL " + fmtAlt(agl) + " (MSL " + fmtAlt(lastA) + ")"
-      : "Alt " + fmtAlt(lastA);
-    document.getElementById("info3d").textContent =
-      altLabel + "  ·  " + ALT_EXAGGERATION + "x vert" +
-      "  ·  Locate/Fit/Follow  ·  Drag to orbit";
+    currentRocketAltitude3d = trailAlt[trailAlt.length - 1];
+    updateRocketInfo3D();
   } else {
     updateWideLine(trailLine3d, []);
-    updateWideLine(pathLine3d, []);
     currentRocketWorld3d = null;
+    currentRocketAltitude3d = null;
+    updateRocketInfo3D();
     launchSphere3d.visible = false;
-    rocketSphere3d.visible = false;
-    rocketGlow3d.visible = false;
+    rocketModel3d.visible = false;
   }
   request3DRender(following ? 12 : 2);
 }
@@ -1128,16 +1233,14 @@ function updateEntities(tLen, exactPoint) {
   currentExactPoint = exactPoint || null;
   const vp=[], va=[];
   const total = totalRawSamples || allPos.length;
+  let lastIndex = -1;
   for(let i=0;i<allPos.length;i++){
     const p=allPos[i];
-    if(sampleIdx(allIdx,i) < tLen && validC(p.lat,p.lon)){vp.push(p);va.push(allAlt[i]);}
-  }
-  if(currentExactPoint && validC(currentExactPoint.lat,currentExactPoint.lon)){
-    const last=vp.length?vp[vp.length-1]:null;
-    if(!last || Math.abs(last.lat-currentExactPoint.lat)>1e-10 || Math.abs(last.lon-currentExactPoint.lon)>1e-10){
-      vp.push({lat:currentExactPoint.lat,lon:currentExactPoint.lon});va.push(currentExactPoint.alt);
+    if(sampleIdx(allIdx,i) < tLen && validC(p.lat,p.lon)){
+      vp.push(p);va.push(allAlt[i]);lastIndex=sampleIdx(allIdx,i);
     }
   }
+  appendExactPoint(vp,va,lastIndex,currentExactPoint);
 
   if(pathDataDirty){
     const allValid=[];
@@ -1228,7 +1331,12 @@ function normalizePoint(raw, fallbackIndex) {
   const rawIndex = Number(raw.idx);
   const idx = Number.isSafeInteger(rawIndex) && rawIndex >= 0
     && rawIndex <= MAX_MAP_SAMPLE_COUNT ? rawIndex : fallbackIndex;
-  return { lat, lon, alt, ts, idx };
+  const displayLat = Number(raw.displayLat), displayLon = Number(raw.displayLon);
+  const segment = Number(raw.segment);
+  return { lat, lon, alt, ts, idx,
+    displayLat:validC(displayLat,displayLon)?displayLat:lat,
+    displayLon:validC(displayLat,displayLon)?displayLon:lon,
+    segment:Number.isSafeInteger(segment)&&segment>=0?segment:0 };
 }
 
 function invalidateGroundData() {
@@ -1263,14 +1371,17 @@ window.addPoints = function(payload){
   }
 
   const fallback2d=allPos.length;
+  let added2d=false, added3d=false;
   for(let i=0;i<path.length;i++){
     const r=normalizePoint(path[i],fallback2d+i);if(!r)continue;
-    allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
+    allPos.push(r);allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
+    added2d=true;
   }
   const fallback3d=allPos3d.length;
   for(let i=0;i<path3d.length;i++){
     const r=normalizePoint(path3d[i],fallback3d+i);if(!r)continue;
-    allPos3d.push({lat:r.lat,lon:r.lon});allAlt3d.push(r.alt);allIdx3d.push(r.idx);
+    allPos3d.push(r);allAlt3d.push(r.alt);allIdx3d.push(r.idx);
+    added3d=true;
   }
   cap2DSeries();
   cap3DSeries();
@@ -1283,8 +1394,9 @@ window.addPoints = function(payload){
     totalRawSamples=Math.min(MAX_MAP_SAMPLE_COUNT,Math.max(totalRawSamples,allPos.length));
   }
   trailLen=totalRawSamples;
-  pathDataDirty=true;
-  path3dDataDirty=true;
+  pathDataDirty ||= replace || added2d;
+  path3dDataDirty ||= replace || added3d || (!allPos3d.length && added2d);
+  setRocketAttitude(batch.attitude);
   updateEntities(trailLen,null);
 };
 window.loadSession = function(payload){
@@ -1292,6 +1404,7 @@ window.loadSession = function(payload){
   try { s=(typeof payload==="string")?JSON.parse(payload):payload; }
   catch (_) { return; }
   if (!s || typeof s !== "object") return;
+  setRocketAttitude(null);
   cumulativeLiveTotal="";cumulativeLiveValid="";cumulativeLivePathLength=NaN;
   const sourcePath=Array.isArray(s)?s:(s.path||[]);
   const sourcePath3d=Array.isArray(s)?s:(s.path3d||sourcePath);
@@ -1305,11 +1418,11 @@ window.loadSession = function(payload){
   allPos3d=[];allAlt3d=[];allIdx3d=[];currentExactPoint=null;
   for(let i=0;i<path.length;i++){
     const r=normalizePoint(path[i],i);if(!r)continue;
-    allPos.push({lat:r.lat,lon:r.lon});allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
+    allPos.push(r);allAlt.push(r.alt);allTs.push(r.ts);allIdx.push(r.idx);
   }
   for(let i=0;i<path3d.length;i++){
     const r=normalizePoint(path3d[i],i);if(!r)continue;
-    allPos3d.push({lat:r.lat,lon:r.lon});allAlt3d.push(r.alt);allIdx3d.push(r.idx);
+    allPos3d.push(r);allAlt3d.push(r.alt);allIdx3d.push(r.idx);
   }
   cap2DSeries();
   cap3DSeries();
@@ -1329,6 +1442,7 @@ window.setTrailLength = function(nn,current){
   const requested=Number(nn);
   if(!Number.isFinite(requested))return;
   trailLen=Math.max(0,Math.min(Math.trunc(requested),totalRawSamples||allPos.length));
+  setRocketAttitude(current?.attitude);
   updateEntities(trailLen,normalizePoint(current,Math.max(0,trailLen-1))||null);
 };
 window.fitCamera = function(){
@@ -1354,6 +1468,7 @@ window.followRocket = function(en){
   setFollowing(en,false);
 };
 window.clearAll = function(){
+  setRocketAttitude(null);
   invalidateGroundData();
   allPos=[];allAlt=[];allTs=[];allIdx=[];trailLen=0;
   allPos3d=[];allAlt3d=[];allIdx3d=[];totalRawSamples=0;currentExactPoint=null;
@@ -1497,6 +1612,7 @@ function init() {
       connectSignal(bridge.fitRequested, () => window.fitCamera());
       connectSignal(bridge.centerRequested, () => window.centerOnCurrent());
       connectSignal(bridge.followRequested, enabled => window.followRocket(Boolean(enabled)));
+      connectSignal(bridge.recoveryRequested, record => window.showRecovery(record));
       if(typeof bridge.mapReady === "function")bridge.mapReady();
     });
   }
@@ -1504,3 +1620,21 @@ function init() {
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);
 else init();
+
+
+let recoveryMarker=null, recoveryActive=false;
+window.showRecovery=function(record) {
+  const active=Boolean(record?.active), wasActive=recoveryActive, hadMarker=Boolean(recoveryMarker);
+  recoveryActive=active;
+  if (!map) return;
+  if (recoveryMarker) {map.removeLayer(recoveryMarker);recoveryMarker=null;}
+  const stats=document.getElementById("statsOverlay");
+  if(stats)stats.style.visibility=active?"hidden":"";
+  if (!active) return;
+  if (activeView!=="2d") switchView("2d");
+  setFollowing(false,true);
+  if (!validC(record.lat,record.lon) || (record.lat===0 && record.lon===0)) return;
+  recoveryMarker=L.circleMarker([record.lat,record.lon],{radius:8,color:currentThemePalette?.warning,
+    fillColor:currentThemePalette?.warning,fillOpacity:1,weight:2}).addTo(map);
+  if (!wasActive || !hadMarker) map.setView([record.lat,record.lon],Math.max(map.getZoom(),16));
+};

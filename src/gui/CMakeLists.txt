@@ -36,4 +36,8 @@ target_link_libraries(gui
 
 target_link_libraries(gui PRIVATE ZLIB::ZLIB)
 
+# MainWindow uses backend services and serial factories. Declare the static
+# dependencies so CMake rescans the backend/GUI cycle on single-pass linkers.
+target_link_libraries(gui PRIVATE cosmo-backend comms)
+
 target_link_libraries(cosmo-backend gui)

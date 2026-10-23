@@ -133,7 +133,7 @@ TEST_CASE("LineTelemetryDecoder decodes fake telemetry CSV rows", "[telemetry]")
     REQUIRE(sample->coordinates.latitude == Catch::Approx(cosmo::flightlink::kLaunchLatitude));
     REQUIRE(sample->coordinates.longitude == Catch::Approx(cosmo::flightlink::kLaunchLongitude));
     REQUIRE(sample->batteryVoltage == Catch::Approx(0.0));
-    REQUIRE(sample->rssi == Catch::Approx(0.0));
+    REQUIRE(sample->rssi == Catch::Approx(-38.0));
 }
 
 TEST_CASE("LineTelemetryDecoder rejects malformed telemetry CSV rows", "[telemetry]") {

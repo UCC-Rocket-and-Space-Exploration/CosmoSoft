@@ -18,7 +18,9 @@ void writeCsvSample(QTextStream &output, const FlightSample &sample) {
         sample.acceleration.x, sample.acceleration.y, sample.acceleration.z,
         sample.coordinates.latitude, sample.coordinates.longitude,
         sample.batteryVoltage, sample.rssi, sample.angularVelocity.x,
-        sample.angularVelocity.y, sample.angularVelocity.z}) {
+        sample.angularVelocity.y, sample.angularVelocity.z,
+        sample.angularRotation.x, sample.angularRotation.y,
+        sample.angularRotation.z}) {
     output << u',';
     if (std::isfinite(value))
       output << value;
@@ -70,10 +72,12 @@ bool FlightLogManager::exportSessionToCsv(const FlightSession &session) const {
         output.setLocale(QLocale::c());
         output.setRealNumberPrecision(17);
         output << QStringLiteral(
-            "time_ms,altitude,temperature,pressure,acceleration_x,acceleration_"
+            "timestamp_ms,altitude,temperature,pressure,acceleration_x,"
+            "acceleration_"
             "y,"
             "acceleration_z,latitude,longitude,battery_voltage,rssi,"
-            "angular_velocity_x,angular_velocity_y,angular_velocity_z\n");
+            "angular_velocity_x,angular_velocity_y,angular_velocity_z,"
+            "attitude_x_deg,attitude_y_deg,attitude_z_deg\n");
         for (const auto &sample : session.samples) {
             writeCsvSample(output, sample);
         }

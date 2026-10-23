@@ -20,4 +20,12 @@ add_library(comms ${SOURCES}
         SerialFramerWorker.cpp)
 target_include_directories(comms PUBLIC "${HEADERS}")
 
+# Serial factories instantiate the platform backend, which must follow comms
+# in the static archive link order.
+if(WIN32)
+    target_link_libraries(comms PRIVATE WinComms)
+elseif(UNIX)
+    target_link_libraries(comms PRIVATE PosixComms)
+endif()
+
 target_link_libraries(cosmo-backend comms)

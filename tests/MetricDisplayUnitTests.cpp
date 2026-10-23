@@ -1,11 +1,39 @@
+#include "gui/AttitudeMath.h"
 #include "gui/widgets/ChartSamples.h"
 #include "gui/widgets/MetricDefs.h"
+#include "services/preview/FlightPreviewCache.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
 #include <limits>
+
+TEST_CASE("Rocket attitude uses a right handed upright XYZ reference",
+          "[gui][attitude]") {
+  using cosmo::gui::attitudeQuaternion;
+  const auto upright = attitudeQuaternion({0, 0, 0});
+  REQUIRE(upright.has_value());
+  REQUIRE(upright->rotatedVector({0, 1, 0}).y() == Catch::Approx(1));
+  const auto tiltX = attitudeQuaternion({90, 0, 0});
+  REQUIRE(tiltX.has_value());
+  REQUIRE(tiltX->rotatedVector({0, 1, 0}).z() == Catch::Approx(1));
+  const auto tiltZ = attitudeQuaternion({0, 0, 90});
+  REQUIRE(tiltZ.has_value());
+  REQUIRE(tiltZ->rotatedVector({0, 1, 0}).x() == Catch::Approx(-1));
+  const auto roll = attitudeQuaternion({0, 90, 0});
+  REQUIRE(roll.has_value());
+  REQUIRE(roll->rotatedVector({0, 1, 0}).y() == Catch::Approx(1));
+  REQUIRE(roll->rotatedVector({1, 0, 0}).z() == Catch::Approx(-1));
+  const auto wrapped = attitudeQuaternion({0, 720, 0});
+  REQUIRE(wrapped.has_value());
+  REQUIRE(wrapped->rotatedVector({1, 0, 0}).x() == Catch::Approx(1));
+  const double missing = std::numeric_limits<double>::quiet_NaN();
+  REQUIRE_FALSE(attitudeQuaternion({missing, 0, 0}).has_value());
+  REQUIRE_FALSE(
+      attitudeQuaternion({0, std::numeric_limits<double>::infinity(), 0})
+          .has_value());
+}
 
 TEST_CASE("Chart overview preserves spikes in every trace and missing-value boundaries", "[gui][chart]") {
     std::vector<FlightSample> samples(12000);
@@ -36,6 +64,81 @@ TEST_CASE("Chart overview preserves spikes in every trace and missing-value boun
     REQUIRE(samples[4501].altitude == 12345.678901);
     REQUIRE(samples[4503].temperature == 890.125);
     REQUIRE(ChartSamples::select(samples, 20, 10, 0, enabled).empty());
+}
+
+TEST_CASE("Chart overview bounds alternating missing measurements",
+          "[gui][chart][chart-budget]") {
+  std::vector<FlightSample> samples(100000);
+  for (std::size_t i = 0; i < samples.size(); ++i) {
+    samples[i].altitude = i % 2 == 0 ? static_cast<double>(i)
+                                     : std::numeric_limits<double>::quiet_NaN();
+  }
+  std::array<bool, MetricDefs::kMetricCount> enabled{};
+  enabled[0] = true;
+  const auto indices = ChartSamples::select(samples, 0, 100000, 1000, enabled);
+  REQUIRE(indices.size() <= 1000);
+  REQUIRE(indices.front() == 0);
+  REQUIRE(indices.back() == 99999);
+  for (const int budget : {0, 1, 2, 3, 7}) {
+    REQUIRE(ChartSamples::select(samples, 0, 100000, budget, enabled).size() <=
+            static_cast<std::size_t>(budget));
+  }
+}
+
+TEST_CASE("Replay overview retains every metric's extrema and gap boundaries",
+          "[preview][chart][chart-budget]") {
+  FlightSession session;
+  session.samples.resize(12000);
+  for (int i = 0; i < 12000; ++i) {
+    session.samples[i].timestamp = i * 10;
+    session.samples[i].altitude = 100;
+    session.samples[i].temperature = 20;
+  }
+  session.samples[4501].altitude = 12345;
+  session.samples[4502].altitude = -9876;
+  session.samples[4503].temperature = 890;
+  session.samples[4504].temperature = -765;
+  session.samples[8000].altitude = std::numeric_limits<double>::quiet_NaN();
+  std::array<bool, MetricDefs::kMetricCount> enabled{};
+  enabled[0] = enabled[1] = true;
+  const auto preview = cosmo::preview::FlightPreviewCache::build(session);
+  REQUIRE(preview);
+  const auto indices = preview->chartIndices(session, 0, 12000, 1000, enabled);
+  REQUIRE(indices.size() <= 1000);
+  for (const int index : {4501, 4502, 4503, 4504, 7999, 8000, 8001}) {
+    REQUIRE(std::binary_search(indices.begin(), indices.end(), index));
+  }
+}
+
+TEST_CASE("Replay gap queries respect metric and half-open range boundaries",
+          "[preview][chart][chart-budget]") {
+  FlightSession session;
+  session.samples.resize(300);
+  const double missing = std::numeric_limits<double>::quiet_NaN();
+  for (int i = 0; i < 300; ++i)
+    session.samples[i].timestamp = i;
+  for (const int index : {0, 63, 64, 127, 128, 299})
+    session.samples[index].altitude = missing;
+  const auto preview = cosmo::preview::FlightPreviewCache::build(session);
+  REQUIRE(preview);
+  for (const int index : {0, 63, 64, 127, 128, 299}) {
+    REQUIRE(preview->chartHasMissing(session, 0, index, index + 1));
+    REQUIRE_FALSE(preview->chartHasMissing(session, 1, index, index + 1));
+    REQUIRE_FALSE(preview->chartHasMissing(session, 0, index, index));
+  }
+  REQUIRE_FALSE(preview->chartHasMissing(session, 0, 1, 63));
+  REQUIRE_FALSE(preview->chartHasMissing(session, 0, 129, 299));
+  REQUIRE(preview->chartHasMissing(session, 0, 1, 299));
+  FlightSession other = session;
+  REQUIRE(preview->chartHasMissing(other, 0, 1, 63));
+}
+
+TEST_CASE("Replay chart summaries observe cancellation",
+          "[preview][chart][chart-budget]") {
+  std::vector<FlightSample> samples(100000);
+  cosmo::detail::CancellationState cancellation([] { return true; });
+  cosmo::preview::ChartOverview overview;
+  REQUIRE_FALSE(overview.build(samples, cancellation));
 }
 
 TEST_CASE("Metric display conversion preserves SI values in metric mode", "[gui][units]") {
@@ -164,4 +267,21 @@ TEST_CASE("Replay clock formatting rejects invalid and overflowing durations",
             == QStringLiteral("duration too large"));
     REQUIRE(MetricDefs::formatReplayClockHms(std::numeric_limits<double>::max())
             == QStringLiteral("duration too large"));
+}
+
+#include "gui/NavballMath.h"
+TEST_CASE(
+    "Navball looks along the rocket nose rather than assuming aircraft axes",
+    "[mission][navball]") {
+  using cosmo::gui::NavballFrame;
+  const NavballFrame upright(QQuaternion{});
+  REQUIRE(upright.ray(0, 0)->y() > 0.99);
+  REQUIRE_FALSE(upright.ray(1, 1).has_value());
+  const NavballFrame horizontal(QQuaternion::fromAxisAndAngle(1, 0, 0, 90));
+  REQUIRE(std::abs(horizontal.ray(0, 0)->y()) < 0.001);
+  REQUIRE(horizontal.ray(0, 0)->z() > 0.99);
+  const NavballFrame inverted(QQuaternion::fromAxisAndAngle(0, 0, 1, 180));
+  REQUIRE(inverted.ray(0, 0)->y() < -0.99);
+  REQUIRE(upright.ray(0.6F, 0)->x() > 0.59F);
+  REQUIRE(std::abs(upright.ray(0.6F, 0)->length() - 1) < 0.001);
 }

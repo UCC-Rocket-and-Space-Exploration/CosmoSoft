@@ -9,7 +9,8 @@ The project is written in C++20 and uses Qt 6 for the user interface and CMake f
 The app builds and runs with:
 
 - **Dashboard** — interactive telemetry chart: **multiple traces** (checkboxes for altitude, temp, pressure, accel, battery, RSSI, gyro, lat/lon). One trace uses raw Y units; **two or more** use a **normalized 0–1 overlay** (legend shows “(norm)”); **hover** lists elapsed time, sample index, and **engineering values for every enabled trace**. Dotted grid, legend, point markers when ≤400 samples/trace, full-history replay scrubber, zoom, stat tiles.
-- **Live Telemetry** — serial device discovery and connection controls, the latest decoded sample, and its mapped flight path.
+- **Live Telemetry** — serial connection and link health, telemetry readings, separate rocket attitude and navball instruments, a mapped flight path, Recovery and configurable preflight checks.
+- **Flight events and saving** — editable replay markers and references travel with CSV exports in a matching metadata file. Save/Discard/Cancel protects unsaved recordings on close, clear or replacement. See [the flight instrument guide](docs/rocket-attitude.md).
 - **Event Log** — bounded, timestamped application events and errors with live theme updates.
 - **Action bar** (under the toolbar) — **Open flight log**, **Clear flight data**, **Export**, and a deterministic fake live transmission; port, baud, and the last replay folder are persisted via **QSettings** (`CosmoSoft` / `cosmo-soft`).
 - **Settings** (separate window) — built-in and imported skins, metric/imperial display units, rate-limited error feedback sounds, and developer diagnostics.
@@ -22,12 +23,19 @@ first worksheet.
 **`.telem` files:** Lines are hex-decoded and fed through the telemetry **Framer** / **Parser**. Those layers are still **stubs**, so `.telem` replay will not produce samples until binary framing and decoding are implemented.
 
 **Live serial:** Connect from the Live Telemetry page; the current newline-delimited
-CSV stream is decoded off the UI thread by `LineTelemetryDecodeWorker` and
+CSV stream uses integer FC milliseconds in its first (`timestamp_ms`) column.
+The Pico receiver and CosmoSoft must both use this format; legacy seconds-based
+live streams are not detected automatically. See [the live CSV contract](docs/protocol.md).
+The stream is decoded off the UI thread by `LineTelemetryDecodeWorker` and
 delivered to the model in bounded batches. Complete valid rows appear in the
-dashboard and Live Telemetry page. The binary `Framer` / `Parser` path remains
+dashboard and Live Telemetry page. The optional 17th field carries the ground
+station's packet RSSI in dBm; older 16-field rows show **—** for RSSI.
+The binary `Framer` / `Parser` path remains
 reserved for the future hardware protocol. The live export snapshot retains at
 most 1,000,000 samples; if that limit is reached, new samples remain visible
 and the Event Log reports that they are no longer retained for export.
+Exports label the original millisecond timestamps `timestamp_ms`; UI timelines
+use seconds. Replay still accepts older `time_ms` and seconds-based `time` logs.
 
 Serial discovery has platform-matched implementations: Linux device nodes
 (`ttyUSB`, `ttyACM`, `ttyS`), macOS callout/TTY nodes (`cu.*`, `tty.*`), and
@@ -111,7 +119,8 @@ generators, or build with `--config Debug` for Visual Studio and Xcode.
 Run tests with `ctest --test-dir build -C Debug --output-on-failure`.
 
 GitHub Actions builds and tests Debug configurations on Linux, macOS, and
-Windows using Qt 6.7.3. Runs start for pushes and pull requests to `main`,
+Windows. Linux and Windows use Qt 6.7.3; macOS uses Qt 6.9.3 on the macOS 26
+runner for current Xcode and SDK compatibility. Runs start for pushes and pull requests to `main`,
 or manually through Actions → Build → Run workflow. Open the failing job's
 Configure, Build, or Test step to inspect errors; failed runs also upload
 CTest diagnostics when available. Windows uses MSVC and vcpkg for Zlib.
@@ -158,6 +167,10 @@ The `sample_data/` folder contains example logs:
 
 ## Project structure
 
+The embedded [rocket attitude instrument](docs/rocket-attitude.md) in Replay
+and Live Telemetry shows orientation against fixed axes. A synthetic replay is available at
+`sample_data/rocket_attitude_demo.csv`.
+
 - `src/gui` — Qt UI (`MainWindow`, `DashboardPage`, `LiveTelemetryPage`, `EventLogPage`, `SettingsPage`, replay controller, `FlightDataModel`, widgets)
 - `src/services/import` — `SampleFileLoader` (CSV, XLSX, and `.telem` ingestion)
 - `src/services/telemetry` — framing and parsing pipeline (worker thread)
@@ -176,6 +189,9 @@ The `sample_data/` folder contains example logs:
   (the internal CMake target remains `cosmo-soft-bin`). Multi-config builds use
   the configuration directory shown above.
 - Optional Qt **Vulkan** lookup is disabled in CMake when the Vulkan SDK is absent, to keep configure output quiet.
+- The serial hangup regression uses an operating-system pseudo-terminal on macOS
+  and Linux, without serial hardware. Windows skips that POSIX-specific test;
+  its serial backend is implemented separately.
 
 ## License
 

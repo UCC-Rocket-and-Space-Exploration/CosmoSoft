@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.21)
 project(cosmo-soft LANGUAGES CXX)
 
+# Retain archive rescans for GNU ld while avoiding duplicate libraries on
+# Apple and Windows linkers, which resolve static cycles without rescanning.
+if(POLICY CMP0156)
+    cmake_policy(SET CMP0156 NEW)
+endif()
+
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR
         "In-source builds are not supported. Create a separate build directory, e.g.:\n"

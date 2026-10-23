@@ -1,6 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "services/persistence/FlightLogManager.h"
+#include "services/persistence/FlightMetadata.h"
+#include "services/persistence/MissionState.h"
+#include "services/persistence/PreflightChecklist.h"
+#include "services/persistence/RecoveryState.h"
 
 #include <QDir>
 #include <QFile>
@@ -73,6 +77,26 @@ private:
 
 } // namespace
 
+TEST_CASE("Recording saves cannot erase newer data or another session",
+          "[mission][persistence]") {
+  cosmo::mission::RecordingRevision revision;
+  REQUIRE_FALSE(revision.dirty());
+  revision.changed();
+  REQUIRE(revision.dirty());
+  const auto first = revision.snapshot();
+  revision.changed();
+  revision.saved(first);
+  REQUIRE(revision.dirty());
+  revision.saved(revision.snapshot());
+  REQUIRE_FALSE(revision.dirty());
+  revision.reset();
+  revision.changed();
+  revision.saved(first);
+  REQUIRE(revision.dirty());
+  revision.reset();
+  REQUIRE_FALSE(revision.dirty());
+}
+
 TEST_CASE("FlightLogManager transactionally replaces a CSV destination",
           "[persistence][export]") {
     QTemporaryDir temporary;
@@ -89,7 +113,7 @@ TEST_CASE("FlightLogManager transactionally replaces a CSV destination",
     REQUIRE(manager.exportSessionToCsv(sessionWithOneSample()));
 
     const QByteArray exported = readAll(path);
-    REQUIRE(exported.startsWith("time_ms,altitude,temperature,pressure,"
+    REQUIRE(exported.startsWith("timestamp_ms,altitude,temperature,pressure,"
                                 "acceleration_x,acceleration_y,"));
     REQUIRE(exported.contains("123,456.5,21.25,101325"));
     REQUIRE_FALSE(exported.contains("previous-content"));
@@ -187,4 +211,87 @@ TEST_CASE("FlightLogManager bounds live recording and accepts samples after clea
     REQUIRE(manager.appendSample(overflow));
     REQUIRE(manager.session().samples.size() == 1U);
     REQUIRE(manager.session().samples.front().timestamp == 3);
+}
+
+TEST_CASE(
+    "Flight metadata belongs to the exact recording and survives reopening",
+    "[mission][metadata]") {
+  QTemporaryDir dir;
+  const auto path = dir.filePath("flight.csv");
+  FlightLogManager manager;
+  manager.setOutputPath(path.toStdString());
+  REQUIRE(manager.exportSessionToCsv(sessionWithOneSample()));
+  const cosmo::mission::FlightMetadata metadata{
+      QJsonArray{QJsonObject{{"time", 1.25}, {"name", "Motor cutoff"}}},
+      QJsonObject{{"lat", 51.9}, {"lon", -8.5}}};
+  REQUIRE(cosmo::mission::saveMetadata(path, metadata));
+  const auto loaded = cosmo::mission::loadMetadata(path);
+  REQUIRE(loaded.has_value());
+  REQUIRE(loaded->events == metadata.events);
+  REQUIRE(loaded->reference == metadata.reference);
+  QFile changed(path);
+  REQUIRE(changed.open(QIODevice::Append));
+  REQUIRE(changed.write("different recording\n") > 0);
+  changed.close();
+  REQUIRE_FALSE(cosmo::mission::loadMetadata(path).has_value());
+  REQUIRE_FALSE(cosmo::mission::saveMetadata(dir.filePath("missing/flight.csv"),
+                                             metadata));
+  const auto noSidecar = dir.filePath("plain.csv");
+  manager.setOutputPath(noSidecar.toStdString());
+  REQUIRE(manager.exportSessionToCsv(sessionWithOneSample()));
+  REQUIRE(cosmo::mission::loadMetadata(noSidecar)->events.isEmpty());
+}
+
+TEST_CASE(
+    "Recovery preserves real fixes across invalid samples demo and restarts",
+    "[mission][recovery]") {
+  cosmo::mission::RecoveryState state;
+  state.beginSession("first", "Serial receiver");
+  FlightSample fix;
+  fix.coordinates = {51.9, -8.5};
+  REQUIRE(state.observe(fix, 1000, true));
+  state.setReference(
+      QJsonObject{{"lat", 51.8}, {"lon", -8.4}, {"name", "ground station"}});
+  const auto saved = state.json();
+  fix.coordinates = {0, 0};
+  REQUIRE_FALSE(state.observe(fix, 2000, true));
+  fix.coordinates = {52, -8};
+  REQUIRE_FALSE(state.observe(fix, 3000, false));
+  REQUIRE(state.json() == saved);
+  cosmo::mission::RecoveryState reopened;
+  REQUIRE(reopened.restore(saved));
+  REQUIRE(reopened.json().value("receivedUtcMs").toDouble() == 1000);
+  REQUIRE(reopened.json().value("earlier").toBool());
+  REQUIRE(reopened.json().value("reference") == saved.value("reference"));
+  REQUIRE(reopened.json().value("source").toString() == "Serial receiver");
+  reopened.beginSession("second", "Other receiver");
+  REQUIRE(reopened.observe(fix, 4000, true));
+  REQUIRE(reopened.json().value("session").toString() == "second");
+  REQUIRE(
+      reopened.json().value("reference").toObject().value("name").toString() ==
+      "launch point");
+  REQUIRE_FALSE(reopened.restore(QJsonObject{{"lat", 91}, {"lon", 0}}));
+  const auto [distance, bearing] = cosmo::mission::rangeBearing(0, 0, 0, 1);
+  REQUIRE(distance > 111000);
+  REQUIRE(distance < 112000);
+  REQUIRE(std::abs(bearing - 90) < 0.001);
+}
+
+TEST_CASE("Checklist profiles validate thresholds and keep unknown "
+          "measurements unknown",
+          "[mission][checklist]") {
+  using namespace cosmo::mission;
+  REQUIRE(validChecklists(defaultChecklists()));
+  REQUIRE_FALSE(validChecklists({}));
+  REQUIRE_FALSE(validChecklists(QJsonArray{
+      QJsonObject{{"name", "Invalid"},
+                  {"items", QJsonArray{QJsonObject{{"name", "Voltage"},
+                                                   {"kind", "battery"},
+                                                   {"required", true},
+                                                   {"limit", -1}}}}}}));
+  REQUIRE_FALSE(measuredCheck("battery", 7.0, {}, {}, false).has_value());
+  REQUIRE(measuredCheck("battery", 7.0, {}, 7.4, false) == true);
+  REQUIRE(measuredCheck("packetAge", 2, 3.0, {}, false) == false);
+  REQUIRE_FALSE(measuredCheck("gps", 0, {}, {}, false).has_value());
+  REQUIRE(measuredCheck("gps", 0, {}, {}, true) == true);
 }

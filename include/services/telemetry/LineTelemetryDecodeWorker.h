@@ -44,6 +44,9 @@ struct LineTelemetryBatch {
     std::size_t malformedLines = 0;
     std::size_t droppedChunks = 0;
     std::uint64_t droppedBytes = 0;
+    /** Latest completed row; an absent value means only partial bytes arrived.
+     */
+    std::optional<TelemetryRowDiagnostic> rowDiagnostic;
 };
 
 /**
@@ -68,8 +71,7 @@ public:
      * @param errorCallback Called when the batch callback throws std::exception.
      */
     explicit LineTelemetryDecodeWorker(
-        BatchCallback callback,
-        LineTelemetryWorkerConfig config = {},
+        BatchCallback callback, const LineTelemetryWorkerConfig &config = {},
         ErrorCallback errorCallback = {});
 
     /** @brief Stop and join the worker, if needed. */
@@ -133,6 +135,7 @@ private:
     LineTelemetryDecoder m_decoder;
     CounterSnapshot m_lastDeliveredCounters;
     std::size_t m_lastDeliveredMalformedLines = 0;
+    std::uint64_t m_lastDeliveredRow = 0;
 };
 
 } // namespace cosmo::telemetry

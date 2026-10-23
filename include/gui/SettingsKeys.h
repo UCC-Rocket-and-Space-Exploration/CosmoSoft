@@ -40,6 +40,11 @@ constexpr auto kSettingsSerialPort = "serial/port";
 /** @brief Last-used serial baud rate (stored as a string). */
 constexpr auto kSettingsSerialBaud = "serial/baud";
 
+/** @brief Explicit FC workaround that interprets received longitudes as west.
+ */
+constexpr auto kSettingsWestLongitudeCorrection =
+    "serial/westLongitudeCorrection";
+
 // ── File paths ────────────────────────────────────────────────────────────────
 
 /** @brief Last directory used for the flight-log file picker. */
@@ -83,4 +88,8 @@ constexpr auto kUnitSystemImperial = "imperial";
 /** @brief Unit system preference: "metric" or "imperial". */
 constexpr auto kSettingsUnitSystem = "ui/unitSystem";
 
+/** @brief Persisted last real-live recovery point and UTC receipt time. */
+constexpr auto kSettingsRecoveryRecord = "mission/recoveryRecord";
+/** @brief Configurable preflight checklist profile definitions. */
+constexpr auto kSettingsChecklistProfiles = "mission/checklistProfiles";
 #endif // COSMO_SOFT_SETTINGSKEYS_H
