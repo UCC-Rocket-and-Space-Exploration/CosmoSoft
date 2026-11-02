@@ -1,5 +1,5 @@
 #include "gui/widgets/PreflightChecklistWidget.h"
-#include "gui/SettingsKeys.h"
+#include "gui/ApplicationSettings.h"
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
 #include "services/persistence/PreflightChecklist.h"
@@ -25,7 +25,7 @@
 namespace {
 QJsonArray storedProfiles() {
   const auto profiles =
-      QJsonDocument::fromJson(QSettings(kSettingsOrg, kSettingsApp)
+      QJsonDocument::fromJson(cosmo::applicationSettings()
                                   .value(kSettingsChecklistProfiles)
                                   .toByteArray())
           .array();
@@ -249,7 +249,7 @@ PreflightProfileEditor::PreflightProfileEditor(QWidget *parent)
                                   "nonnegative finite limits."));
           return;
         }
-        QSettings settings(kSettingsOrg, kSettingsApp);
+        auto settings = cosmo::applicationSettings();
         settings.setValue(
             kSettingsChecklistProfiles,
             QJsonDocument(m_profiles).toJson(QJsonDocument::Compact));

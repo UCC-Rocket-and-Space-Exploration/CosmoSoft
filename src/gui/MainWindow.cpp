@@ -12,7 +12,7 @@
 #include "gui/FlightDataModel.h"
 #include "gui/FlightReplayController.h"
 #include "gui/LayoutHelpers.h"
-#include "gui/SettingsKeys.h"
+#include "gui/ApplicationSettings.h"
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
 #include "gui/pages/DashboardPage.h"
@@ -254,7 +254,7 @@ MainWindow::MainWindow(QWidget *parent)
           std::make_unique<cosmo::telemetry::LineTelemetryBatchMailbox>()) {
     setWindowTitle(u"CosmoSoft"_s);
     setWindowIcon(QIcon(u":/images/Logo_rounded.png"_s));
-    m_uiSoundsEnabled = QSettings(kSettingsOrg, kSettingsApp)
+    m_uiSoundsEnabled = cosmo::applicationSettings()
                             .value(kSettingsSoundsEnabled, true)
                             .toBool();
 
@@ -314,8 +314,11 @@ MainWindow::MainWindow(QWidget *parent)
     qApp->installEventFilter(this);
     statusBar()->showMessage(u"Ready · Open a flight log or connect a device in Live Telemetry."_s);
 
-    if (const auto geom = QSettings(kSettingsOrg, kSettingsApp).value(kSettingsWindowMainGeo).toByteArray(); !geom.isEmpty())
-        restoreGeometry(geom);
+    if (const auto geom = cosmo::applicationSettings()
+                              .value(kSettingsWindowMainGeo)
+                              .toByteArray();
+        !geom.isEmpty())
+      restoreGeometry(geom);
 }
 
 MainWindow::~MainWindow() {
@@ -327,9 +330,9 @@ MainWindow::~MainWindow() {
     m_scanCancelFlag->store(true, std::memory_order_relaxed);
     m_scanCancelFlag.reset();
   }
-    QSettings(kSettingsOrg, kSettingsApp).setValue(kSettingsWindowMainGeo, saveGeometry());
-    stopFakeTransmission(false);
-    stopSerial();
+  cosmo::applicationSettings().setValue(kSettingsWindowMainGeo, saveGeometry());
+  stopFakeTransmission(false);
+  stopSerial();
 }
 
 void MainWindow::showStatusMessage(const QString &message, int timeout) {
@@ -381,10 +384,9 @@ void MainWindow::recordLiveSample(const FlightSample &sample) {
     m_flightDataPage->setRecoveryReference(
         m_recoveryState.json().value("reference").toObject());
     if (received - m_recoverySavedAt >= 1000) {
-      QSettings(kSettingsOrg, kSettingsApp)
-          .setValue(kSettingsRecoveryRecord,
-                    QJsonDocument(m_recoveryState.json())
-                        .toJson(QJsonDocument::Compact));
+      cosmo::applicationSettings().setValue(
+          kSettingsRecoveryRecord,
+          QJsonDocument(m_recoveryState.json()).toJson(QJsonDocument::Compact));
       m_recoverySavedAt = received;
     }
   }
@@ -469,14 +471,14 @@ void MainWindow::setupMenuBar() {
 }
 
 void MainWindow::addRecentFile(const QString &path) {
-    QSettings s(kSettingsOrg, kSettingsApp);
-    QStringList recent = s.value(kSettingsRecentFiles).toStringList();
-    recent.removeAll(path);
-    recent.prepend(path);
-    constexpr int kMaxRecentFiles = 10;
-    while (recent.size() > kMaxRecentFiles) {
-        recent.removeLast();
-    }
+  auto s = cosmo::applicationSettings();
+  QStringList recent = s.value(kSettingsRecentFiles).toStringList();
+  recent.removeAll(path);
+  recent.prepend(path);
+  constexpr int kMaxRecentFiles = 10;
+  while (recent.size() > kMaxRecentFiles) {
+    recent.removeLast();
+  }
     s.setValue(kSettingsRecentFiles, recent);
     rebuildRecentFilesMenu();
 }
@@ -486,7 +488,7 @@ void MainWindow::rebuildRecentFilesMenu() {
         return;
     }
     m_recentFilesMenu->clear();
-    QSettings s(kSettingsOrg, kSettingsApp);
+    auto s = cosmo::applicationSettings();
     const QStringList recent = s.value(kSettingsRecentFiles).toStringList();
     if (recent.isEmpty()) {
         m_recentFilesMenu->addAction(u"(no recent files)"_s)->setEnabled(false);
@@ -501,16 +503,16 @@ void MainWindow::rebuildRecentFilesMenu() {
                 appendToLog(true, message);
                 return;
             }
-            QSettings rs(kSettingsOrg, kSettingsApp);
+            auto rs = cosmo::applicationSettings();
             rs.setValue(kSettingsReplayDir, QFileInfo(filePath).absolutePath());
             loadFlightLogAsync(filePath);
         });
     }
     m_recentFilesMenu->addSeparator();
     m_recentFilesMenu->addAction(u"Clear Recent"_s, this, [this]() {
-        QSettings cs(kSettingsOrg, kSettingsApp);
-        cs.remove(kSettingsRecentFiles);
-        rebuildRecentFilesMenu();
+      auto cs = cosmo::applicationSettings();
+      cs.remove(kSettingsRecentFiles);
+      rebuildRecentFilesMenu();
     });
 }
 
@@ -851,7 +853,7 @@ void MainWindow::updateBreadcrumb(const QString &context) {
 
 /*
 void MainWindow::loadSerialPrefsToUi() {
-    QSettings s(kSettingsOrg, kSettingsApp);
+    auto s = cosmo::applicationSettings();
     const QString port = s.value(kSettingsSerialPort).toString();
     if (m_portCombo && !port.isEmpty()) {
         const int idx = m_portCombo->findText(port);
@@ -862,11 +864,9 @@ void MainWindow::loadSerialPrefsToUi() {
         }
     }
     if (m_baudCombo) {
-        const QString baudStr = s.value(kSettingsSerialBaud, u"115200"_s).toString();
-        const int idx = m_baudCombo->findText(baudStr);
-        if (idx >= 0) {
-            m_baudCombo->setCurrentIndex(idx);
-        } else {
+        const QString baudStr = s.value(kSettingsSerialBaud,
+u"115200"_s).toString(); const int idx = m_baudCombo->findText(baudStr); if (idx
+>= 0) { m_baudCombo->setCurrentIndex(idx); } else {
             m_baudCombo->setCurrentText(baudStr);
         }
     }
@@ -876,7 +876,7 @@ void MainWindow::persistSerialPrefs() {
     if (!m_portCombo || !m_baudCombo) {
         return;
     }
-    QSettings s(kSettingsOrg, kSettingsApp);
+    auto s = cosmo::applicationSettings();
     s.setValue(kSettingsSerialPort, m_portCombo->currentText().trimmed());
     s.setValue(kSettingsSerialBaud, m_baudCombo->currentText());
 }
@@ -907,7 +907,7 @@ void MainWindow::setupPages() {
     m_liveTelemetryPage = new LiveTelemetryPage(m_flightModel.get(), this);
     m_pages->addWidget(m_liveTelemetryPage);
     m_recoveryState.restore(
-        QJsonDocument::fromJson(QSettings(kSettingsOrg, kSettingsApp)
+        QJsonDocument::fromJson(cosmo::applicationSettings()
                                     .value(kSettingsRecoveryRecord)
                                     .toByteArray())
             .object());
@@ -916,10 +916,9 @@ void MainWindow::setupPages() {
     connect(liveMap, &Map3DWidget::recoveryReferenceChanged, this,
             [this, liveMap] {
               m_recoveryState.setReference(liveMap->recoveryReference());
-              QSettings(kSettingsOrg, kSettingsApp)
-                  .setValue(kSettingsRecoveryRecord,
-                            QJsonDocument(m_recoveryState.json())
-                                .toJson(QJsonDocument::Compact));
+              cosmo::applicationSettings().setValue(
+                  kSettingsRecoveryRecord, QJsonDocument(m_recoveryState.json())
+                                               .toJson(QJsonDocument::Compact));
               if (m_realLiveInput && !m_flightModel->replayMode()) {
                 m_flightDataPage->setRecoveryReference(
                     liveMap->recoveryReference());
@@ -933,10 +932,9 @@ void MainWindow::setupPages() {
               const auto reference = m_flightDataPage->recoveryReference();
               m_recoveryState.setReference(reference);
               liveMap->setRecoveryReference(reference);
-              QSettings(kSettingsOrg, kSettingsApp)
-                  .setValue(kSettingsRecoveryRecord,
-                            QJsonDocument(m_recoveryState.json())
-                                .toJson(QJsonDocument::Compact));
+              cosmo::applicationSettings().setValue(
+                  kSettingsRecoveryRecord, QJsonDocument(m_recoveryState.json())
+                                               .toJson(QJsonDocument::Compact));
             });
 
     m_eventLogPage = new EventLogPage(m_pages);
@@ -1237,11 +1235,11 @@ void MainWindow::pushFakeTransmissionSample() {
 }
 
 void MainWindow::onOpenReplayFile() {
-    QSettings s(kSettingsOrg, kSettingsApp);
-    QString startDir = s.value(kSettingsReplayDir, QDir::homePath()).toString();
-    if (startDir.isEmpty()) {
-        startDir = QDir::homePath();
-    }
+  auto s = cosmo::applicationSettings();
+  QString startDir = s.value(kSettingsReplayDir, QDir::homePath()).toString();
+  if (startDir.isEmpty()) {
+    startDir = QDir::homePath();
+  }
 
     const QString path = QFileDialog::getOpenFileName(
         this,
@@ -1513,9 +1511,9 @@ void MainWindow::closeEvent(QCloseEvent *event) {
   stopFakeTransmission(false);
   stopSerial();
   if (!m_recoveryState.json().isEmpty())
-    QSettings(kSettingsOrg, kSettingsApp)
-        .setValue(kSettingsRecoveryRecord, QJsonDocument(m_recoveryState.json())
-                                               .toJson(QJsonDocument::Compact));
+    cosmo::applicationSettings().setValue(
+        kSettingsRecoveryRecord,
+        QJsonDocument(m_recoveryState.json()).toJson(QJsonDocument::Compact));
   if (m_settingsWindow)
     m_settingsWindow->close();
   m_exitAccepted = true;
@@ -1886,10 +1884,9 @@ void MainWindow::stopSerial() {
       m_liveTelemetryPage->findChild<Map3DWidget *>()->setRecoveryRecord(
           m_recoveryState.json());
       if (!m_recoveryState.json().isEmpty())
-        QSettings(kSettingsOrg, kSettingsApp)
-            .setValue(kSettingsRecoveryRecord,
-                      QJsonDocument(m_recoveryState.json())
-                          .toJson(QJsonDocument::Compact));
+        cosmo::applicationSettings().setValue(
+            kSettingsRecoveryRecord, QJsonDocument(m_recoveryState.json())
+                                         .toJson(QJsonDocument::Compact));
     }
     if (m_comms) {
         m_comms->close();

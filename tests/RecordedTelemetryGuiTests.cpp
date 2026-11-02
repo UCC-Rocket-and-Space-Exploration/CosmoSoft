@@ -19,7 +19,7 @@
 #include "services/telemetry/RecordedComms.h"
 #include "services/telemetry/TelemetrySession.h"
 
-#include "gui/SettingsKeys.h"
+#include "gui/ApplicationSettings.h"
 #include "gui/widgets/PreflightChecklistWidget.h"
 #include <QAction>
 #include <QApplication>
@@ -50,6 +50,7 @@
 #include <QSettings>
 #include <QSlider>
 #include <QSplitter>
+#include <QStandardPaths>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QStyle>
@@ -97,6 +98,199 @@ bool pumpUntil(const std::function<bool()> &predicate) {
 }
 } // namespace
 
+TEST_CASE("GUI window preferences use the isolated test settings store",
+          "[settings-isolation][widgets]") {
+  QSettings isolated(QSettings::IniFormat, QSettings::UserScope, kSettingsOrg,
+                     kSettingsApp);
+  isolated.remove(kSettingsWindowMainGeo);
+  {
+    MainWindow window;
+    window.resize(960, 640);
+  }
+  isolated.sync();
+  REQUIRE(isolated.contains(kSettingsWindowMainGeo));
+  REQUIRE_FALSE(isolated.value(kSettingsWindowMainGeo).toByteArray().isEmpty());
+}
+
+TEST_CASE("Serial selections survive reopening and device rescans",
+          "[serial-preferences][widgets]") {
+  auto settings = cosmo::applicationSettings();
+  settings.setValue(kSettingsSerialPort, "receiver-B");
+  settings.setValue(kSettingsSerialBaud, 9600);
+  FlightDataModel model;
+  {
+    LiveTelemetryPage page(&model);
+    page.setAvailablePorts({"receiver-A", "receiver-B"});
+    QComboBox *port = nullptr, *baud = nullptr;
+    for (auto *combo : page.findChildren<QComboBox *>()) {
+      if (combo->accessibleName() == "Serial port")
+        port = combo;
+      if (combo->accessibleName() == "Baud rate")
+        baud = combo;
+    }
+    REQUIRE(port);
+    REQUIRE(baud);
+    REQUIRE(port->currentText() == "receiver-B");
+    REQUIRE(baud->currentData().toInt() == 9600);
+    port->setCurrentText("receiver-A");
+    baud->setCurrentText("230400");
+    REQUIRE(settings.value(kSettingsSerialPort).toString() == "receiver-A");
+    REQUIRE(settings.value(kSettingsSerialBaud).toInt() == 230400);
+    page.setAvailablePorts({"receiver-B", "receiver-A"});
+    REQUIRE(port->currentText() == "receiver-A");
+  }
+  LiveTelemetryPage restored(&model);
+  restored.setAvailablePorts({"receiver-B", "receiver-A"});
+  for (auto *combo : restored.findChildren<QComboBox *>()) {
+    if (combo->accessibleName() == "Serial port")
+      REQUIRE(combo->currentText() == "receiver-A");
+    if (combo->accessibleName() == "Baud rate")
+      REQUIRE(combo->currentData().toInt() == 230400);
+  }
+  restored.setAvailablePorts({"receiver-C"});
+  for (auto *combo : restored.findChildren<QComboBox *>())
+    if (combo->accessibleName() == "Serial port")
+      REQUIRE(combo->currentText() == "receiver-C");
+}
+
+TEST_CASE("Comparison charts retain detail, shortcuts and current theme",
+          "[comparison-audit][widgets]") {
+  const auto dark = cosmo::SkinLoader::loadBuiltin(":/skins/dark");
+  REQUIRE(dark);
+  cosmo::ThemeManager::instance().setActiveSkin(*dark);
+  FlightDataModel model;
+  FlightReplayController replay;
+  DashboardPage dashboard(&model, &replay);
+  dashboard.resize(1200, 800);
+  dashboard.show();
+  auto session = std::make_shared<FlightSession>();
+  for (int i = 0; i < 12000; ++i) {
+    FlightSample sample;
+    sample.timestamp = i * 10;
+    sample.altitude = 100 + i * .1;
+    sample.temperature = 20 + i * .01;
+    session->samples.push_back(sample);
+  }
+  const auto preview = cosmo::preview::FlightPreviewCache::build(*session);
+  model.setReplayMode(true);
+  replay.setSession(session, preview);
+  dashboard.setReplaySession(session, preview);
+  for (auto *check : dashboard.findChildren<QCheckBox *>("traceCheck"))
+    check->setChecked(check->text() == "Alt" || check->text() == "Temp");
+  dashboard.setEventAnnotations(
+      QJsonArray{QJsonObject{{"time", 40.05}, {"name", "Event"}}});
+  for (auto *button : dashboard.findChildren<QPushButton *>())
+    if (button->text() == "Compare selected")
+      button->click();
+  QApplication::processEvents();
+  TelemetryChartView *comparison = nullptr;
+  for (auto *view : dashboard.findChildren<QChartView *>())
+    if (view->isVisible())
+      comparison = dynamic_cast<TelemetryChartView *>(view);
+  REQUIRE(comparison);
+  REQUIRE(comparison->chart()->axes(Qt::Vertical).size() == 2);
+  auto *axis = qobject_cast<QValueAxis *>(
+      comparison->chart()->axes(Qt::Horizontal).first());
+  REQUIRE(axis);
+
+  SECTION("Paused comparison rebuilds after zoom and pan") {
+    axis->setRange(40, 40.1);
+    comparison->onUserAdjustedAxes();
+    const auto hasDetail = [&] {
+      int points = 0;
+      for (auto *series : comparison->chart()->series())
+        if (auto *line = qobject_cast<QLineSeries *>(series))
+          if (line->property("metricIndex").isValid())
+            points += line->count();
+      return points > 0 && points <= 24;
+    };
+    REQUIRE(pumpUntil(hasDetail));
+    REQUIRE(axis->min() == 40);
+    REQUIRE(axis->max() == 40.1);
+    axis->setRange(60, 60.1);
+    comparison->onUserAdjustedAxes();
+    REQUIRE(pumpUntil([&] {
+      for (auto *series : comparison->chart()->series())
+        if (auto *line = qobject_cast<QLineSeries *>(series))
+          if (line->property("metricIndex").isValid() && line->count() > 0)
+            return line->at(0).x() >= 60;
+      return false;
+    }));
+  }
+  SECTION("Comparison accepts the marker keyboard shortcut") {
+    QToolButton *markers = nullptr;
+    for (auto *button : dashboard.findChildren<QToolButton *>())
+      if (button->text() == "Markers")
+        markers = button;
+    REQUIRE(markers);
+    const bool before = markers->isChecked();
+    dashboard.activateWindow();
+    comparison->setFocus();
+    REQUIRE(pumpUntil([&] { return comparison->hasFocus(); }));
+    QKeyEvent press(QEvent::KeyPress, Qt::Key_M, Qt::NoModifier);
+    QApplication::sendEvent(comparison, &press);
+    REQUIRE(markers->isChecked() != before);
+  }
+  SECTION("Event markers update through light, dark and custom skins") {
+    const auto light = cosmo::SkinLoader::loadBuiltin(":/skins/light");
+    REQUIRE(light);
+    auto custom = *light;
+    custom.id = "test:comparison";
+    custom.palette.accent_link = custom.palette.warning;
+    for (const auto &skin : {*light, *dark, custom}) {
+      cosmo::ThemeManager::instance().setActiveSkin(skin);
+      bool found = false;
+      for (auto *series : comparison->chart()->series())
+        if (auto *line = qobject_cast<QLineSeries *>(series))
+          if (line->property("eventMarker").toBool()) {
+            found = true;
+            REQUIRE(line->pen().color() == QColor(skin.palette.accent_link));
+          }
+      REQUIRE(found);
+    }
+  }
+}
+
+TEST_CASE("Keyboard inspection skips off-screen live boundary samples",
+          "[keyboard-audit][widgets]") {
+  auto chart = std::make_unique<QChart>();
+  auto line = std::make_unique<QLineSeries>();
+  line->setProperty("metricIndex", 0);
+  line->append(0, 10);
+  line->append(1, 11);
+  line->append(2, 12);
+  auto *series = line.get();
+  chart->addSeries(line.release());
+  auto x = std::make_unique<QValueAxis>();
+  auto y = std::make_unique<QValueAxis>();
+  auto *axis = x.get();
+  x->setRange(.475, 1.525);
+  y->setRange(0, 20);
+  chart->addAxis(x.get(), Qt::AlignBottom);
+  chart->addAxis(y.get(), Qt::AlignLeft);
+  series->attachAxis(x.release());
+  series->attachAxis(y.release());
+  TelemetryChartView view(chart.release());
+  view.resize(700, 400);
+  view.show();
+  QApplication::processEvents();
+  view.setHoverXValues({0, 1, 2});
+  QString readout;
+  view.hoverReadout = [&](const QString &text) { readout = text; };
+  QKeyEvent right(QEvent::KeyPress, Qt::Key_Right, Qt::NoModifier);
+  QApplication::sendEvent(&view, &right);
+  REQUIRE(readout.contains("t=1.000"));
+  SECTION("Empty visible range clears inspection") {
+    axis->setRange(1.2, 1.4);
+    QApplication::sendEvent(&view, &right);
+    REQUIRE(readout == QString::fromUtf8("—"));
+  }
+  SECTION("A single visible sample remains inspectable") {
+    QApplication::sendEvent(&view, &right);
+    REQUIRE(readout.contains("t=1.000"));
+  }
+}
+
 TEST_CASE("Live RSSI displays measurements and clears unavailable values",
           "[rssi][widgets]") {
   FlightDataModel model;
@@ -132,7 +326,7 @@ TEST_CASE("Live RSSI displays measurements and clears unavailable values",
 
 TEST_CASE("Live west longitude correction is saved and fixed for a connection",
           "[gps-correction][mission-ui]") {
-  QSettings settings(kSettingsOrg, kSettingsApp);
+  auto settings = cosmo::applicationSettings();
   settings.remove(kSettingsWestLongitudeCorrection);
   FlightDataModel model;
   {
@@ -185,9 +379,9 @@ TEST_CASE(
     "[mission-ui][checklist]") {
   struct RestoreProfiles {
     QVariant previous =
-        QSettings(kSettingsOrg, kSettingsApp).value(kSettingsChecklistProfiles);
+        cosmo::applicationSettings().value(kSettingsChecklistProfiles);
     ~RestoreProfiles() {
-      QSettings settings(kSettingsOrg, kSettingsApp);
+      auto settings = cosmo::applicationSettings();
       if (previous.isValid())
         settings.setValue(kSettingsChecklistProfiles, previous);
       else
@@ -448,11 +642,11 @@ TEST_CASE("Open Recent preserves acquisition until replacement is approved",
           "[mission-ui][unsaved][recent-files]") {
   struct RestoreRecentPreferences {
     QVariant previous =
-        QSettings(kSettingsOrg, kSettingsApp).value(kSettingsRecentFiles);
+        cosmo::applicationSettings().value(kSettingsRecentFiles);
     QVariant previousDirectory =
-        QSettings(kSettingsOrg, kSettingsApp).value(kSettingsReplayDir);
+        cosmo::applicationSettings().value(kSettingsReplayDir);
     ~RestoreRecentPreferences() {
-      QSettings settings(kSettingsOrg, kSettingsApp);
+      auto settings = cosmo::applicationSettings();
       if (previous.isValid())
         settings.setValue(kSettingsRecentFiles, previous);
       else
@@ -470,8 +664,8 @@ TEST_CASE("Open Recent preserves acquisition until replacement is approved",
   REQUIRE(recording.open(QIODevice::WriteOnly));
   REQUIRE(recording.write("timestamp_ms,altitude\n0,1234\n") > 0);
   recording.close();
-  QSettings(kSettingsOrg, kSettingsApp)
-      .setValue(kSettingsRecentFiles, QStringList{path});
+  cosmo::applicationSettings().setValue(kSettingsRecentFiles,
+                                        QStringList{path});
 
   MainWindow window;
   auto *model = window.findChild<FlightDataModel *>();
@@ -1805,13 +1999,18 @@ TEST_CASE("Replay overview never connects across omitted missing rows",
 
 int main(int argc, char **argv) {
   std::cout << std::unitbuf;
-  std::cerr << "GUI test startup: QApplication\n";
-  QApplication application(argc, argv);
-  application.setQuitOnLastWindowClosed(false);
   QTemporaryDir settings;
+  if (!settings.isValid())
+    return 1;
+  QStandardPaths::setTestModeEnabled(true);
   QSettings::setDefaultFormat(QSettings::IniFormat);
   QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
                      settings.path());
+  QSettings::setPath(QSettings::IniFormat, QSettings::SystemScope,
+                     settings.filePath("system"));
+  std::cerr << "GUI test startup: QApplication\n";
+  QApplication application(argc, argv);
+  application.setQuitOnLastWindowClosed(false);
   Q_INIT_RESOURCE(resources);
   const auto id = QFontDatabase::addApplicationFont(
       QStringLiteral(":/fonts/RedHatMono-Regular.ttf"));

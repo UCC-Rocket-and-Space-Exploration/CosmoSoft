@@ -9,8 +9,7 @@
 #include "domain/FlightSession.h"
 #include "services/import/SampleFileLoader.h"
 #include "services/preview/FlightPreviewCache.h"
-#include "services/telemetry/Framer.h"
-#include "services/telemetry/Parser.h"
+#include "services/telemetry/FrameDecoderVault.h"
 
 TEST_CASE("SampleFileLoader cancellable overloads preserve output on immediate cancellation",
           "[import][cancel]")
@@ -27,10 +26,9 @@ TEST_CASE("SampleFileLoader cancellable overloads preserve output on immediate c
     REQUIRE(session.samples.size() == 1);
     REQUIRE(session.samples.front().timestamp == 4242);
 
-    Framer framer;
-    Parser parser;
+    FrameDecoderVault vault;
     const auto telemResult = SampleFileLoader::loadTelemFile(
-        "unused.telem", session, framer, parser, canceled);
+        "unused.telem", session, vault, canceled);
     REQUIRE(telemResult.canceled);
     REQUIRE_FALSE(telemResult.error);
     REQUIRE(session.samples.size() == 1);

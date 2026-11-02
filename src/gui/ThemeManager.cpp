@@ -1,5 +1,5 @@
 #include "gui/ThemeManager.h"
-#include "gui/SettingsKeys.h"
+#include "gui/ApplicationSettings.h"
 #include "gui/SkinLoader.h"
 #include "gui/Theme.h"
 
@@ -158,7 +158,7 @@ void ThemeManager::setActiveSkin(const CosmoTheme &theme)
     rebuildTextureCache();
 
     // Persist choice
-    QSettings settings(kSettingsOrg, kSettingsApp);
+    auto settings = cosmo::applicationSettings();
     settings.setValue(kSettingsActiveSkin, m_active.id);
 
     emit themeChanged();
@@ -166,24 +166,28 @@ void ThemeManager::setActiveSkin(const CosmoTheme &theme)
 
 void ThemeManager::loadPersistedSkin(const QString &custom_skins_dir)
 {
-    QSettings settings(kSettingsOrg, kSettingsApp);
-    const auto skin_id = settings.value(kSettingsActiveSkin,
-                                        QStringLiteral("builtin:dark")).toString();
+  auto settings = cosmo::applicationSettings();
+  const auto skin_id =
+      settings.value(kSettingsActiveSkin, QStringLiteral("builtin:dark"))
+          .toString();
 
-    std::optional<CosmoTheme> theme;
+  std::optional<CosmoTheme> theme;
 
-    if (skin_id == QStringLiteral("builtin:dark")) {
-        theme = SkinLoader::loadBuiltin(QStringLiteral(":/skins/dark"));
-        if (theme) theme->id = QStringLiteral("builtin:dark");
-    } else if (skin_id == QStringLiteral("builtin:light")) {
-        theme = SkinLoader::loadBuiltin(QStringLiteral(":/skins/light"));
-        if (theme) theme->id = QStringLiteral("builtin:light");
-    } else if (skin_id.startsWith(QStringLiteral("custom:"))) {
-        const auto name = skin_id.mid(7);
-        const auto dir = custom_skins_dir + QStringLiteral("/") + name;
-        theme = SkinLoader::loadFromDirectory(dir);
-        if (theme) theme->id = skin_id;
-    }
+  if (skin_id == QStringLiteral("builtin:dark")) {
+    theme = SkinLoader::loadBuiltin(QStringLiteral(":/skins/dark"));
+    if (theme)
+      theme->id = QStringLiteral("builtin:dark");
+  } else if (skin_id == QStringLiteral("builtin:light")) {
+    theme = SkinLoader::loadBuiltin(QStringLiteral(":/skins/light"));
+    if (theme)
+      theme->id = QStringLiteral("builtin:light");
+  } else if (skin_id.startsWith(QStringLiteral("custom:"))) {
+    const auto name = skin_id.mid(7);
+    const auto dir = custom_skins_dir + QStringLiteral("/") + name;
+    theme = SkinLoader::loadFromDirectory(dir);
+    if (theme)
+      theme->id = skin_id;
+  }
 
     if (!theme) {
         theme = SkinLoader::loadBuiltin(QStringLiteral(":/skins/dark"));
