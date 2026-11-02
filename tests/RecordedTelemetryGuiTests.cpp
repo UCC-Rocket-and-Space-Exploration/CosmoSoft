@@ -444,6 +444,90 @@ TEST_CASE("Closing and clearing captured data require an explicit discard",
   REQUIRE(warnings == 3);
 }
 
+TEST_CASE("Open Recent preserves acquisition until replacement is approved",
+          "[mission-ui][unsaved][recent-files]") {
+  struct RestoreRecentPreferences {
+    QVariant previous =
+        QSettings(kSettingsOrg, kSettingsApp).value(kSettingsRecentFiles);
+    QVariant previousDirectory =
+        QSettings(kSettingsOrg, kSettingsApp).value(kSettingsReplayDir);
+    ~RestoreRecentPreferences() {
+      QSettings settings(kSettingsOrg, kSettingsApp);
+      if (previous.isValid())
+        settings.setValue(kSettingsRecentFiles, previous);
+      else
+        settings.remove(kSettingsRecentFiles);
+      if (previousDirectory.isValid())
+        settings.setValue(kSettingsReplayDir, previousDirectory);
+      else
+        settings.remove(kSettingsReplayDir);
+    }
+  } restore;
+  QTemporaryDir directory;
+  REQUIRE(directory.isValid());
+  const QString path = directory.filePath("recent-flight.csv");
+  QFile recording(path);
+  REQUIRE(recording.open(QIODevice::WriteOnly));
+  REQUIRE(recording.write("timestamp_ms,altitude\n0,1234\n") > 0);
+  recording.close();
+  QSettings(kSettingsOrg, kSettingsApp)
+      .setValue(kSettingsRecentFiles, QStringList{path});
+
+  MainWindow window;
+  auto *model = window.findChild<FlightDataModel *>();
+  REQUIRE(model);
+  int received = 0;
+  QObject::connect(model, &FlightDataModel::liveSamplesReceived, &window,
+                   [&](const FlightSampleBatch &batch) {
+                     received += static_cast<int>(batch.size());
+                   });
+  REQUIRE(QMetaObject::invokeMethod(&window, "onStartLiveDemo",
+                                    Qt::DirectConnection));
+  REQUIRE(received > 0);
+  QPushButton *demo = nullptr;
+  for (auto *button : window.findChildren<QPushButton *>())
+    if (button->accessibleName() == "Stop fake live transmission")
+      demo = button;
+  REQUIRE(demo);
+  QAction *recent = nullptr;
+  for (auto *menu : window.findChildren<QMenu *>())
+    for (auto *action : menu->actions())
+      if (action->text() == "recent-flight.csv")
+        recent = action;
+  REQUIRE(recent);
+
+  auto choice = QMessageBox::Cancel;
+  bool missing = false;
+  SECTION("Cancel keeps the current source receiving") {}
+  SECTION("A missing recent file leaves acquisition running") {
+    REQUIRE(recording.remove());
+    missing = true;
+  }
+  SECTION("Discard approves replacement and stops acquisition") {
+    choice = QMessageBox::Discard;
+  }
+  bool prompted = false;
+  QTimer::singleShot(0, &window, [&] {
+    if (auto *box =
+            qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+      prompted = true;
+      box->done(choice);
+    }
+  });
+  recent->trigger();
+  REQUIRE(prompted == !missing);
+
+  if (choice == QMessageBox::Discard) {
+    REQUIRE(pumpUntil([&] { return model->replayMode(); }));
+    REQUIRE(demo->text() == "Demo");
+  } else {
+    REQUIRE_FALSE(model->replayMode());
+    REQUIRE(demo->text() == "Stop demo");
+    const int before = received;
+    REQUIRE(pumpUntil([&] { return received > before; }));
+  }
+}
+
 TEST_CASE("Flight event markers stay with their recording",
           "[replay-ui][markers]") {
   FlightDataModel model;

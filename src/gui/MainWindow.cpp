@@ -503,8 +503,6 @@ void MainWindow::rebuildRecentFilesMenu() {
             }
             QSettings rs(kSettingsOrg, kSettingsApp);
             rs.setValue(kSettingsReplayDir, QFileInfo(filePath).absolutePath());
-            stopFakeTransmission(false);
-            stopSerial();
             loadFlightLogAsync(filePath);
         });
     }
