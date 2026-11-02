@@ -10,19 +10,19 @@ FetchContent_MakeAvailable(Catch2)
 include(Catch)
 
 add_executable(cosmo-tests
-#    FileLoadCancellationTests.cpp
-#    EventLogFormattingTests.cpp
+    FileLoadCancellationTests.cpp
+    EventLogFormattingTests.cpp
     FlightLogManagerAtomicExportTests.cpp
     FlightReplayControllerTests.cpp
     LineTelemetryPipelineTests.cpp
     LineTelemetryBatchMailboxTests.cpp
     MetricDisplayUnitTests.cpp
-#    MockFlightLinkTests.cpp
+    MockFlightLinkTests.cpp
     SampleFileLoaderTests.cpp
-#    SerialPortScannerHardeningTests.cpp
-#    SerialWorkerLifecycleTests.cpp
-#    SkinLoaderTests.cpp
-#    "${CMAKE_SOURCE_DIR}/assets/resources.qrc" - return
+    SerialPortScannerHardeningTests.cpp
+    SerialWorkerLifecycleTests.cpp
+    SkinLoaderTests.cpp
+    "${CMAKE_SOURCE_DIR}/assets/resources.qrc"
     RecordedTelemetryTests.cpp
         include/SerialWriter.h
         comms/Mocks/ConsoleLogger.cpp
@@ -38,6 +38,7 @@ target_include_directories(cosmo-tests PRIVATE
 target_link_libraries(cosmo-tests PRIVATE
     Catch2::Catch2WithMain
     cosmo-backend
+    ZLIB::ZLIB # Skin archive regressions construct ZIP payloads.
 )
 
 target_compile_definitions(cosmo-tests PRIVATE

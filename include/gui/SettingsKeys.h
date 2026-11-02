@@ -9,8 +9,8 @@
  *
  * Usage:
  * @code
- *   #include "gui/SettingsKeys.h"
- *   QSettings s(kSettingsOrg, kSettingsApp);
+ *   #include "gui/ApplicationSettings.h"
+ *   auto s = cosmo::applicationSettings();
  *   s.setValue(kSettingsSerialPort, port);
  * @endcode
  */

@@ -6,7 +6,7 @@
 
 #include "gui/FlightDataModel.h"
 #include "gui/LayoutHelpers.h"
-#include "gui/SettingsKeys.h"
+#include "gui/ApplicationSettings.h"
 #include "gui/TelemetryMath.h"
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
@@ -83,7 +83,7 @@ LiveTelemetryPage::LiveTelemetryPage(FlightDataModel *model, QWidget *parent,
                    std::chrono::steady_clock::now().time_since_epoch())
             .count();
       }) {
-  const QSettings unitSettings(kSettingsOrg, kSettingsApp);
+  const auto unitSettings = cosmo::applicationSettings();
   m_imperialUnits = unitSettings.value(kSettingsUnitSystem, kUnitSystemMetric)
                         .toString()
                         .compare(QString::fromLatin1(kUnitSystemImperial),
@@ -128,59 +128,64 @@ void LiveTelemetryPage::setImperialUnits(bool imperial) {
 }
 
 void LiveTelemetryPage::setAvailablePorts(const QStringList &ports) {
-    const QString previous = selectedPort();
-    m_availablePorts = ports;
+  const QString previous =
+      selectedPort().isEmpty()
+          ? cosmo::applicationSettings().value(kSettingsSerialPort).toString()
+          : selectedPort();
+  m_availablePorts = ports;
 
-    if (m_portCombo) {
-        const QSignalBlocker blocker(m_portCombo);
-        m_portCombo->clear();
-        m_portCombo->addItems(m_availablePorts);
-        if (!previous.isEmpty()) {
-            const int index = m_portCombo->findText(previous);
-            if (index >= 0) {
-                m_portCombo->setCurrentIndex(index);
-            }
-        }
-        if (m_portCombo->currentIndex() < 0 && m_portCombo->count() > 0) {
-            m_portCombo->setCurrentIndex(0);
-        }
+  if (m_portCombo) {
+    const QSignalBlocker blocker(m_portCombo);
+    m_portCombo->clear();
+    m_portCombo->addItems(m_availablePorts);
+    if (!previous.isEmpty()) {
+      const int index = m_portCombo->findText(previous);
+      if (index >= 0) {
+        m_portCombo->setCurrentIndex(index);
+      }
     }
+    if (m_portCombo->currentIndex() < 0 && m_portCombo->count() > 0) {
+      m_portCombo->setCurrentIndex(0);
+    }
+  }
 
-    if (m_connectButton) {
-        m_connectButton->setEnabled(!m_availablePorts.isEmpty() && !m_connected);
-    }
+  if (m_connectButton) {
+    m_connectButton->setEnabled(!m_availablePorts.isEmpty() && !m_connected);
+  }
 }
 
-void LiveTelemetryPage::setActiveConnection(const QString &label, bool connected) {
-    m_activeConnectionLabel = label;
-    m_connected = connected;
-    if (m_westLongitudeCorrectionCheck)
-      m_westLongitudeCorrectionCheck->setEnabled(!connected);
-    if (m_packetAgeTimer && isVisible()) {
-      if (connected || m_lastPacketAt)
-        m_packetAgeTimer->start();
-      else
-        m_packetAgeTimer->stop();
-    }
+void LiveTelemetryPage::setActiveConnection(const QString &label,
+                                            bool connected) {
+  m_activeConnectionLabel = label;
+  m_connected = connected;
+  if (m_westLongitudeCorrectionCheck)
+    m_westLongitudeCorrectionCheck->setEnabled(!connected);
+  if (m_packetAgeTimer && isVisible()) {
+    if (connected || m_lastPacketAt)
+      m_packetAgeTimer->start();
+    else
+      m_packetAgeTimer->stop();
+  }
 
-    if (m_connectionStatusLabel) {
-        const QString text = connected
-            ? QStringLiteral("Connected: %1").arg(label)
-            : (label.isEmpty() ? u"Disconnected"_s : label);
-        m_connectionStatusLabel->setText(connected ? tr("Connected") : text);
-        m_connectionStatusLabel->setToolTip(text);
-        m_connectionStatusLabel->setAccessibleName(text);
-        m_connectionStatusLabel->setProperty("state", connected ? "connected" : "idle");
-        m_connectionStatusLabel->style()->unpolish(m_connectionStatusLabel);
-        m_connectionStatusLabel->style()->polish(m_connectionStatusLabel);
-    }
+  if (m_connectionStatusLabel) {
+    const QString text = connected
+                             ? QStringLiteral("Connected: %1").arg(label)
+                             : (label.isEmpty() ? u"Disconnected"_s : label);
+    m_connectionStatusLabel->setText(connected ? tr("Connected") : text);
+    m_connectionStatusLabel->setToolTip(text);
+    m_connectionStatusLabel->setAccessibleName(text);
+    m_connectionStatusLabel->setProperty("state",
+                                         connected ? "connected" : "idle");
+    m_connectionStatusLabel->style()->unpolish(m_connectionStatusLabel);
+    m_connectionStatusLabel->style()->polish(m_connectionStatusLabel);
+  }
 
-    if (m_connectButton) {
-        m_connectButton->setEnabled(!connected && !m_availablePorts.isEmpty());
-    }
-    if (m_disconnectButton) {
-        m_disconnectButton->setEnabled(connected);
-    }
+  if (m_connectButton) {
+    m_connectButton->setEnabled(!connected && !m_availablePorts.isEmpty());
+  }
+  if (m_disconnectButton) {
+    m_disconnectButton->setEnabled(connected);
+  }
 }
 
 void LiveTelemetryPage::resetLiveState() {
@@ -579,6 +584,12 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     m_portCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
     m_portCombo->setMinimumContentsLength(10);
     m_portCombo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
+    connect(m_portCombo, &QComboBox::currentTextChanged, this,
+            [](const QString &port) {
+              if (!port.isEmpty())
+                cosmo::applicationSettings().setValue(kSettingsSerialPort,
+                                                      port);
+            });
     auto *portLabel = std::make_unique<QLabel>(tr("Serial port"), panel).release();
     portLabel->setProperty("kind", u"caption"_s);
     portLabel->setBuddy(m_portCombo);
@@ -592,7 +603,17 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     for (const int baud : bauds) {
         m_baudCombo->addItem(QString::number(baud), baud);
     }
-    m_baudCombo->setCurrentText(u"115200"_s);
+    const int savedBaud =
+        cosmo::applicationSettings().value(kSettingsSerialBaud, 115200).toInt();
+    const int savedBaudIndex = m_baudCombo->findData(savedBaud);
+    m_baudCombo->setCurrentIndex(
+        savedBaudIndex >= 0 ? savedBaudIndex : m_baudCombo->findData(115200));
+    connect(m_baudCombo, &QComboBox::currentIndexChanged, this,
+            [this](int index) {
+              if (index >= 0)
+                cosmo::applicationSettings().setValue(
+                    kSettingsSerialBaud, m_baudCombo->itemData(index));
+            });
     auto *baudLabel = std::make_unique<QLabel>(tr("Baud rate"), panel).release();
     baudLabel->setProperty("kind", u"caption"_s);
     baudLabel->setBuddy(m_baudCombo);
@@ -642,12 +663,12 @@ QFrame *LiveTelemetryPage::buildDevicePanel() {
     westCorrection->setToolTip(correctionHint);
     westCorrection->setAccessibleDescription(correctionHint);
     westCorrection->setChecked(
-        QSettings(kSettingsOrg, kSettingsApp)
+        cosmo::applicationSettings()
             .value(kSettingsWestLongitudeCorrection, false)
             .toBool());
     connect(westCorrection.get(), &QCheckBox::toggled, this, [](bool enabled) {
-      QSettings(kSettingsOrg, kSettingsApp)
-          .setValue(kSettingsWestLongitudeCorrection, enabled);
+      cosmo::applicationSettings().setValue(kSettingsWestLongitudeCorrection,
+                                            enabled);
     });
     westCorrection->hide();
     connect(details.get(), &QToolButton::toggled, this,

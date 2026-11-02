@@ -609,10 +609,21 @@ void TelemetryChartView::keyPressEvent(QKeyEvent *event) {
     auto *series = firstVisibleNonEmptyLineSeries(m_chartPtr);
     if (!axis || !series)
       return;
-    const int first = nearestValueIndexByX(m_hoverXValues, axis->min(),
-                                           m_hoverBegin, m_hoverEnd);
-    const int last = nearestValueIndexByX(m_hoverXValues, axis->max(),
-                                          m_hoverBegin, m_hoverEnd);
+    const auto begin = m_hoverXValues.cbegin() + m_hoverBegin;
+    const auto end = m_hoverXValues.cbegin() + m_hoverEnd;
+    const auto firstVisible = std::lower_bound(begin, end, axis->min());
+    const auto pastVisible = std::upper_bound(firstVisible, end, axis->max());
+    if (firstVisible == pastVisible) {
+      hideHoverOverlays();
+      m_hoverIndex = -1;
+      if (hoverReadout)
+        hoverReadout(u"—"_s);
+      event->accept();
+      return;
+    }
+    const int first = static_cast<int>(firstVisible - m_hoverXValues.cbegin());
+    const int last =
+        static_cast<int>(pastVisible - m_hoverXValues.cbegin()) - 1;
     const int index =
         m_hoverIndex < first || m_hoverIndex > last
             ? first

@@ -1,7 +1,7 @@
 #include "gui/pages/SettingsPage.h"
 #include "gui/widgets/PreflightChecklistWidget.h"
 
-#include "gui/SettingsKeys.h"
+#include "gui/ApplicationSettings.h"
 #include "gui/Theme.h"
 #include "gui/ThemeManager.h"
 #include "gui/SkinLoader.h"
@@ -383,7 +383,7 @@ QWidget *SettingsPage::buildAboutSection() {
     desc->setObjectName(u"aboutDesc"_s);
     layout->addWidget(desc);
 
-    auto *license = new QLabel(u"Licensed under the Apache License 2.0."_s, inner);
+    auto *license = new QLabel(u"Licensed under the MIT License."_s, inner);
     license->setObjectName(u"aboutLicense"_s);
     layout->addWidget(license);
 
@@ -595,23 +595,23 @@ void SettingsPage::onUnitSystemSelectionChanged(int index) {
     const bool imperial =
         m_unitSystemCombo->itemData(index).toString()
         == QLatin1StringView(kUnitSystemImperial);
-    QSettings s(kSettingsOrg, kSettingsApp);
+    auto s = cosmo::applicationSettings();
     s.setValue(kSettingsUnitSystem,
                QString::fromLatin1(imperial ? kUnitSystemImperial : kUnitSystemMetric));
     emit unitSystemChanged(imperial);
 }
 
 void SettingsPage::onSoundsToggled(bool enabled) {
-    QSettings s(kSettingsOrg, kSettingsApp);
-    s.setValue(kSettingsSoundsEnabled, enabled);
-    emit uiSoundsEnabledChanged(enabled);
+  auto s = cosmo::applicationSettings();
+  s.setValue(kSettingsSoundsEnabled, enabled);
+  emit uiSoundsEnabledChanged(enabled);
 }
 
 void SettingsPage::onDebugModeToggled(bool enabled) {
     if (m_sysInfoGroup) {
         m_sysInfoGroup->setVisible(enabled);
     }
-    QSettings s(kSettingsOrg, kSettingsApp);
+    auto s = cosmo::applicationSettings();
     s.setValue(kSettingsDebugMode, enabled);
     emit debugModeChanged(enabled);
 }
@@ -769,18 +769,20 @@ void SettingsPage::closeEvent(QCloseEvent *event) {
 }
 
 void SettingsPage::loadFromSettings() {
-    QSettings s(kSettingsOrg, kSettingsApp);
+  auto s = cosmo::applicationSettings();
 
-    if (m_unitSystemCombo) {
-        const QString storedUnitSystem =
-            s.value(kSettingsUnitSystem, QString::fromLatin1(kUnitSystemMetric)).toString();
-        int unitIndex = m_unitSystemCombo->findData(storedUnitSystem);
-        if (unitIndex < 0) {
-            unitIndex = m_unitSystemCombo->findData(QString::fromLatin1(kUnitSystemMetric));
-        }
-        const QSignalBlocker blocker(m_unitSystemCombo);
-        m_unitSystemCombo->setCurrentIndex(unitIndex);
+  if (m_unitSystemCombo) {
+    const QString storedUnitSystem =
+        s.value(kSettingsUnitSystem, QString::fromLatin1(kUnitSystemMetric))
+            .toString();
+    int unitIndex = m_unitSystemCombo->findData(storedUnitSystem);
+    if (unitIndex < 0) {
+      unitIndex =
+          m_unitSystemCombo->findData(QString::fromLatin1(kUnitSystemMetric));
     }
+    const QSignalBlocker blocker(m_unitSystemCombo);
+    m_unitSystemCombo->setCurrentIndex(unitIndex);
+  }
 
     if (m_uiSoundsCheck) {
         const QSignalBlocker blocker(m_uiSoundsCheck);
@@ -809,15 +811,14 @@ void SettingsPage::loadFromSettings() {
 }
 
 void SettingsPage::saveToSettings() {
-    QSettings s(kSettingsOrg, kSettingsApp);
-    if (m_unitSystemCombo) {
-        const bool imperial =
-            m_unitSystemCombo->currentData().toString()
-            == QLatin1StringView(kUnitSystemImperial);
-        s.setValue(kSettingsUnitSystem,
-                   QString::fromLatin1(
-                       imperial ? kUnitSystemImperial : kUnitSystemMetric));
-    }
+  auto s = cosmo::applicationSettings();
+  if (m_unitSystemCombo) {
+    const bool imperial = m_unitSystemCombo->currentData().toString() ==
+                          QLatin1StringView(kUnitSystemImperial);
+    s.setValue(kSettingsUnitSystem,
+               QString::fromLatin1(imperial ? kUnitSystemImperial
+                                            : kUnitSystemMetric));
+  }
     if (m_uiSoundsCheck) {
         s.setValue(kSettingsSoundsEnabled, m_uiSoundsCheck->isChecked());
     }

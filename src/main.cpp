@@ -12,7 +12,7 @@
 #include "gateway/comms/SerialFramerWorker.h"
 #include "gateway/comms/Windows/SerialCommsWindows.h"
 #include "gui/MainWindow.h"
-#include "gui/SettingsKeys.h"
+#include "gui/ApplicationSettings.h"
 #include "gui/ThemeManager.h"
 #include "services/RingBuffer.h"
 #include "services/SerialWriter.h"
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     QFont baseFont = app.font();
     baseFont.setFamily(
         !redHatFamily.isEmpty() ? redHatFamily : QStringLiteral("Red Hat Mono"));
-    QSettings settings(kSettingsOrg, kSettingsApp);
+    auto settings = cosmo::applicationSettings();
     if (settings.contains(kSettingsFontSize)) {
         const int savedPt = settings.value(kSettingsFontSize).toInt();
         if (savedPt >= 6 && savedPt <= 48) {

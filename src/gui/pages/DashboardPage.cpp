@@ -83,7 +83,7 @@
 #include <QStackedWidget>
 #include <QTableWidget>
 
-#include "gui/SettingsKeys.h"
+#include "gui/ApplicationSettings.h"
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QSizePolicy>
@@ -201,34 +201,36 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     : QWidget(parent),
       m_model(model),
       m_replay(replay) {
-    const QSettings unitSettings(kSettingsOrg, kSettingsApp);
-    m_imperialUnits = unitSettings.value(kSettingsUnitSystem, kUnitSystemMetric)
-                          .toString()
-                          .compare(QString::fromLatin1(kUnitSystemImperial),
-                                   Qt::CaseInsensitive) == 0;
-    setObjectName(u"dashboardPage"_s);
-    setAttribute(Qt::WA_OpaquePaintEvent);
-    setAutoFillBackground(false);
-    refreshPageStyleSheet();
+  const auto unitSettings = cosmo::applicationSettings();
+  m_imperialUnits = unitSettings.value(kSettingsUnitSystem, kUnitSystemMetric)
+                        .toString()
+                        .compare(QString::fromLatin1(kUnitSystemImperial),
+                                 Qt::CaseInsensitive) == 0;
+  setObjectName(u"dashboardPage"_s);
+  setAttribute(Qt::WA_OpaquePaintEvent);
+  setAutoFillBackground(false);
+  refreshPageStyleSheet();
 
-    // ── Root layout ───────────────────────────────────────────────────────────
-    // The page has two rows: the splitter (traces + chart, stretchy) and the
-    // replay/transport bar (fixed height, docked at the bottom).
-    auto *rootLayout = new QVBoxLayout(this);
-    rootLayout->setSpacing(16);
-    rootLayout->setContentsMargins(24, 8, 24, 20);
+  // ── Root layout ───────────────────────────────────────────────────────────
+  // The page has two rows: the splitter (traces + chart, stretchy) and the
+  // replay/transport bar (fixed height, docked at the bottom).
+  auto *rootLayout = new QVBoxLayout(this);
+  rootLayout->setSpacing(16);
+  rootLayout->setContentsMargins(24, 8, 24, 20);
 
-    // ── Replay transport bar ─────────────────────────────────────────────────
-    m_replayBar = new ReplayBar(m_replay, m_model, this);
-    if (m_replay) {
-        connect(m_replay, &FlightReplayController::playbackPaused, this, [this] {
-            // A seek pauses before its confirmed position signal. Queue the
-            // flush so the old trail is never rebuilt immediately beforehand.
-            QTimer::singleShot(0, this, &DashboardPage::flushReplayChartRebuild);
-        });
-        connect(m_replay, &FlightReplayController::playbackStopped,  this, &DashboardPage::flushReplayChartRebuild);
-        connect(m_replay, &FlightReplayController::playbackFinished, this, &DashboardPage::flushReplayChartRebuild);
-    }
+  // ── Replay transport bar ─────────────────────────────────────────────────
+  m_replayBar = new ReplayBar(m_replay, m_model, this);
+  if (m_replay) {
+    connect(m_replay, &FlightReplayController::playbackPaused, this, [this] {
+      // A seek pauses before its confirmed position signal. Queue the
+      // flush so the old trail is never rebuilt immediately beforehand.
+      QTimer::singleShot(0, this, &DashboardPage::flushReplayChartRebuild);
+    });
+    connect(m_replay, &FlightReplayController::playbackStopped, this,
+            &DashboardPage::flushReplayChartRebuild);
+    connect(m_replay, &FlightReplayController::playbackFinished, this,
+            &DashboardPage::flushReplayChartRebuild);
+  }
     connect(m_replayBar, &ReplayBar::trailLengthChanged,
             this, &DashboardPage::applyReplayControllerPosition);
 
@@ -448,6 +450,10 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
         }
         m_syncingComparisonAxes = false;
         if (m_followToggle) m_followToggle->setChecked(false);
+        if (m_model && m_model->replayMode())
+          scheduleReplayChartRebuild();
+        else
+          scheduleLiveChartRebuild();
     };
     m_comparisonView->onResetAxes = [this]() {
         m_preserveChartAxes = false;
@@ -481,13 +487,13 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
 
     // Keep unmodified chart keys local to the chart surface. Window-scoped
     // shortcuts steal ordinary input from the map and other application pages.
-    auto *scZoomIn = new QShortcut(QKeySequence(Qt::Key_Plus), m_chartContent);
-    auto *scZoomIn2 = new QShortcut(QKeySequence(Qt::Key_Equal), m_chartContent);
-    auto *scZoomOut = new QShortcut(QKeySequence(Qt::Key_Minus), m_chartContent);
-    auto *scFit = new QShortcut(QKeySequence(Qt::Key_F), m_chartContent);
-    auto *scMarkers = new QShortcut(QKeySequence(Qt::Key_M), m_chartContent);
-    auto *scValues = new QShortcut(QKeySequence(Qt::Key_V), m_chartContent);
-    auto *scTraces = new QShortcut(QKeySequence(Qt::Key_T), m_chartContent);
+    auto *scZoomIn = new QShortcut(QKeySequence(Qt::Key_Plus), m_graphStack);
+    auto *scZoomIn2 = new QShortcut(QKeySequence(Qt::Key_Equal), m_graphStack);
+    auto *scZoomOut = new QShortcut(QKeySequence(Qt::Key_Minus), m_graphStack);
+    auto *scFit = new QShortcut(QKeySequence(Qt::Key_F), m_graphStack);
+    auto *scMarkers = new QShortcut(QKeySequence(Qt::Key_M), m_graphStack);
+    auto *scValues = new QShortcut(QKeySequence(Qt::Key_V), m_graphStack);
+    auto *scTraces = new QShortcut(QKeySequence(Qt::Key_T), m_graphStack);
     m_chartShortcuts = {
         scZoomIn, scZoomIn2, scZoomOut, scFit, scMarkers, scValues, scTraces,
     };
@@ -611,20 +617,21 @@ DashboardPage::DashboardPage(FlightDataModel *model, FlightReplayController *rep
     dashSplitter->setStretchFactor(1, 1);
     m_tracesPanel->setMinimumWidth(0);
     {
-        QSettings dashSettings(kSettingsOrg, kSettingsApp);
-        const QByteArray st = dashSettings.value(kSettingsDashSplitter).toByteArray();
-        if (!st.isEmpty()) {
-            dashSplitter->restoreState(st);
-        } else {
-            dashSplitter->setSizes({260, 1000});
-        }
+      auto dashSettings = cosmo::applicationSettings();
+      const QByteArray st =
+          dashSettings.value(kSettingsDashSplitter).toByteArray();
+      if (!st.isEmpty()) {
+        dashSplitter->restoreState(st);
+      } else {
+        dashSplitter->setSizes({260, 1000});
+      }
     }
     connect(dashSplitter, &QSplitter::splitterMoved, this, [this, dashSplitter]() {
         if (!m_splitterSavePending) {
             m_splitterSavePending = true;
             QTimer::singleShot(500, this, [this, dashSplitter] {
                 m_splitterSavePending = false;
-                QSettings s(kSettingsOrg, kSettingsApp);
+                auto s = cosmo::applicationSettings();
                 s.setValue(kSettingsDashSplitter, dashSplitter->saveState());
             });
         }
@@ -2492,6 +2499,11 @@ void DashboardPage::refreshEventMarkerTheme() {
     for (QLineSeries *series : m_markerSeries) {
         applyEventMarkerTheme(series);
     }
+    if (m_comparisonChart)
+      for (auto *series : m_comparisonChart->series())
+        if (auto *line = qobject_cast<QLineSeries *>(series);
+            line && line->property("eventMarker").toBool())
+          applyEventMarkerTheme(line);
 }
 
 void DashboardPage::updateEventMarkerGeometry() {

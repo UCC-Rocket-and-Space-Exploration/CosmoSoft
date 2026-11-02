@@ -43,7 +43,7 @@ AboutDialog::AboutDialog(QWidget *parent)
     descLabel->setWordWrap(true);
     descLabel->setAlignment(Qt::AlignLeft);
 
-    auto *licenseLabel = new QLabel(u"Licensed under the Apache License 2.0."_s, this);
+    auto *licenseLabel = new QLabel(u"Licensed under the MIT License."_s, this);
     licenseLabel->setWordWrap(true);
     licenseLabel->setAlignment(Qt::AlignLeft);
 
